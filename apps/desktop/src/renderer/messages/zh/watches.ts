@@ -14,7 +14,6 @@ export const watches = {
   currentIdentity: (affiliations: string) => `当前身份：${affiliations}`,
   noAffiliation: '机构信息未收录',
   reconfirm: '重新确认',
-  searching: '正在查找同名作者…',
   noMatches: '没有找到可确认的作者',
   authorSearchFailed: '搜索作者失败',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>

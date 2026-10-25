@@ -14,15 +14,15 @@ describe('updateLine', () => {
       .toBe('Version 0.0.16.1 available · install manually')
   })
 
-  it('其余阶段也只写短状态，不以句号收尾', () => {
+  it('其余阶段也只写短状态，不以句号收尾；检查中没有文字，下载中只写版本和进度', () => {
     const statuses: AppUpdateStatus[] = [
       { phase: 'idle', current: '0.0.16.0' }, { phase: 'checking', current: '0.0.16.0' },
       { phase: 'latest', current: '0.0.16.0' }, { phase: 'downloading', version: '0.0.16.1', percent: 40, current: '0.0.16.0' },
       { phase: 'ready', version: '0.0.16.1', current: '0.0.16.0' },
     ]
     expect(statuses.map((status) => updateLine(status, zh)))
-      .toEqual(['尚未检查更新', '正在检查更新…', '已是最新版本', '正在下载 0.0.16.1（40%）', '0.0.16.1 已下载'])
+      .toEqual(['尚未检查更新', null, '已是最新版本', '0.0.16.1 · 40%', '0.0.16.1 已下载'])
     expect(statuses.map((status) => updateLine(status, en)))
-      .toEqual(['Not checked yet', 'Checking for updates…', 'Up to date', 'Downloading 0.0.16.1 (40%)', '0.0.16.1 downloaded'])
+      .toEqual(['Not checked yet', null, 'Up to date', '0.0.16.1 · 40%', '0.0.16.1 downloaded'])
   })
 })

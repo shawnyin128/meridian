@@ -6,6 +6,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { PageError } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { Button } from '../Button.js'
 import './ApiOverview.css'
 
@@ -15,18 +16,18 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
   const copy = m.settings.api
   const [model, setModel] = useState<HarnessModelSettings | null>(null)
   const [semanticKey, setSemanticKey] = useState<SemanticKeyStatus | null>(null)
-  const { error, load } = useScreenLoad()
+  const { error, failure, load } = useScreenLoad()
 
   useEffect(() => load('model', harness.modelSettings(), setModel), [load])
   useEffect(() => load('semanticKey', delivery.semanticKey(), setSemanticKey), [load])
 
   const modelState = model === null
-    ? m.common.reading
+    ? null
     : model.configured
       ? copy.modelSet(m.settings.model.providers[model.provider].label, model.model)
       : copy.modelUnset
   const researchState = semanticKey === null
-    ? m.common.reading
+    ? null
     : semanticKey.configured ? 'Semantic Scholar' : copy.researchUnset
   const rows = [
     { key: 'model' as const, name: copy.model, state: modelState },
@@ -40,7 +41,9 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
         {rows.map((row) => (
           <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>
             <span className="nm">{row.name}</span>
-            <FadeText className="api-state">{row.state}</FadeText>
+            {row.state === null
+              ? (failure(row.key) === null ? <LoadingPlaceholder shape="lines" count={1} className="api-state" /> : null)
+              : <FadeText className="api-state">{row.state}</FadeText>}
             <Button size="compact" variant="ghost" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</Button>
           </StructuredRow>
         ))}

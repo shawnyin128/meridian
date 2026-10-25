@@ -7,7 +7,6 @@ export const later = {
   groupBy: 'Group by',
   modes: { time: 'Date added', src: 'Source' },
   actions: {
-    downloading: 'Downloading from arXiv…',
     removeFrom: 'Remove from Read Later',
   },
   removed: (title: string) => `Removed “${title}” from Read Later`,

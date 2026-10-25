@@ -225,9 +225,8 @@ export const settings = {
       phase: {
         unsupported: 'Development build',
         idle: 'Not checked yet',
-        checking: 'Checking for updates…',
         latest: 'Up to date',
-        downloading: (version: string, percent: number) => `Downloading ${version} (${percent}%)`,
+        downloading: (version: string, percent: number) => `${version} · ${percent}%`,
         ready: (version: string) => `${version} downloaded`,
         available: (version: string) => `Version ${version} available · install manually`,
         error: (reason: string) => `Update check failed: ${reason}`,

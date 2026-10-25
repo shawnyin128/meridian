@@ -408,8 +408,8 @@ export function WatchSettings() {
           )
           : name.trim().length < 2
             ? null
-            : authorSearching
-              ? <div className="author-search-note">{m.watches.searching}</div>
+            : authorSearchError === null && authorSearching
+              ? <LoadingPlaceholder shape="rows" count={2} />
               : authorSearchError !== null
                 ? (
                   <div className="author-search-note">

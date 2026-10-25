@@ -1244,11 +1244,9 @@ export function PaperTable() {
               }}
             />
             <AddAction
-              size="regular" className="pdfupload" disabled={uploading}
+              size="regular" className="pdfupload" busy={uploading} busyLabel={m.papers.upload.importing}
               onClick={() => uploadInput.current?.click()}
-            >
-              {uploading ? m.papers.upload.importing : m.papers.upload.importAction}
-            </AddAction>
+            >{m.papers.upload.importAction}</AddAction>
           </>
         )}
       >

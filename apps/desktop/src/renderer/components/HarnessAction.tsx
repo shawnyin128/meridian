@@ -11,19 +11,17 @@ import './HarnessAction.css'
  * The one shared visual gate for cost-bearing Harness work. Feature components supply a prepared
  * plan and a start callback; they cannot skip the explicit acknowledgement represented here.
  */
-export function HarnessAction({ plan, running, onStart, onCancel }: {
+export function HarnessAction({ plan, running, stopping = false, onStart, onCancel }: {
   plan: HarnessPlan
   running: boolean
+  /** Whether a stop was asked for and the run has not ended yet. */
+  stopping?: boolean
   onStart: () => void
   onCancel: () => void
 }) {
   const m = useMessages()
   if (running) {
-    return (
-      <GenerationControl
-        className="harness-trigger" running onStop={onCancel} showStatusText
-      />
-    )
+    return <GenerationControl className="harness-trigger" running regular stopping={stopping} onStop={onCancel} />
   }
   const personal = plan.scope.notes + plan.scope.annotatedHighlights
   const trigger = (

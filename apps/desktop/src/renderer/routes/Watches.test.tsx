@@ -356,6 +356,19 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('作者搜索进行中时候选的位置是载入占位，不写一句正在查找', async () => {
+    api.search.mockReturnValueOnce(new Promise(() => {}))
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
+    await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
+    expect([host.querySelector('.newrow .loading-placeholder--rows') !== null, host.querySelector('.author-search-note')])
+      .toEqual([true, null])
+    await act(async () => { root.unmount() })
+  })
+
   it('作者搜索与关注建议失败时只显示失败原因', async () => {
     api.search.mockResolvedValueOnce({ kind: 'failed', reason: 'unavailable' })
     api.suggest.mockResolvedValueOnce({ kind: 'failed', reason: 'unknown' })

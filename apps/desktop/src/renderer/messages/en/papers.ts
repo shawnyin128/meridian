@@ -154,7 +154,6 @@ export const papers = {
   parse: {
     addedFixable: 'Added to library',
     statusAria: 'Paper metadata processing status',
-    working: 'Reading paper metadata…',
     count: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
     progressAria: 'Paper metadata processing progress',
     fill: 'Fill in metadata',

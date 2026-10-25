@@ -316,6 +316,15 @@ describe('Settings', () => {
     expect(dialog.querySelector('.semantic-key-card .service-status-pill')?.textContent).toBe('未配置')
   })
 
+  it('API 总览还没读到一项的状态时，那一格是载入占位，不写正在读取', async () => {
+    api.semanticKey.mockReturnValueOnce(new Promise(() => {}))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    const research = dialog.querySelector('[data-api="research"] .api-state')!
+    expect([research.matches('.loading-placeholder'), research.textContent]).toEqual([true, ''])
+  })
+
   it('科研数据源总览显示 Semantic Scholar 当已配置 key', async () => {
     api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

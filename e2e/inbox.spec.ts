@@ -384,7 +384,7 @@ test('下载并入库时显示进度环,完成后卡片离开论文推送', asyn
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="drafterlite"]')
   await rowAction(card, '下载并入库')
-  await expect(card.locator('.icbtn.busy[aria-label="从 arXiv 下载中"] .ring')).toHaveCount(1)
+  await expect(card.locator('.icbtn.busy[aria-label="下载并入库"][aria-busy="true"] .ring')).toHaveCount(1)
   await expect(card).toHaveCount(0, { timeout: 10_000 })
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已入库')
   expect((await inboxFromCore(win)).map((entry) => entry.id)).not.toContain('drafterlite')

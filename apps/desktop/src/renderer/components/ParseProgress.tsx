@@ -66,7 +66,6 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
         <Card floating className="upcard compact progress-host" role="status">
           <ProgressFill percent={progress} label={m.papers.parse.progressAria} />
           <div className="upt">
-            <span>{m.papers.parse.working}</span>
             <span className="upcount">{m.papers.parse.count(active.length)}</span>
           </div>
         </Card>

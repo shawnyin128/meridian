@@ -34,12 +34,12 @@ describe('ParseProgress', () => {
   })
   afterEach(() => { host.remove(); status = null; vi.unstubAllGlobals() })
 
-  it('显示当前步骤,解析成功后只通知已入库并自动收卡', async () => {
+  it('处理中只有进度条和篇数,不写一句正在完善,解析成功后只通知已入库并自动收卡', async () => {
     const parsed = vi.fn()
     const root = createRoot(host)
     status = state([job()])
     await act(async () => { root.render(<MessagesProvider><ParseProgress onParsed={parsed} onOpenPaper={() => {}} /></MessagesProvider>) })
-    expect(document.body.querySelector('.parse-float .upt')?.textContent).toContain('正在完善论文信息')
+    expect(document.body.querySelector('.parse-float .upt')?.textContent).toBe('1 篇')
     expect(document.body.querySelector('.parse-float [role="progressbar"]')?.getAttribute('aria-valuenow')).toBe('65')
 
     status = state([job({ step: 'done', found: 'arxiv', title: 'Parsed Paper' })], 1)

@@ -24,7 +24,6 @@ export const common = {
   moveDown: 'Move down',
   loading: 'Loading…',
   saving: 'Saving…',
-  reading: 'Reading…',
   none: 'None',
   all: 'All',
   trashed: 'Moved to Trash',
@@ -61,7 +60,7 @@ export const common = {
   generation: {
     start: 'Send',
     stop: 'Stop generating',
-    running: 'Generating',
+    stopping: 'Stopping',
   },
   anchor: {
     label: (page: number) => `p.${page}`,

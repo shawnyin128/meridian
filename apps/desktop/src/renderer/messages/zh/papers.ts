@@ -153,7 +153,6 @@ export const papers = {
   parse: {
     addedFixable: '已入库',
     statusAria: '论文信息处理状态',
-    working: '正在完善论文信息…',
     count: (n: number) => `${n} 篇`,
     progressAria: '论文信息处理进度',
     fill: '填写元数据',

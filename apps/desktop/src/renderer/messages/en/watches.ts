@@ -16,7 +16,6 @@ export const watches = {
   currentIdentity: (affiliations: string) => `Current identity: ${affiliations}`,
   noAffiliation: 'No affiliation on record',
   reconfirm: 'Verify again',
-  searching: 'Looking for authors with this name…',
   noMatches: 'No confirmable authors found',
   authorSearchFailed: 'Author search failed',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>

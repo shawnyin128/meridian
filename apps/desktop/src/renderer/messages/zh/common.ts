@@ -21,7 +21,6 @@ export const common = {
   moveDown: '下移',
   loading: '正在载入…',
   saving: '正在保存…',
-  reading: '正在读取…',
   none: '暂无',
   all: '全部',
   trashed: '已移入垃圾桶',
@@ -59,7 +58,7 @@ export const common = {
   generation: {
     start: '发送',
     stop: '停止生成',
-    running: '正在生成',
+    stopping: '正在停止',
   },
   anchor: {
     label: (page: number) => `p.${page}`,

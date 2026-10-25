@@ -472,6 +472,12 @@ describe('PaperWikiIngest', () => {
     expect(api.jump).toHaveBeenCalledWith(1)
   })
 
+  it('shows the loading placeholder while the scope is prepared, never a sentence about preparing', async () => {
+    api.prepare.mockReturnValue(new Promise(() => {}))
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    expect([host.querySelector('.loading-placeholder--lines') !== null, host.querySelector('.wiki-ingest-status')]).toEqual([true, null])
+  })
+
   it('states a missing model as a short tag, never a sentence', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })

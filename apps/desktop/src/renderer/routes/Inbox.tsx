@@ -54,7 +54,7 @@ const streamLabel = (m: Catalog, stream: 'watch' | 'discovery'): string =>
  */
 function fetchNote(status: FetchStatus | null, scope: string, m: Catalog): ReactNode {
   if (status === null) return ''
-  if (status.state === 'checking') return m.inbox.check.checking
+  if (status.state === 'checking') return ''
   if (status.state === 'failed') {
     return <InlineMessage tone="error" variant="line">{failureLabel(m, m.inbox.check.failed, status.reason ?? 'unknown')}</InlineMessage>
   }
@@ -249,7 +249,7 @@ export function Inbox() {
         ) : null}
         {busy.has(p.id)
           ? (
-            <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
+            <IconButton label={m.inbox.actions.download} size="nested" className="busy" disabled aria-busy>
               <DownloadRing progress={jobs?.downloads?.find((item) => item.id === p.id) ?? null} />
             </IconButton>
           )

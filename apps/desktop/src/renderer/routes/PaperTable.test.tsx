@@ -497,7 +497,7 @@ describe('PaperTable', () => {
     expect(gotIds).toHaveLength(opened)
   })
 
-  it('上传把 PDF 交给 Core,落地后清掉搜索并由最近添加排序把它留在第一页', async () => {
+  it('上传把 PDF 交给 Core,上传中导入按钮是共享的忙碌状态,落地后清掉搜索并由最近添加排序把它留在第一页', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -513,7 +513,9 @@ describe('PaperTable', () => {
     await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
     expect(importCall.filename).toBe('新论文.pdf')
     expect([...importCall.bytes]).toEqual([...bytes])
-    expect(host.querySelector<HTMLButtonElement>('.pdfupload')!.disabled).toBe(true)
+    const importing = host.querySelector<HTMLButtonElement>('.pdfupload')!
+    expect([importing.disabled, importing.getAttribute('aria-busy'), importing.getAttribute('aria-label'), importing.textContent])
+      .toEqual([true, 'true', '正在导入…', '导入 PDF…'])
 
     const paper = { ...ROW, id: 'uploaded', title: '新论文' }
     importCall.resolve({ kind: 'added', paper })

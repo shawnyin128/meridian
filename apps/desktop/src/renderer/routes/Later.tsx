@@ -149,7 +149,7 @@ export function Later() {
                     <>
                     {busy.has(x.id)
                       ? (
-                        <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
+                        <IconButton label={m.inbox.actions.download} size="nested" className="busy" disabled aria-busy>
                           <DownloadRing progress={jobs?.downloads?.find((item) => item.id === x.id) ?? null} />
                         </IconButton>
                       )

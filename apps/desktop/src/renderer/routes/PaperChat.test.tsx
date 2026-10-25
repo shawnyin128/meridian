@@ -250,6 +250,15 @@ describe('PaperChat', () => {
     expect(host.querySelector('.paper-chat-head .fade-text')?.textContent).toBe(title)
   })
 
+  it('论文还没读到时对话栏头部是载入占位，不写正在载入', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => { root!.render(withMessages(<PaperChat paper={null} />)) })
+    const head = host.querySelector('.paper-chat-head')!
+    expect([head.querySelector('.loading-placeholder') !== null, head.textContent]).toEqual([true, ''])
+  })
+
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {
     const finish = pendingReply()
     const host = document.createElement('div')

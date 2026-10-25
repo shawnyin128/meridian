@@ -133,12 +133,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
       <header className="paper-chat-head">
         <BackButton onClick={onBack} />
-        <FadeText
-          className="paper-chat-title"
-          label={paper === null ? m.common.loading : plainTitle(paper.title)}
-        >
-          {paper === null ? m.common.loading : <PaperText text={paper.title} />}
-        </FadeText>
+        {paper === null
+          ? (error === null ? <LoadingPlaceholder shape="lines" count={1} className="paper-chat-title" /> : null)
+          : <FadeText className="paper-chat-title" label={plainTitle(paper.title)}><PaperText text={paper.title} /></FadeText>}
       </header>
       <PageError error={error} />
       <div className="msgs" ref={stream}>

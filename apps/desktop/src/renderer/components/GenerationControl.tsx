@@ -26,19 +26,20 @@ const RunningGlyph = () => (
 /**
  * One shared start, running, and stop control for user-triggered generation. `disabled` disables the
  * start only: a running generation can always be stopped, and while running the control is named
- * `runningLabel`, by default the stop command. With `showStatusText` it is a regular Button whose
- * label, while running, says it runs and, under the pointer or focus, that a press stops it; otherwise
+ * `runningLabel`, by default the stop command. With `regular` it is a regular-size Button holding the
+ * glyph, which shows the shared busy state while `stopping`, after a press asked it to stop; otherwise
  * it is the bare glyph button whose look its `className` gives.
  */
 export function GenerationControl({
-  running, onStart, onStop, idleContent, showStatusText = false,
+  running, onStart, onStop, idleContent, regular = false, stopping = false,
   idleLabel, runningLabel, className = '', disabled, ...props
 }: {
   running: boolean
   onStart?: () => void
   onStop: () => void
   idleContent?: ReactNode
-  showStatusText?: boolean
+  regular?: boolean
+  stopping?: boolean
   idleLabel?: string
   runningLabel?: string
 } & Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'onClick' | 'aria-label'>) {
@@ -55,18 +56,8 @@ export function GenerationControl({
   const glyph = running ? <RunningGlyph /> : idleContent ?? <Arrow />
   return (
     <Tooltip label={running ? stopLabel : idle}>
-      {showStatusText
-        ? (
-          <Button {...control} size="regular" icon={glyph}>
-            {running ? (
-              <span className="generation-status-copy">
-                {/* No trailing ellipsis: this button-label pairs with the spinning RunningGlyph icon, which already reads as in-progress. */}
-                <span className="generation-running-copy">{m.common.generation.running}</span>
-                <span className="generation-stop-copy">{m.common.generation.stop}</span>
-              </span>
-            ) : null}
-          </Button>
-        )
+      {regular
+        ? <Button {...control} size="regular" icon={glyph} busy={running && stopping} busyLabel={m.common.generation.stopping} />
         : <button {...control} type="button">{glyph}</button>}
     </Tooltip>
   )

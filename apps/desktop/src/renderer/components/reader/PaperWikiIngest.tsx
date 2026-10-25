@@ -21,6 +21,7 @@ import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { InlineMessage } from '../InlineMessage.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { SectionHeading } from '../PageShell.js'
 import { NoModelTag } from '../NoModelTag.js'
 import { TabbedSection } from '../TabbedSection.js'
@@ -330,9 +331,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
 
         <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 
-        {plan === null && pending === null && error === null
-          ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
-          : null}
+        {plan === null && pending === null && error === null ? <LoadingPlaceholder shape="lines" count={1} /> : null}
         {plan !== null && !plan.model.configured ? <NoModelTag label={m.wiki.ingest.notConnectedNote} /> : null}
         {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
         {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
@@ -345,9 +344,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
 
         <div className="wiki-ingest-actions">
           {receipt === null && plan !== null && failure === undefined
-            ? <HarnessAction plan={plan} running={running} onStart={start} onCancel={cancel} />
+            ? <HarnessAction plan={plan} running={running} stopping={cancelling} onStart={start} onCancel={cancel} />
             : null}
-          {cancelling ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.stopping}</InlineMessage> : null}
           {receipt !== null || failed !== null || rejected
             ? <Button size="regular" onClick={reprepare}>{m.wiki.ingest.reprepare}</Button>
             : null}
