@@ -468,7 +468,7 @@ export function Settings() {
               <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
               {visibleCategories.map((c) => (
                 <NavRow
-                  key={c} className={SUB_CATEGORIES.has(c) ? 'srow set-sub' : 'srow'} selected={c === current}
+                  key={c} indent={SUB_CATEGORIES.has(c) ? 1 : 0} sub={SUB_CATEGORIES.has(c)} selected={c === current}
                   data-setcat={c} onActivate={() => setCurrent(c)}
                 >{m.settings.categories[SETTINGS_CATEGORY_LABEL[c]]}</NavRow>
               ))}

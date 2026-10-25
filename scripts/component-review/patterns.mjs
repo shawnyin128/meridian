@@ -54,7 +54,7 @@ const entry = (impl, selector, options = {}) => ({ id: `${impl} ${selector}`, im
 export const PATTERNS = {
   TitleBar: { metrics: 'head', entries: [entry('shared:TitleBar', '.titlebar', { parts: { title: '#crumb' } })] },
   Breadcrumb: { metrics: 'text', entries: [entry('shared:Breadcrumb', '#crumb')] },
-  NavList: { metrics: 'list', entries: [entry('hand:shell/Sidebar.tsx', '#sidebar .sb-top')] },
+  NavList: { metrics: 'list', entries: [entry('shared:NavPane', '#sidebar .nav-pane-rows')] },
   PageHeader: {
     metrics: 'head',
     entries: [
@@ -136,8 +136,8 @@ export const PATTERNS = {
     entries: [
       entry('shared:CollapsibleGroup', '.collapsible-group-head', { parts: { count: '.count-badge' } }),
       entry('shared:CardTray', '.card-tray--tray > .card-tray-head'),
-      entry('shared:NavRow', '#sidebar .srow.disc'),
-      entry('hand:shell/Sidebar.tsx', '#sidebar .sb-h'),
+      entry('shared:NavRow', '#sidebar .fold-toggle.nav-row'),
+      entry('shared:NavSection', '#sidebar .nav-section-head'),
       entry('shared:FoldToggle', '.fold-toggle--composite', { not: '.card-tray--row .fold-toggle--composite' }),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glrow:has(.fold-toggle)'),
     ],
@@ -186,7 +186,7 @@ export const PATTERNS = {
     metrics: 'item',
     entries: [
       entry('shared:StructuredRow', '.structured-row', { not: '.structured-row:has(> .form-control)' }),
-      entry('shared:NavRow', '.nav-row', { not: '.srow.disc, .sb-h' }),
+      entry('shared:NavRow', '.nav-row', { not: '.fold-toggle.nav-row' }),
       entry('shared:PickOption', '.mi.rrow', { parts: { title: '.rt', meta: '.rm' } }),
       entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr', { parts: { title: '.pt-title' } }),
       entry('hand:routes/Wiki.tsx', '.cmp tbody tr:not(.newrow)'),
@@ -318,7 +318,7 @@ export const PATTERNS = {
     metrics: 'state',
     entries: [
       entry('shared:StructuredRow', '.structured-row--selected'),
-      entry('shared:NavRow', '.srow.on'),
+      entry('shared:NavRow', '.nav-row.on'),
       entry('shared:IconButton', '.icbtn[aria-pressed="true"]'),
       entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr.selected'),
       entry('hand:components/reader/ReadingNotes.tsx', '.reading-card.selected'),

@@ -568,7 +568,7 @@ test('关注管理:暂停、添加与移除都实时改侧栏与推送屏', asyn
   await settings(win, '.wrow.newrow input').press('Enter')
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
-  await expect(win.locator('#g-topics .srow')).toHaveCount(topics + 1)
+  await expect(win.locator('#g-topics .nav-row')).toHaveCount(topics + 1)
   await expect(win.locator('[data-disc="topics"] .n')).toHaveText(String(topicPapers))
 
   // Removed: the sidebar row disappears, and its own pushes are cleared with it (the confirm dialog's
@@ -772,7 +772,7 @@ test('关注管理:两下快回车只建出一条关注', async ({ win }) => {
 
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
-  await expect(win.locator('#g-topics .srow')).toHaveCount(topics + 1)
+  await expect(win.locator('#g-topics .nav-row')).toHaveCount(topics + 1)
   expect((await watchesFromCore(win)).filter((w) => w.name === TWICE_WATCH)).toHaveLength(1)
 })
 

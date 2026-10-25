@@ -29,7 +29,7 @@ const SHEETS = [
   'shell/tokens.css', 'routes/shell.css', 'components/PageShell.css', 'components/CollapsibleGroup.css',
   'components/ResearchObjectCard.css', 'components/paper/PaperCard.css', 'components/paper/PaperUnderstanding.css',
   'components/project/ProjectIdentity.css', 'components/project/ResearchGraph.css',
-  'components/paper-table/PaperTable.css', 'shell/AppShell.css', 'routes/Wiki.css', 'routes/Projects.css',
+  'components/paper-table/PaperTable.css', 'components/NavSection.css', 'routes/Wiki.css', 'routes/Projects.css',
   'routes/Ideas.css', 'routes/Watches.css',
 ]
 
@@ -61,7 +61,7 @@ const MARKUP = `
     <div class="wkprops" id="props"><div class="pk">当前目标</div><div class="pv">x</div></div>
   </div></div>
 </div></div>
-<aside class="sidebar"><div class="sb-h" id="sidebar-label">收件</div></aside>`
+<aside class="nav-pane"><div class="nav-section-head" id="sidebar-label">收件</div></aside>`
 
 beforeAll(() => {
   document.head.innerHTML = `<style>${SHEETS.map(sheet).join('\n')}</style>`

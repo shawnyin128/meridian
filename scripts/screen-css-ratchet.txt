@@ -1459,129 +1459,126 @@ routes/Settings.css:13: .set-side { --fade-pad-top }
 routes/Settings.css:13: .set-side { --fade-pad-bottom }
 routes/Settings.css:14: .set-side .set-t { padding }
 routes/Settings.css:14: .set-side .set-t { margin }
-routes/Settings.css:15: .set-side .srow.set-sub { height }
-routes/Settings.css:15: .set-side .srow.set-sub { padding-left }
-routes/Settings.css:15: .set-side .srow.set-sub { font-size }
-routes/Settings.css:22: .set-main { padding }
-routes/Settings.css:23: .set-head { padding }
-routes/Settings.css:24: .set-head>.section-heading { margin-bottom }
-routes/Settings.css:25: .set-body { overflow }
-routes/Settings.css:25: .set-body { padding }
-routes/Settings.css:26: .set-body::before { content }
-routes/Settings.css:26: .set-body::before { display }
-routes/Settings.css:26: .set-body::before { margin-bottom }
-routes/Settings.css:29: .appearance-choice { border }
-routes/Settings.css:29: .appearance-choice { background }
-routes/Settings.css:29: .appearance-choice { color }
-routes/Settings.css:29: .appearance-choice { padding }
-routes/Settings.css:29: .appearance-choice { cursor }
-routes/Settings.css:30: .appearance-choice { font }
-routes/Settings.css:30: .appearance-choice { text-align }
-routes/Settings.css:31: .appearance-preview { height }
-routes/Settings.css:31: .appearance-preview { display }
-routes/Settings.css:31: .appearance-preview { overflow }
-routes/Settings.css:31: .appearance-preview { padding }
-routes/Settings.css:32: .appearance-preview { border-radius }
-routes/Settings.css:32: .appearance-preview { background-color }
-routes/Settings.css:32: .appearance-preview { box-shadow }
-routes/Settings.css:33: .appearance-preview { transition }
-routes/Settings.css:34: .appearance-choice:hover .appearance-preview { box-shadow }
-routes/Settings.css:36: .appearance-choice[aria-checked="true"] .appearance-preview { background-color }
-routes/Settings.css:37: .appearance-label { display }
-routes/Settings.css:37: .appearance-label { margin-top }
-routes/Settings.css:37: .appearance-label { font-size }
-routes/Settings.css:37: .appearance-label { font-weight }
-routes/Settings.css:37: .appearance-label { color }
-routes/Settings.css:38: .appearance-choice[aria-checked="true"] .appearance-label { color }
-routes/Settings.css:40: .appearance-radios { display }
-routes/Settings.css:47: .appearance-problem { text-align }
-routes/Settings.css:50: .appearance-mini { overflow }
-routes/Settings.css:51: .appearance-mini { border-radius }
-routes/Settings.css:51: .appearance-mini { background }
-routes/Settings.css:52: .appearance-mini { box-shadow }
-routes/Settings.css:53: .appearance-mini.dark { box-shadow }
-routes/Settings.css:54: .appearance-mini-bar { height }
-routes/Settings.css:54: .appearance-mini-bar { padding }
-routes/Settings.css:54: .appearance-mini-bar { background }
-routes/Settings.css:55: .appearance-mini-bar { border-bottom }
-routes/Settings.css:56: .appearance-mini-bar i { width }
-routes/Settings.css:56: .appearance-mini-bar i { height }
-routes/Settings.css:56: .appearance-mini-bar i { border-radius }
-routes/Settings.css:56: .appearance-mini-bar i { background }
-routes/Settings.css:57: .appearance-mini-bar i:first-child { background }
-routes/Settings.css:59: .appearance-mini-side { padding }
-routes/Settings.css:59: .appearance-mini-side { background }
-routes/Settings.css:60: .appearance-mini-side i { height }
-routes/Settings.css:60: .appearance-mini-side i { border-radius }
-routes/Settings.css:60: .appearance-mini-side i { background }
-routes/Settings.css:61: .appearance-mini-side i:first-child { background }
-routes/Settings.css:62: .appearance-mini-content { padding }
-routes/Settings.css:62: .appearance-mini-content { background }
-routes/Settings.css:63: .appearance-mini-content i { height }
-routes/Settings.css:63: .appearance-mini-content i { border-radius }
-routes/Settings.css:63: .appearance-mini-content i { background }
-routes/Settings.css:64: .appearance-mini-content i { box-shadow }
-routes/Settings.css:66: .appearance-mini-content i:nth-child(3) { background }
-routes/Settings.css:68: .language-select { width }
-routes/Settings.css:72: .storage-root { grid-template-columns }
-routes/Settings.css:72: .storage-root { margin-top }
-routes/Settings.css:73: .storage-root { padding }
-routes/Settings.css:73: .storage-root { border-top }
-routes/Settings.css:73: .storage-root { border-bottom }
-routes/Settings.css:74: .storage-root span { color }
-routes/Settings.css:74: .storage-root span { font-size }
-routes/Settings.css:75: .storage-state { margin-top }
-routes/Settings.css:76: .storage-pending { margin-top }
-routes/Settings.css:77: .storage-reset { margin-top }
-routes/Settings.css:78: .storage-reset { padding-top }
-routes/Settings.css:78: .storage-reset { border-top }
-routes/Settings.css:78: .storage-reset { color }
-routes/Settings.css:78: .storage-reset { font-size }
-routes/Settings.css:79: .storage-backup-row { display }
-routes/Settings.css:79: .storage-backup-row { grid-template-columns }
-routes/Settings.css:79: .storage-backup-row { align-items }
-routes/Settings.css:79: .storage-backup-row { gap }
-routes/Settings.css:80: .storage-backup-row { min-height }
-routes/Settings.css:80: .storage-backup-row { padding }
-routes/Settings.css:82: .storage-backup-path { color }
-routes/Settings.css:82: .storage-backup-path { font-family }
-routes/Settings.css:82: .storage-backup-path { font-size }
-routes/Settings.css:86: .model-protocol { margin-top }
-routes/Settings.css:87: .model-protocol { color }
-routes/Settings.css:87: .model-protocol { font-size }
-routes/Settings.css:88: .model-protocol strong { color }
-routes/Settings.css:88: .model-protocol strong { font-size }
-routes/Settings.css:88: .model-protocol strong { font-weight }
-routes/Settings.css:89: .model-template-summary { margin }
-routes/Settings.css:89: .model-template-summary { padding }
-routes/Settings.css:89: .model-template-summary { border-radius }
-routes/Settings.css:89: .model-template-summary { background }
-routes/Settings.css:90: .model-template-summary { color }
-routes/Settings.css:90: .model-template-summary { font-size }
-routes/Settings.css:90: .model-template-summary { line-height }
-routes/Settings.css:91: .model-template-summary code { color }
-routes/Settings.css:91: .model-template-summary code { font-family }
-routes/Settings.css:91: .model-template-summary code { font-size }
-routes/Settings.css:91: .model-template-summary code { overflow-wrap }
-routes/Settings.css:93: .delivery-settings-card { display }
-routes/Settings.css:93: .delivery-settings-card { grid-template-columns }
-routes/Settings.css:93: .delivery-settings-card { align-items }
-routes/Settings.css:93: .delivery-settings-card { gap }
-routes/Settings.css:94: .delivery-setting-copy strong { font-size }
-routes/Settings.css:94: .delivery-setting-copy strong { font-weight }
-routes/Settings.css:94: .delivery-setting-copy strong { color }
-routes/Settings.css:95: .delivery-setting-control { color }
-routes/Settings.css:95: .delivery-setting-control { font-size }
-routes/Settings.css:96: .delivery-setting-control .form-input { width }
-routes/Settings.css:96: .delivery-setting-control .form-input { text-align }
-routes/Settings.css:97: .delivery-settings-card>.service-foot { margin-top }
-routes/Settings.css:99: .set-main .watch-settings>.section-heading:first-of-type { margin-top }
-routes/Settings.css:100: .set-main .watch-suggestions { margin-bottom }
-routes/Settings.css:101: .delivery-directions { margin-top }
-routes/Settings.css:101: .delivery-directions { padding-top }
-routes/Settings.css:101: .delivery-directions { border-top }
-routes/Settings.css:102: .delivery-directions>.section-heading { border-top }
-routes/Settings.css:103: .delivery-directions .direction-panel { margin-bottom }
+routes/Settings.css:21: .set-main { padding }
+routes/Settings.css:22: .set-head { padding }
+routes/Settings.css:23: .set-head>.section-heading { margin-bottom }
+routes/Settings.css:24: .set-body { overflow }
+routes/Settings.css:24: .set-body { padding }
+routes/Settings.css:25: .set-body::before { content }
+routes/Settings.css:25: .set-body::before { display }
+routes/Settings.css:25: .set-body::before { margin-bottom }
+routes/Settings.css:28: .appearance-choice { border }
+routes/Settings.css:28: .appearance-choice { background }
+routes/Settings.css:28: .appearance-choice { color }
+routes/Settings.css:28: .appearance-choice { padding }
+routes/Settings.css:28: .appearance-choice { cursor }
+routes/Settings.css:29: .appearance-choice { font }
+routes/Settings.css:29: .appearance-choice { text-align }
+routes/Settings.css:30: .appearance-preview { height }
+routes/Settings.css:30: .appearance-preview { display }
+routes/Settings.css:30: .appearance-preview { overflow }
+routes/Settings.css:30: .appearance-preview { padding }
+routes/Settings.css:31: .appearance-preview { border-radius }
+routes/Settings.css:31: .appearance-preview { background-color }
+routes/Settings.css:31: .appearance-preview { box-shadow }
+routes/Settings.css:32: .appearance-preview { transition }
+routes/Settings.css:33: .appearance-choice:hover .appearance-preview { box-shadow }
+routes/Settings.css:35: .appearance-choice[aria-checked="true"] .appearance-preview { background-color }
+routes/Settings.css:36: .appearance-label { display }
+routes/Settings.css:36: .appearance-label { margin-top }
+routes/Settings.css:36: .appearance-label { font-size }
+routes/Settings.css:36: .appearance-label { font-weight }
+routes/Settings.css:36: .appearance-label { color }
+routes/Settings.css:37: .appearance-choice[aria-checked="true"] .appearance-label { color }
+routes/Settings.css:39: .appearance-radios { display }
+routes/Settings.css:46: .appearance-problem { text-align }
+routes/Settings.css:49: .appearance-mini { overflow }
+routes/Settings.css:50: .appearance-mini { border-radius }
+routes/Settings.css:50: .appearance-mini { background }
+routes/Settings.css:51: .appearance-mini { box-shadow }
+routes/Settings.css:52: .appearance-mini.dark { box-shadow }
+routes/Settings.css:53: .appearance-mini-bar { height }
+routes/Settings.css:53: .appearance-mini-bar { padding }
+routes/Settings.css:53: .appearance-mini-bar { background }
+routes/Settings.css:54: .appearance-mini-bar { border-bottom }
+routes/Settings.css:55: .appearance-mini-bar i { width }
+routes/Settings.css:55: .appearance-mini-bar i { height }
+routes/Settings.css:55: .appearance-mini-bar i { border-radius }
+routes/Settings.css:55: .appearance-mini-bar i { background }
+routes/Settings.css:56: .appearance-mini-bar i:first-child { background }
+routes/Settings.css:58: .appearance-mini-side { padding }
+routes/Settings.css:58: .appearance-mini-side { background }
+routes/Settings.css:59: .appearance-mini-side i { height }
+routes/Settings.css:59: .appearance-mini-side i { border-radius }
+routes/Settings.css:59: .appearance-mini-side i { background }
+routes/Settings.css:60: .appearance-mini-side i:first-child { background }
+routes/Settings.css:61: .appearance-mini-content { padding }
+routes/Settings.css:61: .appearance-mini-content { background }
+routes/Settings.css:62: .appearance-mini-content i { height }
+routes/Settings.css:62: .appearance-mini-content i { border-radius }
+routes/Settings.css:62: .appearance-mini-content i { background }
+routes/Settings.css:63: .appearance-mini-content i { box-shadow }
+routes/Settings.css:65: .appearance-mini-content i:nth-child(3) { background }
+routes/Settings.css:67: .language-select { width }
+routes/Settings.css:71: .storage-root { grid-template-columns }
+routes/Settings.css:71: .storage-root { margin-top }
+routes/Settings.css:72: .storage-root { padding }
+routes/Settings.css:72: .storage-root { border-top }
+routes/Settings.css:72: .storage-root { border-bottom }
+routes/Settings.css:73: .storage-root span { color }
+routes/Settings.css:73: .storage-root span { font-size }
+routes/Settings.css:74: .storage-state { margin-top }
+routes/Settings.css:75: .storage-pending { margin-top }
+routes/Settings.css:76: .storage-reset { margin-top }
+routes/Settings.css:77: .storage-reset { padding-top }
+routes/Settings.css:77: .storage-reset { border-top }
+routes/Settings.css:77: .storage-reset { color }
+routes/Settings.css:77: .storage-reset { font-size }
+routes/Settings.css:78: .storage-backup-row { display }
+routes/Settings.css:78: .storage-backup-row { grid-template-columns }
+routes/Settings.css:78: .storage-backup-row { align-items }
+routes/Settings.css:78: .storage-backup-row { gap }
+routes/Settings.css:79: .storage-backup-row { min-height }
+routes/Settings.css:79: .storage-backup-row { padding }
+routes/Settings.css:81: .storage-backup-path { color }
+routes/Settings.css:81: .storage-backup-path { font-family }
+routes/Settings.css:81: .storage-backup-path { font-size }
+routes/Settings.css:85: .model-protocol { margin-top }
+routes/Settings.css:86: .model-protocol { color }
+routes/Settings.css:86: .model-protocol { font-size }
+routes/Settings.css:87: .model-protocol strong { color }
+routes/Settings.css:87: .model-protocol strong { font-size }
+routes/Settings.css:87: .model-protocol strong { font-weight }
+routes/Settings.css:88: .model-template-summary { margin }
+routes/Settings.css:88: .model-template-summary { padding }
+routes/Settings.css:88: .model-template-summary { border-radius }
+routes/Settings.css:88: .model-template-summary { background }
+routes/Settings.css:89: .model-template-summary { color }
+routes/Settings.css:89: .model-template-summary { font-size }
+routes/Settings.css:89: .model-template-summary { line-height }
+routes/Settings.css:90: .model-template-summary code { color }
+routes/Settings.css:90: .model-template-summary code { font-family }
+routes/Settings.css:90: .model-template-summary code { font-size }
+routes/Settings.css:90: .model-template-summary code { overflow-wrap }
+routes/Settings.css:92: .delivery-settings-card { display }
+routes/Settings.css:92: .delivery-settings-card { grid-template-columns }
+routes/Settings.css:92: .delivery-settings-card { align-items }
+routes/Settings.css:92: .delivery-settings-card { gap }
+routes/Settings.css:93: .delivery-setting-copy strong { font-size }
+routes/Settings.css:93: .delivery-setting-copy strong { font-weight }
+routes/Settings.css:93: .delivery-setting-copy strong { color }
+routes/Settings.css:94: .delivery-setting-control { color }
+routes/Settings.css:94: .delivery-setting-control { font-size }
+routes/Settings.css:95: .delivery-setting-control .form-input { width }
+routes/Settings.css:95: .delivery-setting-control .form-input { text-align }
+routes/Settings.css:96: .delivery-settings-card>.service-foot { margin-top }
+routes/Settings.css:98: .set-main .watch-settings>.section-heading:first-of-type { margin-top }
+routes/Settings.css:99: .set-main .watch-suggestions { margin-bottom }
+routes/Settings.css:100: .delivery-directions { margin-top }
+routes/Settings.css:100: .delivery-directions { padding-top }
+routes/Settings.css:100: .delivery-directions { border-top }
+routes/Settings.css:101: .delivery-directions>.section-heading { border-top }
+routes/Settings.css:102: .delivery-directions .direction-panel { margin-bottom }
 routes/Trash.css:6: .tgroup { margin }
 routes/Trash.css:7: .trow { display }
 routes/Trash.css:7: .trow { align-items }
@@ -1940,70 +1937,3 @@ routes/shell.css:132: .nrow .nq { margin-bottom }
 routes/shell.css:133: .nrow .nt { font-size }
 routes/shell.css:133: .nrow .nt { color }
 routes/shell.css:133: .nrow .nt { overflow-wrap }
-shell/AppShell.css:12: .sidebar { flex }
-shell/AppShell.css:12: .sidebar { background }
-shell/AppShell.css:12: .sidebar { backdrop-filter }
-shell/AppShell.css:12: .sidebar { border-right }
-shell/AppShell.css:12: .sidebar { padding }
-shell/AppShell.css:12: .sidebar { overflow }
-shell/AppShell.css:12: .sidebar { user-select }
-shell/AppShell.css:12: .sidebar { transition }
-shell/AppShell.css:13: .sidebar :is(input,textarea,[contenteditable="true"]) { user-select }
-shell/AppShell.css:17: .sb-top { overflow-y }
-shell/AppShell.css:17: .sb-top { overflow-x }
-shell/AppShell.css:17: .sb-top { margin-inline }
-shell/AppShell.css:18: .sb-top { padding }
-shell/AppShell.css:23: .main.sbhide .sidebar { width }
-shell/AppShell.css:23: .main.sbhide .sidebar { transform }
-shell/AppShell.css:23: .main.sbhide .sidebar { opacity }
-shell/AppShell.css:23: .main.sbhide .sidebar { pointer-events }
-shell/AppShell.css:28: .main.reading>.sidebar { display }
-shell/AppShell.css:30: .sfield { margin-bottom }
-shell/AppShell.css:38: .sb-h { font-size }
-shell/AppShell.css:38: .sb-h { font-weight }
-shell/AppShell.css:38: .sb-h { color }
-shell/AppShell.css:38: .sb-h { padding }
-shell/AppShell.css:38: .sb-h { margin }
-shell/AppShell.css:39: .sect.closed { display }
-shell/AppShell.css:41: .sb-add { margin-left }
-shell/AppShell.css:44: .srow { display }
-shell/AppShell.css:44: .srow { align-items }
-shell/AppShell.css:44: .srow { gap }
-shell/AppShell.css:44: .srow { box-sizing }
-shell/AppShell.css:44: .srow { padding }
-shell/AppShell.css:44: .srow { border-radius }
-shell/AppShell.css:44: .srow { font-size }
-shell/AppShell.css:44: .srow { cursor }
-shell/AppShell.css:44: .srow { color }
-shell/AppShell.css:44: .srow { transition }
-shell/AppShell.css:50: .srow:hover { background-image }
-shell/AppShell.css:50: .srow:has(.row-actions [data-state="open"]) { background-image }
-shell/AppShell.css:51: .srow.on { background-color }
-shell/AppShell.css:51: .srow.on { color }
-shell/AppShell.css:52: .srow.on .ic { color }
-shell/AppShell.css:53: .feed-row { margin-top }
-shell/AppShell.css:54: .trash-row { margin-top }
-shell/AppShell.css:55: .update-row { margin-top }
-shell/AppShell.css:56: .srow .ic { width }
-shell/AppShell.css:56: .srow .ic { color }
-shell/AppShell.css:57: .srow .ic svg { width }
-shell/AppShell.css:57: .srow .ic svg { height }
-shell/AppShell.css:58: .srow .n { margin-left }
-shell/AppShell.css:59: .srow.sub { padding-left }
-shell/AppShell.css:59: .srow.sub { font-size }
-shell/AppShell.css:62: .watch-row .n { margin-left }
-shell/AppShell.css:66: .srow.sub .ic.blank::before { content }
-shell/AppShell.css:68: #g-inboxsub > .srow.discovery { padding-left }
-shell/AppShell.css:68: #g-inboxsub > .srow.disc { padding-left }
-shell/AppShell.css:69: #g-inboxsub .wgroup .srow.sub { padding-left }
-shell/AppShell.css:71: .srow.sub .ic:empty::before { content }
-shell/AppShell.css:71: .srow.sub .ic:empty::before { width }
-shell/AppShell.css:71: .srow.sub .ic:empty::before { height }
-shell/AppShell.css:71: .srow.sub .ic:empty::before { border-radius }
-shell/AppShell.css:71: .srow.sub .ic:empty::before { box-sizing }
-shell/AppShell.css:71: .srow.sub .ic:empty::before { border }
-shell/AppShell.css:71: .srow.sub .ic:empty::before { background }
-shell/AppShell.css:72: .srow.sub:has(.n) .ic:empty::before { background }
-shell/AppShell.css:72: .srow.sub:has(.n) .ic:empty::before { border-color }
-shell/AppShell.css:74: .srow.dim { color }
-shell/AppShell.css:75: .wgroup.closed { display }

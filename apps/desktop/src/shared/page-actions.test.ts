@@ -116,7 +116,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   Table: { head: 'table header' },
   TimelineBoard: { headerAction: 'timeline toolbar' },
   ModalDialog: { actions: 'dialog actions' },
-  SectHead: { extra: 'sidebar heading' },
+  NavSection: { action: 'sidebar heading' },
   NodeAssignment: { create: 'section heading' },
 }
 

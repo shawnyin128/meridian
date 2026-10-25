@@ -808,7 +808,7 @@ export function AppShell({ screens, settings }: {
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
           onNewChat={newChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}
-          grip={sidebarGrip} collapsed={hidden}
+          grip={sidebarGrip} collapsed={hidden} hidden={screen === 'reader'}
         />
         {hidden ? (
           <Tooltip

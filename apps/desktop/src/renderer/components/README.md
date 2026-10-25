@@ -77,8 +77,16 @@ Current shared contracts:
   A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
   its children carry the keyboard-accessible control, so a button is never nested inside a button. A
   `selected` row takes the one selected look, the sidebar's current row's: `--accent-soft` with `--accent-text`.
-- `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
-  or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
+- `NavRow`: the one row of a navigation list, the sidebar's, the Settings categories' and the theme
+  editor's modules, at one height: a glyph slot, the text, and a count or a state at its end. It is a
+  button, or, when it holds controls of its own or a fold caret, a div whose label is the button; a row that
+  opens nothing is the fold toggle of its group. `indent`, `sub` and `dim` are its looks under a group.
+- `NavSection`: a titled section of a navigation list whose 24px heading folds the rows under it.
+- `NavPane`: the sidebar's pane: its surface, width, collapse, the rows that scroll and the rows pinned
+  under them, which keep the same room for the scrollbar so every row ends at one edge.
+- `TitleBar` and `Breadcrumb`: the window's title bar, which drags and zooms the window, and the trail of
+  where the user is, whose segments before the last link back. `AppFrame` is the window body under it and
+  `ScreenSlot` keeps a screen mounted while it is hidden.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, whose label is in `--accent-text`,
   radio-group semantics, and one Tab stop with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
@@ -110,9 +118,10 @@ Current shared contracts:
 - `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
   `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
   an empty state and never a loading sentence.
-- `EmptyState`: the two ways a list says it is empty. `page` is a centred line with an optional icon for a
+- `EmptyState`: the ways a list says it is empty. `page` is a centred line with an optional icon for a
   whole screen; `section` is one line of small grey text under a section heading, flush with it and one list
-  row high, so tabs that share a slot keep one height. The words follow one pattern: 还没有… (No … yet), or
+  row high, so tabs that share a slot keep one height; `option` is that line in a list of options, its text
+  where an option's text starts. The words follow one pattern: 还没有… (No … yet), or
   没有找到… (No … found) for a search, without a full stop. A section the user fills (tasks, milestones,
   attachments, links, linked ideas) keeps its heading and a section empty state; a derived section (signals,
   recent progress, upcoming milestones, backups, a node's branches, records and document) is hidden while it

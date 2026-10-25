@@ -24,7 +24,7 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 
 /** The slot's stylesheet, the "More" button's, then the stylesheets of the rows that hold a slot. */
 const STYLES = [
-  'components/StructuredList.css', 'components/FieldPickers.css', 'components/IconButton.css', 'shell/AppShell.css',
+  'components/StructuredList.css', 'components/FieldPickers.css', 'components/IconButton.css', 'components/NavRow.css',
   'components/ResearchObjectCard.css', 'routes/Projects.css', 'routes/ProjectDetail.css', 'components/wiki/WikiClaims.css',
   'components/paper-table/PaperTable.css', 'components/project/ProjectPlan.css', 'routes/shell.css',
 ].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
@@ -36,7 +36,7 @@ const SLOT = '<span class="row-actions"><button type="button" class="icbtn sm do
 // a column-menu row, each with the "More" button in its row-actions slot. `point` is a part of the row
 // away from the slot.
 const ROWS = {
-  chat: `<div class="srow chat-row" data-row-actions=""><span class="ct-t" data-point>对话</span>${SLOT}</div>`,
+  chat: `<div class="nav-row nav-row--actions chat-row" data-row-actions=""><span class="fade-text" data-point>对话</span>${SLOT}</div>`,
   card: `<article class="research-object-card projpanel" data-actionable="" data-row-actions=""><div class="pp-h"><button type="button" data-focus>MoE 路由分析</button><span class="dd" data-point>没有里程碑</span>${SLOT}</div></article>`,
   project: `<div class="structured-row prow" data-row-actions=""><span class="tp" data-point>投机解码</span>${SLOT}</div>`,
   workspace: `<div class="pv workspace-field" data-row-actions=""><button class="workspace-root" data-point data-focus>meridian</button>${SLOT}</div>`,

@@ -23,7 +23,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.scroll-area--y': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
   '.scroll-area--x': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
   '.scroll-area--both': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
-  '.sb-top': [['shell/Sidebar.tsx', /className="sb-top" ref=\{navFade\}/]],
+  '.nav-pane-rows': [['components/NavPane.tsx', /<ScrollArea axis="y" fill gutter className="nav-pane-rows">/], ...SCROLL_AREA],
   '.desk-body': [['components/PageShell.tsx', /<ScrollArea axis="y" fill gutter paint ref=\{ref\} className=\{classes\(own, className\)\}/], ...SCROLL_AREA],
   '.set-body': [['routes/Settings.tsx', /className="set-body" ref=\{paneFade\}/]],
   '.set-side': [['routes/Settings.tsx', /className="set-side" ref=\{sideFade\}/]],

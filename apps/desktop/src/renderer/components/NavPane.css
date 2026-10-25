@@ -1,0 +1,21 @@
+/*
+ * The sidebar. min-width:0 is required: a flex item's default min-width:auto lets its content's
+ * minimum size override flex-basis, so a long unwrapped chat title would make the pane wider than
+ * --sbw. The width comes only from --sbw, which the shell's resize grip sets.
+ */
+.nav-pane{position:relative;display:flex;flex:0 0 var(--sbw,232px);flex-direction:column;gap:var(--sp-6);min-width:0;
+  padding:var(--sp-12) var(--sp-10);background:var(--sidebar);backdrop-filter:blur(20px);border-right:1px solid var(--sep);user-select:none;
+  transition:transform var(--t-slow) var(--e-inout),opacity var(--t-slow) var(--e-inout)}
+.nav-pane[hidden]{display:none}
+.nav-pane :is(input,textarea,[contenteditable="true"]){user-select:text}
+/* A collapsed pane leaves the layout at once, so the content takes the full width in one step, and slides away over what it uncovers. */
+.nav-pane--collapsed{position:absolute;top:0;bottom:0;left:0;width:var(--sbw,232px);z-index:8;transform:translateX(-100%);opacity:0;pointer-events:none}
+.nav-pane-nav{flex:1;min-height:0;display:flex;flex-direction:column}
+/*
+ * The rows and the rows pinned under them reach into the pane's padding by the ring room, so a focused
+ * row's ring is not cut off. Both keep the room for a scrollbar, the scrolling rows whether or not they
+ * scroll, so every row ends at the same edge.
+ */
+.nav-pane-rows{margin-inline:calc(-1 * var(--ring-room));padding:var(--sp-8) var(--ring-room) var(--ring-room)}
+.nav-pane-pinned{flex:none;display:flex;flex-direction:column;gap:var(--sp-6);overflow:hidden;scrollbar-gutter:stable;
+  margin:0 calc(-1 * var(--ring-room)) calc(-1 * var(--ring-room));padding:var(--sp-6) var(--ring-room) var(--ring-room)}
