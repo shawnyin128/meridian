@@ -4,6 +4,18 @@
 /** The size and theme every summary leads with, as the inventory was measured. */
 export const MAIN_COMBO = '1440x900-light'
 
+/**
+ * Whether `record` ({ id, path, label, metrics }) is an instance `seen` holds no copy of under
+ * `slot`, and adds it there. A state shows an instance again when it carries the same element id,
+ * or when it draws it anew at the same place (`path`) with the same label and metric values.
+ */
+export function newInstance(seen, slot, record) {
+  const keys = [`${slot} #${record.id}`, `${slot} ${record.path} ${record.label} ${JSON.stringify(record.metrics)}`]
+  if (keys.some((key) => seen.has(key))) return false
+  for (const key of keys) seen.add(key)
+  return true
+}
+
 const byValue = (a, b) => b.count - a.count || String(a.value).localeCompare(String(b.value), 'en', { numeric: true })
 
 /**
