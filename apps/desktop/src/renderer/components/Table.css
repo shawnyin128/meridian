@@ -4,10 +4,16 @@
  * ways) and the actions column to the end; those three edges are held, and only the bottom edge fades
  * the way other scroll areas do. Hosts name and place a table but never restyle it.
  */
-.table-scroll{overflow:auto;scrollbar-gutter:stable}
+.table-scroll{overflow:auto}
 .table-scroll--fill{flex:1;min-height:0}
 /* A capped table keeps the ring room inside its edges and reaches out by as much, so it stays put. */
 .table-scroll--capped{margin:calc(-1 * var(--ring-room)) calc(-1 * var(--ring-room)) 0;padding:var(--ring-room);overscroll-behavior:contain}
+/*
+ * The vertical scrollbar keeps its room in a table that scrolls down: the page's table, and a capped
+ * one with more rows than it shows. A capped table that shows all its rows reaches as far as the
+ * lists beside it.
+ */
+.table-scroll--fill,.table-scroll--capped-rows{scrollbar-gutter:stable}
 
 /*
  * Separate borders: with collapsed ones, Chromium leaves the divider above the last row out of the

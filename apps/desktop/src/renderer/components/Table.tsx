@@ -200,8 +200,8 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
 
   return (
     <div
-      className={`table-scroll table-scroll--${rows}`} ref={fade} data-fade-held="left right top"
-      style={cap === null ? undefined : { maxHeight: cap }}
+      className={`table-scroll table-scroll--${rows}${cap === null ? '' : ' table-scroll--capped-rows'}`} ref={fade}
+      data-fade-held="left right top" style={cap === null ? undefined : { maxHeight: cap }}
     >
       <table ref={table} className={classes('table', className)}>
         <colgroup>
