@@ -1,8 +1,7 @@
 import { Fragment, useEffect, useState } from 'react'
-import type { DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile } from '../../../shared/contract.js'
+import type { DiscoveryIntentAction, DiscoveryProfile } from '../../../shared/contract.js'
 import { discovery } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
-import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useNotice, useVaultRevision } from '../../shell/AppShell.js'
 import { EmptyState } from '../EmptyState.js'
@@ -17,17 +16,6 @@ import { plainTitle } from '../paper/paper-text.js'
 import { Button } from '../Button.js'
 import { Item } from '../Item.js'
 import { List } from '../List.js'
-
-function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
-  const parts = [
-    result.added === 0 ? m.settings.discovery.noNewPapers : m.settings.discovery.newFound(result.added),
-    m.settings.discovery.requested(result.intents),
-  ]
-  if (result.cachedIntents > 0) parts.push(m.settings.discovery.cooling(result.cachedIntents))
-  if (result.failedIntents > 0) parts.push(m.settings.discovery.failed(result.failedIntents))
-  if (result.deferredProjects > 0) parts.push(m.settings.discovery.deferred(result.deferredProjects))
-  return parts.join(' · ')
-}
 
 /** The only editor of research directions; the gear on the Discovery page just opens these settings. */
 export function DiscoverySettings() {
@@ -45,8 +33,6 @@ export function DiscoverySettings() {
     setBusy((held) => new Set([...held, intentId]))
     void discovery.setIntent(projectId, intentId, action).then(() => {
       load('profiles', discovery.profiles(), setProfiles)
-      notice.success(action === 'set-core' ? m.settings.discovery.setCore
-        : action === 'disable' ? m.settings.discovery.disabled : m.settings.discovery.enabled)
     }).catch(report).finally(() => {
       setBusy((held) => {
         const next = new Set(held)
@@ -59,7 +45,7 @@ export function DiscoverySettings() {
   const refresh = (projectId: string) => {
     setRefreshing(projectId)
     void discovery.fetch(projectId, true).then((result) => {
-      notice.success(resultNote(result, m))
+      if (result.failedIntents > 0) notice.refusal(m.settings.discovery.failed(result.failedIntents))
       bump()
     }).catch(report).finally(() => setRefreshing(null))
   }
@@ -70,7 +56,7 @@ export function DiscoverySettings() {
       <SectionHeading count={enabled}>{m.settings.discovery.directionsHeading}</SectionHeading>
       <PageError error={error} variant="section" />
       {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
-      {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
+      {profiles?.length === 0 ? <EmptyState variant="section" /> : null}
       <GroupedList>
         {(profiles ?? []).map((profile) => (
           <Group
@@ -84,7 +70,7 @@ export function DiscoverySettings() {
             )}
           >
             {profile.intents.length === 0 ? (
-              <EmptyState variant="section">{m.settings.discovery.needsArxiv}</EmptyState>
+              <EmptyState variant="section" />
             ) : (
               <List rows="all">
                 {profile.intents.map((intent) => (

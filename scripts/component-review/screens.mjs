@@ -87,9 +87,10 @@ export const STATES = [
   { screen: '论文', state: 'notice-refusal', batch: 'library', scope: '.notice-host', steps: [
     ['fail', 'papers.update', 'write'], ...desk('papers'), ['radio', '1 星'], ['wait', '.notice.show'],
   ] },
-  // The rating is answered in Core's place, so nothing is written to the library copy.
+  // A move to the trash notices with its Undo. It is answered in Core's place, so nothing is written to the library copy.
   { screen: '论文', state: 'notice-success', batch: 'library', scope: '.notice-host', steps: [
-    ['answer', 'papers.update', "{ change: 'review-change' }"], ...desk('papers'), ['radio', '2 星'], ['wait', '.notice.show'],
+    ['answer', 'papers.delete', "{ change: 'review-change' }"], ...desk('papers'), ['rightclick', `${V}tbody tr`], ['wait', '.ctxmenu'],
+    ['clickText', '.ctxmenu [role="menuitem"]', '移到垃圾桶'], ['wait', '.notice.show'],
   ] },
 
   { screen: '总览', state: 'default', batch: 'research', steps: [...desk('restl'), ['wait', `${V}.ovcols`]] },

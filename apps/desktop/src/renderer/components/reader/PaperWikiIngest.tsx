@@ -21,6 +21,7 @@ import { EntityLink } from '../EntityLink.js'
 import { FormTextarea } from '../FormControls.js'
 import { HarnessAction } from '../HarnessAction.js'
 import { InlineMessage } from '../InlineMessage.js'
+import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageHeader, PageTitle, SectionHeading } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
 import { ModelStatusTag } from '../ModelStatusTag.js'
@@ -274,9 +275,6 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
       </ProposalChange>
       {rejection !== undefined ? (
         <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
-          <div className="wiki-ingest-rejection-head">
-            <strong>{m.wiki.ingest.rejectionPrompt}</strong>
-          </div>
           <ChipToggles
             className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
             value={rejectionReasons} options={rejectReasonOptions(m)} disabled={rejecting}
@@ -335,9 +333,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
 
           <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 
-          {plan === null && pending === null && error === null
-            ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
-            : null}
+          {plan === null && pending === null && error === null ? <LoadingPlaceholder shape="lines" count={1} /> : null}
           {plan === null ? null : <ModelStatusTag />}
           {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
           {pending !== null ? <Tag>{m.wiki.ingest.restoredPending}</Tag> : null}
@@ -350,9 +346,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
 
           <div className="wiki-ingest-actions">
             {receipt === null && plan !== null && failure === undefined
-              ? <HarnessAction plan={plan} running={running} onStart={start} onCancel={cancel} />
+              ? <HarnessAction plan={plan} running={running} stopping={cancelling} onStart={start} onCancel={cancel} />
               : null}
-            {cancelling ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.stopping}</InlineMessage> : null}
             {receipt !== null || failed !== null || rejected
               ? <Button size="regular" onClick={reprepare}>{m.wiki.ingest.reprepare}</Button>
               : null}

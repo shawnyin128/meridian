@@ -46,27 +46,71 @@ describe('两个语言的消息目录', () => {
 })
 
 describe('确认框的文案', () => {
-  // The title and the consequence line of every ConfirmDialog in the App, as each screen passes them.
-  const confirmations = (m: typeof zh) => [
-    [m.trash.confirmClear, m.trash.confirmClearDescription(2)],
-    [m.trash.confirmPurge('Draft trees'), m.trash.confirmPurgeDescription],
-    [m.changelog.confirmDelete, m.changelog.confirmDeleteDescription],
-    [m.changelog.confirmClearArchived(2), m.changelog.confirmClearArchivedDescription],
-    [m.watches.confirmRemove('speculative decoding'), m.watches.confirmRemoveDescription],
-    [m.settings.storage.resetTitle, m.settings.storage.resetDescription],
-    [m.settings.storage.backupDeleteTitle('9月15日 18:28'), m.settings.storage.backupDeleteDescription],
-    [m.settings.appearance.editor.leaveTitle, m.settings.appearance.editor.leaveDescription],
-    [m.settings.appearance.editor.deleteTitle('青瓷'), m.settings.appearance.editor.deleteDescription],
-  ] as const
+  // The title of every ConfirmDialog in the App and its consequence line, absent where the title says it all.
+  const confirmations = (m: typeof zh): [string, string | undefined][] => [
+    [m.trash.confirmClear, m.trash.confirmClearLoss(2)],
+    [m.trash.confirmPurge('Draft trees'), undefined],
+    [m.changelog.confirmDelete, m.changelog.confirmDeleteLoss],
+    [m.changelog.confirmClearArchived(2), m.changelog.confirmClearArchivedLoss],
+    [m.watches.confirmRemove('speculative decoding'), m.watches.confirmRemoveLoss],
+    [m.settings.storage.resetTitle, undefined],
+    [m.settings.storage.backupDeleteTitle('9月15日 18:28'), m.settings.storage.backupDeleteLoss],
+    [m.settings.appearance.editor.leaveTitle, undefined],
+    [m.settings.appearance.editor.deleteTitle('青瓷'), m.settings.appearance.editor.deleteLoss],
+  ]
 
   for (const [language, catalog] of [['zh', zh], ['en', en]] as const) {
-    it(`${language}:标题只问一句,后果写在自己那一行`, () => {
+    it(`${language}:标题只问一句,后果只在丢掉了标题没说的东西时写一行短语,不成句`, () => {
       for (const [title, consequence] of confirmations(catalog)) {
         expect(title, title).toMatch(/^[^。.？?!！]+[？?]$/)
-        expect(consequence.trim(), title).not.toBe('')
+        if (consequence !== undefined) expect(consequence, title).toMatch(/^[^。.，,；;!！]+$/)
       }
     })
   }
+})
+
+describe('占位文字和要再问一步的命令', () => {
+  const catalogs = { zh: texts(zh as unknown as Node), en: texts(en as unknown as Node) }
+  /** Whether the key at `path` is a field's placeholder or a picker's empty value. */
+  const placeholder = (path: string) => /(^|\.)(placeholder|[a-z]+Placeholder|[a-z]+Pick)$/.test(path)
+  // The commands that open a file dialog, a dialog or an editor before they act, as #500 lists them.
+  const ASKING = [
+    'papers.upload.importAction', 'common.field.chooseDirectory', 'research.list.rename', 'settings.storage.chooseAction',
+    'project.identity.changeWorkspace', 'project.workspace.chooseLocal', 'project.attachments.addTitle',
+    'wiki.claims.revise', 'wiki.claims.markConflict', 'settings.appearance.editor.edit',
+  ]
+
+  it('每个占位文字只说出它那一栏的名字：不叫人输入、粘贴或选择，不举例，不写可选，不提问', () => {
+    const off = catalogs.zh.filter(([path, text]) => placeholder(path)
+      && /^(输入|粘贴|选择|选一|例如)|[（(]可|[？?]|…$/.test(text))
+    const offEn = catalogs.en.filter(([path, text]) => placeholder(path)
+      && /^(Type|Paste|Enter|Choose|Select|e\.g\.)|\(optional\)|\?|…$/i.test(text))
+    expect([...off, ...offEn]).toEqual([])
+  })
+
+  it('打开对话框、文件选择或编辑器才完成的命令以省略号结尾，两种语言都是', () => {
+    const at = (language: 'zh' | 'en') => new Map(catalogs[language])
+    expect(ASKING.filter((path) => !at('zh').get(path)?.endsWith('…') || !at('en').get(path)?.endsWith('…'))).toEqual([])
+  })
+})
+
+describe('英文的大小写', () => {
+  // Names that keep their capitals inside a sentence: products, services, formats and Meridian's own surfaces.
+  const PROPER = new Set([
+    'Meridian', 'App', 'Wiki', 'Paper', 'Lab', 'Skill', 'Skills', 'MCP', 'Harness', 'PDF', 'PDFs', 'API', 'AI', 'ID', 'IDs', 'URL',
+    'SSH', 'JSON', 'arXiv', 'Semantic', 'Scholar', 'OpenAI', 'Anthropic', 'Claude', 'Code', 'Codex', 'Google', 'Gemini', 'DeepSeek',
+    'OpenRouter', 'Ollama', 'LM', 'Studio', 'Responses', 'Chat', 'Completions', 'GitHub', 'Markdown', 'Transformer', 'I',
+  ])
+  // Texts that are content, not UI copy: the agent prompts and the sample paper the theme editor previews.
+  const CONTENT = [/^settings\.extensions\.tutorial\.groups\.\d+\.examples\.\d+\.prompt$/, /^settings\.appearance\.editor\.preview\./]
+
+  it('en: one capitalization style, sentence case: inside a segment only names keep a capital', () => {
+    const off = texts(en as unknown as Node).filter(([path, text]) => !CONTENT.some((pattern) => pattern.test(path))
+      && text.split(/ · |: |\. |[“"(]|\? /).some((segment) => (segment.match(/[A-Za-z][A-Za-z'’-]*/g) ?? []).slice(1)
+        // NaN is a number argument the sample fills with text, not a word of the copy.
+        .some((word) => /^[A-Z][a-z]/.test(word) && word !== 'NaN' && !PROPER.has(word.replace(/[’']s$/, '').split('-')[0]!))))
+    expect(off).toEqual([])
+  })
 })
 
 describe('一个概念一个词', () => {
@@ -92,14 +136,13 @@ describe('一个概念一个词', () => {
 
   it('计划里加任务或里程碑只叫添加', () => {
     expect([
-      zh.project.plan.newAction, zh.project.plan.taskCreated, zh.research.overview.milestonePopTitle(true),
+      zh.project.plan.newAction, zh.research.overview.milestonePopTitle(true),
       zh.research.overview.newMilestoneOn('X'),
     ].filter((text) => !text.includes('添加'))).toEqual([])
   })
 
   it('建一列只叫新建列,阅读状态只叫阅读状态', () => {
     expect([zh.papers.columnHeader.addColumn, zh.wiki.aggregation.addColumn]).toEqual(['新建列', '新建列'])
-    expect(zh.papers.notices.columnCreated).toContain('新建列')
     expect([zh.papers.columns.st, zh.papers.groupNames.readState, zh.papers.metadata.fields.readState])
       .toEqual(['阅读状态', '阅读状态', '阅读状态'])
   })
@@ -126,21 +169,21 @@ describe('一个对象一个词', () => {
   type Item = keyof typeof WORDS
   const KEYS: Record<Item, string[]> = {
     finding: [
-      'wiki.claims.heading', 'wiki.claims.add', 'wiki.claims.addShort', 'wiki.claims.empty', 'wiki.claims.actionsLabel',
-      'wiki.claims.form.text', 'wiki.claims.form.textPlaceholder', 'wiki.claims.form.basisLabel', 'wiki.claims.form.noOthers',
+      'wiki.claims.heading', 'wiki.claims.add', 'wiki.claims.addShort', 'wiki.claims.actionsLabel',
+      'wiki.claims.form.text', 'wiki.claims.form.textPlaceholder', 'wiki.claims.form.basisLabel',
       'wiki.claims.form.outcomes.split', 'wiki.claims.form.splitText', 'wiki.claims.proposals.add', 'wiki.claims.proposals.revise',
       'wiki.claims.proposals.conflict', 'wiki.claims.proposals.resolve', 'wiki.claims.proposals.retract', 'wiki.queue.kinds.addClaim',
       'wiki.queue.kinds.reviseClaim', 'wiki.queue.kinds.retractClaim', 'wiki.queue.outcomes.revised', 'wiki.queue.outcomes.split',
       'wiki.queue.outcomes.retracted', 'project.conclusions.text', 'chat.conflictTitle', 'chat.conflictQuestion',
     ],
     experimentConclusion: [
-      'project.recordModes.conclusions', 'project.conclusions.heading', 'project.conclusions.empty', 'project.conclusions.verified',
+      'project.recordModes.conclusions', 'project.conclusions.heading',
       'project.signals.kind.conflict', 'project.signals.reason.conflictCount', 'project.signals.pulse.conflict',
-      'wiki.claims.form.conclusion', 'wiki.claims.form.conclusionPick', 'wiki.claims.form.noConclusions', 'wiki.queue.unverified',
+      'wiki.claims.form.conclusion', 'wiki.claims.form.conclusionPick', 'wiki.queue.unverified',
       'wiki.queue.grounds.experiment', 'wiki.paperCardFooter', 'papers.reading.conclusions',
     ],
     keyword: [
-      'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.noneSuggested', 'watches.topicSuggestions', 'watches.addAllTopics',
+      'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.topicSuggestions', 'watches.addAllTopics',
     ],
     area: [
       'project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea', 'project.identity.addArea',
@@ -149,13 +192,12 @@ describe('一个对象一个词', () => {
     ],
     toRead: ['papers.readState.later'],
     readLater: [
-      'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.empty', 'later.removed', 'inbox.actions.readLater',
-      'inbox.notices.queued', 'inbox.notices.alreadyQueued',
+      'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.removed', 'inbox.actions.readLater',
     ],
     topic: [
       'papers.columns.topics', 'papers.groupNames.topics', 'papers.toolbar.searchPlaceholder', 'papers.tags.add',
       'papers.tags.existingTopics', 'papers.tags.remove', 'papers.notices.topicAdded', 'papers.metadata.fields.topics',
-      'papers.researchMap.kind.signal', 'papers.researchMap.reason.topic',
+      'papers.researchMap.reason.topic',
     ],
   }
   /** Texts that name a project's experiment conclusion and the finding it becomes in the Wiki. */
@@ -251,11 +293,9 @@ describe('提示、标签和占位只说结果', () => {
   // The notices, labels and placeholders the copy audit shortened: each states its result or name in
   // one clause, with no explanation after it.
   const results = (m: typeof zh) => [
-    m.changelog.undoneNote, m.chat.ideaSavedNote, m.inbox.notices.duplicateToast, m.inbox.notices.remembered,
-    m.papers.parse.addedFixable, m.papers.notices.remarkSaved, m.papers.columnMenu.noOptionsHint,
-    m.research.list.createdNote, m.research.list.createdFeedNote('Draft trees'), m.settings.archived.unarchived,
-    m.watches.notices.added, m.watches.notices.updated, m.watches.notices.resumed, m.watches.notices.pausedNote,
-    m.watches.notices.removed, m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,
+    m.chat.ideaSavedNote, m.inbox.notices.duplicateToast, m.inbox.notices.remembered,
+    m.research.list.createdFeedNote('Draft trees'),
+    m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,
     m.common.trashed, m.inbox.notices.dismissed, m.inbox.notices.dismissedAll, m.papers.notices.topicAdded,
     m.papers.notices.updated, m.papers.notices.optionRenamed, m.papers.notices.columnTypeChanged,
     m.papers.metadata.updated(m.papers.metadata.fields.title),

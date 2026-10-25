@@ -199,9 +199,7 @@ export function Feed() {
             : rows.length === 0
               // The first-run checklist, while it shows, is this screen's empty state.
               ? (setupShown === false ? (
-                <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon>}>
-                  {m.feed.empty}
-                </EmptyState>
+                <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon>} />
               ) : null)
               : <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />}
         </div>

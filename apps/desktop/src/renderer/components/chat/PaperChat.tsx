@@ -11,6 +11,7 @@ import { ChatComposer, draftText, type ChatComposerHandle } from './ChatComposer
 import { BackButton } from '../BackButton.js'
 import { Grip } from '../Grip.js'
 import { EmptyState } from '../EmptyState.js'
+import { CHAT_BUBBLE_PATH, Icon } from '../icons.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, PageHeader, PageTitle } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
@@ -20,11 +21,10 @@ import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useModelStatus } from '../../hooks/useModelStatus.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
-import { namedRuns, TitleNote } from '../TitleNote.js'
+import { namedRuns } from '../TitleNote.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IdeaDraft, type IdeaDraftText } from '../ideas/IdeaDraft.js'
-import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { Button } from '../Button.js'
@@ -111,7 +111,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const act = (message: ChatMessage) => {
     if (session === null) return
     void chat.recordAction(session.id, message.id).then(async (held) => {
-      notice.success(<TitleNote message={m.chat.recordedNote} title={held.name} />)
       await feed.append({
         source: 'me', body: { kind: 'runs', runs: namedRuns(m.chat.recordedNote, held.name, { kind: 'project', id: held.id }) },
       })
@@ -125,9 +124,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
       <PageHeader size="pane">
         <BackButton onClick={onBack} />
-        <PageTitle label={paper === null ? m.common.loading : `${plainTitle(paper.title)}${m.chat.paperHeaderSuffix}`}>
-          {paper === null ? m.common.loading : <><PaperText text={paper.title} />{m.chat.paperHeaderSuffix}</>}
-        </PageTitle>
+        {paper === null ? null : <PageTitle label={plainTitle(paper.title)}><PaperText text={paper.title} /></PageTitle>}
       </PageHeader>
       <PageError error={error} />
       <ScrollArea axis="y" fill ref={followRef}>
@@ -135,7 +132,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
           {messages === null
             ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
             : messages.length === 0 && error === null
-            ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
+            ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
             : messages.map((message) => (
               <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
             ))}
@@ -158,14 +155,13 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       <div className="composer paper-chat-composer">
         <div className="mwrap">
           <div className="qacts">
-            {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
             <Button
               size="compact" variant="ghost" className="save-idea" disabled={session === null || !hasDiscussion}
               onClick={ideaSlot.start}
             >{m.chat.saveIdeaLabel}</Button>
           </div>
           <ChatComposer
-            key={paperId} ref={composer} label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}
+            key={paperId} ref={composer} label={m.chat.askAboutPaper} placeholder={m.chat.composerPlaceholder}
             draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
             running={sending} onSend={submit} onStop={stopSending}
           />

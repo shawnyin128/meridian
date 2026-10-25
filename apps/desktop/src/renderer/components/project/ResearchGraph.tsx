@@ -491,7 +491,7 @@ export function ResearchNodePanel({
 
       <SectionHeading level="group" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
       {tasks.length === 0
-        ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <List className="node-tasks" variant="embedded">
             {tasks.map((task) => (
@@ -505,7 +505,7 @@ export function ResearchNodePanel({
 
       <SectionHeading level="group" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
       {ideas.length === 0
-        ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <List className="node-ideas" variant="embedded">
             {ideas.map((idea) => {

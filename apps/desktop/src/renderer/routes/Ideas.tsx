@@ -33,7 +33,6 @@ import {
 } from '../components/PageShell.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
-import { TitleNote } from '../components/TitleNote.js'
 import { useDraft } from '../hooks/useDrafts.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
@@ -152,10 +151,7 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
       <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
       <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
       <MenuSeparator />
-      <MenuItem disabled={locked} onSelect={onArchive}>
-        {idea.archived ? m.common.unarchive : m.common.archive}
-        {locked ? <span className="mi-key">{m.ideas.projectFinished}</span> : null}
-      </MenuItem>
+      <MenuItem disabled={locked} onSelect={onArchive}>{idea.archived ? m.common.unarchive : m.common.archive}</MenuItem>
       <MenuSeparator />
       <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
     </DotsMenu>
@@ -453,17 +449,14 @@ export function Ideas() {
   }
 
   const archive = (idea: ResearchIdea) => {
-    void write(
-      ideaApi.update(idea.id, { archived: !idea.archived }),
-      { note: idea.archived ? m.ideas.restoredNote : m.ideas.archivedNote },
-    )
+    void write(ideaApi.update(idea.id, { archived: !idea.archived }))
   }
   /** Creates the user's own idea; once written it takes the draft card's place and opens in the detail panel. */
   const createIdea = (title: string, body: string) => write(ideaApi.create(undefined, title, body).then((idea) => {
     setRows((held) => [idea, ...(held ?? [])])
     setSelectedId(idea.id)
     setDraft(null)
-  }), { note: m.chat.ideaSavedNote })
+  }))
   const remove = (idea: ResearchIdea) => {
     void write(ideaApi.delete(idea.id), { note: m.common.trashed, action: (trashed) => undo.restore([trashed]) }).then((saved) => {
       if (!saved) return
@@ -486,15 +479,15 @@ export function Ideas() {
   const card = (idea: ResearchIdea) => <IdeaCard key={idea.id} {...shared(idea)} pageTitles={pageTitles} menu={menuOf(idea)} />
   const row = (idea: ResearchIdea) => <IdeaRow key={idea.id} {...shared(idea)} menu={menuOf(idea)} />
   /** A group's rows, or its placeholder while they load, or its empty state. */
-  const groupRows = (ideas: ResearchIdea[], empty: string) => (rows === null
+  const groupRows = (ideas: ResearchIdea[]) => (rows === null
     ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
     : ideas.length === 0
-      ? <EmptyState variant="section">{empty}</EmptyState>
+      ? <EmptyState variant="section" />
       : <List variant="embedded" rows="all" className="idea-rows">{ideas.map(row)}</List>)
   const rowGroups = (
     <>
-      {groupRows(started, m.ideas.emptyGroup.active)}
-      <Group title={m.ideas.groups.done} count={done.length}>{groupRows(done, m.ideas.emptyGroup.done)}</Group>
+      {groupRows(started)}
+      <Group title={m.ideas.groups.done} count={done.length}>{groupRows(done)}</Group>
     </>
   )
   const b = m.ideas.byProject
@@ -533,7 +526,7 @@ export function Ideas() {
                 {rows === null ? (
                   error === null ? <LoadingPlaceholder shape="cards" /> : null
                 ) : open.length === 0
-                  ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
+                  ? (draft === null ? <EmptyState variant="section" /> : null)
                   : open.map(card)}
               </Group>
               <Group title={m.ideas.groups.active} count={started.length}>
@@ -586,23 +579,12 @@ export function Ideas() {
                   ? { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }
                   : candidateSource === 'gone' && selected.candidateNode !== undefined ? null : undefined}
                 onClose={closeDetail}
-                onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
-                  note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,
-                })}
-                onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }), {
-                  note: kind === 'confirm' ? m.ideas.candidate.confirmed : m.ideas.candidate.dismissed,
-                })}
+                onRelations={(relations) => write(ideaApi.update(selected.id, { relations }))}
+                onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }))}
                 onError={report}
-                onSave={(title, body) => write(
-                  ideaApi.update(selected.id, { title, body }), { note: m.ideas.updatedNote },
-                )}
-                onProject={(projectId) => void write(
-                  ideaApi.update(selected.id, { project: projectId }),
-                  { note: projectId === null ? m.ideas.work.cleared : m.ideas.work.placed },
-                )}
-                onPromote={() => void write(
-                  ideaApi.promote(selected.id), { note: m.ideas.promote.createdNote },
-                )}
+                onSave={(title, body) => write(ideaApi.update(selected.id, { title, body }))}
+                onProject={(projectId) => void write(ideaApi.update(selected.id, { project: projectId }))}
+                onPromote={() => void write(ideaApi.promote(selected.id))}
                 onOpen={jumpTo}
               />
             )}

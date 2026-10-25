@@ -53,7 +53,6 @@ import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { newPlanRow, ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import type { PlanCreating, PlanTab } from '../components/project/ProjectPlan.js'
 import { BackButton } from '../components/BackButton.js'
-import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
@@ -254,7 +253,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
       {ideas === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : <PageError variant="section" error={error} />)
         : shown === 0 && draft === null
-        ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <List className="project-ideas" variant="embedded">
             {[...carried].sort(newestFirst).map((idea) => row(idea, null))}
@@ -306,7 +305,6 @@ export function ProjectDetail({
   arrivalConclusion?: string | null
   onArrived?: () => void
 }) {
-  const fmt = useFormat()
   const m = useMessages()
   const railFade = useScrollFade('y')
   const [project, setProject] = useState<Project | null>(null)
@@ -511,20 +509,18 @@ export function ProjectDetail({
 
   /**
    * Finishes a write that returns the project: the project goes into state, then `write` bumps the
-   * vault revision and, when `note` is given, shows it as a success notice. A failed write is
-   * reported and returns false. Placeholder submissions come straight
+   * vault revision. A failed write is reported and returns false. Placeholder submissions come straight
    * here: the placeholder closes or stays open by itself depending on the result, so nothing is lost.
    */
-  const writeProject = (op: Promise<Project>, note?: ReactNode): Promise<boolean> =>
-    write(op.then((p) => setProject(p)), { note })
+  const writeProject = (op: Promise<Project>): Promise<boolean> => write(op.then((p) => setProject(p)))
 
   /**
    * A write not made from a placeholder: first discards any open editor, as the demo's renderProject
    * rewrote the whole deskBody.
    */
-  const applyWrite = (op: Promise<Project>, note?: ReactNode) => {
+  const applyWrite = (op: Promise<Project>) => {
     discardOpenEdits()
-    void writeProject(op, note)
+    void writeProject(op)
   }
 
   /**
@@ -559,7 +555,6 @@ export function ProjectDetail({
     setBinding('local')
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
-      m.project.workspace.connected,
     )
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
@@ -585,10 +580,7 @@ export function ProjectDetail({
       return
     }
     setBinding('ssh')
-    const connected = await writeProject(
-      projectApi.bindWorkspace(projectId, { kind: 'ssh', ...target, path: remote.folder.path }),
-      m.project.workspace.sshConnected,
-    )
+    const connected = await writeProject(projectApi.bindWorkspace(projectId, { kind: 'ssh', ...target, path: remote.folder.path }))
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
@@ -679,7 +671,7 @@ export function ProjectDetail({
           name: file.name, size: attachmentSizeText(file.size), path: files.pathOf(file),
         }))
     }
-    applyWrite(chain, m.project.attachments.added(local.length))
+    applyWrite(chain)
   }
 
   const workspaceGraph = project.workspace?.graph
@@ -738,11 +730,6 @@ export function ProjectDetail({
     idea: ResearchIdea, placement: ResearchIdeaGraphPlacement,
   ): Promise<boolean> => {
     let nodeId: string | null = null
-    const note = placement.kind === 'create'
-      ? m.project.idea.placedCreated
-      : placement.kind === 'link'
-        ? m.project.idea.placedLinked
-        : m.project.idea.placedUnlinked
     const saved = await write(
       ideaApi.placeOnGraph(idea.id, placement).then((result) => {
         nodeId = result.nodeId
@@ -751,7 +738,6 @@ export function ProjectDetail({
           candidate.id === result.idea.id ? result.idea : candidate
         )) ?? null)
       }),
-      { note },
     )
     if (saved && nodeId !== null) {
       onRecord('graph')
@@ -844,26 +830,13 @@ export function ProjectDetail({
         <ProjectTimeline
           project={project} hoverMilestone={hoverMilestone} onHoverMilestone={setHoverMilestone}
           onLocateTask={locateTask}
-          onMoveTask={(taskId, start, end, days) => applyWrite(
-            projectApi.updateTask(projectId, taskId, { start, end }),
-            m.project.plan.taskMoved(days),
-          )}
-          onMoveTaskWindow={(taskId, patch, slots) => applyWrite(
-            projectApi.updateTask(projectId, taskId, patch),
-            m.project.plan.taskWindowMoved(slots),
-          )}
-          onMoveMilestone={(milestoneId, date) => applyWrite(
-            projectApi.updateMilestone(projectId, milestoneId, { date }),
-            m.project.plan.rescheduledTo(fmt.date(date)),
-          )}
+          onMoveTask={(taskId, start, end) => applyWrite(projectApi.updateTask(projectId, taskId, { start, end }))}
+          onMoveTaskWindow={(taskId, patch) => applyWrite(projectApi.updateTask(projectId, taskId, patch))}
+          onMoveMilestone={(milestoneId, date) => applyWrite(projectApi.updateMilestone(projectId, milestoneId, { date }))}
           onReorderTasks={reorderTasks}
           onNewTask={startTask} onNewMilestone={startMilestone}
-          onCreateMilestone={(date, title) => writeProject(
-            projectApi.createMilestone(projectId, { date, title, done: false }), m.project.plan.milestoneCreated,
-          )}
-          onUpdateMilestone={(milestoneId, patch) => writeProject(
-            projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
-          )}
+          onCreateMilestone={(date, title) => writeProject(projectApi.createMilestone(projectId, { date, title, done: false }))}
+          onUpdateMilestone={(milestoneId, patch) => writeProject(projectApi.updateMilestone(projectId, milestoneId, patch))}
           onDeleteMilestone={(milestoneId) => applyRemoval(
             projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
           )}
@@ -899,22 +872,15 @@ export function ProjectDetail({
                 projectApi.createTask(projectId, {
                   ...draft, ...(window === null ? {} : { window }),
                 }),
-                m.project.plan.taskCreated,
               )}
-              onCreateMilestone={(draft) => writeProject(
-                projectApi.createMilestone(projectId, draft), m.project.plan.milestoneCreated,
-              )}
-              onUpdateTask={(taskId, patch) => writeProject(
-                projectApi.updateTask(projectId, taskId, patch), m.project.plan.taskUpdated,
-              )}
+              onCreateMilestone={(draft) => writeProject(projectApi.createMilestone(projectId, draft))}
+              onUpdateTask={(taskId, patch) => writeProject(projectApi.updateTask(projectId, taskId, patch))}
               onDeleteTask={(taskId) => applyRemoval(
                 projectApi.deleteTask(projectId, taskId), m.project.plan.taskDeleted,
               )}
               onReorderTasks={reorderTasks}
               onOpenTask={openTask}
-              onUpdateMilestone={(milestoneId, patch) => writeProject(
-                projectApi.updateMilestone(projectId, milestoneId, patch), m.project.plan.milestoneUpdated,
-              )}
+              onUpdateMilestone={(milestoneId, patch) => writeProject(projectApi.updateMilestone(projectId, milestoneId, patch))}
               onDeleteMilestone={(milestoneId) => applyRemoval(
                 projectApi.deleteMilestone(projectId, milestoneId), m.project.plan.milestoneDeleted,
               )}
@@ -932,7 +898,7 @@ export function ProjectDetail({
               }}
               tabs={[
                 {
-                  value: 'tl', label: m.project.recordModes.activity, empty: m.project.graph.noRecords,
+                  value: 'tl', label: m.project.recordModes.activity,
                   content: sortedRecords.length === 0 ? null : (
                     <ProjectEventList withNode className="evlist">
                       {sortedRecords.map((ev, index) => {
@@ -955,7 +921,7 @@ export function ProjectDetail({
                   ),
                 },
                 {
-                  value: 'concl', label: m.project.recordModes.conclusions, empty: m.project.conclusions.empty,
+                  value: 'concl', label: m.project.recordModes.conclusions,
                   content: conclusions.length === 0 ? null : (
                     <ProjectEventList withNode className="evlist">
                       {conclusions.map((item) => (
@@ -974,7 +940,7 @@ export function ProjectDetail({
                   ),
                 },
                 {
-                  value: 'graph', label: m.project.sections.graph, empty: m.project.graph.empty,
+                  value: 'graph', label: m.project.sections.graph,
                   content: displayedGraph.nodes.length === 0 ? null : (
                     <ResearchGraph
                       graph={displayedGraph}
@@ -995,7 +961,7 @@ export function ProjectDetail({
               projectId={projectId} ideas={linkedIdeas} error={failure('ideas')} graph={displayedGraph} selectedId={selectedIdeaId} chatDeleted={chatDeleted}
               onCreate={(title, body) => write(ideaApi.create(undefined, title, body, projectId).then((idea) => {
                 setLinkedIdeas((held) => [idea, ...(held ?? [])])
-              }), { note: m.chat.ideaSavedNote })}
+              }))}
               onSelect={(ideaId) => {
                 setSelectedNode(null)
                 setSelectedConclusion(null)
@@ -1006,7 +972,7 @@ export function ProjectDetail({
 
             <ProjectMemo
               edit={editText(edits, 'memo', project.memo)} onOpen={openWikiPage}
-              onSave={(memo) => applyWrite(updateProject({ memo }), m.project.remarkSaved)}
+              onSave={(memo) => applyWrite(updateProject({ memo }))}
             />
           </div>
 
@@ -1021,12 +987,8 @@ export function ProjectDetail({
                   node={nodeLook(taskGraph.nodes.find((candidate) => candidate.tasks?.includes(selectedTask.id))?.id)}
                   nodes={displayedGraph.nodes}
                   handSet={displayedGraph.nodes.some((candidate) => candidate.id === project.taskNodes?.[selectedTask.id])}
-                  onSaveNote={(note) => writeProject(
-                    projectApi.updateTask(projectId, selectedTask.id, { note }), m.project.plan.noteUpdated,
-                  )}
-                  onSetNode={(nodeId) => {
-                    void writeProject(projectApi.setTaskNode(projectId, selectedTask.id, nodeId), m.project.plan.nodeUpdated)
-                  }}
+                  onSaveNote={(note) => writeProject(projectApi.updateTask(projectId, selectedTask.id, { note }))}
+                  onSetNode={(nodeId) => { void writeProject(projectApi.setTaskNode(projectId, selectedTask.id, nodeId)) }}
                 />
               )
               : selectedIdea !== undefined
@@ -1056,14 +1018,11 @@ export function ProjectDetail({
                   projectId={projectId} projectName={project.name} conclusion={conclusion} node={nodeLook(conclusion.node)}
                   onClose={clearConclusion}
                   onVerify={(verified, fingerprint) => {
-                    void writeProject(
-                      projectApi.verifyConclusion(projectId, verified, fingerprint), m.project.conclusions.verified,
-                    ).then((saved) => { if (!saved) refreshWorkspace() })
+                    void writeProject(projectApi.verifyConclusion(projectId, verified, fingerprint))
+                      .then((saved) => { if (!saved) refreshWorkspace() })
                   }}
                   onUnverify={(verified) => {
-                    void writeProject(
-                      projectApi.unverifyConclusion(projectId, verified), m.project.conclusions.unverified,
-                    )
+                    void writeProject(projectApi.unverifyConclusion(projectId, verified))
                   }}
                   onWrite={(page, title, ops) => write(wiki.apply({ source: 'user', title, ops }), {
                     note: m.project.conclusions.written,
@@ -1079,7 +1038,6 @@ export function ProjectDetail({
                 <>
                   <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                   <PropertyList>
-                    <Property label={m.project.identity.typeLabel}>{m.project.identity.typeValue}</Property>
                     <ProjectIdentityFields
                       project={project}
                       fields={{
@@ -1089,32 +1047,26 @@ export function ProjectDetail({
                             onSave={(name) => {
                               const next = name.trim()
                               if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
-                              return writeProject(
-                                updateProject({ name: next }), m.project.identity.nameUpdated,
-                              )
+                              return writeProject(updateProject({ name: next }))
                             }}
                           />
                         ),
                         status: (
                           <ChoicePicker
                             value={project.status} options={PROJECT_STATUSES}
-                            onPick={(status) => applyWrite(
-                              updateProject({ status }), m.project.identity.statusUpdated,
-                            )}
+                            onPick={(status) => applyWrite(updateProject({ status }))}
                           />
                         ),
                         priority: (
                           <PriorityPicker
                             value={project.priority} className="pv metadata-editable"
-                            onPick={(priority) => applyWrite(
-                              updateProject({ priority }), m.project.identity.priorityUpdated,
-                            )}
+                            onPick={(priority) => applyWrite(updateProject({ priority }))}
                           ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                         ),
                         topic: (
                           <ProjectAreasField
                             projectId={projectId} areas={projectAreas(project)} onError={report}
-                            onSave={(topics) => writeProject(updateProject({ topics }), m.project.identity.topicUpdated)}
+                            onSave={(topics) => writeProject(updateProject({ topics }))}
                             onRemove={(topics) => writeRemoval(
                               projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,
                             )}
@@ -1133,9 +1085,7 @@ export function ProjectDetail({
                           // On submit, close any editor open elsewhere without waiting for this write; whether
                           // this field closes is left to InlineMetadataField, which follows the write's result
                           discardOpenEdits()
-                          return writeProject(
-                            updateProject({ focus: next }), m.project.identity.focusUpdated(label),
-                          )
+                          return writeProject(updateProject({ focus: next }))
                         }}
                       />
                     </Property>
@@ -1146,10 +1096,7 @@ export function ProjectDetail({
                         display={<ProjectBlockerView blocker={controlState.blocker} />}
                         onSave={(value) => {
                           const next = value.trim()
-                          return writeProject(
-                            updateProject({ block: next === '' ? null : next }),
-                            next === '' ? m.project.control.blockerCleared : m.project.control.blockerUpdated,
-                          )
+                          return writeProject(updateProject({ block: next === '' ? null : next }))
                         }}
                       />
                     </Property>
@@ -1158,7 +1105,7 @@ export function ProjectDetail({
                       onChange={(range) => applyWrite(updateProject({
                         ...(range.start === project.start ? {} : { start: range.start }),
                         ...(range.end === project.due ? {} : { due: range.end }),
-                      }), m.project.identity.dateUpdated)}
+                      }))}
                     >
                       {(start, due) => (
                         <>
@@ -1189,10 +1136,7 @@ export function ProjectDetail({
                                 </MenuItem>
                                 <MenuItem
                                   className="mi danger"
-                                  onSelect={() => applyWrite(
-                                    projectApi.bindWorkspace(projectId, null),
-                                    m.project.identity.workspaceDisconnected,
-                                  )}
+                                  onSelect={() => applyWrite(projectApi.bindWorkspace(projectId, null))}
                                 >{m.project.identity.disconnectWorkspace}</MenuItem>
                               </DotsMenu>
                             </RowActions>
@@ -1234,10 +1178,7 @@ export function ProjectDetail({
                               placeholder={m.project.links.paperPlaceholder} suggest={suggestPapers}
                               onNew={() => false} kept={{ drafts: relations, target: `add:${PROJECT_PAPER_GROUP}` }}
                               onCancel={stopRel} onError={report}
-                              onPick={(hit) => writeProject(
-                                projectApi.addPaper(projectId, hit.id),
-                                <TitleNote message={m.project.links.paperLinked} title={plainTitle(hit.title)} />,
-                              )}
+                              onPick={(hit) => writeProject(projectApi.addPaper(projectId, hit.id))}
                             />
                           )
                           : relGroup === PROJECT_URL_GROUP
@@ -1248,7 +1189,7 @@ export function ProjectDetail({
                                 onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                                 onSubmit={(url, text) => writeProject(projectApi.createRelation(projectId, {
                                   group: PROJECT_URL_GROUP, text, url,
-                                }), m.project.links.added)}
+                                }))}
                               />
                             )
                           : (
@@ -1258,10 +1199,10 @@ export function ProjectDetail({
                               onCancel={stopRel} onError={report} kept={{ drafts: relations, target: 'add:Wiki' }}
                               onPick={(hit) => writeProject(projectApi.createRelation(projectId, {
                                 group: 'Wiki', text: hit.title, page: hit.id,
-                              }), m.project.links.added)}
+                              }))}
                               onNew={(text) => writeProject(projectApi.createRelation(projectId, {
                                 group: 'Wiki', text,
-                              }), m.project.links.added)}
+                              }))}
                             />
                           ),
                       }}
@@ -1279,7 +1220,7 @@ export function ProjectDetail({
                               onInvalid={() => notice.refusal(m.project.links.urlInvalid)}
                               onSubmit={(url, text) => writeProject(projectApi.updateRelation(
                                 projectId, relEditing.id, { text, url },
-                              ), m.project.links.updated)}
+                              ))}
                             />
                           )
                           : (
@@ -1289,10 +1230,10 @@ export function ProjectDetail({
                               onCancel={stopRelEdit} onError={report} kept={{ drafts: relations, target: `edit:${relEditing.id}` }}
                               onPick={(hit) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
                                 text: hit.title, page: hit.id,
-                              }), m.project.links.updated)}
+                              }))}
                               onNew={(text) => writeProject(projectApi.updateRelation(projectId, relEditing.id, {
                                 text,
-                              }), m.project.links.updated)}
+                              }))}
                             />
                           ),
                       }}

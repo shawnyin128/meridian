@@ -187,7 +187,7 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
   const grip = (key: string, name: string) => {
     const right = slotAfter(key)
     return (
-      <Tooltip label={m.common.table.resize(name)} note={m.shell.sidebar.dragHint}>
+      <Tooltip label={m.common.table.resize(name)}>
         <Grip
           className="table-grip" label={m.common.table.resize(name)} value={widthOf(key)} min={minimumWidth(key)}
           max={right === undefined ? widthOf(key) : widthOf(key) + widthOf(right) - minimumWidth(right)}

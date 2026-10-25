@@ -13,6 +13,7 @@ import { Item } from '../Item.js'
 import { List } from '../List.js'
 import { Property, PropertyList } from '../PropertyList.js'
 import { Button } from '../Button.js'
+import { IconOpen } from '../icons.js'
 
 const EXCERPT = 2
 
@@ -51,7 +52,7 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
       {held === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
         : remark === '' && entries.length === 0
-        ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <List variant="embedded">
             {remark === '' ? null : <Item className="nrow"><span className="nt">{remark}</span></Item>}
@@ -65,9 +66,9 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
         )}
       {entries.length > EXCERPT
         ? (
-          <Button size="compact" variant="ghost" className="reading-summary-all" onClick={() => onRead({ panel: 'notes' })}>
-            {m.papers.reading.viewAll(entries.length)}
-          </Button>
+          <Button
+            size="compact" variant="ghost" className="reading-summary-all" icon={<IconOpen />} onClick={() => onRead({ panel: 'notes' })}
+          >{m.papers.reading.viewAll(entries.length)}</Button>
         )
         : null}
     </div>

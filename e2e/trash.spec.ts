@@ -16,7 +16,7 @@ async function restore(row: Locator): Promise<void> {
 const DAY_MS = 86_400_000
 
 /** What an entry deleted on the vault's today shows: the full retention period. */
-const FULL_RETENTION = `${TRASH_RETENTION_DAYS} 天后自动清除`
+const FULL_RETENTION = `${TRASH_RETENTION_DAYS} 天`
 
 /** Calls `trash.list` directly, bypassing the UI, for each entry's deletion time, newest first. */
 const deletedAt = (win: Page) => win.evaluate(async () => {
@@ -225,7 +225,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await shown(win, '.desk-head .page-actions .btn').filter({ hasText: '清空垃圾桶' }).click()
   const dialog = win.locator('[role="alertdialog"]')
   await expect(dialog.locator('.modal-title')).toHaveText('清空垃圾桶？')
-  await expect(dialog.locator('.modal-detail')).toHaveText('2 项将被彻底删除，不可恢复。')
+  await expect(dialog.locator('.modal-detail')).toHaveText('2 项不能恢复')
   await expect(dialog.locator('.modal-actions .btn')).toHaveText(['取消', '确认清空'])
 
   // Cancel leaves the contents unchanged.

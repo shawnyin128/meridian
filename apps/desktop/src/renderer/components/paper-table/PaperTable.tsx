@@ -109,23 +109,17 @@ function cellValues(held: PaperCell | undefined): string[] {
 }
 
 /**
- * The success notice for this column configuration change, or undefined when there is none. The first match
- * wins, in this order: a deleted column, an added column, a renamed column, changed groups, a changed
- * column order, and otherwise changed options.
+ * The notice for a column configuration change that dropped something, which offers its Undo: a
+ * deleted column, else deleted options; undefined for any other change, which shows on screen.
  */
 export function columnsNote(
   prev: PaperColumns, next: PaperColumns, notices: Catalog['papers']['notices'],
 ): string | undefined {
   const gone = prev.custom.find((c) => !next.custom.some((n) => n.key === c.key))
   if (gone) return notices.columnDeleted(gone.label)
-  if (next.custom.some((c) => !prev.custom.some((p) => p.key === c.key))) return notices.columnCreated
-  if (next.custom.some((c) => prev.custom.some((p) => p.key === c.key && p.label !== c.label))) {
-    return notices.columnRenamed
-  }
-  if (next.groups.join() !== prev.groups.join()) return notices.groupsUpdated
-  if ((next.order ?? []).join() !== (prev.order ?? []).join()) return notices.orderUpdated
-  if (JSON.stringify(next.custom) !== JSON.stringify(prev.custom)) return notices.optionsDeleted
-  return undefined
+  const dropped = next.custom.some((column) => prev.custom
+    .find((held) => held.key === column.key)?.options.some((option) => !column.options.includes(option)))
+  return dropped ? notices.optionsDeleted : undefined
 }
 
 /**
@@ -431,16 +425,14 @@ export function PaperTable() {
     write(papers.setTopic(p.id, value, true), { note: m.papers.notices.topicAdded, action: undo.change })
 
   const setReadState = (p: PaperRow, readState: ReadState) => {
-    void write(papers.update(p.id, { readState }), { note: m.papers.notices.readStateUpdated })
+    void write(papers.update(p.id, { readState }))
   }
 
   const removeTopic = (p: PaperRow, value: string): Promise<boolean> =>
     write(papers.setTopic(p.id, value, false), { note: m.papers.notices.updated, action: undo.change })
 
   const setRating = (p: PaperRow, rating: number | null) => {
-    void write(papers.update(p.id, { rating }), rating === null
-      ? { note: m.papers.notices.updated, action: undo.change }
-      : { note: m.papers.notices.rated(rating) })
+    void write(papers.update(p.id, { rating }), rating === null ? { note: m.papers.notices.updated, action: undo.change } : {})
   }
 
   const remove = (id: string) => {
@@ -473,7 +465,7 @@ export function PaperTable() {
       setGroup('none')
       setSel(null)
       setDetail(result.paper)
-      notice.success(result.kind === 'added' ? m.papers.upload.addedParsing : m.papers.upload.alreadyInLibrary)
+      if (result.kind !== 'added') notice.success(m.papers.upload.alreadyInLibrary)
     } catch (cause) {
       notice.refusal(errorLabel(m, cause))
     } finally {
@@ -484,7 +476,7 @@ export function PaperTable() {
 
   const uploadFiles = async (files: File[]) => {
     const pdfs = files.filter((file) => file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf'))
-    if (pdfs.length === 0) { notice.refusal(m.papers.upload.dropPdfOnly); return }
+    if (pdfs.length === 0) { notice.refusal(m.common.failure.reasons['not-pdf']); return }
     for (const file of pdfs) await uploadPdf(file)
   }
 
@@ -549,9 +541,7 @@ export function PaperTable() {
    */
   const saveRemark = (p: PaperRow, value: string): boolean | Promise<boolean> => {
     if (value.trim() === (p.remark ?? '').replace(/[\r\n]/g, '').trim()) return true
-    return write(papers.mutateReading(p.id, { kind: 'remark.set', text: value }), {
-      note: m.papers.notices.remarkSaved,
-    })
+    return write(papers.mutateReading(p.id, { kind: 'remark.set', text: value }))
   }
 
   /**
@@ -656,12 +646,9 @@ export function PaperTable() {
     const next = update(base)
     const written = await papers.setColumns(next)
     bump()
-    const gone = base.custom.find((c) => !next.custom.some((n) => n.key === c.key))
     const note = columnsNote(base, next, m.papers.notices)
-    const dropped = gone !== undefined || next.custom.some((column) => base.custom
-      .find((held) => held.key === column.key)?.options.some((option) => !column.options.includes(option)))
     // Core records every change to the custom columns, so a deletion always has a change to undo.
-    if (note !== undefined) notice.success(note, dropped ? undo.change({ change: written.change! }) : undefined)
+    if (note !== undefined) notice.success(note, undo.change({ change: written.change! }))
     return next
   }, onApplied)
 
@@ -909,7 +896,7 @@ export function PaperTable() {
       }}
       onDragLeave={leaveDrop} onDrop={dropFiles}
     >
-      {dropActive ? <div className="paper-drop"><strong>{m.papers.upload.dropToImport}</strong></div> : null}
+      {dropActive ? <div className="paper-drop" /> : null}
       {/* As in the demo the title carries a count; until it arrives, the "·" and space after it are hidden. */}
       <PageHeader
         actions={(
@@ -922,11 +909,9 @@ export function PaperTable() {
               }}
             />
             <AddAction
-              size="regular" className="pdfupload" disabled={uploading}
+              size="regular" className="pdfupload" busy={uploading} busyLabel={m.papers.upload.importing}
               onClick={() => uploadInput.current?.click()}
-            >
-              {uploading ? m.papers.upload.importing : m.papers.upload.importAction}
-            </AddAction>
+            >{m.papers.upload.importAction}</AddAction>
           </>
         )}
       >

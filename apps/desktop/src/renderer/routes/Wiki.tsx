@@ -176,9 +176,9 @@ function Comparison({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: 
   const m = useMessages()
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
-      return <EmptyState variant="section">{m.wiki.noDirectPapers}</EmptyState>
+      return <EmptyState variant="section" />
     }
-    if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
+    if (agg.rows.length === 0) return <EmptyState variant="section" />
   }
   // Keys by kind, so a column's key never meets the paper column's or a derived column's.
   const columns: TableColumn[] = [
@@ -424,7 +424,7 @@ export function Wiki() {
       // The gear's popover is open while adding === 'columns'; a successful save closes it here.
       setAdding(null)
       return recorded
-    }), { note, action: undoable ? undo.change : undefined }).finally(() => setPending(false))
+    }), undoable ? { note, action: undo.change } : {}).finally(() => setPending(false))
   }
 
   /**
@@ -687,9 +687,7 @@ export function Wiki() {
   const decide = (proposal: WikiProposal, decision: 'apply' | 'decline', reason?: string) => {
     setPending(true)
     void write(wiki.decide(proposal.id, decision, reason).then((receipt) => {
-      if (decision === 'decline') notice.success(m.wiki.queue.declinedNote)
-      else if (receipt.status === 'applied') notice.success(m.wiki.queue.appliedNote)
-      else notice.refusal(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
+      if (decision === 'apply' && receipt.status !== 'applied') notice.refusal(m.wiki.queue.rejectedNote(receipt.reason?.message ?? ''))
     })).finally(() => setPending(false))
   }
 
@@ -703,7 +701,7 @@ export function Wiki() {
     setSaving(true)
     void write(wiki.update(place!, next).then(() => {
       bodyEdit.drop()
-    }), { note: m.wiki.saved }).finally(() => setSaving(false))
+    })).finally(() => setSaving(false))
   }
 
   /** The body's section heading: the page name on the left, its EditActions on the right, like Project notes. */
@@ -723,13 +721,11 @@ export function Wiki() {
    * A Wiki paper page's bibliographic fields are the same frontmatter the paper list edits; only
    * papers.update writes them.
    */
-  const updateWikiPaper = (
-    patch: Partial<PaperFields>, label: string,
-  ): Promise<boolean> => {
+  const updateWikiPaper = (patch: Partial<PaperFields>): Promise<boolean> => {
     if (shownPaper === null) return Promise.resolve(false)
     const paperId = shownPaper.id.startsWith(PAPER_PAGE)
       ? shownPaper.id.slice(PAPER_PAGE.length) : shownPaper.id
-    return write(papers.update(paperId, patch), { note: m.project.identity.focusUpdated(label) })
+    return write(papers.update(paperId, patch))
   }
 
   return (
@@ -782,7 +778,7 @@ export function Wiki() {
                 >{m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
                 </SectionHeading>
                 {shownAgg.children.length === 0 && adding !== 'child'
-                  ? <EmptyState variant="section">{m.wiki.noChildren}</EmptyState>
+                  ? <EmptyState variant="section" />
                   : (
                     <List variant="embedded" rows="all" grid className="wkgrid">
                       {shownAgg.children.map((c) => (
@@ -911,14 +907,14 @@ export function Wiki() {
                 />
                 <WikiClaims
                   page={shownAgg} pending={pending} links={claimLinks}
-                  onApply={(title, ops, done) => propose(title, ops, done.note, done.undoable)}
+                  onApply={(title, ops, undoNote) => propose(title, ops, undoNote, undoNote !== undefined)}
                   arrival={arrival?.page === shownAgg.id ? arrival.claim : undefined} onArrived={arrived}
                 />
                 {bodyHead(shownAgg.title)}
                 <MarkdownBox
                   text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
                   onType={bodyEdit.change} onOpen={go}
-                  titles={shownAgg.titles} empty={<EmptyState variant="section">{m.wiki.noBody}</EmptyState>}
+                  titles={shownAgg.titles} empty={<EmptyState variant="section" />}
                 />
               </div>
               <div className="wkside" ref={railFade} data-fade-paint="">
@@ -979,7 +975,7 @@ export function Wiki() {
                   text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
                   onType={bodyEdit.change} onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
                   titles={shownPaper.titles}
-                  empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
+                  empty={<EmptyState variant="section" />}
                 />
               </div>
               <div className="wkside" ref={paperRailFade} data-fade-paint="">
@@ -992,16 +988,14 @@ export function Wiki() {
                       onSave={(title) => {
                         const next = title.trim()
                         if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
-                        return updateWikiPaper({ title: next }, m.wiki.titleLabel)
+                        return updateWikiPaper({ title: next })
                       }}
                     />
                   </Property>
                   <Property label={m.wiki.shortTitleLabel}>
                     <InlineMetadataField
                       label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
-                      onSave={(shortTitle) => updateWikiPaper(
-                        { shortTitle: shortTitle.trim() || null }, m.wiki.shortTitleLabel,
-                      )}
+                      onSave={(shortTitle) => updateWikiPaper({ shortTitle: shortTitle.trim() || null })}
                     />
                   </Property>
                   <Property label={m.wiki.authorsLabel}>
@@ -1009,7 +1003,7 @@ export function Wiki() {
                       label={m.wiki.authorsLabel} value={fmt.authors(shownPaper.authors)} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
                       onSave={(authors) => updateWikiPaper({
                         authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
-                      }, m.wiki.authorsLabel)}
+                      })}
                     />
                   </Property>
                   <Property label={m.wiki.yearLabel}>
@@ -1018,20 +1012,20 @@ export function Wiki() {
                       keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
                       onSave={(year) => {
                         const text = year.trim()
-                        if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
+                        if (text === '') return updateWikiPaper({ year: null })
                         const next = Number(text)
                         if (!Number.isInteger(next) || next < 1000 || next > 3000) {
                           notice.refusal(m.wiki.yearRange)
                           return false
                         }
-                        return updateWikiPaper({ year: next }, m.wiki.yearLabel)
+                        return updateWikiPaper({ year: next })
                       }}
                     />
                   </Property>
                   <Property label={m.wiki.venueLabel}>
                     <InlineMetadataField
                       label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
-                      onSave={(venue) => updateWikiPaper({ venue: venue.trim() }, m.wiki.venueLabel)}
+                      onSave={(venue) => updateWikiPaper({ venue: venue.trim() })}
                     />
                   </Property>
                   {shownPaper.pdf === ''
@@ -1041,7 +1035,7 @@ export function Wiki() {
                 </PropertyList>
                 <SectionHeading level="group">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0
-                  ? <EmptyState variant="section">{m.wiki.noMembership}</EmptyState>
+                  ? <EmptyState variant="section" />
                   : shownPaper.memberships.map((ms) => (
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">

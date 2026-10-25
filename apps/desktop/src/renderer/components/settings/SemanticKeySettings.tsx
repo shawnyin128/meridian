@@ -7,7 +7,6 @@ import { useMessages } from '../../messages/useMessages.js'
 import { EntityLink } from '../EntityLink.js'
 import { FieldRow, FieldRows, FormInput } from '../FormControls.js'
 import { PageError } from '../PageShell.js'
-import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -132,7 +131,6 @@ export function SemanticKeySettings() {
               }}
             />
           ) : null}
-          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
           <Button
             size="regular" disabled={!canTestConnection || saving}
             busy={connectionCheck.state === 'testing'} busyLabel={m.settings.model.connection.testing}

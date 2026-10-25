@@ -122,7 +122,7 @@ describe('WikiTidy', () => {
     expect(host.querySelector('.loading-placeholder')).not.toBeNull()
     expect(host.querySelector('.item')).toBeNull()
     render([])
-    expect(host.querySelector('.empty-state--section')!.textContent).toBe('还没有需要整理的页')
+    expect(host.querySelector('.empty-state--section')!.textContent).toBe('—')
     expect(host.querySelector('.item')).toBeNull()
   })
 })

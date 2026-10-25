@@ -835,12 +835,12 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
   await expect.poll(head).not.toContain('批注')
 })
 
-/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+/** Clicks Undo on the notice the last write showed, and waits for the notice to close; the caller waits for what comes back. */
 async function undoFromNotice(win: Page): Promise<void> {
   const undo = win.locator('#notice .btn')
   await expect(undo).toHaveText('撤销')
   await undo.click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+  await expect(win.locator('#notice')).not.toHaveClass(/\bshow\b/)
 }
 
 test('删掉一列,提示里的撤销把它放回,格子里的值还在', async ({ win }) => {
@@ -949,7 +949,6 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.locator('.ptable thead th.th-new input').fill('读法')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect.poll(head).toContain('读法')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已新建列 · 全库可用')
   expect((await call<{ custom: { label: string; type: string }[] }>(win, 'papers.columns', {}))
     .custom[0]).toMatchObject({ label: '读法', type: 'select' })
 

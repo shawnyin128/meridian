@@ -316,6 +316,15 @@ describe('Settings', () => {
     expect(dialog.querySelector('.semantic-key-card .service-status-pill')?.textContent).toBe('未配置')
   })
 
+  it('API 总览还没读到一项的状态时，那一格是载入占位，不写正在读取', async () => {
+    api.semanticKey.mockReturnValueOnce(new Promise(() => {}))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
+    const research = dialog.querySelector('[data-api="research"] .api-state')!
+    expect([research.matches('.loading-placeholder'), research.textContent]).toEqual([true, ''])
+  })
+
   it('科研数据源总览显示 Semantic Scholar 当已配置 key', async () => {
     api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -358,7 +367,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-setcat="model"]')?.classList.contains('on')).toBe(true)
   })
 
-  it('未配置 key 时科研卡片显示未配置，测试连接不可用，按钮旁写着未保存', async () => {
+  it('未配置 key 时科研卡片显示未配置，测试连接不可用，按钮旁不写字', async () => {
     api.requestedCategory = 'research'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -366,17 +375,17 @@ describe('Settings', () => {
     expect(card.querySelector('.service-status-pill')?.textContent).toBe('未配置')
     const buttons = [...card.querySelectorAll<HTMLButtonElement>('button')]
     expect(buttons.find((b) => b.textContent === '测试连接')!.disabled).toBe(true)
-    expect(buttons.find((b) => b.textContent === '测试连接')!.previousElementSibling?.textContent).toBe('未保存')
+    expect(card.querySelector('.service-actions .tag')).toBeNull()
     expect(buttons.find((b) => b.textContent === '保存配置')!.disabled).toBe(true)
     expect(buttons.some((b) => b.textContent === '清除已保存的 Key')).toBe(false)
   })
 
-  it('模型配置还没保存时测试连接不可用，按钮旁写着未保存；保存过的可以测试，不写', async () => {
+  it('模型配置还没保存时测试连接不可用，按钮旁不写字；保存过的可以测试', async () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const test = () => [...document.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
       .find((b) => b.textContent === '测试连接')!
-    expect([test().disabled, test().previousElementSibling?.textContent]).toEqual([true, '未保存'])
+    expect([test().disabled, document.querySelector('.model-settings-card .service-actions .tag')]).toEqual([true, null])
     api.modelSettings.mockResolvedValueOnce({ ...(await api.updateModelSettings()) })
     await act(async () => { root.render(<MessagesProvider key="saved"><Settings /></MessagesProvider>) })
     expect(test().disabled).toBe(false)
@@ -469,11 +478,11 @@ describe('Settings', () => {
     await act(async () => { test.click() })
     const status = card.querySelector('.service-connection-status')!
     expect(status.matches('.inline-message--line.inline-message--error[role="alert"]')).toBe(true)
-    expect(status.textContent).toContain('认证失败，请检查 API Key。')
+    expect(status.querySelector('.inline-message-text > div')?.textContent).toBe('认证失败')
     expect(status.textContent).toContain('HTTP 401')
   })
 
-  it('扩展设置显示 Core 检查结果:已安装的给更新命令,未安装的给安装命令', async () => {
+  it('扩展设置显示 Core 检查结果:已安装的给更新命令,未安装的给安装命令;复制不再弹提示', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -499,7 +508,7 @@ describe('Settings', () => {
     const pluginRow = dialog.querySelector('[data-plugin-version="0.0.1"]')!
     expect(pluginRow.querySelector('.section-heading--group > span')?.firstChild?.textContent).toBe('Meridian Plugin')
     expect(pluginRow.querySelector('.extension-state')?.textContent).toBe('最新 0.0.1')
-    expect(pluginRow.querySelector('.section-heading-meta')?.textContent).toContain('还没联网检查过')
+    expect(pluginRow.querySelector('.section-heading-meta')?.textContent).toBe('—')
     api.pluginVersion.mockResolvedValueOnce({ version: '0.0.2', checkedAt: '2026-09-22T08:00:00.000Z' })
     await act(async () => {
       pluginRow.querySelector<HTMLButtonElement>('button')!.click()
@@ -513,14 +522,14 @@ describe('Settings', () => {
       dialog.querySelector<HTMLButtonElement>('[aria-label="复制 Claude Code 安装命令"]')!.click()
     })
     expect(writeText).toHaveBeenCalledWith('claude install command')
-    expect(api.success).toHaveBeenCalledWith('Claude Code 命令已复制')
+    expect(api.success).not.toHaveBeenCalled()
 
     const firstPrompt = dialog.querySelector('.extension-prompt .item-meta')?.textContent ?? ''
     await act(async () => {
       dialog.querySelector<HTMLButtonElement>('.extension-prompt button')!.click()
     })
     expect(writeText).toHaveBeenLastCalledWith(firstPrompt)
-    expect(api.success).toHaveBeenLastCalledWith('提示词已复制')
+    expect(api.success).not.toHaveBeenCalled()
   })
 
   it('外观设置用三张预览卡选择浅色、深色或跟随系统', async () => {
@@ -693,7 +702,7 @@ describe('Settings', () => {
       .querySelector('.row-actions button[aria-label="管理「青瓷」"]')).not.toBeNull()
 
     const items = await openThemeMenu(dialog, '青瓷')
-    expect(items.map((item) => item.textContent)).toEqual(['编辑', '删除'])
+    expect(items.map((item) => item.textContent)).toEqual(['编辑…', '删除'])
     await act(async () => { items[0]!.click() })
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="名称"]')!.value).toBe('青瓷')
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="色值"]')!.value).toBe(celadon.light.ground.toUpperCase())
@@ -805,12 +814,13 @@ describe('Settings', () => {
     }
   })
 
-  it('库位置固定或要重启时，各写一个短状态：外部配置固定、重启后生效和立即重启', async () => {
+  it('库位置固定时只有来源标签和按不了的选择，不另写一句；要重启时写重启后生效和立即重启', async () => {
     api.requestedCategory = 'storage'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const card = () => document.querySelector('.setdlg .storage-card')!
     const states = () => [...card().querySelectorAll(':scope > .tag, :scope > [role="status"] > *')].map((node) => node.textContent)
-    expect(states()).toEqual(['库位置由外部配置固定'])
+    expect([states(), card().querySelector('.section-heading .tag')?.textContent, card().querySelector<HTMLButtonElement>('.storage-root button')?.disabled])
+      .toEqual([[], '测试数据', true])
     api.libraryLocation.mockResolvedValue({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: true, openError: null,
     })
@@ -832,7 +842,7 @@ describe('Settings', () => {
     const directory = dialog.querySelector('.storage-root .directory-field')!
     expect(directory.querySelector<HTMLInputElement>('input')?.value).toBe('/tmp/meridian')
     expect(directory.querySelector('input')?.hasAttribute('readonly')).toBe(true)
-    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
+    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
       .toBe(true)
     expect(directory.querySelector('svg path')?.getAttribute('d')).toBe('M3 6h6l2 2h10v10H3z')
     expect(dialog.querySelector('.storage-root code')).toBeNull()
@@ -891,7 +901,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('.page-error')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
-    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
+    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
       .toBe(false)
     expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')?.disabled).toBe(false)
   })
@@ -925,7 +935,7 @@ describe('Settings', () => {
     expect(api.restartApp).toHaveBeenCalledOnce()
   })
 
-  it('永久删除备份前要求确认，成功后从列表移除', async () => {
+  it('永久删除备份前要求确认，成功后从列表移除，不另弹通知', async () => {
     api.libraryLocation.mockResolvedValueOnce({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: false, openError: null,
     })
@@ -943,7 +953,7 @@ describe('Settings', () => {
       .find((button) => button.textContent === '删除')!
     await act(async () => { deleteButton.click() })
     expect(api.deleteBackup).not.toHaveBeenCalled()
-    expect(document.querySelector('.modal.confirm')?.textContent).toContain('永久删除')
+    expect(document.querySelector('.modal.confirm')?.textContent).toContain('备份文件夹不能恢复')
 
     const confirm = [...document.querySelectorAll<HTMLButtonElement>('.modal.confirm .btn')]
       .find((button) => button.textContent === '删除')!
@@ -951,7 +961,7 @@ describe('Settings', () => {
     expect(api.deleteBackup).toHaveBeenCalledWith('meridian-backup-20260915-182838Z')
     expect(dialog.querySelector('.storage-backup-list')).toBeNull()
     expect(dialog.textContent).not.toContain('论文库备份 ·')
-    expect(api.success).toHaveBeenCalledWith('备份已删除')
+    expect(api.success).not.toHaveBeenCalled()
   })
 
   it('确认删除备份后确认框关上，删除还没完成时那一行的删除按钮在原处转圈、按不动，名字是正在删除', async () => {
@@ -1059,12 +1069,12 @@ describe('Settings', () => {
 
     await pick(dialog, '模型服务', 'OpenAI 兼容 API')
     expect((await openPicker(dialog, '兼容服务模板')).map((item) => item.textContent)).toEqual([
-      '选择常用服务…',
-      'DeepSeek（云端）',
-      'OpenRouter（云端聚合）',
-      'Ollama（本地）',
-      'LM Studio（本地）',
-      '其他兼容服务（手动配置）',
+      '模板',
+      'DeepSeek · 云端',
+      'OpenRouter · 云端聚合',
+      'Ollama · 本地',
+      'LM Studio · 本地',
+      '其他兼容服务',
     ])
     await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')).toBeNull()
@@ -1072,13 +1082,13 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模型认证方式"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型名称"]')).toBeNull()
 
-    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
+    await pick(dialog, '兼容服务模板', '其他兼容服务')
 
     expect((await openPicker(dialog, '模型协议')).map((item) => item.textContent))
       .toEqual(['Responses API', 'Chat Completions API'])
     await closePicker()
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型接口地址"]')?.placeholder)
-      .toBe('例如 https://api.example.com/v1')
+      .toBe('https://api.example.com/v1')
   })
 
   it('已保存的 API Key 只显示掩码和末四位', async () => {
@@ -1109,14 +1119,14 @@ describe('Settings', () => {
     expect(field.type).toBe('password')
   })
 
-  it('已存的模型配置读不进来时只显示原因的标签', async () => {
+  it('已存的模型配置读不进来时只显示原因，不叫人检查后重新保存', async () => {
     const unreadable = { ...(await api.modelSettings()), error: 'key-unreadable' as const }
     api.modelSettings.mockResolvedValueOnce(unreadable)
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    expect(dialog.textContent).toContain('没能读取已存的密钥。请检查后重新保存。')
+    expect(dialog.querySelector('.service-error')?.textContent).toBe('没能读取已存的密钥')
     expect(dialog.textContent).not.toContain('key-unreadable')
   })
 
@@ -1180,7 +1190,7 @@ describe('Settings', () => {
     await act(async () => { test.click() })
 
     const status = dialog.querySelector('.service-connection-status')!
-    expect(status.textContent).toContain('没有找到模型或接口。')
+    expect(status.querySelector('.inline-message-text > div')?.textContent).toBe('没有找到模型或接口')
     expect(status.textContent).toContain('详情: HTTP 404: model deepseek-flash was not found')
   })
 
@@ -1234,7 +1244,7 @@ describe('Settings', () => {
     }
 
     await pick(dialog, '模型服务', 'OpenAI 兼容 API')
-    await pick(dialog, '兼容服务模板', '其他兼容服务（手动配置）')
+    await pick(dialog, '兼容服务模板', '其他兼容服务')
     await pick(dialog, '模型协议', 'Chat Completions API')
     await fill('模型接口地址', 'https://third-party.example/v1')
     await fill('模型名称', 'third-party-model')
@@ -1286,7 +1296,7 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
 
     await pick(dialog, '模型服务', 'OpenAI 兼容 API')
-    await pick(dialog, '兼容服务模板', 'DeepSeek（云端）')
+    await pick(dialog, '兼容服务模板', 'DeepSeek · 云端')
 
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Chat Completions API · API Key')
@@ -1296,10 +1306,10 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="模型接口地址"]')).toBeNull()
     expect(dialog.querySelector('[aria-label="模型认证方式"]')).toBeNull()
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.placeholder)
-      .toBe('输入 DeepSeek 模型 ID')
+      .toBe('模型 ID')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).not.toBeNull()
 
-    await pick(dialog, '兼容服务模板', 'Ollama（本地）')
+    await pick(dialog, '兼容服务模板', 'Ollama · 本地')
     expect(dialog.querySelector('[aria-label="模板连接信息"]')?.textContent)
       .toContain('Responses API · 无需认证')
     expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()

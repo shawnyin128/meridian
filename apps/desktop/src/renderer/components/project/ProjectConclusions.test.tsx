@@ -142,7 +142,7 @@ describe('project conclusions', () => {
     await act(async () => { button('写入 Wiki').click(); await flush() })
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(host.querySelector('.conclusion-detail-meta')!.nextElementSibling!.contains(draft())).toBe(true)
-    expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→选择要写入的聚合页· 结论')
+    expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→聚合页· 结论')
     expect(document.activeElement).toBe(draft()!.querySelector('.choice-picker'))
     expect(draft()!.querySelector('input')!.value).toBe('Wide trees win at B8')
     expect(draft()!.querySelector('.conclusion-draft-evidence')!.textContent).toBe('实验draft 效率宽树')

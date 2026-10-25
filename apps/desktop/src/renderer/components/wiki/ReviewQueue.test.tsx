@@ -263,7 +263,7 @@ describe('ReviewQueue', () => {
       .toBe('这些引句没有文字层可核对：<strong>F</strong>lux p.1')
     expect(row('n2').querySelector('.review-reason')!.innerHTML).toBe('引句在原文第 2 页找不到：<strong>F</strong>lux')
     expect(row('n3').querySelector('.review-reason')!.textContent).toBe('差 ~5% papers/flux')
-    expect(row('n4').querySelector('.review-reason')!.textContent).toBe('依据的页在提案生成之后改过')
+    expect([row('n4').querySelector('.proposal-decision .tag')!.textContent, row('n4').querySelector('.review-reason')]).toEqual(['已拒绝 · 过期', null])
     expect(row('n5').querySelector('.review-reason')!.textContent).toBe('提案没有给出它依据的页的版本：Speculative decoding')
   })
 
@@ -314,7 +314,7 @@ describe('ReviewQueue', () => {
     expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 4')
     expect(outcome('p3').map((part) => part.textContent)).toEqual(['已应用', '9月22日'])
     expect(row('p3').querySelector('.proposal-decision .tag--done')).not.toBeNull()
-    expect(outcome('p4').map((part) => part.textContent)).toEqual(['已拒绝 · 过期', '9月22日', '依据的页在提案生成之后改过'])
+    expect(outcome('p4').map((part) => part.textContent)).toEqual(['已拒绝 · 过期', '9月22日'])
     expect(blocks('p4')).toEqual([
       { kind: '撤回结论', target: 'Speculative decoding', texts: ['removed: 拐点在宽度 6'], rows: [['撤回理由', '重跑后不成立', null]] },
     ])
@@ -339,8 +339,8 @@ describe('ReviewQueue', () => {
     expect(outcome('d1').map((part) => part.textContent)).toEqual(['已应用', '10月17日'])
   })
 
-  it('没有排队的提案时说一句', () => {
+  it('没有排队的提案时是一行分节空态，不说一句', () => {
     render(PROPOSALS.filter((p) => p.status !== 'queued'))
-    expect(host.textContent).toContain('还没有待审阅的提案')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('—')
   })
 })

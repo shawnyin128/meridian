@@ -34,7 +34,6 @@ import { Tag } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import type { Catalog } from '../messages/catalog.js'
 import { ProjectDetail } from './ProjectDetail.js'
 import type { RecordTab } from './ProjectDetail.js'
 import type { PlanTab } from '../components/project/ProjectPlan.js'
@@ -161,10 +160,6 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
   )
 }
 
-export function projectPaperCountLabel(count: number, m: Catalog): string {
-  return m.research.panel.paperCount(count)
-}
-
 /** Ongoing projects expose the decisions a researcher needs before secondary counts and history. */
 function ProjectPanel({ project, onOpen, onRename, menu, reorder }: {
   project: ProjectSummary; onOpen: () => void; onRename: (name: string) => boolean | Promise<boolean>; menu: ReactNode
@@ -197,14 +192,14 @@ function ProjectPanel({ project, onOpen, onRename, menu, reorder }: {
             <span>{left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}</span>
           </>
         )
-        : m.research.panel.noUpcomingMilestone}
+        : m.common.empty}
       actions={<DragHandle {...reorder.handle} />} menu={menu}
     >
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
-          <FadeText className="project-card-value" label={project.focus || m.research.panel.focusUndefined}>
-            {project.focus || m.research.panel.focusUndefined}
+          <FadeText className="project-card-value" label={project.focus || m.common.empty}>
+            {project.focus || m.common.empty}
           </FadeText>
         </div>
         <div className="project-card-decision">
@@ -226,12 +221,12 @@ function ProjectPanel({ project, onOpen, onRename, menu, reorder }: {
         </span>
         <span className="project-card-fact">
           <span className="project-card-label">{m.project.sections.papers}</span>
-          <span>{projectPaperCountLabel(project.paperCount, m)}</span>
+          <span>{project.paperCount}</span>
         </span>
         <span className="project-card-fact project-card-recent">
           <span className="project-card-label">{m.research.panel.recentProgressLabel}</span>
           {project.lastProgress === undefined
-            ? <FadeText className="project-card-empty">{m.research.panel.noRecords}</FadeText>
+            ? <FadeText className="project-card-empty">{m.common.empty}</FadeText>
             : (
               <>
                 <FadeText>{fmt.date(project.lastProgress)}</FadeText>
@@ -333,10 +328,11 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   }, [newRow, onNewRow, setCreating])
 
   /**
-   * Finishes a write: closes the new-project row, then lets `write` finish. Creating from the row does
-   * not come here: whether the row stays depends on that write's result.
+   * Finishes a write: closes the new-project row, then lets `write` finish, showing `note` with its
+   * `action` when given. Creating from the row does not come here: whether the row stays depends on
+   * that write's result.
    */
-  const applyWrite = <T,>(op: Promise<T>, note: string, action?: (result: T) => NoticeAction) => {
+  const applyWrite = <T,>(op: Promise<T>, note?: string, action?: (result: T) => NoticeAction) => {
     setCreating(false)
     void write(op, { note, action })
   }
@@ -349,7 +345,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
     (name === '' ? false : write(projectApi.create(name).then((id) => feed.append({
       source: 'me',
       body: { kind: 'runs', runs: namedRuns(m.research.list.createdFeedNote, name, { kind: 'project', id }) },
-    })), { note: m.research.list.createdNote }))
+    }))))
 
   if (!projects) {
     return (
@@ -371,13 +367,11 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
     <ProjectMenu
       project={p}
       onMove={(by) => reorder.move(p.id, by)} canMove={(by) => reorder.canMove(p.id, by)}
-      onStatus={(status) => applyWrite(
-        projectApi.update(p.id, { status }), m.research.list.statusChangedTo(status),
-      )}
+      onStatus={(status) => applyWrite(projectApi.update(p.id, { status }))}
       onDelete={() => applyWrite(projectApi.delete(p.id), m.common.trashed, undo.change)}
     />
   )
-  const renameOf = (p: ProjectSummary) => (name: string) => write(projectApi.update(p.id, { name }), { note: m.research.list.renamed })
+  const renameOf = (p: ProjectSummary) => (name: string) => write(projectApi.update(p.id, { name }))
 
   return (
     <PageShell>
@@ -414,7 +408,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                     onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
                   />
                 )
-                : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
+                : g.items.length === 0 ? <EmptyState variant="section" /> : null}
               {g.status === ACTIVE_PROJECT
                 ? g.items.map((p) => (
                   <ProjectPanel

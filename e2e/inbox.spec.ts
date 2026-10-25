@@ -384,7 +384,7 @@ test('下载并入库时显示进度环,完成后卡片离开论文推送', asyn
   await openInbox(win, 'all')
   const card = shown(win, '.pcard[data-pid="drafterlite"]')
   await rowAction(card, '下载并入库')
-  await expect(card.locator('.icbtn.busy[aria-label="从 arXiv 下载中"] .ring')).toHaveCount(1)
+  await expect(card.locator('.icbtn.busy[aria-label="下载并入库"][aria-busy="true"] .ring')).toHaveCount(1)
   await expect(card).toHaveCount(0, { timeout: 10_000 })
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已入库')
   expect((await inboxFromCore(win)).map((entry) => entry.id)).not.toContain('drafterlite')
@@ -434,7 +434,7 @@ test('在一条关注那一档里检查新论文只抓这一条;再抓没有新�
   await expect(shown(win, '.desk-head .page-note')).not.toContainText('没有新论文')
 })
 
-test('在一个项目那一档里刷新发现只刷这个项目;没有新的时,提示写出它上次刷新的时刻', async ({ win }) => {
+test('在一个项目那一档里刷新发现只刷这个项目;没有新的时列表不变,也不弹通知', async ({ win }) => {
   await openInbox(win, 'discovery')
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
@@ -442,9 +442,10 @@ test('在一个项目那一档里刷新发现只刷这个项目;没有新的时,
   await win.locator(`[data-discovery-project="${project}"]`).click()
   const count = await shown(win, '.pcard').count()
 
-  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text'))
-    .toHaveText(/^没有发现新的论文 · 上次刷新 \d+月\d+日\d{2}:\d{2} · /)
+  const refresh = shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' })
+  await refresh.click()
+  await expect(refresh).toBeEnabled()
+  await expect(win.locator('#notice.show[data-tone="success"]')).toHaveCount(0)
   await expect(shown(win, '.pcard')).toHaveCount(count)
 })
 

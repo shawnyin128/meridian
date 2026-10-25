@@ -49,7 +49,7 @@ describe('PaperWikiProposalReview', () => {
     act(() => root.unmount())
   })
 
-  it('shows an explicit empty statement instead of inventing missing content', () => {
+  it('shows an empty section as the shared empty value instead of inventing missing content or a sentence', () => {
     const review: HarnessPaperWikiReview = {
       schemaVersion: 'meridian.paper-wiki-review.v1',
       sections: [{ id: 'limitations', title: '局限', emptyLabel: '没有原文依据的局限。', groups: [] }],
@@ -57,11 +57,11 @@ describe('PaperWikiProposalReview', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
-    expect(html).toContain('本提案没有提取到有原文依据的局限。')
+    expect(html).toContain('<div class="empty-state empty-state--section">—</div>')
     expect(html).not.toMatch(/class="list[ "]/)
   })
 
-  /** The heading and empty statement of each section a review of `ids`, as Core stores it, shows in `language`. */
+  /** The heading and empty state of each section a review of `ids`, as Core stores it, shows in `language`. */
   const sectionTexts = (language: 'zh' | 'en', ids: string[]) => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
     const review: HarnessPaperWikiReview = {
@@ -149,8 +149,8 @@ describe('PaperWikiProposalReview', () => {
     ])
   })
 
-  it('keeps the words Core stored for a section this version does not know', () => {
-    expect(sectionTexts('en', ['later-section'])).toEqual([['Core 存下的「later-section」', 'Core 存下的「later-section」空白']])
+  it('keeps the title Core stored for a section this version does not know, empty as every other section', () => {
+    expect(sectionTexts('en', ['later-section'])).toEqual([['Core 存下的「later-section」', '—']])
   })
 
   it('states a passing deterministic report by its title alone, with no note about what it means', () => {

@@ -49,7 +49,7 @@ async function shelveDraft(win: Page): Promise<void> {
   await win.locator('[data-proj="draft"]').hover()
   await win.locator('[data-proj="draft"] .dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '搁置' }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已标记为 搁置')
+  await expect.poll(() => statusFromCore(win, 'draft')).toBe('搁置')
 }
 
 test('侧栏「最近变动」进的是变动屏,面包屑、屏头的数与角标都对上', async ({ win }) => {
@@ -99,9 +99,8 @@ test('改一笔再撤销:数据真的回到改之前,那一条标成已撤销,�
   await expect(top.locator('.cundo')).toHaveAttribute('aria-label', '撤销')
 
   await top.locator('.cundo').click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
   // Read Core again: the vault really is back to its state before the change, not just the screen.
-  expect(await statusFromCore(win, 'draft')).toBe('进行中')
+  await expect.poll(() => statusFromCore(win, 'draft')).toBe('进行中')
 
   // The original change stays, marked as undone, and the undo itself is a new change listed above it.
   await expect(shown(win, '.crow')).toHaveCount(seeded + 2)
@@ -119,7 +118,7 @@ test('这一笔之后又改过时撤销被拒,说清还有几条更新的,数据
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
   await win.locator('.ctxmenu .mi-in input').fill('改过名字的 draft')
   await win.locator('.ctxmenu .mi-in input').press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
+  await expect(win.locator('[data-proj="draft"]')).toContainText('改过名字的 draft')
 
   await gotoChangelog(win)
   // The status change is older than the rename, so it is listed second.
@@ -172,17 +171,16 @@ test('归一条:它落到「已归档」那一节,屏头与侧栏的数都掉一
   await expect(shown(win, '.crow')).toHaveCount(total)
 })
 
-test('「全部归档」把未归档清空,写「还没有新的变动」,按钮跟着灰掉', async ({ win }) => {
+test('「全部归档」把未归档清空成一行空态 —,按钮跟着灰掉', async ({ win }) => {
   const total = (await sourcesFromCore(win)).length
   await gotoChangelog(win)
   // "Archive all" sits at the right end of the unarchived section's heading.
   await expect(shown(win, '.section-heading').first().locator('.archall')).toHaveCount(1)
   await shown(win, '.archall').click()
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已归档 ${total} 条`)
   await expect(shown(win, '.desk-head .t')).toHaveText('最近变动 · 0')
   await expect(win.locator('[data-desk="changelog"] .n')).toHaveCount(0)
-  await expect(shown(win, '.empty-state')).toHaveText('还没有新的变动')
+  await expect(shown(win, '.empty-state')).toHaveText('—')
   // It sits under a section heading with the archived list below it, so it is the one-line variant.
   await expect(shown(win, '.empty-state')).toHaveClass(/empty-state--section/)
   await expect(shown(win, '.archall')).toBeDisabled()
@@ -203,9 +201,8 @@ test('归过档的那一条照样撤得动,撤销不动它的归档,撤销本身
   await expect(filed.locator('.ct')).toContainText('项目「draft 效率」· 改了字段')
   await filed.hover()
   await filed.locator('.cundo').click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
   // Read Core again: the vault really is back to its state before the change.
-  expect(await statusFromCore(win, 'draft')).toBe('进行中')
+  await expect.poll(() => statusFromCore(win, 'draft')).toBe('进行中')
 
   // The change stays under "Archived", marked as undone; the undo is a new change at the top of the
   // unarchived section.

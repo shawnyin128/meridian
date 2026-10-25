@@ -129,17 +129,17 @@ export function PaperWikiProposalReview({ review, quality, onJump }: {
   onJump: (page: number) => void
 }) {
   const m = useMessages()
-  const named: Record<string, { title: string; empty: string }> = m.wiki.reviewSections
+  const named: Record<string, { title: string }> = m.wiki.reviewSections
   return (
     <div className="paper-wiki-structured-review">
       {quality === undefined ? null : <QualityReport quality={quality} />}
       {review.sections.map((section) => {
-        const words = named[section.id] ?? { title: section.title, empty: section.emptyLabel }
+        const words = named[section.id] ?? { title: section.title }
         return (
           <section className="paper-wiki-review-section" key={section.id}>
             <SectionHeading level="group" count={section.groups.length}>{words.title}</SectionHeading>
             {section.groups.length === 0 ? (
-              <EmptyState variant="section">{words.empty}</EmptyState>
+              <EmptyState variant="section" />
             ) : (
               <List
                 variant="embedded"

@@ -257,7 +257,16 @@ describe('PaperChat', () => {
     document.body.append(host)
     root = createRoot(host)
     await act(async () => { root!.render(withMessages(<PaperChat paper={{ ...PAPER, title }} />)) })
-    expect(host.querySelector('.paper-chat .desk-head .t')?.textContent).toBe(`${title} · 阅读中`)
+    expect(host.querySelector('.paper-chat .desk-head .t')?.textContent).toBe(title)
+  })
+
+  it('论文还没读到时对话栏头部不写正在载入，对话区是载入占位', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => { root!.render(withMessages(<PaperChat paper={null} />)) })
+    const head = host.querySelector('.paper-chat .desk-head')!
+    expect([head.textContent, host.querySelector('.paper-chat .msgs .loading-placeholder') !== null]).toEqual(['', true])
   })
 
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {
@@ -275,7 +284,7 @@ describe('PaperChat', () => {
     act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
     await settle()
     const control = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
-    expect(control.getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control.getAttribute('aria-label')).toBe('停止生成')
     expect(control.querySelector('.ring.spin')).not.toBeNull()
     expect(control.querySelector('.generation-stop')).not.toBeNull()
 
@@ -371,7 +380,7 @@ describe('PaperChat', () => {
     type('这篇的关键假设是什么？')
     act(() => control().click())
     await settle()
-    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
 
     await showPaper(null)
     await showPaper(PAPER_TWO)
@@ -380,7 +389,7 @@ describe('PaperChat', () => {
 
     await showPaper(null)
     await showPaper(PAPER)
-    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
     act(() => control().click())
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
     await finish()
@@ -407,7 +416,7 @@ describe('PaperChat', () => {
       held = { 'chat-paper-2': [] }
       api.revision = 1
       await showPaper(PAPER)
-      expect(shown(host)).toEqual([null, '还没有对话'])
+      expect([shown(host), host.querySelector('.paper-chat .msgs .empty-state--page svg') !== null]).toEqual([[null, ''], true])
 
       held = { 'chat-paper-1': asked }
       api.revision = 2
@@ -447,13 +456,13 @@ describe('PaperChat', () => {
 
     const save = host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!
     expect([save.className, save.disabled]).toEqual(['btn ghost sm save-idea', true])
-    expect(save.previousElementSibling?.textContent).toBe('尚无讨论')
+    expect(save.previousElementSibling).toBeNull()
   })
 
-  it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
+  it('空对话的空态只有对话的图标，和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()
     const hint = host.querySelector('.msgs .empty-state')!
-    expect(hint.textContent).toBe('还没有对话')
+    expect([hint.textContent, hint.querySelector('svg') !== null]).toEqual(['', true])
     expect(hint.parentElement!.className).toBe(host.querySelector('.composer > div')!.className)
   })
 

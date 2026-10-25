@@ -5,8 +5,8 @@ const SHOTS = resolve(import.meta.dirname, '../outputs/e2e/shots')
 
 /** Sidebar entry selector and the English crumb its screen shows. */
 const SCREENS: readonly (readonly [string, string])[] = [
-  ['[data-desk="feed"]', 'Feed'], ['[data-inbox="discovery"]', 'Inbox'], ['[data-desk="later"]', 'Read Later'],
-  ['[data-desk="papers"]', 'Papers'], ['[data-desk="wiki"]', 'Wiki'], ['[data-desk="changelog"]', 'Recent Changes'],
+  ['[data-desk="feed"]', 'Feed'], ['[data-inbox="discovery"]', 'Inbox'], ['[data-desk="later"]', 'Read later'],
+  ['[data-desk="papers"]', 'Papers'], ['[data-desk="wiki"]', 'Wiki'], ['[data-desk="changelog"]', 'Recent changes'],
   ['[data-desk="restl"]', 'Overview'], ['[data-desk="resproj"]', 'Projects'], ['[data-desk="ideas"]', 'Ideas'],
   ['[data-desk="trash"]', 'Trash'],
 ]

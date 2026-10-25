@@ -222,7 +222,7 @@ describe('PaperWikiIngest', () => {
     })
     expect(api.apply).toHaveBeenCalledWith('proposal-1', '# Reviewed')
     expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--line.inline-message--done')].map((line) => line.textContent))
-      .toEqual(['请审核', '已写入 Wiki。'])
+      .toEqual(['请审核', '已写入 Wiki'])
   })
 
   it('offers Undo in the notice of the Wiki write, undoing the change entry that write recorded', async () => {
@@ -494,6 +494,12 @@ describe('PaperWikiIngest', () => {
     expect(api.jump).toHaveBeenCalledWith(1)
   })
 
+  it('shows the loading placeholder while the scope is prepared, never a sentence about preparing', async () => {
+    api.prepare.mockReturnValue(new Promise(() => {}))
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    expect([host.querySelector('.loading-placeholder--lines') !== null, host.querySelector('.wiki-ingest-status')]).toEqual([true, null])
+  })
+
   it('states a missing model as a short tag, never a sentence', async () => {
     api.prepare.mockResolvedValue({ ...plan, model: { ...plan.model, configured: false } })
     api.connected = false
@@ -511,7 +517,7 @@ describe('PaperWikiIngest', () => {
     expect(host.querySelector('.wiki-ingest-tip')).toBeNull()
   })
 
-  it('collects optional local feedback before rejecting a proposal', async () => {
+  it('collects optional local feedback before rejecting a proposal, opening on the reasons without a question above them', async () => {
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
@@ -522,7 +528,7 @@ describe('PaperWikiIngest', () => {
     })
 
     expect(api.reject).not.toHaveBeenCalled()
-    expect(host.querySelector('.wiki-ingest-rejection-head')!.textContent).toBe('可选：这份提案哪里不好？')
+    expect(host.querySelector('.wiki-ingest-rejection')!.firstElementChild!.matches('.wiki-ingest-rejection-reasons')).toBe(true)
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '论文事实不准确')!.click()
@@ -613,7 +619,7 @@ describe('PaperWikiIngest', () => {
     })
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
-        .find((button) => button.textContent === '不反馈，直接丢弃')!.click()
+        .find((button) => button.textContent === '直接丢弃')!.click()
     })
 
     expect(api.reject).toHaveBeenCalledWith('proposal-1', undefined)

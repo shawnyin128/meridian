@@ -24,7 +24,7 @@ import {
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
-import { DAY_SLOT_HOURS, useTimelinePeriod } from '../components/timeline/TimelineScale.js'
+import { useTimelinePeriod } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
 import { Tooltip } from '../components/Tooltip.js'
@@ -117,7 +117,7 @@ function OverviewRow({ when, kind, main, meta, project, projectId, variant, onOp
 }
 
 /**
- * Needs attention: all projects' signals, merged and sorted, each with its next action at the right.
+ * Needs attention: all projects' signals, merged and sorted.
  * A row opens its project, at the task or milestone the signal is about.
  */
 function DecisionQueue({ rows, onOpen }: {
@@ -145,7 +145,6 @@ function DecisionQueue({ rows, onOpen }: {
             when={<OverviewDate date={x.date} />}
             kind={<ProjectSignalKind state={DECISION_STATE[x.tone]}>{x.kind}</ProjectSignalKind>}
             main={x.reason}
-            meta={`${x.action} →`}
             project={x.name}
             projectId={x.projectId}
             onOpen={() => onOpen(x.projectId, x.task !== undefined ? { task: x.task }
@@ -202,7 +201,7 @@ function ProjectProgress({ rows, onOpen }: {
             : active
               ? m.research.overview.focusWithActiveTasks(m.project.identity.focusLabel[FOCUS_KEY[project.status]], activeCount)
               : m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-          const when = latest ? fmt.date(latest.date) : m.research.overview.waitingForAgent
+          const when = latest ? fmt.date(latest.date) : m.common.empty
           return (
             <Item
               className="ovlist-row progress ovpulse-row" data-proj={project.id}
@@ -217,9 +216,7 @@ function ProjectProgress({ rows, onOpen }: {
                 {latest
                   ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
                   : (
-                    <FadeText className="ovpulse-title" label={m.research.overview.noRecentRecord}>
-                      {m.research.overview.noRecentRecord}
-                    </FadeText>
+                    <FadeText className="ovpulse-title" label={m.common.empty}>{m.common.empty}</FadeText>
                   )}
                 <FadeText className="ovpulse-sub" label={when}>{when}</FadeText>
               </span>
@@ -228,7 +225,7 @@ function ProjectProgress({ rows, onOpen }: {
               </span>
               <span className="ovpulse-cell signal">
                 <Tag state={PULSE_STATE[signal.tone]}>{signal.label}</Tag>
-                <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>
+                {signal.detail === undefined ? null : <FadeText className="ovpulse-sub" label={signal.detail}>{signal.detail}</FadeText>}
               </span>
             </Item>
           )
@@ -382,7 +379,6 @@ function OverviewGantt({
  * Projects screen.
  */
 export function ResearchOverview() {
-  const fmt = useFormat()
   const m = useMessages()
   const [rows, setRows] = useState<ProjectOverview[] | null>(null)
   const { revision } = useVaultRevision()
@@ -400,38 +396,21 @@ export function ResearchOverview() {
     anchor === undefined ? jumpTo('project', id) : jumpTo('project', id, anchor)
   ), [jumpTo])
 
-  const moveTask = useCallback((
-    projectId: string, taskId: string, start: string, end: string, days: number,
-  ) => {
-    void write(
-      projectApi.updateTask(projectId, taskId, { start, end }),
-      { note: m.project.plan.taskMoved(days) },
-    )
-  }, [write, m])
+  const moveTask = useCallback((projectId: string, taskId: string, start: string, end: string) => {
+    void write(projectApi.updateTask(projectId, taskId, { start, end }))
+  }, [write])
 
-  const moveTaskWindow = useCallback((
-    projectId: string, taskId: string,
-    patch: Pick<Task, 'start' | 'end' | 'window'>, slots: number,
-  ) => {
-    void write(
-      projectApi.updateTask(projectId, taskId, patch),
-      {
-        note: m.research.overview.taskWindowMovedHours(slots, Math.abs(slots) * DAY_SLOT_HOURS),
-      },
-    )
-  }, [write, m])
+  const moveTaskWindow = useCallback((projectId: string, taskId: string, patch: Pick<Task, 'start' | 'end' | 'window'>) => {
+    void write(projectApi.updateTask(projectId, taskId, patch))
+  }, [write])
 
   const moveMilestone = useCallback((projectId: string, milestoneId: string, date: string) => {
-    void write(
-      projectApi.updateMilestone(projectId, milestoneId, { date }),
-      { note: m.project.plan.rescheduledTo(fmt.date(date)) },
-    )
-  }, [write, fmt, m])
+    void write(projectApi.updateMilestone(projectId, milestoneId, { date }))
+  }, [write])
 
   const updateMilestone = useCallback((projectId: string, milestoneId: string, patch: Pick<Milestone, 'title' | 'date'>) => write(
     projectApi.updateMilestone(projectId, milestoneId, patch),
-    { note: m.project.plan.milestoneUpdated },
-  ), [write, m])
+  ), [write])
 
   const deleteMilestone = useCallback((projectId: string, milestoneId: string) => {
     void write(
@@ -442,8 +421,7 @@ export function ResearchOverview() {
 
   const newMilestone = useCallback((projectId: string, date: string, title: string) => write(
     projectApi.createMilestone(projectId, { date, title, done: false }),
-    { note: m.project.plan.milestoneCreated },
-  ), [write, m])
+  ), [write])
 
   return (
     <PageShell>

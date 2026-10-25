@@ -425,7 +425,7 @@ test.describe(() => {
 test('阅读器顶栏与面包屑写的是这一篇,面包屑上一段回到论文屏', async ({ win }) => {
   await openFromPapers(win)
 
-  await expect(shown(win, '.paper-chat .desk-head .t')).toHaveText(`${READABLE_TITLE} · 阅读中`)
+  await expect(shown(win, '.paper-chat .desk-head .t')).toHaveText(READABLE_TITLE)
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文', READABLE_TITLE])
   // Of the segments taken from the screen the reader came from, only the last is a link, back to that screen.
   await expect(win.locator('#crumb .cseg.link')).toHaveText(['论文'])
@@ -442,12 +442,12 @@ const READABLE_ID = '13979-STAR-Speculative-Decodin'
 const readingOf = (win: Page) =>
   call<{ notes: unknown[]; highlights: unknown[] }>(win, 'papers.reading', { id: READABLE_ID })
 
-/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+/** Clicks Undo on the notice the last write showed, and waits for the notice to close; the caller waits for what comes back. */
 async function undoFromNotice(win: Page): Promise<void> {
   const undo = win.locator('#notice .btn')
   await expect(undo).toHaveText('撤销')
   await undo.click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+  await expect(win.locator('#notice')).not.toHaveClass(/\bshow\b/)
 }
 
 test('删掉一条笔记,提示里的撤销把它放回', async ({ win }) => {
@@ -500,7 +500,7 @@ test('返回钮回到来路那一屏,阅读器里读到哪一篇还留着', asyn
   await expect(shown(win, '.ptable')).toHaveCount(1)
 
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
-  await expect(shown(win, '.paper-chat .desk-head .t')).toHaveText(`${READABLE_TITLE} · 阅读中`)
+  await expect(shown(win, '.paper-chat .desk-head .t')).toHaveText(READABLE_TITLE)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
 })
 

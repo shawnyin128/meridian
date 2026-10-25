@@ -103,7 +103,7 @@ export function CellPicker({ column, values, onCommit, onClose, keep }: {
       candidates={hits.map((o) => ({ id: o, label: <Tag shape="chip" className="tagchip">{o}</Tag>, checked: values.includes(o) }))}
       onPick={(candidate) => { void onCommit(candidate.id, false) }}
       create={isNew ? { text: typed, label: m.papers.cellPicker.createNew(typed), onCreate: create } : undefined}
-      empty={m.papers.columnMenu.noOptionsHint}
+      empty={m.common.noResults}
     />
   )
 }

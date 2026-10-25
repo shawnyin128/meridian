@@ -454,8 +454,6 @@ export const PATTERNS = {
     metrics: 'text',
     entries: [
       entry('shared:PageNote', '.page-note'),
-      entry('hand:routes/Inbox.tsx', '.discovery-note'),
-      entry('hand:routes/Settings.tsx', '.storage-state'),
       entry('hand:routes/Projects.tsx', '.project-card-label'),
       entry('hand:components/project/ResearchGraph.tsx', '.glegend'),
       entry('hand:components/FirstRunChecklist.tsx', '.firstrun-heading'),

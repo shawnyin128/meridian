@@ -14,8 +14,6 @@
 /* The paper table's group bar */
 .filters{display:flex;gap:var(--sp-6);margin-bottom:var(--sp-12)}
 
-.discovery-summary{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-12);margin:calc(-1 * var(--sp-4)) 0 var(--sp-16)}
-.discovery-note{margin:0;color:var(--ter);font-size:var(--fs-sm)}
 
 /*
  * Two-column page: body text on the left, a property column on the right with rows of related chips

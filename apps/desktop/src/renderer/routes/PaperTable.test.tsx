@@ -352,6 +352,30 @@ describe('PaperTable', () => {
     expect(openedScreens).toEqual([['reader', 'p1'], ['wiki', `${PAPER_PAGE}p1`]])
   })
 
+  it('详情里文件那一行只写页数，不写 PDF 和已保存', async () => {
+    const paged = { ...ROW, pageCount: 12 }
+    jumpHere = { screen: 'papers', target: 'p1', from: 'papers', seq: 1, anchor: { detail: true } }
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [paged], total: 1 })
+    getCall.resolve(paged)
+    await flush()
+    const file = [...host.querySelectorAll('.pdetail .paper-meta-list dt')].find((dt) => dt.textContent === '文件')!
+    expect(file.nextElementSibling?.textContent).toBe('12 页')
+  })
+
+  it('拖进文件时整页只画出虚线落点，不写一句松开导入', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const enter = new Event('dragenter', { bubbles: true, cancelable: true })
+    Object.defineProperty(enter, 'dataTransfer', { value: { types: ['Files'] } })
+    await act(async () => { host.querySelector('.paper-library')!.dispatchEvent(enter) })
+    const drop = host.querySelector('.paper-drop')
+    expect([drop !== null, drop?.textContent]).toEqual([true, ''])
+  })
+
   it('带详情落点跳进来时打开那篇的详情,搜索框不填字', async () => {
     jumpHere = { screen: 'papers', target: 'p1', from: 'feed', seq: 1, anchor: { detail: true } }
     const host = mount()
@@ -473,7 +497,7 @@ describe('PaperTable', () => {
     expect(gotIds).toHaveLength(opened)
   })
 
-  it('上传把 PDF 交给 Core,落地后清掉搜索并由最近添加排序把它留在第一页', async () => {
+  it('上传把 PDF 交给 Core,上传中导入按钮是共享的忙碌状态,落地后清掉搜索并由最近添加排序把它留在第一页', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -489,7 +513,9 @@ describe('PaperTable', () => {
     await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
     expect(importCall.filename).toBe('新论文.pdf')
     expect([...importCall.bytes]).toEqual([...bytes])
-    expect(host.querySelector<HTMLButtonElement>('.pdfupload')!.disabled).toBe(true)
+    const importing = host.querySelector<HTMLButtonElement>('.pdfupload')!
+    expect([importing.disabled, importing.getAttribute('aria-busy'), importing.getAttribute('aria-label'), importing.textContent])
+      .toEqual([true, 'true', '正在导入…', '导入 PDF…'])
 
     const paper = { ...ROW, id: 'uploaded', title: '新论文' }
     importCall.resolve({ kind: 'added', paper })
@@ -1088,14 +1114,14 @@ describe('PaperTable', () => {
     expect([width('t'), width('short')]).toEqual(['410px', '170px'])
   })
 
-  it('列宽把手在共享 tooltip 里写出它调的是哪一列,下一行说可以拖动', async () => {
+  it('列宽把手在共享 tooltip 里只写出它调的是哪一列,不再说可以拖动', async () => {
     const { grip } = await laidOutTable()
     vi.useFakeTimers()
     act(() => { grip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
     act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
     vi.useRealTimers()
     const tip = document.querySelector('[role="tooltip"]')
-    expect([tip?.firstChild?.textContent, tip?.querySelector('.tooltip-note')?.textContent]).toEqual(['「标题」列宽', '拖动调整宽度'])
+    expect([tip?.textContent, tip?.querySelector('.tooltip-note')]).toEqual(['「标题」列宽', null])
     expect(grip.hasAttribute('title')).toBe(false)
   })
 
@@ -1173,7 +1199,7 @@ describe('PaperTable', () => {
     await altOn(headerOf(host, '评分').querySelector('.table-grip')!, 'ArrowLeft')
     await altOn(headerOf(host, '标题').querySelector('.table-sort')!, 'ArrowRight')
     expect(setColumnsCalls).toHaveLength(2)
-    expect(successes.at(-1)![0]).toBe('已调整列顺序')
+    expect(successes).toEqual([])
   })
 
   it('列宽把手上的 Alt+方向键留给挪列,不调列宽;不按 Alt 的方向键仍只调列宽', async () => {

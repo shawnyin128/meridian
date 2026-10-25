@@ -15,7 +15,7 @@ import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
-import { TitleNote } from '../components/TitleNote.js'
+import { Tooltip } from '../components/Tooltip.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
@@ -49,7 +49,7 @@ function ClearButton({ count, onClear }: { count: number; onClear: () => void })
   return (
     <ConfirmDialog
       trigger={<Button size="regular" tone="danger">{m.trash.clear}</Button>}
-      title={m.trash.confirmClear} description={m.trash.confirmClearDescription(count)}
+      title={m.trash.confirmClear} description={m.trash.confirmClearLoss(count)}
       confirmLabel={m.trash.confirmClearLabel} onConfirm={onClear}
     />
   )
@@ -72,16 +72,15 @@ export function Trash() {
   useEffect(() => load('entries', trash.list(), setEntries), [revision, load])
 
   const restore = (entry: TrashEntry) => {
-    void write(trash.restore(entry.id),
-      { note: <TitleNote message={m.trash.restored} title={plainOf(entry)} /> })
+    void write(trash.restore(entry.id))
   }
 
   const purge = (id: string) => {
-    void write(trash.purge(id), { note: m.trash.purged })
+    void write(trash.purge(id))
   }
 
   const clear = () => {
-    void write(trash.clear(), { note: m.trash.cleared })
+    void write(trash.clear())
   }
 
   const held = entries ?? []
@@ -109,9 +108,7 @@ export function Trash() {
                   <path d="M3 6h18" /><path d="M8 6V4h8v2" /><path d="M19 6l-1 14H6L5 6" />
                 </Icon>
               )}
-            >
-              {m.trash.empty}
-            </EmptyState>
+            />
           )
           : (
             <GroupedList>
@@ -122,7 +119,11 @@ export function Trash() {
                       <Item
                         className="trow" key={entry.id}
                         title={<FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>}
-                        trailing={<span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>}
+                        trailing={(
+                          <Tooltip label={m.trash.autoClear(daysLeft(entry.deletedAt, today))}>
+                            <span className="tm2">{m.trash.daysLeft(daysLeft(entry.deletedAt, today))}</span>
+                          </Tooltip>
+                        )}
                         actions={(
                           <>
                             <IconButton
@@ -135,7 +136,7 @@ export function Trash() {
                               trigger={(
                                 <IconButton label={m.common.deletePermanently} size="nested" tone="danger"><IconTrash /></IconButton>
                               )}
-                              title={m.trash.confirmPurge(plainOf(entry))} description={m.trash.confirmPurgeDescription}
+                              title={m.trash.confirmPurge(plainOf(entry))}
                               confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
                             />
                           </>

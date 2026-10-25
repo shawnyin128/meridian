@@ -9,12 +9,4 @@
   font-size:var(--fs-cap);line-height:1.55;white-space:pre-wrap;overflow-wrap:anywhere}
 .extension-command-code code{font:inherit}
 .extension-tutorial{margin-top:var(--sp-20);color:var(--sec)}
-.extension-tutorial-steps{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:var(--sp-10);margin:0;padding:0;
-  list-style:none}
-.extension-tutorial-steps li{display:flex;min-width:0;gap:var(--sp-10);padding:var(--sp-10);border-radius:var(--r-md);background:var(--field)}
-.extension-tutorial-steps li>span{display:grid;place-items:center;flex:0 0 20px;width:20px;height:20px;border-radius:var(--r-full);
-  background:var(--chip);color:var(--ink);font-size:var(--fs-cap);font-weight:var(--fw-semibold)}
-.extension-tutorial-steps strong{display:block;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
 .extension-prompt-groups{display:flex;flex-direction:column;gap:var(--sp-14)}
-.extension-healthy-list{margin:0;padding-left:var(--sp-20);color:var(--ter);font-size:var(--fs-cap);line-height:1.65}
-@media (max-width:760px){.extension-tutorial-steps{grid-template-columns:1fr}}

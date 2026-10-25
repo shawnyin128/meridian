@@ -110,7 +110,7 @@ test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,没有�
 
 test('只命中某几类时就只出那几类,类别名搜不到东西,搜不到时写没有找到,清空与 Escape 都收起面板', async ({ win }) => {
   await search(win, '对话：')
-  await expect(win.locator('#sRes .empty-state')).toHaveText('没有找到匹配的内容')
+  await expect(win.locator('#sRes .empty-state')).toHaveText('无结果')
 
   await search(win, 'Distillation-based')
   await expect(rows(win)).toHaveText(['方法：Distillation-based QAT'])
@@ -122,7 +122,7 @@ test('只命中某几类时就只出那几类,类别名搜不到东西,搜不到
 
   // A query with no hits keeps the panel open with an empty state; clearing the query closes it.
   await win.locator('#sSearch').fill('这几个字库里没有')
-  await expect(win.locator('#sRes .empty-state')).toHaveText('没有找到匹配的内容')
+  await expect(win.locator('#sRes .empty-state')).toHaveText('无结果')
   await expect(win.locator('#sRes .rrow')).toHaveCount(0)
   await win.locator('#sSearch').fill('')
   await expect(win.locator('#sRes')).toHaveCount(0)

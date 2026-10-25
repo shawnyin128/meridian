@@ -60,7 +60,7 @@ describe('ProjectRelations', () => {
         </MessagesProvider>,
       )
     })
-    expect(host.querySelector('.empty-state--section')?.textContent).toBe('No links yet')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('—')
   })
 
   it('offers editing on relation items only and puts the host editor in place of the item being edited', () => {

@@ -164,8 +164,8 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
 
   it('阅读器里问的问题还在生成时，对话屏打开同一条会话也显示停止，输入框不可再发', async () => {
     await askInReader()
-    expect(readerControl().getAttribute('aria-label')).toBe('正在生成，点击停止')
-    expect(chatControl().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(readerControl().getAttribute('aria-label')).toBe('停止生成')
+    expect(chatControl().getAttribute('aria-label')).toBe('停止生成')
     expect(document.querySelector('#composer')!.getAttribute('contenteditable')).toBe('false')
   })
 
@@ -183,7 +183,7 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
     root = createRoot(document.body.appendChild(document.createElement('div')))
     await act(async () => { root!.render(<MessagesProvider><Shell><Chat /></Shell></MessagesProvider>) })
     await settle()
-    expect(chatControl().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(chatControl().getAttribute('aria-label')).toBe('停止生成')
 
     act(() => chatControl().click())
     await settle()

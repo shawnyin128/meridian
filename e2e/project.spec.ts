@@ -519,7 +519,7 @@ test('拖菱形改期后,抬手补发的那次点击不算点在空白处新建�
   await expect.poll(async () => (await left()) - from).toBeCloseTo(3 * dayWidth)
   await win.mouse.up()
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已改期到 ${dshort(moved)}`)
+  await expect.poll(async () => (await readDraft(win)).milestones.find((m) => m.id === 'm2')?.date).toBe(moved)
   // Not mistaken for a create: a misread click would open the "New milestone" editor on the lane.
   await expect(win.locator('.ctxmenu')).toHaveCount(0)
   // The exact core data below already proves no extra milestone appeared and the other three are untouched.
@@ -548,11 +548,11 @@ test('拖任务条顺延后,开始与结束日期移动了相同的天数', asyn
   await win.mouse.move(x0 + 2 * dayWidth, y, { steps: 8 })
   // While dragging, the bar follows the pointer in whole days. Wait for it to move two days before
   // releasing: if the press missed the bar or the move was not delivered, it stays put and fails
-  // here, instead of after the release while waiting for a notice that never comes.
+  // here, instead of after the release while waiting for a write that never comes.
   await expect.poll(async () => (await left()) - from).toBe(Math.round(2 * dayWidth))
   await win.mouse.up()
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('任务顺延 2 天')
+  await expect.poll(async () => (await readDraft(win)).tasks.find((t) => t.id === 't2')?.start).toBe(fixtureDay(today, T2_START + 2))
   const t2 = (await readDraft(win)).tasks.find((t) => t.id === 't2')
   expect(t2?.start).toBe(fixtureDay(today, T2_START + 2))
   expect(t2?.end).toBe(fixtureDay(today, T2_END + 2))
@@ -577,7 +577,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   // here, since the "not a click" check below means nothing without a drag.
   await expect.poll(async () => (await left()) - from).toBe(Math.round(2 * dayWidth))
   await win.mouse.up()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('任务顺延 2 天')
+  await expect.poll(async () => (await readDraft(win)).tasks.find((t) => t.id === 't2')?.start).toBe(fixtureDay(today, T2_START + 2))
   // Click suppression still works: the click the browser sends after the release did not flash the row.
   await expect(win.locator('#taskList .ddlrow[data-row="t2"]')).not.toHaveAttribute('data-arrived')
 
@@ -594,7 +594,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await rowAction(row, '.plan-rename')
   await row.locator('.metadata-input').fill(EDITED_TASK_TITLE)
   await row.locator('.metadata-input').press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新任务')
+  await expect.poll(async () => (await readDraft(win)).tasks.find((t) => t.id === 't2')?.title).toBe(EDITED_TASK_TITLE)
 
   const saved = (await readDraft(win)).tasks.find((t) => t.id === 't2')!
   expect(saved.title).toBe(EDITED_TASK_TITLE)
@@ -628,7 +628,7 @@ test('任务时间列单独编辑时,名称、优先级与状态保持静息', a
   await expect(win.locator('.calg')).toHaveCount(0)
   await expect(form.locator('.choice-picker').first()).toHaveText(dshort(next))
   await form.locator('button', { hasText: '保存' }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新任务')
+  await expect.poll(async () => (await readDraft(win)).tasks.find((t) => t.id === 't2')?.start).toBe(fixtureDay(today, T2_START + 1))
   const saved = (await readDraft(win)).tasks.find((t) => t.id === 't2')!
   expect(saved.start).toBe(fixtureDay(today, T2_START + 1))
   expect(saved.title).toBe(before.title)
@@ -685,7 +685,7 @@ test('拖完菱形那一下不算点击,单击打开它的改名小窗并写回'
   // here, instead of after the release while waiting for a notice that never comes.
   await expect.poll(async () => (await left()) - from).toBeCloseTo(3 * dayWidth)
   await win.mouse.up()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(`已改期到 ${dshort(moved)}`)
+  await expect.poll(async () => (await readDraft(win)).milestones.find((m) => m.id === 'm2')?.date).toBe(moved)
   // Click suppression still works: the drag opened no milestone editor.
   await expect(win.locator('.ctxmenu')).toHaveCount(0)
 
@@ -698,14 +698,14 @@ test('拖完菱形那一下不算点击,单击打开它的改名小窗并写回'
   await expect(name).toHaveValue(titleOfM2)
   await name.fill(EDITED_MILESTONE_TITLE)
   await name.press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新里程碑')
 
-  const saved = await win.evaluate(async () => {
+  const m2 = () => win.evaluate(async () => {
     const project = await (window as unknown as MeridianWindow).meridian
       .call('project.get', { id: 'draft' }) as { milestones: { id: string; title: string; date: string }[] }
     return project.milestones.find((m) => m.id === 'm2')!
   })
-  expect(saved.title).toBe(EDITED_MILESTONE_TITLE)
+  await expect.poll(async () => (await m2()).title).toBe(EDITED_MILESTONE_TITLE)
+  const saved = await m2()
   // Editing the name did not revert the date set by the drag.
   expect(saved.date).toBe(moved)
 })
@@ -718,7 +718,6 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await win.locator('#taskList .task-create-row input').fill(NEW_TASK_TITLE)
   await win.locator('#taskList .task-create-row input').press('Enter')
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加任务')
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS + 1)
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(true)
 
@@ -734,12 +733,12 @@ const removable = (win: Page) => call<{
   tasks: unknown[]; milestones: unknown[]; relations: unknown[]; papers: string[]; attachments: unknown[]
 }>(win, 'project.get', { id: 'draft' })
 
-/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+/** Clicks Undo on the notice the last write showed, and waits for the notice to close; the caller waits for what comes back. */
 async function undoFromNotice(win: Page): Promise<void> {
   const undo = win.locator('#notice .btn')
   await expect(undo).toHaveText('撤销')
   await undo.click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+  await expect(win.locator('#notice')).not.toHaveClass(/\bshow\b/)
 }
 
 test('删掉一条任务,提示里的撤销把它原样放回计划', async ({ win }) => {
@@ -1552,7 +1551,6 @@ test('属性栏焦点格保存后,照旧收起其他正在编辑的东西(随笔
   await edit.click()
   await pin.fill('保存焦点格顺带收起随笔')
   await pin.press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新当前目标')
   await expect(memoActions).toHaveText(['编辑'])
 })
 
@@ -1677,8 +1675,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await expect(radios).toHaveText([...PROJECT_STATUSES])
   await expect(radios.filter({ hasText: ACTIVE_PROJECT })).toHaveAttribute('aria-checked', 'true')
   await radios.filter({ hasText: SHELVED_PROJECT }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新状态')
-  expect((await call<{ status: string }>(win, 'project.get', { id: 'draft' })).status).toBe(SHELVED_PROJECT)
+  await expect.poll(async () => (await call<{ status: string }>(win, 'project.get', { id: 'draft' })).status).toBe(SHELVED_PROJECT)
 
   // Priority: the current P0 is checked; ArrowDown twice reaches P1 and Enter writes it back.
   await side.locator('.property-label:text-is("优先级") + .property-value > .pv').click()
@@ -1688,8 +1685,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('ArrowDown')
   await expect(radios.nth(1)).toHaveAttribute('data-highlighted', '')
   await win.keyboard.press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新优先级')
-  expect((await call<{ priority: string }>(win, 'project.get', { id: 'draft' })).priority).toBe('p1')
+  await expect.poll(async () => (await call<{ priority: string }>(win, 'project.get', { id: 'draft' })).priority).toBe('p1')
 })
 
 test('任务详情里手动给任务挂科研节点,面板里显示挂上的节点并写进库里;手动挂的可以取消', async ({ win }) => {
@@ -1726,9 +1722,8 @@ test('任务与里程碑的状态格独立修改并立即写回 core', async ({ 
   const taskRow = win.locator(`#taskList .ddlrow[data-row="${firstTask.id}"]`)
   await taskRow.locator('.state-cell').click()
   await win.locator('[role="menuitemradio"]', { hasText: stateWord[nextState[firstTask.state]] }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新任务')
-  const afterTask = await call<{ tasks: { id: string; state: string }[] }>(win, 'project.get', { id: 'draft' })
-  expect(afterTask.tasks.find((task) => task.id === firstTask.id)?.state).toBe(nextState[firstTask.state])
+  await expect.poll(async () => (await call<{ tasks: { id: string; state: string }[] }>(win, 'project.get', { id: 'draft' }))
+    .tasks.find((task) => task.id === firstTask.id)?.state).toBe(nextState[firstTask.state])
 
   await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
   const firstMilestone = [...before.milestones].filter((milestone) => !milestone.done)
@@ -1736,10 +1731,8 @@ test('任务与里程碑的状态格独立修改并立即写回 core', async ({ 
   const milestoneRow = win.locator(`#msList .ddlrow[data-row="${firstMilestone.id}"]`)
   await milestoneRow.locator('.state-cell').click()
   await win.locator('[role="menuitemradio"]', { hasText: firstMilestone.done ? '未完成' : '已完成' }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新里程碑')
-  const afterMilestone = await call<{ milestones: { id: string; done: boolean }[] }>(win, 'project.get', { id: 'draft' })
-  expect(afterMilestone.milestones.find((milestone) => milestone.id === firstMilestone.id)?.done)
-    .toBe(!firstMilestone.done)
+  await expect.poll(async () => (await call<{ milestones: { id: string; done: boolean }[] }>(win, 'project.get', { id: 'draft' }))
+    .milestones.find((milestone) => milestone.id === firstMilestone.id)?.done).toBe(!firstMilestone.done)
 })
 
 test('红色垃圾桶直接删除任务,不会先把这一行切进编辑态', async ({ win }) => {
@@ -1780,7 +1773,7 @@ test('科研图由 Agent 管理:空图没有 App 侧新增入口', async ({ win 
   await win.locator('.screenslot:not([hidden]) [data-proj="sched"]').click()
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   await main.locator('.segmented-control>button', { hasText: '科研图' }).click()
-  await expect(main.locator('.record-view .empty-state--section')).toHaveText('还没有科研图')
+  await expect(main.locator('.record-view .empty-state--section')).toHaveText('—')
   await expect(main.locator('.section-heading-actions .btn', { hasText: '节点' })).toHaveCount(0)
 })
 

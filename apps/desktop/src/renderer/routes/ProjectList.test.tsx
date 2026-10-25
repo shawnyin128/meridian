@@ -76,7 +76,7 @@ describe('项目列表空着时', () => {
     api.projects = []
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     expect(host.querySelector('.section-heading')?.textContent).toContain('进行中')
-    expect(host.querySelector('.empty-state--section')?.textContent).toBe('还没有进行中的项目')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('—')
     expect(host.querySelector('.section-heading .sort-menu')).toBeNull()
     expect(host.querySelector('#projNew')).not.toBeNull()
   })
@@ -123,8 +123,8 @@ describe('项目列表的卡片', () => {
     expect(recent.lastElementChild!.lastElementChild!.classList.contains('source-label')).toBe(true)
   })
 
-  it('还没有推进时写还没有记录', async () => {
-    expect(await recentProgress(summary({}))).toBe('最近推进还没有记录')
+  it('还没有推进时最近推进一格写 —', async () => {
+    expect(await recentProgress(summary({}))).toBe('最近推进—')
   })
 
   it('停滞超过 7 天的项目在卡片头里、名字那一行的后面挂一个警示标签写着几天无推进,卡片底下不再多一行', async () => {
@@ -234,7 +234,7 @@ describe('项目的排序', () => {
     await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
     const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
     expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 3))
-      .toEqual([['重命名', false], ['上移', true], ['下移', false]])
+      .toEqual([['重命名…', false], ['上移', true], ['下移', false]])
     await act(async () => { items[2]!.click() })
     expect(await reorder()).toHaveBeenCalledWith(['b', 'a', 'c'])
   })
@@ -272,7 +272,7 @@ describe('项目改名', () => {
   const rename = async (id: string) => {
     const dots = host.querySelector<HTMLElement>(`[data-proj="${id}"] .dots`)!
     await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
-    const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((held) => held.textContent === '重命名')!
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((held) => held.textContent === '重命名…')!
     await act(async () => { item.click() })
     // The menu hands focus over a timer after it closes; the field opens then.
     await vi.waitFor(() => expect(host.querySelector(`[data-proj="${id}"] .metadata-input`)).not.toBeNull())

@@ -75,7 +75,7 @@ export function TidyList({ rows, titles, failed, onOpen }: {
 }) {
   const m = useMessages()
   const t = m.wiki.tidy
-  if (rows.length === 0) return <EmptyState variant="section">{t.empty}</EmptyState>
+  if (rows.length === 0) return <EmptyState variant="section" />
   if (titles === null) return failed ? null : <LoadingPlaceholder shape="rows" />
   const name = (id: string): string => titles[id] ?? id
   /** A missing page's name as plain text, with the trash mark after it when it is in the trash. */

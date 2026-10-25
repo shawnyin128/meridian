@@ -254,7 +254,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
             <ProjectChips paper={paper} onError={(error) => notice.refusal(errorLabel(m, error))} />
           </Property>
           <Property label={m.papers.metadata.wikiLabel}>{pageStateName(paper.pageState, m.papers.metadata.pageState)}</Property>
-          <Property label={m.papers.metadata.fileLabel}>{m.papers.metadata.fileSummary(String(paper.pageCount || '—'))}</Property>
+          <Property label={m.papers.metadata.fileLabel}>{paper.pageCount ? m.papers.metadata.pages(paper.pageCount) : m.common.empty}</Property>
         </PropertyList>
       </div>
     </div>

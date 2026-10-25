@@ -83,7 +83,7 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
         )}
       >{m.project.sections.links}
       </SectionHeading>
-      {visible.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
+      {visible.length === 0 ? <EmptyState variant="section" /> : null}
       {visible.map((row) => (
         <ChipList
           key={row} label={r.rows[row]} data={{ 'data-relations': row }} ref={adding === row ? draftRow : undefined}

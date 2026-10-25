@@ -99,7 +99,7 @@ describe('ResearchMap', () => {
         group.querySelector('.research-map-group-name')?.textContent,
         group.querySelector('.research-map-group-kind')?.textContent ?? null,
       ])
-    expect(kinds).toContainEqual(['Speculative decoding', '主题或方法信号'])
+    expect(kinds).toContainEqual(['Speculative decoding', null])
     expect(kinds).toContainEqual(['Kernel fusion', null])
     const detail = host.querySelector('.research-map-detail')!
     expect(detail.querySelector('.research-map-readonly')).toBeNull()

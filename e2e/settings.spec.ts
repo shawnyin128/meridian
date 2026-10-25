@@ -211,7 +211,7 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   await expect(win.locator('.setdlg .storage-reset')).toContainText('重置论文库')
   const directory = win.locator('.setdlg .storage-root .directory-field')
   await expect(directory.locator('input')).toHaveValue(/meridian/i)
-  await expect(directory.locator('[aria-label="选择论文库根目录"]')).toHaveCount(1)
+  await expect(directory.locator('[aria-label="选择论文库根目录…"]')).toHaveCount(1)
   await expect(win.getByRole('button', { name: '选择根目录…' })).toHaveCount(0)
   // Reset is enabled in normal use; the shared fixture must not be cleared by a UI test.
   await expect(win.locator('.setdlg .storage-reset .btn')).toBeDisabled()
@@ -416,7 +416,7 @@ test('外观主题从新建、保存、套用,到重新加载后还在、在卡�
       await win.locator('.setdlg button[aria-label="管理「晨雾」"]').click()
     }
     await menu()
-    await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['编辑', '删除'])
+    await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['编辑…', '删除'])
     await win.locator('[role="menu"] [role="menuitem"]', { hasText: '编辑' }).click()
     await expect(win.locator('.setdlg input[aria-label="名称"]')).toHaveValue('晨雾')
     await win.locator('.setdlg [data-module="ground"]').click()

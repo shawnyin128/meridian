@@ -59,6 +59,12 @@ describe('AboutDialog', () => {
       line.querySelector('.inline-message-text')?.textContent]).toEqual([true, true, '已是最新版本'])
   })
 
+  it('检查中时提示框里是载入占位，不写一句正在检查', async () => {
+    const line = await statusLine({ phase: 'checking', current: '0.0.19000' })
+    expect([line.querySelector('.inline-message-text .loading-placeholder') !== null, line.textContent, line.querySelector('.ring')])
+      .toEqual([true, '', null])
+  })
+
   it('下载中时提示框自己的底从左填到下载的进度', async () => {
     const line = await statusLine({ phase: 'downloading', version: '0.0.20000', percent: 40, current: '0.0.19000' })
     expect([line.matches('.inline-message--info.progress-host'), line.firstElementChild?.className,

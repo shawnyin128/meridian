@@ -12,8 +12,6 @@
 .libbar{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-12)}
 .pdfupload-input{display:none}
 .paper-drop{position:absolute;inset:46px 0 0;z-index:30;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--sp-8);background:color-mix(in srgb,var(--content) 88%,transparent);border:2px dashed var(--ink);color:var(--ink);backdrop-filter:blur(8px);pointer-events:none}
-.paper-drop strong{font-size:var(--fs-read)}
-.paper-drop span{font-size:var(--fs-sm);color:var(--ter)}
 /* Filter input: the shared field input at the size of the Watches screen's one-line add box (.af-in). */
 .paper-search{flex:1}
 

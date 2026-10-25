@@ -13,9 +13,10 @@ export interface PluginVersionEntryProps {
 
 /** The plugin row heading the extension list: the newest plugin version, which the skills and MCP share, and a check for a newer one. */
 export function PluginVersionEntry({ plugin, checking, onCheck }: PluginVersionEntryProps) {
-  const copy = useMessages().settings.extensions.plugin
+  const m = useMessages()
+  const copy = m.settings.extensions.plugin
   const fmt = useFormat()
-  const checked = plugin.checkedAt === null ? copy.neverChecked : copy.checkedAt(fmt.day(plugin.checkedAt))
+  const checked = plugin.checkedAt === null ? m.common.empty : copy.checkedAt(fmt.day(plugin.checkedAt))
   return (
     <section className="extension-entry" data-plugin-version={plugin.version}>
       <SectionHeading

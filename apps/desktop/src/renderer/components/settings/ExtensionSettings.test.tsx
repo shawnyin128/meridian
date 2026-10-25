@@ -34,18 +34,18 @@ describe('ExtensionSettings', () => {
     host.remove()
   })
 
-  it('keeps the command compact, copies independently, and expands details on demand', () => {
-    const copy = vi.fn()
+  it('keeps the command compact, copies independently, and expands details on demand', async () => {
+    const copy = vi.fn(async () => true)
     act(() => root.render(
       <MessagesProvider>
-        <ExtensionSettings statuses={[extension]} failed={false} onCopy={copy} onCopyPrompt={vi.fn()} />
+        <ExtensionSettings statuses={[extension]} failed={false} onCopy={copy} />
       </MessagesProvider>,
     ))
     const toggle = host.querySelector<HTMLButtonElement>('.card-tray-toggle')!
     const copyButton = host.querySelector<HTMLButtonElement>('.card-tray-action button')!
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    act(() => copyButton.click())
-    expect(copy).toHaveBeenCalledWith('Codex', extension.installCommand)
+    await act(async () => { copyButton.click() })
+    expect(copy).toHaveBeenCalledWith(extension.installCommand)
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
     act(() => toggle.click())
     expect(toggle.getAttribute('aria-expanded')).toBe('true')
@@ -56,33 +56,53 @@ describe('ExtensionSettings', () => {
     act(() => root.render(
       <MessagesProvider>
         <ExtensionSettings
-          statuses={[extension]} failed={false} onCopy={vi.fn()} onCopyPrompt={vi.fn()}
+          statuses={[extension]} failed={false} onCopy={vi.fn(async () => true)}
           plugin={{ plugin: { version: '0.0.9', checkedAt: null }, checking: false, onCheck: vi.fn() }}
         />
       </MessagesProvider>,
     ))
     expect([...host.querySelectorAll('.extension-entry .section-heading-meta')].map((p) => p.textContent))
-      .toEqual(['Not checked online yet'])
+      .toEqual(['—'])
     expect(host.querySelector('[data-extension-tutorial] > .section-heading + p')).toBeNull()
     expect(host.querySelector('.extension-tutorial-steps li p')).toBeNull()
   })
 
-  it('shows workflow guidance and copies the selected prompt without exposing tool syntax', () => {
-    const copyPrompt = vi.fn()
+  it('lists the ten prompts as one-line rows under their groups that copy on click, without tutorial steps or a list of what an agent does', async () => {
+    const copy = vi.fn(async () => true)
     act(() => root.render(
       <MessagesProvider>
-        <ExtensionSettings statuses={[extension]} failed={false} onCopy={vi.fn()} onCopyPrompt={copyPrompt} />
+        <ExtensionSettings statuses={[extension]} failed={false} onCopy={copy} />
       </MessagesProvider>,
     ))
 
-    expect(host.querySelector('[data-extension-tutorial]')?.textContent)
-      .toContain('Use Meridian with a coding agent')
-    expect(host.querySelectorAll('.extension-tutorial-steps')).toHaveLength(1)
+    const tutorial = host.querySelector('[data-extension-tutorial]')!
+    expect([tutorial.querySelector('.section-heading')?.textContent, tutorial.querySelectorAll('ol, ul, h4').length])
+      .toEqual(['Use Meridian with a coding agent', 0])
     expect(host.querySelectorAll('.extension-prompt-group')).toHaveLength(4)
     expect(host.querySelectorAll('.extension-prompt')).toHaveLength(10)
-    const firstPrompt = host.querySelector('.extension-prompt .item-meta')?.textContent ?? ''
-    act(() => host.querySelector<HTMLButtonElement>('.extension-prompt button')!.click())
-    expect(copyPrompt).toHaveBeenCalledWith(firstPrompt)
+    const first = host.querySelector<HTMLElement>('.extension-prompt')!
+    expect(first.querySelector('.item-meta .fade-text')).not.toBeNull()
+    const firstPrompt = first.querySelector('.item-meta')?.textContent ?? ''
+    await act(async () => { first.querySelector<HTMLButtonElement>('button')!.click() })
+    expect(copy.mock.calls).toEqual([[firstPrompt]])
+    await act(async () => { first.querySelector<HTMLElement>('.item-title')!.click() })
+    expect(copy.mock.calls).toEqual([[firstPrompt], [firstPrompt]])
     expect(firstPrompt).not.toContain('meridian.context')
+  })
+
+  it('turns a copy button into the check once its text is on the clipboard, and leaves it alone when copying failed', async () => {
+    let copied = true
+    act(() => root.render(
+      <MessagesProvider>
+        <ExtensionSettings statuses={[extension]} failed={false} onCopy={async () => copied} />
+      </MessagesProvider>,
+    ))
+    const prompt = () => host.querySelector<HTMLButtonElement>('.extension-prompt button')!
+    await act(async () => { prompt().click() })
+    expect([prompt().querySelector('svg') !== null, prompt().getAttribute('aria-label')]).toEqual([true, 'Copied'])
+    copied = false
+    const command = () => host.querySelector<HTMLButtonElement>('.card-tray-action button')!
+    await act(async () => { command().click() })
+    expect(command().querySelector('svg')).toBeNull()
   })
 })

@@ -126,12 +126,7 @@ export function Later() {
           ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
           : groups.length === 0
           ? (
-            <EmptyState
-              variant="page"
-              icon={<Icon sw={1.4}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>}
-            >
-              {m.later.empty}
-            </EmptyState>
+            <EmptyState variant="page" icon={<Icon sw={1.4}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>} />
           )
           : (
             <GroupedList>
@@ -147,7 +142,7 @@ export function Later() {
                         <>
                         {busy.has(x.id)
                           ? (
-                            <IconButton label={m.later.actions.downloading} size="nested" className="busy" disabled>
+                            <IconButton label={m.inbox.actions.download} size="nested" className="busy" disabled aria-busy>
                               <DownloadRing progress={jobs?.downloads?.find((item) => item.id === x.id) ?? null} />
                             </IconButton>
                           )

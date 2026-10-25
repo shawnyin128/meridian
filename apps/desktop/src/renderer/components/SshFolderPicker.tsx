@@ -203,7 +203,7 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
         {opening
           ? <LoadingPlaceholder shape="rows" />
           : folder.folders.length === 0
-            ? <EmptyState variant="section">{m.common.sshFolders.empty}</EmptyState>
+            ? <EmptyState variant="section" />
             : (
               <List variant="embedded" rows="fill" aria-label={folder.path}>
                 {folder.folders.map((child) => (
