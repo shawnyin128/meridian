@@ -5,7 +5,7 @@ import { trash as zh } from '../zh/trash.js'
 export const trash = {
   title: 'Trash',
   kinds: {
-    inbox: 'Inmail', later: 'Read Later', paper: 'Papers', project: 'Projects', idea: 'Ideas', chat: 'Chats',
+    inbox: 'Inmail', later: 'Read later', paper: 'Papers', project: 'Projects', idea: 'Ideas', chat: 'Chats',
     attachment: 'Attachments',
   },
   autoClear: (days: number) => `Deletes automatically in ${days} ${pluralEn(days, { one: 'day', other: 'days' })}`,

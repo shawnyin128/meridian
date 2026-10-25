@@ -33,7 +33,7 @@ export const settings = {
     dark: 'Dark',
     system: 'Follow system',
     themeHeading: 'Theme',
-    themes: { default: 'Default', cinnabar: 'Cinnabar', luodian: 'Nacre', chestnut: 'Autumn Leaf', xipi: 'Afterglow' },
+    themes: { default: 'Default', cinnabar: 'Cinnabar', luodian: 'Nacre', chestnut: 'Autumn leaf', xipi: 'Afterglow' },
     themeProblems: {
       unreadable: 'Cannot be read', syntax: 'Not JSON', version: 'Needs a newer App', format: 'Not a theme',
       id: 'Id differs from file name', 'built-in': 'Built-in theme id',
@@ -211,7 +211,7 @@ export const settings = {
       'not-installed': 'Not installed',
     },
     plugin: {
-      name: 'Meridian Plugin',
+      name: 'Meridian plugin',
       latest: (version: string) => `Latest ${version}`,
       checkedAt: (date: string) => `Last checked ${date}`,
       check: 'Check for updates',

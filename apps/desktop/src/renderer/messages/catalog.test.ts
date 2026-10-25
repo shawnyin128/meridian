@@ -94,6 +94,25 @@ describe('占位文字和要再问一步的命令', () => {
   })
 })
 
+describe('英文的大小写', () => {
+  // Names that keep their capitals inside a sentence: products, services, formats and Meridian's own surfaces.
+  const PROPER = new Set([
+    'Meridian', 'App', 'Wiki', 'Paper', 'Lab', 'Skill', 'Skills', 'MCP', 'Harness', 'PDF', 'PDFs', 'API', 'AI', 'ID', 'IDs', 'URL',
+    'SSH', 'JSON', 'arXiv', 'Semantic', 'Scholar', 'OpenAI', 'Anthropic', 'Claude', 'Code', 'Codex', 'Google', 'Gemini', 'DeepSeek',
+    'OpenRouter', 'Ollama', 'LM', 'Studio', 'Responses', 'Chat', 'Completions', 'GitHub', 'Markdown', 'Transformer', 'I',
+  ])
+  // Texts that are content, not UI copy: the agent prompts and the sample paper the theme editor previews.
+  const CONTENT = [/^settings\.extensions\.tutorial\.groups\.\d+\.examples\.\d+\.prompt$/, /^settings\.appearance\.editor\.preview\./]
+
+  it('en: one capitalization style, sentence case: inside a segment only names keep a capital', () => {
+    const off = texts(en as unknown as Node).filter(([path, text]) => !CONTENT.some((pattern) => pattern.test(path))
+      && text.split(/ · |: |\. |[“"(]|\? /).some((segment) => (segment.match(/[A-Za-z][A-Za-z'’-]*/g) ?? []).slice(1)
+        // NaN is a number argument the sample fills with text, not a word of the copy.
+        .some((word) => /^[A-Z][a-z]/.test(word) && word !== 'NaN' && !PROPER.has(word.replace(/[’']s$/, '').split('-')[0]!))))
+    expect(off).toEqual([])
+  })
+})
+
 describe('一个概念一个词', () => {
   /** The key paths of the project and research screens' texts that hold `word`. */
   const using = (word: string): string[] => texts({ project: zh.project, research: zh.research } as unknown as Node)

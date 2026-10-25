@@ -3,7 +3,7 @@ import { changelog as zh } from '../zh/changelog.js'
 
 /** English counterpart of `zh/changelog`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const changelog = {
-  title: 'Recent Changes',
+  title: 'Recent changes',
   unarchivedHeading: 'Current',
   archivedHeading: 'Archived',
   archiveAll: 'Archive all',

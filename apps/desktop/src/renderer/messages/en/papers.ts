@@ -26,7 +26,7 @@ export const papers = {
     groupFieldAria: 'Group field',
     groupValueAria: 'Group value',
   },
-  views: { aria: 'Paper library view', table: 'Table', researchMap: 'Research Map' },
+  views: { aria: 'Paper library view', table: 'Table', researchMap: 'Research map' },
   researchMap: {
     limit: (shown: number, total: number) => `${shown} / ${total} ${pluralEn(total, { one: 'paper', other: 'papers' })}`,
     groupListAria: 'Automatic research groups',
