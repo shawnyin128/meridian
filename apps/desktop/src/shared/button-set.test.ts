@@ -226,6 +226,13 @@ describe('按钮组', () => {
     expect([on, off]).toEqual(['var(--selected) var(--on-selected)', `${TRANSPARENT} var(--sec)`])
   })
 
+  it('只有 Button 写按钮组的类：别的组件和屏幕不借 btn 类画按钮', () => {
+    const writers = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
+      .filter((path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx'))
+      .filter((path) => /['"`](?:[a-z][\w-]* )*btn(?: [a-z][\w-]*)*['"`]/.test(readFileSync(join(RENDERER, path), 'utf8')))
+    expect(writers).toEqual([join('components', 'Button.tsx')])
+  })
+
   it('别的样式表和别的规则不改按钮的尺寸、字号、底色、边框、光标或禁用样式', () => {
     const names = new RegExp(`\\.(?:${['btn', ...PAIRED].join('|')})(?![\\w-])`)
     const offenders = STYLESHEETS.flatMap((path) => rulesOf(readFileSync(join(RENDERER, path), 'utf8'))
