@@ -234,11 +234,11 @@ test('项目名很长、行又放不下时,标题留够十二个字,放不下的
     await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
     await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
     expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height}`).toEqual([])
-    expect(await narrowTitles(shown(win).locator('.idea-row-open')), `${width}×${height}`).toEqual([])
+    expect(await narrowTitles(shown(win).locator('.idea-row > .item-main')), `${width}×${height}`).toEqual([])
     await row.click()
     await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(1)
     expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height} 详情开着`).toEqual([])
-    expect(await narrowTitles(shown(win).locator('.idea-row-open')), `${width}×${height} 详情开着`).toEqual([])
+    expect(await narrowTitles(shown(win).locator('.idea-row > .item-main')), `${width}×${height} 详情开着`).toEqual([])
     await shown(win).locator('.idea-detail-panel .panel-close').click()
     await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(0)
   }
