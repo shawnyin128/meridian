@@ -85,10 +85,6 @@ export const papers = {
     settings: '列设置',
     options: '选项',
     changeType: '改类型',
-    rename: '重命名列',
-    deleteColumn: '删除列',
-    renameOption: '重命名选项',
-    deleteOption: '删除选项',
   },
   cellPicker: {
     placeholder: '选项',

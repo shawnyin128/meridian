@@ -19,7 +19,6 @@
 .plan-cell{box-sizing:border-box;margin:0;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer}
 .plan-cell:hover{box-shadow:0 0 0 1px var(--sep-strong)}
 .state-cell{padding:var(--sp-2) var(--sp-4);border-radius:var(--r-sm)}
-.task-name{display:flex;align-items:center;min-width:0}
 .task-name-with-origin{display:flex;align-items:center;min-width:0}
 .task-name-with-origin>.source-label{margin-left:var(--sp-6)}
 .project-task-detail-meta{display:flex;align-items:center;gap:var(--sp-8)}
@@ -27,4 +26,3 @@
 .plan-name{box-sizing:border-box;display:flex;align-items:center;width:100%;height:20px;min-width:0;padding:0;border:0;border-radius:var(--r-sm);font:inherit;line-height:20px}
 .plan-name:hover{box-shadow:none}
 .plan-name.plan-open{flex:1;width:auto}
-.project-plan .plan-rename{margin:calc(-1 * var(--sp-2)) 0}

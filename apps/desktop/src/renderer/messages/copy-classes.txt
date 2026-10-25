@@ -138,6 +138,7 @@ common.priority.p1 state
 common.priority.p2 state
 common.remove action
 common.removeLink action
+common.rename action
 common.restore action
 common.retry action
 common.save action
@@ -254,11 +255,7 @@ papers.columnAdd.namePlaceholder placeholder
 papers.columnAdd.typeGroupAria aria
 papers.columnHeader.addColumn action
 papers.columnMenu.changeType action
-papers.columnMenu.deleteColumn action
-papers.columnMenu.deleteOption action
 papers.columnMenu.options action
-papers.columnMenu.rename action
-papers.columnMenu.renameOption action
 papers.columnMenu.settings action
 papers.columnType.multi action
 papers.columnType.select action
@@ -459,8 +456,6 @@ project.plan.addMilestone aria
 project.plan.addTask aria
 project.plan.addTaskOrMilestone aria
 project.plan.changeNode action
-project.plan.deleteMilestoneFor action
-project.plan.deleteTaskFor action
 project.plan.linkNode action
 project.plan.milestoneDeleted notice
 project.plan.milestoneMode label
@@ -470,7 +465,6 @@ project.plan.milestoneState.open state
 project.plan.newAction action
 project.plan.nodeHeading label
 project.plan.noteHeading label
-project.plan.renameTaskFor action
 project.plan.state.act state
 project.plan.state.done state
 project.plan.state.plan state
@@ -575,7 +569,6 @@ research.chips.pickerHeading label
 research.chips.unlinked notice
 research.list.create action
 research.list.createdFeedNote content
-research.list.rename action
 research.list.renameTitle aria
 research.list.sort action
 research.list.sortMilestone action

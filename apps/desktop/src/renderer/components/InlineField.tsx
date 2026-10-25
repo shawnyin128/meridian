@@ -21,10 +21,10 @@ export type InlineFieldProps = {
   /** Edits in a wrapping field that grows with its text, for values whose display wraps; Enter still saves. */
   multiline?: boolean
   /**
-   * Replaces the button the value rests in, for a value whose click belongs to the row or card around
-   * it: renders the value at rest, given `edit`, which opens the editor from an explicit control.
+   * Replaces the button the value rests in, for a name renamed from its … menu: the name at rest. The
+   * field then opens only from its kept draft, which the menu's Rename sets (see `keep` and DotsMenu).
    */
-  rest?: (edit: () => void) => ReactNode
+  rest?: ReactNode
   /**
    * Keeps the value being typed as a draft under `target` of `scope` (see `useDrafts`): the field is
    * open while that draft exists, so it comes back open after a restart, and closing drops it.
@@ -42,8 +42,8 @@ const UNKEPT: readonly string[] = []
 
 /**
  * The one in-place editor of a value, a name included: at rest it is the value as text whose whole
- * cell shows hover; a click, or the control `rest` gives, replaces only this cell with the inline
- * field, the text staying where it was. Submitting and cancelling follow
+ * cell shows hover; a click, or for a name its … menu's Rename, replaces only this cell with the
+ * inline field, the text staying where it was. Submitting and cancelling follow
  * `useInlineDraft`, the one convention across the app: Enter, focus leaving the control or a press
  * anywhere else saves, and Esc cancels; the window losing focus (switching to another app) does not
  * count as leaving. An unchanged value closes without calling `onSave`. `onSave` returns whether
@@ -104,7 +104,7 @@ export function InlineField({
       ? (
         <button type="button" className="metadata-editable" onClick={edit}>{(display ?? value) || empty}</button>
       )
-      : rest(edit)
+      : rest
   } else if (multiline) {
     field = (
       <FormTextarea

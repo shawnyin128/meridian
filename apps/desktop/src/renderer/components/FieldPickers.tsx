@@ -5,7 +5,7 @@ import { dnum } from '../../shared/dates.js'
 import { useToday } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import { ActionMenu, MenuRadioGroup, MenuRadioItem, type MenuSurface } from './ActionMenu.js'
+import { ActionMenu, MenuItem, MenuRadioGroup, MenuRadioItem, type MenuSurface } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
@@ -32,10 +32,12 @@ type PointerPlace = { sideOffset: number; alignOffset: number }
  * at the trigger; a right-click in a text field or on selected text keeps the system's edit menu, and
  * a row inside another opens only its own menu.
  * `onCloseAutoFocus` runs once the closed menu is about to hand focus back to its trigger; preventing
- * it leaves focus to an editor an item opens in place.
+ * it leaves focus to an editor an item opens in place. With `onRename` the menu starts with Rename,
+ * the one place a name is renamed from: picking it closes the menu, and once the menu has let go of
+ * focus, keeping it from the trigger, `onRename` opens the name's field in place, which takes focus.
  */
 export function DotsMenu({
-  children, label, stopRowActivation = false, open, onOpenChange, surface, onCloseAutoFocus,
+  children, label, stopRowActivation = false, open, onOpenChange, surface, onCloseAutoFocus, onRename,
 }: {
   children: ReactNode
   /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
@@ -46,9 +48,11 @@ export function DotsMenu({
   onOpenChange?: (open: boolean) => void
   surface?: MenuSurface
   onCloseAutoFocus?: (event: Event) => void
+  onRename?: () => void
 }) {
   const m = useMessages()
   const [own, setOwn] = useState(false)
+  const renaming = useRef(false)
   const [place, setPlace] = useState<PointerPlace | null>(null)
   const trigger = useRef<HTMLButtonElement>(null)
   const change = (next: boolean) => {
@@ -94,7 +98,17 @@ export function DotsMenu({
       }}
       {...(place === null ? {} : { align: 'start' as const, ...place })}
       {...(surface === undefined ? {} : { surface })}
-      {...(onCloseAutoFocus === undefined ? {} : { contentProps: { onCloseAutoFocus } })}
+      {...(onCloseAutoFocus === undefined && onRename === undefined ? {} : {
+        contentProps: {
+          onCloseAutoFocus: (event: Event) => {
+            onCloseAutoFocus?.(event)
+            if (!renaming.current) return
+            renaming.current = false
+            event.preventDefault()
+            onRename?.()
+          },
+        },
+      })}
       stopContentClickPropagation
       trigger={(
         <IconButton
@@ -102,7 +116,10 @@ export function DotsMenu({
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><IconDots /></IconButton>
       )}
-    >{children}</ActionMenu>
+    >
+      {onRename === undefined ? null : <MenuItem onSelect={() => { renaming.current = true }}>{m.common.rename}</MenuItem>}
+      {children}
+    </ActionMenu>
   )
 }
 

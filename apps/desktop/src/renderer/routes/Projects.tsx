@@ -74,8 +74,7 @@ function signals(project: ProjectSummary, todayIso: string) {
 
 /**
  * The … menu at the right end of a project row, the demo's projMenu: rename, move, change status,
- * delete. Rename closes the menu and turns the project's name into its inline field in place (see
- * ProjectName), keeping focus there.
+ * delete. Rename turns the project's name into its inline field in place (see ProjectName).
  */
 function ProjectMenu({ project, onMove, canMove, onStatus, onDelete }: {
   project: ProjectSummary
@@ -86,20 +85,9 @@ function ProjectMenu({ project, onMove, canMove, onStatus, onDelete }: {
 }) {
   const m = useMessages()
   const kept = useDrafts<string>(['project', project.id])
-  const renaming = useRef(false)
 
   return (
-    <DotsMenu
-      stopRowActivation
-      onCloseAutoFocus={(event) => {
-        if (!renaming.current) return
-        renaming.current = false
-        // The name's field opens once the menu has let go of focus, so focus goes to it.
-        event.preventDefault()
-        kept.set(RENAME, project.name)
-      }}
-    >
-      <MenuItem onSelect={() => { renaming.current = true }}>{m.research.list.rename}</MenuItem>
+    <DotsMenu stopRowActivation onRename={() => kept.set(RENAME, project.name)}>
       <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
       <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
       <MenuSeparator />
@@ -131,7 +119,7 @@ function ProjectName({ project, onRename, children }: {
     <InlineField
       label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', project.id], target: RENAME }}
       className="project-name" normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename}
-      rest={() => children}
+      rest={children}
     />
   )
 }

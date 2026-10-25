@@ -227,6 +227,26 @@ function press(el: Element): void {
   el.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 }
 
+/** The names of the items in the … menu of the column menu's row `row`, which it opens. */
+async function openRowMenu(row: Element): Promise<string[]> {
+  await act(async () => { row.querySelector('.dots')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+  return [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].map((item) => item.textContent ?? '')
+}
+
+/**
+ * Picks `item` from the … menu of the column menu's row `row`; a rename waits for the name's input,
+ * which opens once the menu has let go of focus.
+ */
+async function fromRowMenu(row: Element, item: '重命名' | '删除'): Promise<void> {
+  await openRowMenu(row)
+  const held = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((el) => el.textContent === item)!
+  await act(async () => { held.click() })
+  if (item === '重命名') await vi.waitFor(() => expect(row.querySelector('input.celledit')).not.toBeNull())
+}
+
+/** The column menu's row of the custom column named `label`. */
+const customRow = (label: string) => [...document.querySelectorAll('.mi.colrow:has(.dots)')].find((row) => row.textContent === label)!
+
 /** The text in each column of the table header. */
 function headTexts(host: HTMLElement): string[] {
   return [...host.querySelectorAll('.ptable thead th')].map((th) => th.textContent ?? '')
@@ -2107,7 +2127,7 @@ describe('PaperTable', () => {
     const gear = host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!
     await act(async () => { gear.click() })
     await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名选项"]')!.click() })
+    await fromRowMenu(document.querySelector('.mi.optrow')!, '重命名')
     // Look only inside the option row: the column draft header is in the document too, with the same
     // input.celledit class.
     const input = document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!
@@ -2129,7 +2149,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="删除列"]')!.click() })
+    await fromRowMenu(customRow('备注'), '删除')
     expect(setColumnsCalls.map((c) => c.columns.custom)).toEqual([[]])
 
     const before = bumps
@@ -2145,7 +2165,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="删除列"]')!.click() })
+    await fromRowMenu(customRow('备注'), '删除')
     await act(async () => { setColumnsCalls[0]!.resolve() })
     await flush()
     expect(await undoLast()).toBe('已删除列「备注」')
@@ -2160,7 +2180,7 @@ describe('PaperTable', () => {
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
     await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
     const spare = [...document.querySelectorAll('.mi.optrow')].find((row) => row.textContent?.includes('spare'))!
-    await act(async () => { spare.querySelector<HTMLButtonElement>('[aria-label="删除选项"]')!.click() })
+    await fromRowMenu(spare, '删除')
     expect(setColumnsCalls.map((c) => c.columns.custom[0]!.options)).toEqual([['existing']])
     await act(async () => { setColumnsCalls[0]!.resolve() })
     await flush()
@@ -2168,7 +2188,7 @@ describe('PaperTable', () => {
     expect(undone).toEqual(['change-columns-1'])
   })
 
-  it('表头的建列与列设置、列菜单行尾的按钮都在操作槽里：表头那一行和每个列行都是槽的宿主，改类型展开时报出展开', async () => {
+  it('表头的建列与列设置、列菜单行尾的按钮都在操作槽里：表头那一行和每个列行都是槽的宿主，改类型展开时报出展开;列和选项的改名和删除在行尾「更多」菜单里', async () => {
     const host = mount()
     columnsCall.resolve(SELECT_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
@@ -2180,13 +2200,16 @@ describe('PaperTable', () => {
 
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
     const row = document.querySelector('.mi.colrow:has([aria-label="选项"])')!
-    expect(slots(row)).toEqual([true, [['改类型', '重命名列', '删除列']]])
+    expect(slots(row)).toEqual([true, [['改类型', '更多']]])
     const retype = row.querySelector('[aria-label="改类型"]')!
     expect(retype.getAttribute('aria-expanded')).toBe('false')
     await act(async () => { (retype as HTMLButtonElement).click() })
     expect(retype.getAttribute('aria-expanded')).toBe('true')
     await act(async () => { row.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
-    expect(slots(document.querySelector('.mi.optrow')!)).toEqual([true, [['重命名选项', '删除选项']]])
+    expect(slots(document.querySelector('.mi.optrow')!)).toEqual([true, [['更多']]])
+    expect(await openRowMenu(document.querySelector('.mi.optrow')!)).toEqual(['重命名', '删除'])
+    await act(async () => { document.querySelector('[role="menu"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect(await openRowMenu(row)).toEqual(['重命名', '删除'])
   })
 
   it('选项列的选项折叠钮是共享的折叠钮：跟在列名后面，打勾的那一格只放勾，报出选项展开与否和它折叠的选项', async () => {
@@ -2222,7 +2245,7 @@ describe('PaperTable', () => {
     }
 
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
+    await fromRowMenu(document.querySelector('.mi.colrow:has(.dots)')!, '重命名')
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '挑选') })
     await pressOutside()
     expect(setColumnsCalls.at(-1)?.columns.custom.map((c) => c.label)).toEqual(['挑选'])
@@ -2232,14 +2255,14 @@ describe('PaperTable', () => {
 
     await act(async () => { gear.click() })
     await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="选项"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名选项"]')!.click() })
+    await fromRowMenu(document.querySelector('.mi.optrow')!, '重命名')
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.optrow input.celledit')!, 'renamed') })
     await pressOutside()
     expect(renameOptionCalls).toEqual([['pick', 'existing', 'renamed']])
 
     // A name another column already has is refused: the menu, the input and its text stay.
     await act(async () => { gear.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
+    await fromRowMenu(document.querySelector('.mi.colrow:has(.dots)')!, '重命名')
     await act(async () => { setValue(document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!, '标题') })
     await pressOutside()
     const refused = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
@@ -2253,7 +2276,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
-    await act(async () => { document.querySelector<HTMLButtonElement>('[aria-label="重命名列"]')!.click() })
+    await fromRowMenu(document.querySelector('.mi.colrow:has(.dots)')!, '重命名')
     const input = document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')!
     await act(async () => { setValue(input, '挑选') })
     for (const key of ['Escape', 'Enter']) {
@@ -2264,7 +2287,7 @@ describe('PaperTable', () => {
 
     await act(async () => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(document.querySelector('.mi.colrow input.celledit')).toBeNull()
-    expect(document.querySelector('[aria-label="重命名列"]')).not.toBeNull()
+    expect(document.querySelector('.mi.colrow:has(.dots)')).not.toBeNull()
   })
 
   it('列菜单改列名时点菜单里别的地方:先存下这一列;名字重了就带着字留着标红,另一列的重命名不开', async () => {
@@ -2273,7 +2296,7 @@ describe('PaperTable', () => {
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
     await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
-    const pencil = (at: number) => document.querySelectorAll<HTMLButtonElement>('[aria-label="重命名列"]')[at]!
+    const customRows = () => [...document.querySelectorAll('.mi.colrow:has(.dots)')]
     const renameInput = () => document.querySelector<HTMLInputElement>('.mi.colrow input.celledit')
     /** Presses `el` in the menu as a user would: the press, then the click. */
     const pressInMenu = async (el: Element) => {
@@ -2282,7 +2305,7 @@ describe('PaperTable', () => {
       await flush()
     }
 
-    await act(async () => { pencil(0).click() })
+    await fromRowMenu(customRows()[0]!, '重命名')
     await act(async () => { setValue(renameInput()!, '挑选') })
     await pressInMenu([...document.querySelectorAll('.mi.colrow')].find((row) => row.textContent === '主题')!)
     expect(setColumnsCalls[0]?.columns.custom.map((c) => c.label)).toEqual(['挑选', '备注'])
@@ -2290,9 +2313,13 @@ describe('PaperTable', () => {
     await act(async () => { setColumnsCalls[0]!.resolve() })
     await flush()
 
-    await act(async () => { pencil(1).click() })
+    await fromRowMenu(customRows()[1]!, '重命名')
     await act(async () => { setValue(renameInput()!, '标题') })
-    await pressInMenu(pencil(0))
+    await pressInMenu(customRows()[0]!.querySelector('.dots')!)
+    const other = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((item) => item.textContent === '重命名')!
+    await act(async () => { other.click() })
+    await flush()
+    expect(customRows()[0]!.querySelector('input.celledit')).toBeNull()
     expect(renameInput()!.value).toBe('标题')
     expect(renameInput()!.getAttribute('aria-invalid')).toBe('true')
     expect(setColumnsCalls).toHaveLength(2)

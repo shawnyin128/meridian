@@ -87,10 +87,6 @@ export const papers = {
     settings: 'Column settings',
     options: 'Options',
     changeType: 'Change type',
-    rename: 'Rename column',
-    deleteColumn: 'Delete column',
-    renameOption: 'Rename option',
-    deleteOption: 'Delete option',
   },
   cellPicker: {
     placeholder: 'Option',

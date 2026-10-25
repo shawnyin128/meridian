@@ -17,6 +17,7 @@ export const common = {
   deletePermanently: 'Delete permanently',
   remove: 'Remove',
   removeLink: 'Remove link',
+  rename: 'Rename',
   restore: 'Restore',
   archive: 'Archive',
   unarchive: 'Unarchive',

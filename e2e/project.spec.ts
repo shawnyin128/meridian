@@ -37,6 +37,12 @@ async function rowAction(row: Locator, sel: string): Promise<void> {
   await row.locator(sel).click()
 }
 
+/** Picks `item` from the … menu at the end of `row`, as a pointer does: hovering the row shows its … button. */
+async function fromRowMenu(row: Locator, item: '重命名' | '删除'): Promise<void> {
+  await rowAction(row, '.dots')
+  await row.page().getByRole('menuitem', { name: item, exact: true }).click()
+}
+
 /**
  * Offsets in days from the vault's today to the dates of the fixture's draft project. The fixture
  * dates are generated from today, so tests target these offsets rather than calendar days, and
@@ -301,7 +307,7 @@ test('任务行开头的日期、时段、优先级和状态按需要注意的�
   expect(rows).toEqual(rows.map(() => [gap, gap, gap, 2 * gap]))
 })
 
-test('任务行的日期从行的内边距开始,删除按钮在行的内边距处结束', async ({ win }) => {
+test('任务行的日期从行的内边距开始,行尾的「更多」按钮在行的内边距处结束', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden])')
   const rows = await page.locator('#taskList .task-row').evaluateAll((items) => items.map((row) => {
@@ -309,7 +315,7 @@ test('任务行的日期从行的内边距开始,删除按钮在行的内边距�
     const style = getComputedStyle(row)
     return {
       start: Math.round(row.querySelector('.task-date-part')!.getBoundingClientRect().left - box.left),
-      end: Math.round(box.right - row.querySelector('.row-delete')!.getBoundingClientRect().right),
+      end: Math.round(box.right - row.querySelector('.dots')!.getBoundingClientRect().right),
       padding: { start: parseFloat(style.paddingLeft), end: parseFloat(style.paddingRight) },
     }
   }))
@@ -608,7 +614,7 @@ test('拖完任务条那一下不算点击,单击只定位闪烁,名称格仍可
   await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
 
-  await rowAction(row, '.plan-rename')
+  await fromRowMenu(row, '重命名')
   await row.locator('.metadata-input').fill(EDITED_TASK_TITLE)
   await row.locator('.metadata-input').press('Enter')
   await expect.poll(async () => (await readDraft(win)).tasks.find((t) => t.id === 't2')?.title).toBe(EDITED_TASK_TITLE)
@@ -738,7 +744,7 @@ test('新建一个任务再删掉,任务数前后一致', async ({ win }) => {
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS + 1)
   expect((await readDraft(win)).tasks.some((t) => t.title === NEW_TASK_TITLE)).toBe(true)
 
-  await rowAction(win.locator('#taskList .ddlrow', { hasText: NEW_TASK_TITLE }), '.row-delete')
+  await fromRowMenu(win.locator('#taskList .ddlrow', { hasText: NEW_TASK_TITLE }), '删除')
 
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
   await expect(win.locator('#taskList .ddlrow')).toHaveCount(ACTIVE_TASK_ROWS)
@@ -762,7 +768,7 @@ test('删掉一条任务,提示里的撤销把它原样放回计划', async ({ w
   await gotoProject(win)
   const before = (await removable(win)).tasks
   const row = win.locator('#taskList .ddlrow[data-row="t2"]')
-  await rowAction(row, '.row-delete')
+  await fromRowMenu(row, '删除')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
   await expect(row).toHaveCount(0)
 
@@ -776,7 +782,7 @@ test('在计划里删掉一个里程碑,提示里的撤销把它原样放回', a
   await win.locator('.section-heading-actions .segmented-control>button', { hasText: '里程碑' }).click()
   const before = (await removable(win)).milestones
   const row = win.locator('#msList .milestone-row[data-row="m2"]')
-  await rowAction(row, '.row-delete')
+  await fromRowMenu(row, '删除')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除里程碑')
   await expect(row).toHaveCount(0)
 
@@ -1644,7 +1650,7 @@ test('项目列表点进详情,内容导航行的返回钮退回列表', async (
   await expect(win.locator('.screenslot:not([hidden]) [data-proj="draft"]')).toBeVisible()
 })
 
-test('任务四列各自编辑,点击行或任务名只打开任务详情,不改变任何列,改名从铅笔进入', async ({ win }) => {
+test('任务四列各自编辑,点击行或任务名只打开任务详情,不改变任何列,改名从行尾「更多」菜单的重命名进入', async ({ win }) => {
   test.slow()
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .project-detail-panel')
@@ -1654,8 +1660,8 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
 
   // Clicking the blank space of the row opens the task panel and no editor; each of the four columns only opens its own control.
   const row = win.locator('#taskList .ddlrow').first()
-  await expect(row.locator('.dots')).toHaveCount(0)
-  await expect(row.locator('.row-delete')).toHaveAttribute('aria-label', /^删除任务：/)
+  await expect(row.locator('.dots')).toHaveCount(1)
+  await expect(row.locator('.row-delete, .plan-rename')).toHaveCount(0)
   const title = await row.locator('.plan-name').textContent()
   await row.evaluate((element) => (element as HTMLElement).click())
   await expect(side.locator('.panel-head-title')).toHaveText(title!)
@@ -1664,7 +1670,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('Escape')
   await expect(side.locator('.panel-head-title')).toHaveCount(0)
 
-  // The name opens the same panel, on a click and on Enter, and renaming starts from the pencil beside it.
+  // The name opens the same panel, on a click and on Enter, and renaming starts from the row's … menu.
   await row.locator('.plan-name').click()
   await expect(side.locator('.panel-head-title')).toHaveText(title!)
   await expect(row.locator('.metadata-input')).toHaveCount(0)
@@ -1676,7 +1682,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('Escape')
   await expect(side.locator('.panel-head-title')).toHaveCount(0)
 
-  await rowAction(row, '.plan-rename')
+  await fromRowMenu(row, '重命名')
   await expect(row.locator('.metadata-input')).toHaveCount(1)
   await expect(win.locator('.schedule-form')).toHaveCount(0)
   await win.keyboard.press('Escape')
@@ -1760,22 +1766,23 @@ test('任务与里程碑的状态格独立修改并立即写回 core', async ({ 
     .milestones.find((milestone) => milestone.id === firstMilestone.id)?.done).toBe(!firstMilestone.done)
 })
 
-test('红色垃圾桶直接删除任务,不会先把这一行切进编辑态', async ({ win }) => {
+test('「更多」菜单里红字的删除直接删除任务,不先确认,也不会先把这一行切进编辑态', async ({ win }) => {
   await gotoProject(win)
   const row = win.locator('#taskList .ddlrow').first()
   const taskId = await row.getAttribute('data-row')
   const bad = await win.evaluate(() => {
     const probe = document.createElement('div')
-    probe.style.color = 'var(--bad)'
+    probe.style.color = 'var(--bad-text)'
     document.body.appendChild(probe)
     const rgb = getComputedStyle(probe).color
     probe.remove()
     return rgb
   })
-  await row.hover()
-  await row.locator('.row-delete').hover()
-  await expect(row.locator('.row-delete')).toHaveCSS('color', bad)
-  await row.locator('.row-delete').click()
+  await rowAction(row, '.dots')
+  const remove = win.getByRole('menuitem', { name: '删除', exact: true })
+  await expect(remove).toHaveCSS('color', bad)
+  await remove.click()
+  await expect(win.locator('[role="alertdialog"]')).toHaveCount(0)
   await expect(win.locator('#taskList .metadata-input')).toHaveCount(0)
   await expect(win.locator('.plan-time-pop')).toHaveCount(0)
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除任务')
@@ -1817,7 +1824,7 @@ test('节点面板由 Agent 管理:标题、状态、记录与分支都不可在
 test('节点面板开着时 Esc 先关任务名称格,再按一次才收面板', async ({ win }) => {
   const head = await openNodePanel(win)
   const row = win.locator('#taskList .ddlrow').first()
-  await rowAction(row, '.plan-rename')
+  await fromRowMenu(row, '重命名')
   await expect(row.locator('.metadata-input')).toHaveCount(1)
   await win.keyboard.press('Escape')
   await expect(row.locator('.metadata-input')).toHaveCount(0)

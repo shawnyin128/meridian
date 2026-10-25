@@ -14,6 +14,7 @@ export const common = {
   deletePermanently: '彻底删除',
   remove: '移除',
   removeLink: '移除关联',
+  rename: '重命名',
   restore: '恢复',
   archive: '归档',
   unarchive: '取消归档',

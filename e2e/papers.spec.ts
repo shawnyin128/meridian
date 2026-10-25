@@ -64,6 +64,12 @@ async function rowAction(row: Locator, sel: string): Promise<void> {
   await row.locator(sel).click()
 }
 
+/** Picks `item` from the … menu at the end of the column menu's row `row`, which hovering the row shows. */
+async function fromRowMenu(row: Locator, item: '重命名' | '删除'): Promise<void> {
+  await rowAction(row, '.dots')
+  await row.page().getByRole('menuitem', { name: item, exact: true }).click()
+}
+
 /**
  * Writes the column configuration through Core, then fills `cells[i]` into the i-th paper by date
  * added, the table's default sort, and returns those papers' ids. The papers screen mounts and
@@ -829,13 +835,11 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
 
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '备注' }).hover()
-  await menu.filter({ hasText: '备注' }).locator('[aria-label="重命名列"]').click()
+  await fromRowMenu(menu.filter({ hasText: '备注' }), '重命名')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').fill('批注')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').press('Enter')
   await expect.poll(head).toContain('批注')
-  await menu.filter({ hasText: '批注' }).hover()
-  await menu.filter({ hasText: '批注' }).locator('.cmx.danger').click()
+  await fromRowMenu(menu.filter({ hasText: '批注' }), '删除')
   await expect.poll(head).not.toContain('批注')
 })
 
@@ -856,8 +860,7 @@ test('删掉一列,提示里的撤销把它放回,格子里的值还在', async 
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '备注' }).hover()
-  await menu.filter({ hasText: '备注' }).locator('[aria-label="删除列"]').click()
+  await fromRowMenu(menu.filter({ hasText: '备注' }), '删除')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除列「备注」')
   await expect.poll(head).not.toContain('备注')
 
@@ -877,8 +880,7 @@ test('删掉一个没人用的选项,提示里的撤销把它放回', async ({ w
   await win.locator('.ptable thead [aria-label="列设置"]').click()
   await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const spare = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
-  await spare.hover()
-  await spare.locator('[aria-label="删除选项"]').click()
+  await fromRowMenu(spare, '删除')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除选项')
   await expect(spare).toHaveCount(0)
 
@@ -991,8 +993,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.locator('.ptable thead [aria-label="列设置"]').click()
   await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const option = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '精读' })
-  await option.hover()
-  await option.locator('.cmx').first().click()
+  await fromRowMenu(option, '重命名')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').fill('细读')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').press('Enter')
   await win.keyboard.press('Escape')
@@ -1019,8 +1020,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.locator('.ptable thead [aria-label="列设置"]').click()
   await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const still = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
-  await still.hover()
-  await still.locator('.cmx.danger').click()
+  await fromRowMenu(still, '删除')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
   await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect.poll(head).toContain('读法')
@@ -1037,8 +1037,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
 
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).hover()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.danger').click()
+  await fromRowMenu(menu.filter({ hasText: '读法' }), '删除')
   await expect(shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' })).toHaveCount(0)
   await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
   await expect.poll(head).not.toContain('读法')
@@ -1315,8 +1314,7 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = pop.locator('.mi.colrow')
-  await menu.filter({ hasText: MULTI_COLUMN }).hover()
-  await menu.filter({ hasText: MULTI_COLUMN }).locator('.cmx.danger').click()
+  await fromRowMenu(menu.filter({ hasText: MULTI_COLUMN }), '删除')
   await expect.poll(head).not.toContain(MULTI_COLUMN)
   await win.keyboard.press('Escape')
   // The table sorts by date added by default, so the first paper listed that way is its first row.

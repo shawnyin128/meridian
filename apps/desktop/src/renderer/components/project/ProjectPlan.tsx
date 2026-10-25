@@ -1,5 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
-import type { RefObject } from 'react'
+import type { ReactNode, RefObject } from 'react'
 import type {
   GraphNode,
   Milestone,
@@ -13,18 +13,17 @@ import { AddAction } from '../AddAction.js'
 import { Group } from '../GroupedList.js'
 import { DateChip } from '../DateTimeDisplay.js'
 import { EmptyState } from '../EmptyState.js'
-import { ChoicePicker, DateButton, PriorityPicker } from '../FieldPickers.js'
+import { MenuItem } from '../ActionMenu.js'
+import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
 import { EditActions } from '../EditActions.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PanelBody, PanelHead } from '../SidePanel.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
-import { IconButton } from '../IconButton.js'
-import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { DraftSlot } from '../DraftSlot.js'
-import { Item, RowActions } from '../Item.js'
+import { Item } from '../Item.js'
 import { List } from '../List.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
@@ -156,43 +155,54 @@ function MilestoneStatePicker({ done, onPick }: { done: boolean; onPick: (done: 
   )
 }
 
+/** Where a task's or milestone's name being renamed is kept: the name, among its item's drafts. */
+const nameDraft = (projectId: string, kind: 'task' | 'milestone', id: string) => ({ scope: ['project', projectId, kind, id], target: 'name' })
+
+/**
+ * A task's or milestone's name in its row: `rest` at rest, and, once its row's … menu has asked to
+ * rename it, the name's inline field in its place, kept as a draft under `keep`.
+ */
 function PlanNameCell({ value, label, keep, onSave, rest }: {
   value: string
   label: string
   keep: NonNullable<InlineFieldProps['keep']>
   onSave: (value: string) => boolean | Promise<boolean>
-  rest?: InlineFieldProps['rest']
+  rest: ReactNode
 }) {
   return (
     <InlineField
-      label={label} value={value} display={<FadeText>{value}</FadeText>} className="plan-name-cell" keep={keep}
-      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
-      {...(rest === undefined ? {} : { rest })}
+      label={label} value={value} className="plan-name-cell" keep={keep}
+      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave} rest={rest}
     />
   )
 }
 
 /**
- * A task's name cell: the name is the row's keyboard control for opening the task, so its click
- * reaches the row, and the pencil beside it renames the task in place.
+ * The … menu of a task's or milestone's row: Rename, which opens the name `title` in place through its
+ * draft under `keep`, and Delete, which goes to `onDelete` at once, since the change log can undo it.
  */
+function PlanRowMenu({ title, keep, onDelete }: {
+  title: string
+  keep: NonNullable<InlineFieldProps['keep']>
+  onDelete: () => void
+}) {
+  const m = useMessages()
+  const names = useDrafts<string>(keep.scope)
+  return (
+    <DotsMenu stopRowActivation onRename={() => names.set(keep.target, title)}>
+      <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
+    </DotsMenu>
+  )
+}
+
+/** A task's name cell: the name is the row's keyboard control for opening the task, so its click reaches the row. */
 function TaskNameCell({ projectId, task, onSave }: { projectId: string; task: Task; onSave: (patch: TaskPatch) => Promise<boolean> }) {
   const m = useMessages()
   return (
     <PlanNameCell
       value={task.title} label={m.project.plan.taskNamePlaceholder} onSave={(title) => onSave({ title })}
-      keep={{ scope: ['project', projectId, 'task', task.id], target: 'name' }}
-      rest={(edit) => (
-        <span className="task-name">
-          <ToolbarButton className="plan-cell plan-name plan-open"><FadeText>{task.title}</FadeText></ToolbarButton>
-          <RowActions>
-            <IconButton
-              label={m.project.plan.renameTaskFor(task.title)} size="nested"
-              className="plan-rename" onClick={(event) => { event.stopPropagation(); edit() }}
-            ><IconPencil /></IconButton>
-          </RowActions>
-        </span>
-      )}
+      keep={nameDraft(projectId, 'task', task.id)}
+      rest={<ToolbarButton className="plan-cell plan-name plan-open"><FadeText>{task.title}</FadeText></ToolbarButton>}
     />
   )
 }
@@ -278,12 +288,7 @@ function TaskRow({ projectId, task, selected, reorder, onSave, onDelete, onOpen 
       <Item
         composite subgrid selected={selected} data-row={task.id} {...reorder} onActivate={onOpen}
         className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}`}
-        actions={(
-          <IconButton
-            label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
-            className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
-          ><IconTrash /></IconButton>
-        )}
+        menu={<PlanRowMenu title={task.title} keep={nameDraft(projectId, 'task', task.id)} onDelete={onDelete} />}
       >
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
         <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
@@ -323,12 +328,7 @@ function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
       subgrid data-row={milestone.id}
       className={`ddlrow milestone-row${milestone.done ? ' done' : ''}`}
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
-      actions={(
-        <IconButton
-          label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
-          tone="danger" className="row-delete" onClick={onDelete}
-        ><IconTrash /></IconButton>
-      )}
+      menu={<PlanRowMenu title={milestone.title} keep={nameDraft(projectId, 'milestone', milestone.id)} onDelete={onDelete} />}
     >
       <DateButton
         iso={milestone.date} className="plan-cell plan-date-button"
@@ -339,8 +339,8 @@ function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
       <MilestoneStatePicker done={milestone.done} onPick={(done) => { void onSave({ done }) }} />
       <PlanNameCell
         value={milestone.title} label={m.project.plan.milestoneNamePlaceholder}
-        keep={{ scope: ['project', projectId, 'milestone', milestone.id], target: 'name' }}
-        onSave={(title) => onSave({ title })}
+        keep={nameDraft(projectId, 'milestone', milestone.id)} onSave={(title) => onSave({ title })}
+        rest={<FadeText>{milestone.title}</FadeText>}
       />
     </Item>
   )

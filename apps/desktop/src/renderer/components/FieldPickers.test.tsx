@@ -127,6 +127,24 @@ describe('DotsMenu on its row', () => {
     }
   })
 
+  it('能改名的菜单第一项是重命名,不带省略号;选它先合上菜单,焦点不回 … 按钮,再交给 onRename 就地打开名字', async () => {
+    const menuAtRename: (string | null)[] = []
+    const onRename = vi.fn(() => { menuAtRename.push(document.querySelector('[role="menu"]')?.textContent ?? null) })
+    await render(
+      <div data-row-actions="" id="task">
+        <RowActions><DotsMenu label="管理 任务" onRename={onRename}><MenuItem>删除</MenuItem></DotsMenu></RowActions>
+      </div>,
+    )
+    const dots = document.querySelector<HTMLElement>('[aria-label="管理 任务"]')!
+    await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    expect(menus()).toEqual(['重命名删除'])
+    await act(async () => { document.querySelector<HTMLElement>('[role="menuitem"]')!.click() })
+    await vi.waitFor(() => expect(onRename).toHaveBeenCalledTimes(1))
+    expect([menuAtRename, menus(), document.activeElement === dots]).toEqual([[null], [], false])
+    expect(await rightClick(document.querySelector('#task')!)).toBe(true)
+    expect([...document.querySelectorAll('[role="menuitem"]')].map((item) => item.textContent)).toEqual(['重命名', '删除'])
+  })
+
   it('自己管着开合的菜单从 onOpenChange 听到右键', async () => {
     const changes: boolean[] = []
     function Held() {
