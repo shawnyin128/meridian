@@ -23,7 +23,8 @@ type Hold = 'pointer' | 'focus'
 
 /**
  * The app's one notice, shown on the canvas for NOTICE_MS and then faded out. Its host is a live
- * region that stays mounted, so every new notice is announced. Hovering the notice or focusing its
+ * region that stays mounted, so every new notice is announced, also while a modal dialog hides the
+ * rest of the page from assistive technology. Hovering the notice or focusing its
  * action pauses the count, and leaving resumes it with the time that was left. The action runs once
  * and closes the notice. A faded notice keeps its text and leaves the Tab order.
  */
@@ -61,7 +62,9 @@ export function Notice({ notice }: { notice: NoticeContent | null }) {
   }
 
   return (
-    <div className="notice-host" role="status">
+    // role="status" implies aria-live, but a modal hides everything outside it except elements that
+    // carry aria-live itself (Radix's hideOthers), so the attribute keeps the notice readable over a modal.
+    <div className="notice-host" role="status" aria-live="polite">
       <div
         id="notice" className={`notice${shown ? ' show' : ''}`} data-tone={notice?.tone} inert={!shown}
         onMouseEnter={() => hold('pointer')} onMouseLeave={() => release('pointer')}
