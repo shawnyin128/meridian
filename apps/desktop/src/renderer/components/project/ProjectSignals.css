@@ -5,9 +5,10 @@
 .project-signal-date{width:var(--project-signal-date-width)}
 .project-signal-kind .tag{width:100%}
 .project-signal-date .date-chip{width:100%}
-.record-list{display:grid;grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr) max-content;
+/* The first column also holds the rows' inline padding, which the shared grid adds to their kind chips. */
+.record-list{display:grid;grid-template-columns:calc(var(--project-signal-kind-width) + var(--item-row-inset)) var(--project-signal-date-width) minmax(0,1fr) max-content;
   column-gap:var(--project-signal-gap)}
-.record-list.with-node{grid-template-columns:var(--project-signal-kind-width) var(--project-signal-date-width) minmax(0,1fr) fit-content(min(150px,25%)) max-content}
+.record-list.with-node{grid-template-columns:calc(var(--project-signal-kind-width) + var(--item-row-inset)) var(--project-signal-date-width) minmax(0,1fr) fit-content(min(150px,25%)) max-content}
 /* Each cell sits on the first line of the record's text, which stays put when the text opens downward. */
 .record-list>.record-row{grid-column:1/-1;grid-template-columns:subgrid;align-items:baseline}
 .record-node{display:flex;min-width:0}

@@ -597,9 +597,9 @@ test('关注管理:占位行按 Esc 撤掉,屏上没有旧的圆角添加框', a
   await settings(win, '.section-heading').filter({ hasText: '作者' }).locator('.btn').click()
   await expect(settings(win, '.wrow')).toHaveCount(watches.length + 1)
   // The placeholder is styled as a .wrow: while it is open, every watch row here still has one height.
-  // The divider between rows is the lower row's top border, which the first row of a list lacks, so
-  // rows are compared without their borders.
-  expect(await settings(win, '.wrow').evaluateAll((rows) => [...new Set(rows.map((r) => r.clientHeight))]))
+  // A row is one list row high with the divider between rows, the lower row's top border, inside that
+  // height, so rows are compared by their whole boxes.
+  expect(await settings(win, '.wrow').evaluateAll((rows) => [...new Set(rows.map((r) => r.getBoundingClientRect().height))]))
     .toHaveLength(1)
   await settings(win, '.wrow.newrow input').press('Escape')
   await expect(settings(win, '.wrow.newrow')).toHaveCount(0)

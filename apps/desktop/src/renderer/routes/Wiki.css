@@ -56,7 +56,7 @@
  * The placeholder card for a new subpage: as wide and tall as the cards beside it, except that its
  * title line is an input and its last line is empty, only holding the height.
  */
-.wkcard.newcard .wf{height:1.5em}
+.wkcard.newcard .wf{height:1lh}
 
 /* The editor in the column-settings popover the gear opens */
 .colpop .coledit{margin:0;max-width:none}

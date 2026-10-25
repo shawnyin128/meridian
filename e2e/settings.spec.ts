@@ -297,7 +297,7 @@ test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止
   await expect(win.locator('.setdlg')).toHaveCount(0)
 })
 
-test('取消归档弹出的提示盖在设置模态之上', async ({ app, win }) => {
+test('在设置里删掉已归档的对话,弹出的撤销提示盖在设置模态之上', async ({ app, win }) => {
   await win.locator('#sidebar').waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
   await core(win, 'chat.setArchived', { id: target.id, archived: true })
@@ -305,8 +305,9 @@ test('取消归档弹出的提示盖在设置模态之上', async ({ app, win })
   await openSettings(app, win)
   await win.locator('.setdlg .nav-row[data-setcat="archived"]').click()
   await win.locator(`.setdlg .wrow[data-chat="${target.id}"]`).hover()
-  await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .row-actions [aria-label="取消归档"]`).click()
+  await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .row-actions [aria-label="删除"]`).click()
   await win.locator('#notice.show').waitFor()
+  await expect(win.locator('#notice.show button', { hasText: '撤销' })).toHaveCount(1)
 
   const zIndex = await win.evaluate(() => ({
     notice: Number(getComputedStyle(document.querySelector('.notice-host')!).zIndex),
