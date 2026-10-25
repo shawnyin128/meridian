@@ -14,12 +14,7 @@
 .extension-tutorial-steps li{display:flex;min-width:0;gap:var(--sp-10);padding:var(--sp-10);border-radius:var(--r-md);background:var(--field)}
 .extension-tutorial-steps li>span{display:grid;place-items:center;flex:0 0 20px;width:20px;height:20px;border-radius:var(--r-full);
   background:var(--chip);color:var(--ink);font-size:var(--fs-cap);font-weight:var(--fw-semibold)}
-.extension-tutorial-steps strong,.extension-prompt strong{display:block;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
-.extension-prompt p{margin:var(--sp-4) 0 0;color:var(--ter);font-size:var(--fs-cap);line-height:var(--lh-ui)}
+.extension-tutorial-steps strong{display:block;color:var(--ink);font-size:var(--fs-sm);font-weight:var(--fw-semibold)}
 .extension-prompt-groups{display:flex;flex-direction:column;gap:var(--sp-14)}
-.extension-prompt-list{border-top:1px solid var(--sep2);border-bottom:1px solid var(--sep2)}
-.extension-prompt{display:grid;grid-template-columns:minmax(0,1fr) auto;align-items:center;gap:var(--sp-14);padding:var(--sp-10) 0}
-.extension-prompt+.extension-prompt{border-top:1px solid var(--sep2)}
-.extension-prompt .btn{flex-shrink:0}
 .extension-healthy-list{margin:0;padding-left:var(--sp-20);color:var(--ter);font-size:var(--fs-cap);line-height:1.65}
 @media (max-width:760px){.extension-tutorial-steps{grid-template-columns:1fr}}

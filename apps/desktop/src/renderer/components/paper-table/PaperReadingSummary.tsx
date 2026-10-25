@@ -9,7 +9,8 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { Button } from '../Button.js'
 
 const EXCERPT = 2
@@ -53,15 +54,15 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
         : remark === '' && entries.length === 0
         ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
         : (
-          <StructuredList variant="embedded">
-            {remark === '' ? null : <StructuredRow className="nrow"><span className="nt">{remark}</span></StructuredRow>}
+          <List variant="embedded">
+            {remark === '' ? null : <Item className="nrow"><span className="nt">{remark}</span></Item>}
             {entries.slice(0, EXCERPT).map((entry) => (
-              <StructuredRow className="nrow" key={entry.id} onActivate={() => onRead(entryAnchor(entry))}>
+              <Item className="nrow" key={entry.id} onActivate={() => onRead(entryAnchor(entry))}>
                 {entry.quote === null ? null : <span className="nq">“{entry.quote}”</span>}
                 <span className="nt">{entry.text}</span>
-              </StructuredRow>
+              </Item>
             ))}
-          </StructuredList>
+          </List>
         )}
       {entries.length > EXCERPT
         ? (

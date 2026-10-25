@@ -1,7 +1,7 @@
 import type { CallFailure } from './contract.js'
 
-/** Why an update check or download failed: no network, a timeout, the release server, a file the App could not write, or anything else. */
-export type UpdateFailure = Extract<CallFailure, 'unavailable' | 'timeout' | 'server' | 'write' | 'unknown'>
+/** Why an update check or download failed: no network, a timeout, the release server, a file of the update the App could not read or write, or anything else. */
+export type UpdateFailure = Extract<CallFailure, 'unavailable' | 'timeout' | 'server' | 'unknown'> | 'update-files'
 
 /**
  * Where the app's self-update stands. `unsupported` covers development and test builds, which have

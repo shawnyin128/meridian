@@ -7,10 +7,11 @@ import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
-import { ListColumn, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item, ItemOpen } from '../Item.js'
+import { List, ListColumn } from '../List.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
-import { Toolbar, ToolbarButton } from '../Toolbar.js'
+import { Toolbar } from '../Toolbar.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { buildResearchMap, readCount, type ResearchMapReason } from './research-map.js'
@@ -71,22 +72,21 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
   }, [entries, selectedId])
 
   const entryRow = (entry: MapEntry) => (
-    <StructuredRow
-      key={entry.id}
-      className="research-map-group" selected={selected?.id === entry.id}
-      aria-pressed={selected?.id === entry.id}
-      onActivate={() => setSelectedId(entry.id)}
-    >
-      <span className="research-map-group-copy">
-        <FadeText className="research-map-group-name" label={entry.label}>{entry.label}</FadeText>
-        <ReadDots
-          states={entry.papers.map((item) => item.paper.readState)}
-          label={m.papers.researchMap.readProgress(readCount(entry.papers.map((item) => item.paper)), entry.papers.length)}
-        />
-        {entry.kind === undefined ? null : <span>{entry.kind}</span>}
-      </span>
-      <CountBadge count={entry.papers.length} />
-    </StructuredRow>
+    <Item
+      key={entry.id} className="research-map-group" lines={2} selected={selected?.id === entry.id}
+      aria-pressed={selected?.id === entry.id} onActivate={() => setSelectedId(entry.id)}
+      title={<FadeText className="research-map-group-name" label={entry.label}>{entry.label}</FadeText>}
+      meta={(
+        <>
+          <ReadDots
+            states={entry.papers.map((item) => item.paper.readState)}
+            label={m.papers.researchMap.readProgress(readCount(entry.papers.map((item) => item.paper)), entry.papers.length)}
+          />
+          {entry.kind === undefined ? null : <span className="research-map-group-kind">{entry.kind}</span>}
+        </>
+      )}
+      trailing={<CountBadge count={entry.papers.length} />}
+    />
   )
 
   return (
@@ -102,12 +102,12 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
           : (
             <div className="research-map-layout">
               <ListColumn className="research-map-index">
-                <StructuredList className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
+                <List className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
                   {entries.groups.map(entryRow)}
-                </StructuredList>
+                </List>
                 {entries.beyond.length === 0
                   ? null
-                  : <StructuredList className="research-map-groups">{entries.beyond.map(entryRow)}</StructuredList>}
+                  : <List className="research-map-groups">{entries.beyond.map(entryRow)}</List>}
               </ListColumn>
 
               {selected === undefined
@@ -120,8 +120,8 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                         <span>{m.papers.researchMap.paperCount(selected.papers.length)}</span>
                       </div>
                     </div>
-                    <StructuredList
-                      variant="embedded" maxVisibleRows="fill" className="research-map-papers"
+                    <List
+                      variant="embedded" rows="fill" flush className="research-map-papers"
                       aria-label={m.papers.researchMap.paperListAria(selected.label)}
                     >
                       {selected.papers.map((member) => (
@@ -130,28 +130,37 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                           trigger={(
                             // The row is the toolbar of its own controls, from its title to its reading status.
                             <Toolbar label={plainTitle(member.paper.title)}>
-                              <StructuredRow composite className="research-map-paper" onActivate={() => onOpenPaper(member.paper)}>
-                                <ToolbarButton className="research-map-paper-open">
-                                  <FadeText className="research-map-paper-title" label={plainTitle(member.paper.title)}>
-                                    <PaperText text={member.paper.title} />
-                                  </FadeText>
-                                </ToolbarButton>
-                                <span className="research-map-paper-marks">
-                                  <RatingStars value={member.paper.rating} onChange={(rating) => onRate(member.paper, rating)} />
-                                  <ReadStatePicker
-                                    value={member.paper.readState} onPick={(readState) => onPickReadState(member.paper, readState)}
-                                  />
-                                </span>
-                                <span className="research-map-paper-meta">
-                                  {[member.paper.shortTitle, member.paper.year, member.paper.venue]
-                                    .filter((part) => part !== undefined).join(' · ')}
-                                </span>
-                                {member.chips.length === 0 ? null : (
-                                  <FadeText className="research-map-why">
-                                    {member.chips.map((chip) => <Tag shape="chip" key={chip.key}>{chip.text}</Tag>)}
-                                  </FadeText>
+                              <Item
+                                composite className="research-map-paper" lines={2} onActivate={() => onOpenPaper(member.paper)}
+                                title={(
+                                  <ItemOpen className="research-map-paper-open">
+                                    <FadeText className="research-map-paper-title" label={plainTitle(member.paper.title)}>
+                                      <PaperText text={member.paper.title} />
+                                    </FadeText>
+                                  </ItemOpen>
                                 )}
-                              </StructuredRow>
+                                meta={(
+                                  <>
+                                    <span className="research-map-paper-meta">
+                                      {[member.paper.shortTitle, member.paper.year, member.paper.venue]
+                                        .filter((part) => part !== undefined).join(' · ')}
+                                    </span>
+                                    {member.chips.length === 0 ? null : (
+                                      <FadeText className="research-map-why">
+                                        {member.chips.map((chip) => <Tag shape="chip" key={chip.key}>{chip.text}</Tag>)}
+                                      </FadeText>
+                                    )}
+                                  </>
+                                )}
+                                trailing={(
+                                  <span className="research-map-paper-marks">
+                                    <RatingStars value={member.paper.rating} onChange={(rating) => onRate(member.paper, rating)} />
+                                    <ReadStatePicker
+                                      value={member.paper.readState} onPick={(readState) => onPickReadState(member.paper, readState)}
+                                    />
+                                  </span>
+                                )}
+                              />
                             </Toolbar>
                           )}
                         >
@@ -159,7 +168,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                           <ContextMenuItem onSelect={() => onReadPaper(member.paper)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
                         </ContextMenu>
                       ))}
-                    </StructuredList>
+                    </List>
                   </div>
                 )}
             </div>

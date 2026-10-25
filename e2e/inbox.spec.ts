@@ -135,7 +135,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   const card = shown(win, '.pcard').first()
   const text = (sel: string) => card.locator(sel).evaluate((el) => el.textContent ?? '')
   expect(await text('h3')).toBe(demo[0]!.title)
-  expect(await text('.pm')).toBe(demo[0]!.authors + demo[0]!.venue)
+  expect(await text('.item-meta')).toBe(demo[0]!.authors + demo[0]!.venue)
   expect(await text('.pabs')).toBe(demo[0]!.abs)
   expect(await text('.prec')).toBe(demo[0]!.rec)
   expect(await card.locator('.plabel').allTextContents()).toEqual(['摘要', '推荐理由'])

@@ -34,7 +34,7 @@ describe('InlineMessage', () => {
       + '<div class="inline-message-action"><button type="button" class="btn sm">重启</button></div></div>')
   })
 
-  it('fills its own surface with the progress first, under the lead, the text and the action', () => {
+  it('puts its progress line first, under the lead, the text and the action', () => {
     const html = renderToStaticMarkup(
       <InlineMessage tone="info" variant="box" progress={{ percent: 40, label: '正在下载 0.0.20.0' }}>正在下载 0.0.20.0</InlineMessage>,
     )

@@ -57,6 +57,7 @@ function unguardedPlaceholders(path: string, source: string): string[] {
 /** The sources whose placeholder ends by another flag, each with what ends it. */
 const ENDS_OTHERWISE: Record<string, string> = {
   'components/paper-table/ResearchMap.tsx': 'loading ends when the map read settles, failed or not',
+  'components/SshFolderPicker.tsx': 'loading ends when the folder listing settles, failed or not',
   'routes/Reader.tsx': 'loading is false once the screen load has failed',
 }
 

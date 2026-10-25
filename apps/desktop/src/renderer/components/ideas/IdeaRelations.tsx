@@ -10,7 +10,8 @@ import { IconCross } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { PickRow, type PickHit } from '../PickRow.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { RowActions } from '../StructuredList.js'
+import { useDraftSlot } from '../DraftSlot.js'
+import { RowActions } from '../Item.js'
 import { tagClass } from '../Tag.js'
 
 type Row = keyof Relations
@@ -46,7 +47,8 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
     for (const other of ROWS) if (other !== row) kept.drop(`add:${other}`)
     setOwnAdding(row)
   }, [kept])
-  const draftRow = useRef<HTMLDivElement>(null)
+  const relationDraft = useDraftSlot<HTMLDivElement>(adding !== null, () => setAdding('projects'))
+  const draftRow = relationDraft.slot
   const add = useRef<HTMLButtonElement>(null)
   const triggers = useMemo(() => [add], [])
   const stop = useCallback(() => setAdding(null), [setAdding])
@@ -79,13 +81,9 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
       <SectionHeading
         level="group"
         actions={(
-          <AddAction
-            size="compact" ref={add} label={m.project.links.addTitle}
-            onClick={() => {
-              if (adding !== null) draftRow.current?.querySelector('input')?.focus()
-              else setAdding('projects')
-            }}
-          >{m.project.sections.links}</AddAction>
+          <AddAction size="compact" ref={add} label={m.project.links.addTitle} onClick={relationDraft.start}>
+            {m.project.sections.links}
+          </AddAction>
         )}
       >{m.project.sections.links}
       </SectionHeading>

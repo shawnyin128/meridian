@@ -8,6 +8,8 @@ import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import { FadeText } from '../FadeText.js'
 import { Button } from '../Button.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import './ExtensionSettings.css'
 
 const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
@@ -95,19 +97,18 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
           {m.settings.extensions.tutorial.groups.map((group) => (
             <section className="extension-prompt-group" key={group.heading}>
               <SectionHeading level="group">{group.heading}</SectionHeading>
-              <div className="extension-prompt-list">
+              <List variant="embedded" rows="all" nested className="extension-prompt-list">
                 {group.examples.map((example) => (
-                  <div className="extension-prompt" key={example.label}>
-                    <div>
-                      <strong>{example.label}</strong>
-                      <p>{example.prompt}</p>
-                    </div>
-                    <Button size="compact" variant="ghost" onClick={() => onCopyPrompt(example.prompt)}>
-                      {m.settings.extensions.tutorial.copyPrompt}
-                    </Button>
-                  </div>
+                  <Item
+                    className="extension-prompt" key={example.label} lines={2} title={example.label} meta={example.prompt}
+                    trailing={(
+                      <Button size="compact" variant="ghost" onClick={() => onCopyPrompt(example.prompt)}>
+                        {m.settings.extensions.tutorial.copyPrompt}
+                      </Button>
+                    )}
+                  />
                 ))}
-              </div>
+              </List>
             </section>
           ))}
         </div>

@@ -80,7 +80,7 @@ describe('ExtensionSettings', () => {
     expect(host.querySelectorAll('.extension-tutorial-steps')).toHaveLength(1)
     expect(host.querySelectorAll('.extension-prompt-group')).toHaveLength(4)
     expect(host.querySelectorAll('.extension-prompt')).toHaveLength(10)
-    const firstPrompt = host.querySelector('.extension-prompt p')?.textContent ?? ''
+    const firstPrompt = host.querySelector('.extension-prompt .item-meta')?.textContent ?? ''
     act(() => host.querySelector<HTMLButtonElement>('.extension-prompt button')!.click())
     expect(copyPrompt).toHaveBeenCalledWith(firstPrompt)
     expect(firstPrompt).not.toContain('meridian.context')

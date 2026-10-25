@@ -201,19 +201,19 @@ describe('按钮组', () => {
       expect([button!.position, label!.display, label!.visibility, ring!.position]).toEqual(['relative', 'contents', 'hidden', 'absolute'])
     })
 
-    it('不像禁用那样变淡；实心按钮上的转圈是按钮的字色、底圈淡下去，别的按钮上转圈仍是强调色', () => {
+    it('不像禁用那样变淡；实心按钮上的转圈是按钮的字色、底圈淡下去，别的按钮上转圈是强调色的记号色', () => {
       const look = (classes: string) => {
         const [button, , ring, track] = busy(classes)
         return [button!.opacity, ring!.color, track!.getPropertyValue('stroke-opacity')]
       }
       expect(Object.fromEntries(Object.entries(VARIANTS).map(([variant, classes]) => [variant, look(classes)]))).toEqual({
-        secondary: ['1', 'var(--accent)', '1'],
+        secondary: ['1', 'var(--accent-mark)', '1'],
         primary: ['1', 'var(--on-accent)', '0.35'],
-        ghost: ['1', 'var(--accent)', '1'],
-        danger: ['1', 'var(--accent)', '1'],
+        ghost: ['1', 'var(--accent-mark)', '1'],
+        danger: ['1', 'var(--accent-mark)', '1'],
         solidDanger: ['1', 'var(--on-accent)', '0.35'],
-        ghostDanger: ['1', 'var(--accent)', '1'],
-        nested: ['1', 'var(--accent)', '1'],
+        ghostDanger: ['1', 'var(--accent-mark)', '1'],
+        nested: ['1', 'var(--accent-mark)', '1'],
       })
     })
   })
