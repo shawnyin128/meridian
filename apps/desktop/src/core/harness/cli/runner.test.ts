@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, parse } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { HarnessCli } from '../../../shared/contract.js'
-import { CODEX_DISABLED_FEATURES, createCliRunner, strictSchema } from './runner.js'
+import { CODEX_DISABLED_FEATURES, createCliRunner, runnerFlags, strictSchema } from './runner.js'
 
 /** What a stand-in CLI saw: its arguments, stdin, the variables of interest and its folder. */
 type Seen = {
@@ -16,8 +16,8 @@ type Seen = {
   schema?: unknown
 }
 
-/** What a stand-in CLI answers: stdout, an exit code, a last message for `-o`, or no end at all. */
-type Reply = { stdout?: string; exit?: number; lastMessage?: string; hang?: boolean }
+/** What a stand-in CLI answers: stdout, stderr, an exit code, a last message for `-o`, or no end at all. */
+type Reply = { stdout?: string; stderr?: string; exit?: number; lastMessage?: string; hang?: boolean }
 
 const RECORDED_VARIABLES = [
   'ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'OPENAI_API_KEY', 'HOME', 'PATH', 'KEEP_ME',
@@ -39,6 +39,7 @@ process.stdin.on('end', () => {
   fs.appendFileSync(process.env.STAND_IN_RECORD, JSON.stringify(record) + '\\n')
   if (reply.hang) { setInterval(() => {}, 1000); return }
   process.stdout.write(reply.stdout ?? '')
+  process.stderr.write(reply.stderr ?? '')
   process.exitCode = reply.exit ?? 0
 })
 `
@@ -91,7 +92,7 @@ function standIns(reply: Reply) {
     environment,
   })
   const records = (): Seen[] => existsSync(recordFile)
-    ? readFileSync(recordFile, 'utf8').trim().split('\n').map((line) => JSON.parse(line) as Seen)
+    ? readFileSync(recordFile, 'utf8').split('\n').filter((line) => line !== '').map((line) => JSON.parse(line) as Seen)
     : []
   return { bin, runner, records }
 }
@@ -264,6 +265,23 @@ describe('subscription CLI runner', () => {
     expect(codex.records()).toHaveLength(1)
   })
 
+  it('gives a failure the CLI\'s exit code and the redacted end of its stderr', async () => {
+    const claude = standIns({
+      stdout: claudeResult({ is_error: true, result: 'Claude AI usage limit reached' }),
+      stderr: 'warming up\nAuthorization: Bearer sk-ant-oat01-secretsecretsecret\nrate limited until 15:00\n',
+      exit: 1,
+    })
+    const failure = await claude.runner(call('claude')).catch((cause: unknown) => cause)
+    expect(failure).toMatchObject({ kind: 'failed', exitCode: 1 })
+    expect((failure as { stderr: string }).stderr).toMatch(/rate limited until 15:00$/)
+    expect((failure as { stderr: string }).stderr).not.toContain('sk-ant')
+
+    const codex = standIns({ stdout: 'not json', stderr: 'ERROR: 401 Unauthorized\n', exit: 2 })
+    await expect(codex.runner(call('codex'))).rejects.toMatchObject({
+      kind: 'failed', exitCode: 2, stderr: 'ERROR: 401 Unauthorized',
+    })
+  })
+
   it('cancelling ends the child and removes its folder', async () => {
     const { runner, records } = standIns({ hang: true })
     const controller = new AbortController()
@@ -286,6 +304,17 @@ describe('subscription CLI runner', () => {
     const [record] = records()
     expect(alive(record!.pid)).toBe(false)
     expect(existsSync(record!.cwd)).toBe(false)
+  })
+
+  it('names every flag it passes, the way each CLI\'s help lists them', () => {
+    expect(runnerFlags('claude')).toEqual([
+      '-p', '--output-format', '--json-schema', '--tools', '--strict-mcp-config', '--setting-sources',
+      '--no-session-persistence', '--system-prompt', '--model',
+    ])
+    expect(runnerFlags('codex')).toEqual([
+      '--ephemeral', '--skip-git-repo-check', '--sandbox', '--ignore-user-config', '--ignore-rules', '--json',
+      '--color', '--output-schema', '-o', '-C', '--disable', '--model',
+    ])
   })
 
   it('a CLI that is not installed or does not start is unavailable', async () => {

@@ -1,7 +1,7 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type { HarnessCli } from '../../../shared/contract.js'
-import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
+import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
 
 /** Codex features that give the model a tool or load outside code; every run turns them all off. */
 export const CODEX_DISABLED_FEATURES = [
@@ -48,6 +48,9 @@ const isRecord = (value: unknown): value is Record<string, unknown> =>
 
 const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(value) ? value : 0)
 
+/** What a failed call reports beside its message: the CLI's exit code and the redacted end of its stderr. */
+const failureDetails = (outcome: ChildOutcome) => ({ exitCode: outcome.code, stderr: stderrExcerpt(outcome.stderr) })
+
 const detailOf = (value: unknown) => typeof value === 'string'
   ? value.replace(/\s+/g, ' ').trim().slice(0, MAX_CLI_ERROR_DETAIL)
   : ''
@@ -90,6 +93,17 @@ function codexArgs(call: CliCall, files: { schema: string; output: string; work:
   ]
 }
 
+/** Every flag the runner passes to `cli`, the way `claude --help` and `codex exec --help` list them. */
+export function runnerFlags(cli: HarnessCli): string[] {
+  const call: CliCall = {
+    cli, model: 'model', system: 'system', prompt: 'prompt', schema: {}, timeoutMs: 0, signal: new AbortController().signal,
+  }
+  const args = cli === 'claude'
+    ? claudeArgs(call, {})
+    : codexArgs(call, { schema: 'schema', output: 'output', work: 'work' })
+  return [...new Set(args.filter((arg) => arg.startsWith('-') && arg !== '-').map((arg) => arg.split('=')[0]!))]
+}
+
 /** Claude prints one JSON result: the output is its `structured_output`, absent when invalid. */
 function claudeResult(outcome: ChildOutcome): Omit<CliResult, 'durationMs'> {
   let result: unknown
@@ -99,7 +113,9 @@ function claudeResult(outcome: ChildOutcome): Omit<CliResult, 'durationMs'> {
     result = undefined
   }
   if (!isRecord(result)) {
-    if (outcome.code !== 0) throw new CliRunError('failed', `claude 运行失败（退出码 ${String(outcome.code)}）`)
+    if (outcome.code !== 0) {
+      throw new CliRunError('failed', `claude 运行失败（退出码 ${String(outcome.code)}）`, failureDetails(outcome))
+    }
     return { output: null }
   }
   const usage = isRecord(result['usage']) ? result['usage'] : {}
@@ -115,7 +131,7 @@ function claudeResult(outcome: ChildOutcome): Omit<CliResult, 'durationMs'> {
   // An output that kept failing the schema is a malformed output, not a failed call.
   if (result['is_error'] === true && result['subtype'] !== 'error_max_structured_output_retries') {
     const detail = detailOf(result['result'])
-    throw new CliRunError('failed', detail === '' ? 'claude 运行失败' : `claude 运行失败：${detail}`)
+    throw new CliRunError('failed', detail === '' ? 'claude 运行失败' : `claude 运行失败：${detail}`, failureDetails(outcome))
   }
   return { output: result['structured_output'] ?? null, ...reported }
 }
@@ -135,7 +151,7 @@ function codexResult(outcome: ChildOutcome, outputFile: string): Omit<CliResult,
     const detail = detailOf(isRecord(failure?.['error']) ? failure['error']['message'] : failure?.['message'])
     throw new CliRunError('failed', detail === ''
       ? `codex 运行失败（退出码 ${String(outcome.code)}）`
-      : `codex 运行失败：${detail}`)
+      : `codex 运行失败：${detail}`, failureDetails(outcome))
   }
   const turns = events.filter((event) => event['type'] === 'turn.completed')
   const usages = turns.map((event) => (isRecord(event['usage']) ? event['usage'] : {}))

@@ -1,21 +1,35 @@
 import { accessSync, constants, existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir, userInfo } from 'node:os'
-import { basename, delimiter, isAbsolute, join } from 'node:path'
+import { basename, isAbsolute, join } from 'node:path'
 import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../../shared/contract.js'
 import { cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
-
-/** The oldest versions known to take every flag the runner passes: the ones the demo of 2026-10-25 ran. */
-export const MINIMUM_CLI_VERSIONS: Readonly<Record<HarnessCli, string>> = { claude: '2.1.280', codex: '0.163.0' }
+import { runnerFlags } from './runner.js'
 
 const SYSTEM_FOLDERS = ['/opt/homebrew/bin', '/usr/local/bin'] as const
 const PROBE_TIMEOUT_MS = 10_000
+/**
+ * The Windows files each CLI may be, best first. cmd.exe cannot carry the schema and the multi-line
+ * system prompt Claude takes as arguments, so an npm `claude.cmd` shim cannot run a call.
+ */
+const WINDOWS_FILES: Readonly<Record<HarnessCli, readonly string[]>> = {
+  claude: ['claude.exe'],
+  codex: ['codex.exe', 'codex.cmd'],
+}
 
 /** How a CLI is signed in: with the user's subscription, some other way, not at all, or unreadably. */
 export type CliSignIn = 'subscription' | 'other' | 'signed-out' | 'unknown'
 
 export type CliDiscovery =
   | { cli: HarnessCli; installed: false }
-  | { cli: HarnessCli; installed: true; binary: string; version: string | null; signIn: CliSignIn }
+  | {
+    cli: HarnessCli
+    installed: true
+    binary: string
+    version: string | null
+    /** The flags the runner passes that the CLI's help does not list. */
+    missingFlags: string[]
+    signIn: CliSignIn
+  }
 
 export type DiscoveryOptions = {
   /** The environment the App runs in; a Dock-launched App's has no shell PATH. */
@@ -25,19 +39,23 @@ export type DiscoveryOptions = {
   shell?: string
   /** System folders a package manager installs commands into. */
   systemFolders?: readonly string[]
+  platform?: NodeJS.Platform
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
-function isExecutable(path: string): boolean {
+function isExecutable(path: string, windows = false): boolean {
   try {
-    accessSync(path, constants.X_OK)
+    accessSync(path, windows ? constants.F_OK : constants.X_OK)
     return statSync(path).isFile()
   } catch {
     return false
   }
 }
+
+const variable = (environment: NodeJS.ProcessEnv, name: string) =>
+  Object.entries(environment).find(([key]) => key.toUpperCase() === name)?.[1]
 
 async function fromLoginShell(cli: HarnessCli, shell: string, environment: NodeJS.ProcessEnv, home: string) {
   let stdout: string
@@ -53,7 +71,7 @@ async function fromLoginShell(cli: HarnessCli, shell: string, environment: NodeJ
   // Startup files may print lines of their own, and an alias prints its definition, not a path.
   return stdout.split(/\r?\n/).map((line) => line.trim())
     .filter((line) => isAbsolute(line) && basename(line) === cli)
-    .findLast(isExecutable) ?? null
+    .findLast((path) => isExecutable(path)) ?? null
 }
 
 function nodeVersionFolders(home: string): string[] {
@@ -66,26 +84,37 @@ function nodeVersionFolders(home: string): string[] {
 
 /**
  * The absolute path of the `cli` command, or null when it is not installed. Asks the user's login
- * shell first, then looks in ~/.local/bin, the Homebrew folders and the npm global folders.
+ * shell first, then looks in ~/.local/bin, the Homebrew folders and the npm global folders. On
+ * Windows it looks on PATH, in ~/.local/bin and in npm's %APPDATA%\\npm instead.
  */
 export async function resolveCliBinary(cli: HarnessCli, options: DiscoveryOptions = {}): Promise<string | null> {
   const environment = options.environment ?? process.env
   const home = options.home ?? homedir()
-  const windows = process.platform === 'win32'
-  if (!windows) {
-    const shell = options.shell ?? environment['SHELL'] ?? userInfo().shell ?? '/bin/zsh'
-    const found = await fromLoginShell(cli, shell, environment, home)
-    if (found !== null) return found
+  if ((options.platform ?? process.platform) === 'win32') {
+    const appData = variable(environment, 'APPDATA')
+    const folders = [
+      ...(variable(environment, 'PATH') ?? '').split(';').filter((folder) => folder !== ''),
+      join(home, '.local', 'bin'),
+      ...(appData === undefined ? [] : [join(appData, 'npm')]),
+    ]
+    return folders.flatMap((folder) => WINDOWS_FILES[cli].map((file) => join(folder, file)))
+      .find((path) => isExecutable(path, true)) ?? null
   }
+  const shell = options.shell ?? environment['SHELL'] ?? userInfo().shell ?? '/bin/zsh'
+  const found = await fromLoginShell(cli, shell, environment, home)
+  if (found !== null) return found
   const folders = [
-    ...(windows ? (environment['PATH'] ?? environment['Path'] ?? '').split(delimiter).filter((folder) => folder !== '') : []),
     join(home, '.local', 'bin'),
     ...(options.systemFolders ?? SYSTEM_FOLDERS),
     join(home, '.npm-global', 'bin'),
     ...nodeVersionFolders(home),
   ]
-  return folders.map((folder) => join(folder, windows ? `${cli}.exe` : cli)).find(isExecutable) ?? null
+  return folders.map((folder) => join(folder, cli)).find((path) => isExecutable(path)) ?? null
 }
+
+/** Whether `help` lists `flag` as an option of its own, not as part of a longer one. */
+const listsFlag = (help: string, flag: string) =>
+  new RegExp(`(?<![\\w-])${flag.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}(?![\\w-])`).test(help)
 
 function claudeSignIn(stdout: string): CliSignIn {
   let status: unknown
@@ -106,42 +135,43 @@ function codexSignIn(text: string): CliSignIn {
 }
 
 /**
- * Where `cli` is installed, its version and how it is signed in, read from its own `--version` and
- * status commands without a model call. Keeps nothing else of their output. Rejects with a
- * CliRunError when the installed CLI cannot start or does not answer in time.
+ * Where `cli` is installed, its version, which of the runner's flags its help lacks and how it is
+ * signed in, read from its own `--version`, help and status commands without a model call. Keeps
+ * nothing else of their output. Rejects with a CliRunError when the installed CLI cannot start or
+ * does not answer in time.
  */
 export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {}): Promise<CliDiscovery> {
   const binary = await resolveCliBinary(cli, options)
   if (binary === null) return { cli, installed: false }
   const env = cliEnvironment(options.environment ?? process.env, binary)
   return inTemporaryFolder(async (folder) => {
-    const probe = (args: string[]) => runChild(binary, args, { cwd: folder, env, timeoutMs: PROBE_TIMEOUT_MS })
+    const probe = (args: string[]) => runChild(binary, args, {
+      cwd: folder, env, timeoutMs: PROBE_TIMEOUT_MS,
+      ...(options.platform === undefined ? {} : { platform: options.platform }),
+    })
     const version = /\b\d+\.\d+\.\d+\b/.exec((await probe(['--version'])).stdout)?.[0] ?? null
+    const help = await probe(cli === 'claude' ? ['--help'] : ['exec', '--help'])
+    const missingFlags = runnerFlags(cli).filter((flag) => !listsFlag(`${help.stdout}\n${help.stderr}`, flag))
     const status = await probe(cli === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'])
     const signIn = cli === 'claude' ? claudeSignIn(status.stdout) : codexSignIn(`${status.stdout}\n${status.stderr}`)
-    return { cli, installed: true, binary, version, signIn }
+    return { cli, installed: true, binary, version, missingFlags, signIn }
   })
 }
 
-function atLeast(version: string, minimum: string): boolean {
-  const have = version.split('.').map(Number)
-  const need = minimum.split('.').map(Number)
-  for (let index = 0; index < need.length; index += 1) {
-    if (have[index] !== need[index]) return (have[index] ?? 0) > need[index]!
-  }
-  return true
-}
-
 /**
- * The connection check of a subscription CLI: connected when `cli` is installed, at least
- * MINIMUM_CLI_VERSIONS, and signed in with the user's subscription. Makes no model call.
+ * The connection check of a subscription CLI: connected when `cli` is installed, its help lists
+ * every flag the runner passes, and it is signed in with the user's subscription. Reports the
+ * CLI's version when it has one, and logs through `onLog` which flags an unsupported CLI lacks.
+ * Makes no model call.
  */
 export async function checkCliConnection(
   cli: HarnessCli,
-  options: DiscoveryOptions = {},
+  options: DiscoveryOptions & { onLog?: (line: string) => void } = {},
 ): Promise<HarnessModelConnectionCheckResult> {
+  let version: string | null = null
   const failed = (reason: 'unavailable' | 'timeout' | 'configuration' | 'authentication', detail: string) => ({
-    state: 'failed' as const, reason, detail, modelCalls: 0 as const, maxOutputTokens: 1 as const,
+    state: 'failed' as const, reason, detail, ...(version === null ? {} : { version }),
+    modelCalls: 0 as const, maxOutputTokens: 1 as const,
   })
   let found: CliDiscovery
   try {
@@ -151,14 +181,14 @@ export async function checkCliConnection(
     return failed(cause.kind === 'timeout' ? 'timeout' : 'unavailable', cause.message)
   }
   if (!found.installed) return failed('unavailable', `没有找到 ${cli} 命令`)
-  const minimum = MINIMUM_CLI_VERSIONS[cli]
-  if (found.version === null) return failed('configuration', `读不出 ${cli} 的版本`)
-  if (!atLeast(found.version, minimum)) {
-    return failed('configuration', `${cli} ${found.version} 版本过旧，需要 ${minimum} 或更新`)
+  version = found.version
+  if (found.missingFlags.length > 0) {
+    options.onLog?.(`${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
+    return failed('configuration', `这个版本的 ${cli} 不支持 Meridian 需要的选项，请更新`)
   }
   switch (found.signIn) {
     case 'subscription':
-      return { state: 'connected', modelCalls: 0, maxOutputTokens: 1 }
+      return { state: 'connected', ...(version === null ? {} : { version }), modelCalls: 0, maxOutputTokens: 1 }
     case 'other':
       return failed('authentication', cli === 'claude' ? 'claude 没有用 Claude 订阅登录' : 'codex 没有用 ChatGPT 登录')
     case 'signed-out':

@@ -900,10 +900,16 @@ export const HarnessModelConnectionFailureSchema = z.enum([
   'unknown',
 ])
 
-/** A model connection check's result. `modelCalls` is 0 for a check that calls no model, as a subscription CLI's. */
+const CliVersionSchema = z.string().trim().min(1).max(100)
+
+/**
+ * A model connection check's result. `modelCalls` is 0 for a check that calls no model, as a
+ * subscription CLI's; `version` is that CLI's version, for display.
+ */
 export const HarnessModelConnectionCheckResultSchema = z.discriminatedUnion('state', [
   z.object({
     state: z.literal('connected'),
+    version: CliVersionSchema.optional(),
     modelCalls: z.union([z.literal(0), z.literal(1)]),
     maxOutputTokens: z.literal(1),
   }).strict(),
@@ -911,6 +917,7 @@ export const HarnessModelConnectionCheckResultSchema = z.discriminatedUnion('sta
     state: z.literal('failed'),
     reason: HarnessModelConnectionFailureSchema,
     detail: z.string().trim().min(1).max(500),
+    version: CliVersionSchema.optional(),
     modelCalls: z.union([z.literal(0), z.literal(1)]),
     maxOutputTokens: z.literal(1),
   }).strict(),
