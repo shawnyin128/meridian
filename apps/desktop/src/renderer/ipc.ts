@@ -19,7 +19,7 @@ import type {
   ResearchIdeaPromoteResult,
   ProjectOverview,
   ProjectSummary,
-  RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
+  RelationFields, SearchHit, SshFolders, SshFoldersParams, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
   WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
 } from '../shared/contract.js'
@@ -330,6 +330,13 @@ export const delivery = {
   setSemanticKey: (apiKey: string | null) => call<SemanticKeyStatus>('delivery.setSemanticKey', { apiKey }),
   /** Makes one Semantic Scholar request with the saved key and reports how it went. */
   checkSemanticKey: () => call<SemanticKeyCheckResult>('delivery.checkSemanticKey', {}),
+}
+
+export const ssh = {
+  /** The `Host` aliases of the user's OpenSSH config, in its order. */
+  hosts: () => call<string[]>('ssh.hosts', {}),
+  /** One folder of an SSH host, the remote home without `path`, or why it could not be listed. */
+  folders: (params: SshFoldersParams) => call<SshFolders>('ssh.folders', params),
 }
 
 export const colourThemes = {

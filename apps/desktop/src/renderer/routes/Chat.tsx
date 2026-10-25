@@ -22,6 +22,7 @@ import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { useDrafts } from '../hooks/useDrafts.js'
+import { useDraftSlot } from '../components/DraftSlot.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useChatTurn } from '../hooks/useChatTurn.js'
 import { useGenerations } from '../hooks/useGenerations.js'
@@ -93,7 +94,6 @@ export function Chat() {
   // The message being typed and an idea being drafted belong to their chat.
   const drafts = useDrafts<ChatRun[]>(['chat', id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['chat', id ?? ''])
-  const ideaAt = useRef<HTMLDivElement>(null)
   const { running, stop } = useGenerations()
   const { noModel, track } = useNoModelChats()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -107,6 +107,7 @@ export function Chat() {
   const write = useVaultWrite()
   const draft = id === null ? [] : drafts.get('message') ?? []
   const ideaDraft = id === null ? undefined : ideaDrafts.get('idea')
+  const ideaSlot = useDraftSlot<HTMLDivElement>(ideaDraft !== undefined, () => { if (id !== null) ideaDrafts.set('idea', { title: '', body: '' }) })
   const sending = id !== null && running(id)
 
   useEffect(() => load('projects', project.list(), setProjects), [revision, load])
@@ -168,12 +169,6 @@ export function Chat() {
   }
   const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
-  const startIdea = () => {
-    if (id === null) return
-    if (ideaDraft === undefined) ideaDrafts.set('idea', { title: '', body: '' })
-    else ideaAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
-  }
-
   // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
   // the breadcrumb marks it as archived.
   const tail = useMemo<CrumbSeg[]>(
@@ -210,7 +205,7 @@ export function Chat() {
             {id === null || ideaDraft === undefined
               ? null
               : (
-                <div className="mwrap" ref={ideaAt}>
+                <div className="mwrap" ref={ideaSlot.slot}>
                   <IdeaDraft
                     source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
                     onChange={(next) => ideaDrafts.set('idea', next)} onCancel={() => ideaDrafts.drop('idea')}
@@ -245,7 +240,7 @@ export function Chat() {
                 {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
                 <Button
                   size="compact" variant="ghost" className="save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
-                  onClick={startIdea}
+                  onClick={ideaSlot.start}
                 >{m.chat.saveIdeaLabel}</Button>
               </div>
             </Toolbar>
