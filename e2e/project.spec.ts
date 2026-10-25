@@ -619,7 +619,14 @@ test('任务时间列单独编辑时,名称、优先级与状态保持静息', a
   await expect(row.locator('.metadata-input')).toHaveCount(0)
   await expect(row.locator('.plan-priority')).toHaveCount(1)
   await expect(row.locator('.state-cell')).toHaveCount(1)
-  await form.locator('input[type="date"]').first().fill(fixtureDay(today, T2_START + 1))
+  // The start is picked from the one calendar, which opens on the start's month.
+  const next = fixtureDay(today, T2_START + 1)
+  await form.locator('.choice-picker').first().click()
+  const day = win.locator(`.calg [aria-label="${dshort(next)}"]`)
+  if (await day.count() === 0) await win.locator('.calh [aria-label="下个月"]').click()
+  await day.click()
+  await expect(win.locator('.calg')).toHaveCount(0)
+  await expect(form.locator('.choice-picker').first()).toHaveText(dshort(next))
   await form.locator('button', { hasText: '保存' }).click()
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新任务')
   const saved = (await readDraft(win)).tasks.find((t) => t.id === 't2')!
