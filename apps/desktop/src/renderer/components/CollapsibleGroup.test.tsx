@@ -23,6 +23,23 @@ describe('CollapsibleGroup', () => {
     expect(withoutCount).not.toContain('heading-count')
   })
 
+  it('分组标题是共享的折叠钮：箭头跟在标题和条数后面，报出展开与否和它折叠的分组内容；收起时箭头转向', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    for (const variant of ['section', 'quiet'] as const) {
+      act(() => root.render(<CollapsibleGroup title="主题" count={2} open onToggle={vi.fn()} variant={variant}>内容</CollapsibleGroup>))
+      const toggle = host.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!
+      expect([...toggle.children].map((child) => child.className), variant).toEqual(['collapsible-group-label', 'fold-caret'])
+      expect(document.getElementById(toggle.getAttribute('aria-controls')!), variant).toBe(host.querySelector('.collapsible-group-body'))
+      act(() => root.render(<CollapsibleGroup title="主题" count={2} open={false} onToggle={vi.fn()} variant={variant}>内容</CollapsibleGroup>))
+      expect([toggle.getAttribute('aria-expanded'), toggle.lastElementChild!.matches('.is-closed')], variant).toEqual(['false', true])
+    }
+    act(() => root.unmount())
+    host.remove()
+  })
+
   it('quiet 变体带上安静样式的类名,默认变体不带', () => {
     const quiet = renderToStaticMarkup(
       <CollapsibleGroup title="已归档" open={false} onToggle={vi.fn()} variant="quiet">内容</CollapsibleGroup>,

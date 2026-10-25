@@ -3,6 +3,7 @@ import type { ReactNode } from 'react'
 import type { ChatSession, Watch } from '../../shared/contract.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { DotsMenu } from '../components/FieldPickers.js'
+import { FoldToggle } from '../components/FoldToggle.js'
 import { RowActions } from '../components/StructuredList.js'
 import { Grip, type GripProps } from '../components/Grip.js'
 import { IconButton } from '../components/IconButton.js'
@@ -21,22 +22,6 @@ import { GripTooltip } from './GripTooltip.js'
 import { SearchBox } from './SearchBox.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-
-const CARET = <Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon>
-
-/** The caret of a row that folds its group itself; the row's button carries the state. */
-const Caret = () => <span className="sh-caret" aria-hidden="true">{CARET}</span>
-
-/** The caret that folds the groups under a row; its click never reaches the row. */
-function CaretToggle({ label, open, onToggle }: { label: string; open: boolean; onToggle: () => void }) {
-  const m = useMessages()
-  return (
-    <IconButton
-      label={m.shell.sidebar.toggleGroup(label)} size="inline" className="sh-caret" aria-expanded={open}
-      onClick={(e) => { e.stopPropagation(); onToggle() }}
-    >{CARET}</IconButton>
-  )
-}
 
 /** A watch's row in the sidebar. When `count` is 0 there is no badge; a paused watch is greyed out and keeps its count. */
 function WatchRow({ watch, count, on, onOpen }: {
@@ -87,24 +72,15 @@ function ChatRow({ session, on, onOpen, onArchive, onDelete }: {
   )
 }
 
-/** A section heading that folds its section. `extra` is a button of the heading's own, which never folds it. */
+/** The heading of section `sect`, which folds the section. `extra` is a button of the heading's own, which never folds it. */
 function SectHead({ sect, label, closed, onToggle, extra }: {
   sect: string; label: string; closed: boolean; onToggle: () => void; extra?: ReactNode
 }) {
-  const cls = ['sb-h', extra ? 'chats-h' : null, 'sect-h', closed ? 'closed' : null]
-  const className = cls.filter(Boolean).join(' ')
-  if (extra === undefined) {
-    return (
-      <NavRow className={className} data-sect={sect} expanded={!closed} onActivate={onToggle}>
-        {label}<Caret />
-      </NavRow>
-    )
-  }
   return (
-    <NavRow
-      className={className} data-sect={sect} expanded={!closed} onActivate={onToggle}
-      label={<>{label}<Caret /></>}
-    >{extra}</NavRow>
+    <div className="sb-h" data-sect={sect}>
+      <FoldToggle open={!closed} onToggle={onToggle} controls={`sect-${sect}`}>{label}</FoldToggle>
+      {extra}
+    </div>
   )
 }
 
@@ -217,8 +193,12 @@ export function Sidebar({
             <div className={sect('inbox')} id="sect-inbox">
               {/* As in the demo, only this row's caret collapses its subgroups; the rest of the row opens the Inbox. */}
               <NavRow
-                className={closed['inboxsub'] ? 'srow closed' : 'srow'} selected={onWatch(ALL_WATCHES)}
+                className="srow" selected={onWatch(ALL_WATCHES)}
                 id="rowInboxAll" data-inbox={ALL_WATCHES} onActivate={() => onOpenInbox(ALL_WATCHES)}
+                fold={{
+                  label: m.shell.sidebar.toggleGroup(m.shell.nav.delivery), open: !closed['inboxsub'],
+                  onToggle: () => toggle('inboxsub'), controls: 'g-inboxsub',
+                }}
                 label={(
                   <>
                     <span className="ic">
@@ -230,21 +210,19 @@ export function Sidebar({
                   </>
                 )}
               >
-                <CaretToggle label={m.shell.nav.delivery} open={!closed['inboxsub']} onToggle={() => toggle('inboxsub')} />
                 {pushed > 0 ? <CountBadge className="n" count={pushed} /> : null}
               </NavRow>
               <div className={wgroup('inboxsub')} id="g-inboxsub">
                 <NavRow
-                  className={closed['discoverysub'] ? 'srow discovery closed' : 'srow discovery'}
+                  className="srow discovery"
                   selected={onDiscovery(ALL_WATCHES)} data-inbox="discovery"
                   onActivate={() => onOpenInbox(ALL_WATCHES, 'discovery')}
+                  fold={discoveryProjects.length > 0 ? {
+                    label: m.shell.sidebar.toggleGroup(m.shell.nav.discovery), open: !closed['discoverysub'],
+                    onToggle: () => toggle('discoverysub'), controls: 'g-discoverysub',
+                  } : undefined}
                   label={<><span className="ic"><IconNorthStar /></span>{m.shell.nav.discovery}</>}
                 >
-                  {discoveryProjects.length > 0 ? (
-                    <CaretToggle
-                      label={m.shell.nav.discovery} open={!closed['discoverysub']} onToggle={() => toggle('discoverysub')}
-                    />
-                  ) : null}
                   {discoveryCount > 0 ? <CountBadge className="n" count={discoveryCount} /> : null}
                 </NavRow>
                 <div className={wgroup('discoverysub')} id="g-discoverysub">
@@ -259,17 +237,18 @@ export function Sidebar({
                     </NavRow>
                   ))}
                 </div>
-                <NavRow
-                  className={closed['topics'] ? 'srow disc closed' : 'srow disc'} data-disc="topics"
-                  expanded={!closed['topics']} onActivate={() => toggle('topics')}
+                <FoldToggle
+                  className="srow disc" data-disc="topics"
+                  open={!closed['topics']} onToggle={() => toggle('topics')} controls="g-topics"
+                  end={topicPapers > 0 ? <CountBadge className="n" count={topicPapers} /> : null}
                 >
                   <span className="ic">
                     <Icon>
                       <path d="M20.59 13.41l-7.17 7.17a2 2 0 0 1-2.83 0L2 12V2h10l8.59 8.59a2 2 0 0 1 0 2.83z" />
                       <line x1="7" y1="7" x2="7.01" y2="7" />
                     </Icon>
-                  </span>{m.shell.nav.watchTopics}<Caret />{topicPapers > 0 ? <CountBadge className="n" count={topicPapers} /> : null}
-                </NavRow>
+                  </span>{m.shell.nav.watchTopics}
+                </FoldToggle>
                 <div className={wgroup('topics')} id="g-topics">
                   {topics.map((w) => (
                     <WatchRow
@@ -278,14 +257,15 @@ export function Sidebar({
                     />
                   ))}
                 </div>
-                <NavRow
-                  className={closed['authors'] ? 'srow disc closed' : 'srow disc'} data-disc="authors"
-                  expanded={!closed['authors']} onActivate={() => toggle('authors')}
+                <FoldToggle
+                  className="srow disc" data-disc="authors"
+                  open={!closed['authors']} onToggle={() => toggle('authors')} controls="g-authors"
+                  end={authorPapers > 0 ? <CountBadge className="n" count={authorPapers} /> : null}
                 >
                   <span className="ic">
                     <Icon><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2" /><circle cx="12" cy="7" r="4" /></Icon>
-                  </span>{m.shell.nav.watchAuthors}<Caret />{authorPapers > 0 ? <CountBadge className="n" count={authorPapers} /> : null}
-                </NavRow>
+                  </span>{m.shell.nav.watchAuthors}
+                </FoldToggle>
                 <div className={wgroup('authors')} id="g-authors">
                   {authors.map((w) => (
                     <WatchRow

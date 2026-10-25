@@ -202,7 +202,7 @@ test('总览时间线:项目行的折叠钮收起它的任务,别的项目不动
   expect(reproTasks).toBeGreaterThan(0)
   expect(draftTasks).toBeGreaterThan(0)
 
-  const fold = gantt.locator('.glrow.msl[data-proj="repro"] .timeline-fold')
+  const fold = gantt.locator('.glrow.msl[data-proj="repro"] .fold-toggle')
   await fold.click()
   await expect(fold).toHaveAttribute('aria-expanded', 'false')
   await expect(taskLabels('repro')).toHaveCount(0)

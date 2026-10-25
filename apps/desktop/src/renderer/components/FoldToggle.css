@@ -1,0 +1,15 @@
+/*
+ * A fold toggle fills the row it heads and draws no box: :where() keeps every rule of its host's class
+ * winning. Its label keeps to its text, so the caret follows the text.
+ */
+:where(.fold-toggle){display:flex;align-items:center;gap:var(--sp-8);box-sizing:border-box;width:100%;min-width:0;margin:0;padding:0;
+  border:0;border-radius:var(--r-sm);background:none;color:inherit;font:inherit;text-align:left;cursor:pointer}
+.fold-toggle:hover .fold-caret{color:var(--ink)}
+/*
+ * A composite toggle's button lies over its label and caret, so a click on either toggles and its ring
+ * encloses both; a control in the label comes later and is positioned, so it paints above the button.
+ */
+.fold-toggle--composite{position:relative}
+.fold-toggle-press{position:absolute;inset:0;margin:0;padding:0;border:0;border-radius:inherit;background:none;cursor:pointer}
+.fold-toggle-label{display:flex;min-width:0}
+.fold-toggle-label :is(a,button){position:relative}

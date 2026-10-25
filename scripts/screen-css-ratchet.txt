@@ -961,40 +961,37 @@ components/timeline/TimelineBoard.css:12: .glrow:hover { background }
 components/timeline/TimelineBoard.css:13: .timeline-item-label { color }
 components/timeline/TimelineBoard.css:14: .timeline-label-row.msl .timeline-item-label { color }
 components/timeline/TimelineBoard.css:14: .timeline-label-row.msl .timeline-item-label { font-weight }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { display }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { padding }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { border }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { border-radius }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { background }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { color }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { font }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { text-align }
-components/timeline/TimelineBoard.css:16: .timeline-label-open { cursor }
-components/timeline/TimelineBoard.css:17: .gwrap { overflow-x }
-components/timeline/TimelineBoard.css:19: .glabels .glrow:last-child { border-bottom }
-components/timeline/TimelineBoard.css:20: .glrow[draggable] { cursor }
-components/timeline/TimelineBoard.css:21: .glrow[draggable]:active { cursor }
-components/timeline/TimelineBoard.css:21: .glrow.dragging { cursor }
-components/timeline/TimelineBoard.css:22: .glrow.dragging { opacity }
-components/timeline/TimelineBoard.css:23: .glrow.drag-over-before { box-shadow }
-components/timeline/TimelineBoard.css:24: .glrow.drag-over-after { box-shadow }
-components/timeline/TimelineBoard.css:55: .gbar.label-beside .gbar-label { visibility }
-components/timeline/TimelineBoard.css:63: .glrow.msl { height }
-components/timeline/TimelineBoard.css:63: .glrow.msl { background }
-components/timeline/TimelineBoard.css:66: .glrow.msl { font-size }
-components/timeline/TimelineBoard.css:66: .glrow.msl { font-weight }
-components/timeline/TimelineBoard.css:66: .glrow.msl { color }
-components/timeline/TimelineBoard.css:66: .glrow.msl { cursor }
-components/timeline/TimelineBoard.css:72: .timeline-fold { margin-left }
-components/timeline/TimelineBoard.css:73: .timeline-fold svg { transition }
-components/timeline/TimelineBoard.css:74: .timeline-fold[aria-expanded="false"] svg { transform }
-components/timeline/TimelineBoard.css:75: .timeline-folded-count { color }
-components/timeline/TimelineBoard.css:75: .timeline-folded-count { font-weight }
-components/timeline/TimelineBoard.css:81: .glane-new { padding }
-components/timeline/TimelineBoard.css:81: .glane-new { border }
-components/timeline/TimelineBoard.css:81: .glane-new { border-radius }
-components/timeline/TimelineBoard.css:81: .glane-new { background }
-components/timeline/TimelineBoard.css:81: .glane-new { pointer-events }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { display }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { padding }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { border }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { border-radius }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { background }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { color }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { font }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { text-align }
+components/timeline/TimelineBoard.css:18: .timeline-label-open { cursor }
+components/timeline/TimelineBoard.css:19: .gwrap { overflow-x }
+components/timeline/TimelineBoard.css:21: .glabels .glrow:last-child { border-bottom }
+components/timeline/TimelineBoard.css:22: .glrow[draggable] { cursor }
+components/timeline/TimelineBoard.css:23: .glrow[draggable]:active { cursor }
+components/timeline/TimelineBoard.css:23: .glrow.dragging { cursor }
+components/timeline/TimelineBoard.css:24: .glrow.dragging { opacity }
+components/timeline/TimelineBoard.css:25: .glrow.drag-over-before { box-shadow }
+components/timeline/TimelineBoard.css:26: .glrow.drag-over-after { box-shadow }
+components/timeline/TimelineBoard.css:57: .gbar.label-beside .gbar-label { visibility }
+components/timeline/TimelineBoard.css:65: .glrow.msl { height }
+components/timeline/TimelineBoard.css:65: .glrow.msl { background }
+components/timeline/TimelineBoard.css:68: .glrow.msl { font-size }
+components/timeline/TimelineBoard.css:68: .glrow.msl { font-weight }
+components/timeline/TimelineBoard.css:68: .glrow.msl { color }
+components/timeline/TimelineBoard.css:68: .glrow.msl { cursor }
+components/timeline/TimelineBoard.css:74: .timeline-folded-count { color }
+components/timeline/TimelineBoard.css:74: .timeline-folded-count { font-weight }
+components/timeline/TimelineBoard.css:80: .glane-new { padding }
+components/timeline/TimelineBoard.css:80: .glane-new { border }
+components/timeline/TimelineBoard.css:80: .glane-new { border-radius }
+components/timeline/TimelineBoard.css:80: .glane-new { background }
+components/timeline/TimelineBoard.css:80: .glane-new { pointer-events }
 components/wiki/ProposalChange.css:8: .proposal-rows { margin }
 components/wiki/ProposalChange.css:10: .proposal-change+.proposal-change { margin-top }
 components/wiki/ProposalChange.css:12: .proposal-row>dt { white-space }
@@ -2178,59 +2175,48 @@ shell/AppShell.css:91: .sb-h { font-weight }
 shell/AppShell.css:91: .sb-h { color }
 shell/AppShell.css:91: .sb-h { padding }
 shell/AppShell.css:91: .sb-h { margin }
-shell/AppShell.css:93: .sect-h { cursor }
-shell/AppShell.css:93: .sect-h { user-select }
-shell/AppShell.css:95: span.sh-caret { display }
-shell/AppShell.css:95: span.sh-caret { place-items }
-shell/AppShell.css:95: span.sh-caret { transition }
-shell/AppShell.css:96: .srow span.sh-caret { color }
-shell/AppShell.css:97: span.sh-caret svg { width }
-shell/AppShell.css:97: span.sh-caret svg { height }
-shell/AppShell.css:98: .sect-h.closed .sh-caret { transform }
-shell/AppShell.css:99: .sect.closed { display }
-shell/AppShell.css:101: .sb-add { margin-left }
-shell/AppShell.css:104: .srow { display }
-shell/AppShell.css:104: .srow { align-items }
-shell/AppShell.css:104: .srow { gap }
-shell/AppShell.css:104: .srow { box-sizing }
-shell/AppShell.css:104: .srow { padding }
-shell/AppShell.css:104: .srow { border-radius }
-shell/AppShell.css:104: .srow { font-size }
-shell/AppShell.css:104: .srow { cursor }
-shell/AppShell.css:104: .srow { color }
-shell/AppShell.css:104: .srow { transition }
-shell/AppShell.css:110: .srow:hover { background-image }
-shell/AppShell.css:110: .srow:has(.row-actions [data-state="open"]) { background-image }
-shell/AppShell.css:111: .srow.on { background-color }
-shell/AppShell.css:111: .srow.on { color }
-shell/AppShell.css:112: .srow.on .ic { color }
-shell/AppShell.css:113: .feed-row { margin-top }
-shell/AppShell.css:114: .trash-row { margin-top }
-shell/AppShell.css:115: .update-row { margin-top }
-shell/AppShell.css:116: .srow .ic { width }
-shell/AppShell.css:116: .srow .ic { color }
-shell/AppShell.css:117: .srow .ic svg { width }
-shell/AppShell.css:117: .srow .ic svg { height }
-shell/AppShell.css:118: .srow .n { margin-left }
-shell/AppShell.css:119: .srow.sub { padding-left }
-shell/AppShell.css:119: .srow.sub { font-size }
-shell/AppShell.css:122: .watch-row .n { margin-left }
-shell/AppShell.css:126: .srow.sub .ic.blank::before { content }
-shell/AppShell.css:128: #g-inboxsub > .srow.discovery { padding-left }
-shell/AppShell.css:128: #g-inboxsub > .srow.disc { padding-left }
-shell/AppShell.css:129: #g-inboxsub .wgroup .srow.sub { padding-left }
-shell/AppShell.css:131: .srow.sub .ic:empty::before { content }
-shell/AppShell.css:131: .srow.sub .ic:empty::before { width }
-shell/AppShell.css:131: .srow.sub .ic:empty::before { height }
-shell/AppShell.css:131: .srow.sub .ic:empty::before { border-radius }
-shell/AppShell.css:131: .srow.sub .ic:empty::before { box-sizing }
-shell/AppShell.css:131: .srow.sub .ic:empty::before { border }
-shell/AppShell.css:131: .srow.sub .ic:empty::before { background }
-shell/AppShell.css:132: .srow.sub:has(.n) .ic:empty::before { background }
-shell/AppShell.css:132: .srow.sub:has(.n) .ic:empty::before { border-color }
-shell/AppShell.css:134: .disc.closed .sh-caret { transform }
-shell/AppShell.css:136: .srow.dim { color }
-shell/AppShell.css:138: .srow.closed>.sh-caret { transform }
-shell/AppShell.css:139: .wgroup.closed { display }
-shell/AppShell.css:142: #sbgrip { right }
-shell/AppShell.css:142: #rrgrip { right }
+shell/AppShell.css:92: .sect.closed { display }
+shell/AppShell.css:94: .sb-add { margin-left }
+shell/AppShell.css:97: .srow { display }
+shell/AppShell.css:97: .srow { align-items }
+shell/AppShell.css:97: .srow { gap }
+shell/AppShell.css:97: .srow { box-sizing }
+shell/AppShell.css:97: .srow { padding }
+shell/AppShell.css:97: .srow { border-radius }
+shell/AppShell.css:97: .srow { font-size }
+shell/AppShell.css:97: .srow { cursor }
+shell/AppShell.css:97: .srow { color }
+shell/AppShell.css:97: .srow { transition }
+shell/AppShell.css:103: .srow:hover { background-image }
+shell/AppShell.css:103: .srow:has(.row-actions [data-state="open"]) { background-image }
+shell/AppShell.css:104: .srow.on { background-color }
+shell/AppShell.css:104: .srow.on { color }
+shell/AppShell.css:105: .srow.on .ic { color }
+shell/AppShell.css:106: .feed-row { margin-top }
+shell/AppShell.css:107: .trash-row { margin-top }
+shell/AppShell.css:108: .update-row { margin-top }
+shell/AppShell.css:109: .srow .ic { width }
+shell/AppShell.css:109: .srow .ic { color }
+shell/AppShell.css:110: .srow .ic svg { width }
+shell/AppShell.css:110: .srow .ic svg { height }
+shell/AppShell.css:111: .srow .n { margin-left }
+shell/AppShell.css:112: .srow.sub { padding-left }
+shell/AppShell.css:112: .srow.sub { font-size }
+shell/AppShell.css:115: .watch-row .n { margin-left }
+shell/AppShell.css:119: .srow.sub .ic.blank::before { content }
+shell/AppShell.css:121: #g-inboxsub > .srow.discovery { padding-left }
+shell/AppShell.css:121: #g-inboxsub > .srow.disc { padding-left }
+shell/AppShell.css:122: #g-inboxsub .wgroup .srow.sub { padding-left }
+shell/AppShell.css:124: .srow.sub .ic:empty::before { content }
+shell/AppShell.css:124: .srow.sub .ic:empty::before { width }
+shell/AppShell.css:124: .srow.sub .ic:empty::before { height }
+shell/AppShell.css:124: .srow.sub .ic:empty::before { border-radius }
+shell/AppShell.css:124: .srow.sub .ic:empty::before { box-sizing }
+shell/AppShell.css:124: .srow.sub .ic:empty::before { border }
+shell/AppShell.css:124: .srow.sub .ic:empty::before { background }
+shell/AppShell.css:125: .srow.sub:has(.n) .ic:empty::before { background }
+shell/AppShell.css:125: .srow.sub:has(.n) .ic:empty::before { border-color }
+shell/AppShell.css:127: .srow.dim { color }
+shell/AppShell.css:128: .wgroup.closed { display }
+shell/AppShell.css:131: #sbgrip { right }
+shell/AppShell.css:131: #rrgrip { right }

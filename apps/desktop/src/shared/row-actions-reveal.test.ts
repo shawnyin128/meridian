@@ -43,7 +43,7 @@ const ROWS = {
   claim: `<div class="structured-row wkclaim" data-row-actions=""><div class="wkclaim-head"><span class="wkclaim-text">拐点在宽度 6</span>${SLOT}</div><div class="wkclaim-meta" data-point>v2</div><button class="wkclaim-history" data-focus>版本史</button></div>`,
   plan: `<section class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions=""><span class="plan-name-cell"><button class="plan-cell plan-name plan-open" data-focus>校准批次</button>${SLOT}</span><span class="dleft" data-point>进行中</span></div></section>`,
   header: `<table class="ptable"><thead><tr data-row-actions=""><th data-point>标题</th><th class="th-add">${SLOT}</th></tr></thead></table>`,
-  column: `<div class="mi colrow" data-row-actions=""><span class="ck"></span><span class="cl" data-point>读法</span><button type="button" class="icbtn sm cmx optx" data-focus></button>${SLOT}</div>`,
+  column: `<div class="mi colrow" data-row-actions=""><span class="ck"></span><span class="cl" data-point>读法</span><button type="button" class="icbtn xs fold-toggle" data-focus></button>${SLOT}</div>`,
 }
 
 /** The slot's opacity and pointer-events in each row, after `act` ran on that row. */

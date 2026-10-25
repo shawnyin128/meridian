@@ -6,8 +6,7 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
-import { IconChevron } from '../icons.js'
+import { FoldToggle } from '../FoldToggle.js'
 import { ProjectPriorityTag } from '../project/ProjectIdentity.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -245,18 +244,17 @@ export function TimelineBoard({
                     : {})}
                   onClick={open}
                 >
-                  {foldable && row.kind === 'milestones' ? (
-                    <IconButton
-                      label={folded.has(row.project.id)
-                        ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
-                      size="nested" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
-                      onClick={(event) => { event.stopPropagation(); toggleFold(row.project.id) }}
-                    ><IconChevron /></IconButton>
-                  ) : null}
                   {/* A label that opens something is the row's button; its click reaches the row. */}
                   <Tooltip label={labelFor(row)} whenClipped>
                     {open === undefined ? text : <ToolbarButton className="timeline-label-open">{text}</ToolbarButton>}
                   </Tooltip>
+                  {foldable && row.kind === 'milestones' ? (
+                    <FoldToggle
+                      variant="caret" label={folded.has(row.project.id)
+                        ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
+                      open={!folded.has(row.project.id)} onToggle={() => toggleFold(row.project.id)}
+                    />
+                  ) : null}
                   {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
                     ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
                     : null}

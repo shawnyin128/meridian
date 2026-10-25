@@ -2082,6 +2082,25 @@ describe('PaperTable', () => {
     expect(slots(document.querySelector('.mi.optrow')!)).toEqual([true, [['重命名选项', '删除选项']]])
   })
 
+  it('选项列的选项折叠钮是共享的折叠钮：跟在列名后面，打勾的那一格只放勾，报出选项展开与否和它折叠的选项', async () => {
+    const host = mount()
+    columnsCall.resolve(SELECT_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { host.querySelector<HTMLButtonElement>('[aria-label="列设置"]')!.click() })
+    const toggle = document.querySelector<HTMLButtonElement>('.mi.colrow [aria-label="选项"]')!
+    const row = toggle.closest('.mi.colrow')!
+    expect(toggle.matches('.fold-toggle')).toBe(true)
+    expect(toggle.previousElementSibling).toBe(row.querySelector('.cl'))
+    expect(row.querySelector('.ck')!.childElementCount).toBe(0)
+    expect([toggle.getAttribute('aria-expanded'), toggle.querySelector('.fold-caret')!.classList.contains('is-closed')])
+      .toEqual(['false', true])
+    await act(async () => { toggle.click() })
+    expect([toggle.getAttribute('aria-expanded'), toggle.querySelector('.fold-caret')!.classList.contains('is-closed')])
+      .toEqual(['true', false])
+    expect(document.getElementById(toggle.getAttribute('aria-controls')!)!.querySelector('.mi.optrow')).not.toBeNull()
+  })
+
   it('列菜单里改列名、改选项名,点到菜单外都像回车一样改掉', async () => {
     const host = mount()
     columnsCall.resolve(SELECT_COLUMNS)
