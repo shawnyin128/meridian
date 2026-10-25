@@ -186,6 +186,13 @@ describe('contract schemas', () => {
       state: 'connected', modelCalls: 0, maxOutputTokens: 1,
     }).modelCalls).toBe(0)
     expect(HarnessModelConnectionCheckResultSchema.parse({
+      state: 'connected', version: '2.1.280', modelCalls: 0, maxOutputTokens: 1,
+    })).toMatchObject({ version: '2.1.280' })
+    expect(HarnessModelConnectionCheckResultSchema.parse({
+      state: 'failed', reason: 'configuration', detail: 'update the CLI', version: '0.1.0',
+      modelCalls: 0, maxOutputTokens: 1,
+    })).toMatchObject({ version: '0.1.0' })
+    expect(HarnessModelConnectionCheckResultSchema.parse({
       state: 'failed', reason: 'authentication', detail: 'HTTP 401: invalid API key',
       modelCalls: 1, maxOutputTokens: 1,
     }).state).toBe('failed')

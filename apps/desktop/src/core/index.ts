@@ -248,7 +248,7 @@ const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarness
 const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
-  checkCli: (cli) => checkCliConnection(cli),
+  checkCli: (cli) => checkCliConnection(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
   onLog: (line) => console.error(`[harness] ${line}`),
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })

@@ -2,22 +2,49 @@ import { spawn } from 'node:child_process'
 import { mkdtempSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { delimiter, dirname, join } from 'node:path'
+import { sanitizeModelConnectionDetail } from '../chat.js'
 
-/** Variables that make a CLI bill an API account instead of the user's subscription. */
-const API_KEY_VARIABLES = ['ANTHROPIC_API_KEY', 'ANTHROPIC_AUTH_TOKEN', 'OPENAI_API_KEY'] as const
+/**
+ * What could make a CLI bill another account than the user's own signed-in subscription: API keys
+ * and tokens, API endpoints, third-party provider switches and those providers' cloud credentials.
+ * Names match without regard to case, as Windows reads them.
+ */
+const BILLING_VARIABLE_PREFIXES = [
+  'ANTHROPIC_', 'OPENAI_', 'CLAUDE_CODE_USE_', 'CLAUDE_CODE_OAUTH_', 'AWS_', 'AZURE_', 'GOOGLE_', 'VERTEX_REGION_',
+] as const
+const BILLING_VARIABLES: ReadonlySet<string> = new Set([
+  'CLAUDE_CODE_PROVIDER_MANAGED_BY_HOST', 'CLOUD_ML_REGION', 'GCLOUD_PROJECT', 'CODEX_API_KEY', 'CODEX_ACCESS_TOKEN',
+])
 
 const KILL_GRACE_MS = 2_000
+const MAX_STDERR_EXCERPT = 500
+const JWT = /\beyJ[\w-]{8,}\.[\w-]{8,}\.[\w-]{8,}/g
+const EMAIL = /[\w.%+-]+@[\w-]+(?:\.[\w-]+)+/g
+/** Characters cmd.exe gives a meaning unless a caret escapes them. */
+const CMD_SPECIAL = /([()\][%!^"`<>&|;, *?])/g
+/** The longest command line cmd.exe accepts. */
+const CMD_LINE_LIMIT = 8_191
 
 export type CliFailureKind = 'unavailable' | 'failed' | 'timeout' | 'cancelled'
 
 /** A CLI call that did not complete, `kind` saying why and the message saying it in plain words. */
 export class CliRunError extends Error {
   readonly kind: CliFailureKind
+  /** The CLI's exit code, when it started and exited. */
+  readonly exitCode?: number | null
+  /** The end of what the CLI wrote to stderr, with credentials and email addresses replaced. */
+  readonly stderr?: string
 
-  constructor(kind: CliFailureKind, message: string, options?: ErrorOptions) {
+  constructor(
+    kind: CliFailureKind,
+    message: string,
+    options?: ErrorOptions & { exitCode?: number | null; stderr?: string },
+  ) {
     super(message, options)
     this.name = 'CliRunError'
     this.kind = kind
+    if (options?.exitCode !== undefined) this.exitCode = options.exitCode
+    if (options?.stderr !== undefined) this.stderr = options.stderr
   }
 }
 
@@ -33,13 +60,17 @@ export async function inTemporaryFolder<T>(use: (folder: string) => Promise<T>):
   }
 }
 
+const billsAnotherAccount = (name: string) => {
+  const upper = name.toUpperCase()
+  return BILLING_VARIABLES.has(upper) || BILLING_VARIABLE_PREFIXES.some((prefix) => upper.startsWith(prefix))
+}
+
 /**
- * The environment a CLI at `binary` runs in: `environment` without the API-key variables, and with
- * the binary's folder first on PATH.
+ * The environment a CLI at `binary` runs in: `environment` without any variable that could bill
+ * another account, and with the binary's folder first on PATH.
  */
 export function cliEnvironment(environment: NodeJS.ProcessEnv, binary: string): NodeJS.ProcessEnv {
-  const env = { ...environment }
-  for (const name of API_KEY_VARIABLES) delete env[name]
+  const env = Object.fromEntries(Object.entries(environment).filter(([name]) => !billsAnotherAccount(name)))
   const pathKey = Object.keys(env).find((key) => key.toUpperCase() === 'PATH') ?? 'PATH'
   // An npm-installed CLI is a `#!/usr/bin/env node` script; its node sits in the same folder.
   env[pathKey] = [dirname(binary), env[pathKey]].filter((part) => part !== undefined && part !== '')
@@ -47,8 +78,44 @@ export function cliEnvironment(environment: NodeJS.ProcessEnv, binary: string): 
   return env
 }
 
+/** The end of a CLI's `stderr`, at most 500 characters, with credentials and email addresses replaced. */
+export function stderrExcerpt(stderr: string): string {
+  const text = stderr.split(/\r?\n/)
+    .map((line) => sanitizeModelConnectionDetail(line.replace(JWT, '[redacted]').replace(EMAIL, '[redacted]')))
+    .filter((line) => line !== '')
+    .join('\n')
+  return text.length <= MAX_STDERR_EXCERPT ? text : `…${text.slice(-(MAX_STDERR_EXCERPT - 1))}`
+}
+
+const escapeForCmd = (text: string) => text.replace(CMD_SPECIAL, '^$1')
+
 /**
- * Run `command` with `args` without a shell, give it `input` on stdin and collect its output.
+ * `arg` quoted for a Windows program's C runtime, then escaped for cmd.exe twice: once for the /c
+ * line and once more for the batch file's `%*`, which cmd.exe parses again.
+ */
+const shimArgument = (arg: string) =>
+  escapeForCmd(escapeForCmd(`"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\*)$/, '$1$1')}"`))
+
+/**
+ * How to start the batch file `command` with `args` through cmd.exe so that its program receives
+ * `args` unchanged. Throws a CliRunError when an argument holds a line break or the command line
+ * is longer than cmd.exe accepts.
+ */
+function batchInvocation(command: string, args: readonly string[], env: NodeJS.ProcessEnv, name: string) {
+  if (args.some((arg) => /[\r\n]/.test(arg))) {
+    throw new CliRunError('unavailable', `${name} 的参数含有换行，cmd.exe 无法传递`)
+  }
+  const line = [escapeForCmd(command), ...args.map(shimArgument)].join(' ')
+  if (line.length + 2 > CMD_LINE_LIMIT) {
+    throw new CliRunError('unavailable', `${name} 的命令行超出 cmd.exe 的长度上限`)
+  }
+  const comspec = Object.entries(env).find(([key]) => key.toUpperCase() === 'COMSPEC')?.[1]
+  return { file: comspec ?? 'cmd.exe', args: ['/d', '/s', '/c', `"${line}"`] }
+}
+
+/**
+ * Run `command` with `args` without a shell, give it `input` on stdin and collect its output; a
+ * Windows batch file, such as an npm shim, runs through cmd.exe with every argument quoted.
  * Resolves with its exit code and output once it has exited. Rejects with a CliRunError:
  * `unavailable` when it cannot start, `timeout` after `timeoutMs`, `cancelled` when `signal` aborts.
  * In the last two cases it ends the child and everything the child started before it rejects.
@@ -59,22 +126,34 @@ export function runChild(command: string, args: readonly string[], options: {
   input?: string
   timeoutMs: number
   signal?: AbortSignal
+  platform?: NodeJS.Platform
 }): Promise<ChildOutcome> {
   const name = command.split(/[\\/]/).pop() ?? command
+  const windows = (options.platform ?? process.platform) === 'win32'
   return new Promise((resolve, reject) => {
     if (options.signal?.aborted === true) {
       reject(new CliRunError('cancelled', `已停止 ${name}`))
       return
     }
-    const posix = process.platform !== 'win32'
-    const child = spawn(command, args, {
+    let invocation = { file: command, args: [...args] }
+    const throughCmd = windows && /\.(cmd|bat)$/i.test(command)
+    if (throughCmd) {
+      try {
+        invocation = batchInvocation(command, args, options.env, name)
+      } catch (cause) {
+        reject(cause)
+        return
+      }
+    }
+    const child = spawn(invocation.file, invocation.args, {
       cwd: options.cwd,
       env: options.env,
       shell: false,
       stdio: ['pipe', 'pipe', 'pipe'],
       windowsHide: true,
+      windowsVerbatimArguments: throughCmd,
       // Its own process group, so ending the child also ends anything it started.
-      detached: posix,
+      detached: !windows,
     })
     let stdout = ''
     let stderr = ''
@@ -82,8 +161,11 @@ export function runChild(command: string, args: readonly string[], options: {
     let settled = false
     let killTimer: NodeJS.Timeout | undefined
     const signalChild = (signal: NodeJS.Signals) => {
-      if (!posix || child.pid === undefined) {
-        child.kill(signal)
+      if (child.pid === undefined) return
+      if (windows) {
+        // Ending cmd.exe or a launcher alone would leave the program it started running.
+        spawn('taskkill', ['/pid', String(child.pid), '/t', '/f'], { windowsHide: true, stdio: 'ignore' })
+          .on('error', () => child.kill(signal))
         return
       }
       try {
@@ -119,8 +201,8 @@ export function runChild(command: string, args: readonly string[], options: {
     child.on('close', (code) => {
       if (settled) return
       settle()
-      if (stopped !== null) reject(stopped)
-      else resolve({ code, stdout, stderr })
+      if (stopped === null) resolve({ code, stdout, stderr })
+      else reject(new CliRunError(stopped.kind, stopped.message, { exitCode: code, stderr: stderrExcerpt(stderr) }))
     })
     // A child that exits before reading all of its input closes the pipe; its exit reports why.
     child.stdin.on('error', () => {})
