@@ -18,7 +18,7 @@ import { ScreenBoundary } from '../components/ScreenBoundary.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { usePruneDrafts } from '../hooks/useDrafts.js'
 import { GenerationsContext, useCoreGenerations } from '../hooks/useGenerations.js'
-import { errorLabel } from '../lib/failure-label.js'
+import { errorLabel, failureOf } from '../lib/failure-label.js'
 import { commandShortcut, composing, pressesCommand, typesText } from '../lib/keyboard.js'
 import type { Catalog } from '../messages/catalog.js'
 import { useMessages } from '../messages/useMessages.js'
@@ -402,29 +402,33 @@ export function AppShell({ screens, settings }: {
   settings: ReactNode
 }) {
   const m = useMessages()
-  // The App reopens where it was: the screen, its sidebar selection and the sidebar's width.
-  const [restored] = useState(() => readShellState(
-    { sidebarWidth: SIDEBAR_WIDTH, screen: 'feed', inboxScope: ALL_WATCHES, inboxMode: 'watch', chat: null },
-    GRIP_LIMITS.sidebar,
-  ))
-  const [screen, setScreen] = useState<ScreenKey>(restored.screen)
+  // The App reopens where it was: the screen, the reader's paper, its sidebar selection and the sidebar.
+  const [restored] = useState(() => readShellState({
+    sidebarWidth: SIDEBAR_WIDTH, sidebarHidden: false, screen: 'feed', inboxScope: ALL_WATCHES, inboxMode: 'watch',
+    chat: null, reader: null,
+  }, GRIP_LIMITS.sidebar))
+  const reopened: ScreenKey = restored.reader === null ? restored.screen : 'reader'
+  const [screen, setScreen] = useState<ScreenKey>(reopened)
   const [entry, setEntry] = useState(0)
   const [reentry, setReentry] = useState(0)
   const [inboxScope, setInboxScope] = useState(restored.inboxScope)
   const [inboxMode, setInboxMode] = useState<InboxMode>(restored.inboxMode)
-  const [mounted, setMounted] = useState<ScreenKey[]>([restored.screen])
+  const [mounted, setMounted] = useState<ScreenKey[]>([reopened])
   const [tails, setTails] = useState<Partial<Record<ScreenKey, Deeper>>>({})
   const [width, setWidth] = useState(restored.sidebarWidth)
   /** The paper chat's dragged width; null until the first drag, leaving the Reader's CSS default. */
   const [chatWidth, setChatWidth] = useState<number | null>(null)
-  const [hidden, setHidden] = useState(false)
+  const [hidden, setHidden] = useState(restored.sidebarHidden)
   const [paperCount, setPaperCount] = useState<number | null>(null)
   const [projectCount, setProjectCount] = useState<number | null>(null)
   const [trashCount, setTrashCount] = useState(0)
   const [changeCount, setChangeCount] = useState<number | null>(null)
   const [wikiCount, setWikiCount] = useState<number | null>(null)
   const [ideaCount, setIdeaCount] = useState<number | null>(null)
-  const [jump, setJump] = useState<ScreenJump | null>(null)
+  // A reopened reader is a jump from the screen it was opened from, as when it was opened.
+  const [jump, setJump] = useState<ScreenJump | null>(() => (restored.reader === null
+    ? null
+    : { screen: 'reader', target: restored.reader.paper, from: restored.reader.from, seq: 1 }))
   const [watches, setWatches] = useState<Watch[]>([])
   const [chats, setChats] = useState<ChatSession[]>([])
   const [chatsRead, setChatsRead] = useState(false)
@@ -446,7 +450,7 @@ export function AppShell({ screens, settings }: {
   const undoOffers = useRef<{ run: () => void; screen: ScreenKey }[]>([])
   const shownScreen = useRef(screen)
   shownScreen.current = screen
-  const jumpSeq = useRef(0)
+  const jumpSeq = useRef(restored.reader === null ? 0 : 1)
   /** Focus before the app menu opened, restored on close; when null, Radix returns focus to the logo button. */
   const appMenuOpener = useRef<HTMLElement | null>(null)
   // The dialog a menu item asked for, opened only once the menu has closed and handed focus back.
@@ -744,12 +748,28 @@ export function AppShell({ screens, settings }: {
     if (screen === 'chat') goTo('feed')
   }, [chatsRead, chats, chatId, screen, goTo])
 
-  // The reader needs its paper, so it is kept as the screen it was opened from.
-  const readerFrom = jump?.screen === 'reader' ? jump.from : 'papers'
-  const kept = screen === 'reader' ? (readerFrom === 'reader' ? 'papers' : readerFrom) : screen
+  // A kept paper that is gone by this launch leaves the reader for the screen it was opened from.
   useEffect(() => {
-    writeShellState({ sidebarWidth: width, screen: kept, inboxScope, inboxMode, chat: chatId })
-  }, [width, kept, inboxScope, inboxMode, chatId])
+    const reader = restored.reader
+    if (reader === null) return
+    void papers.get(reader.paper).catch((e: unknown) => {
+      if (failureOf(e) !== 'not-found' || shownScreen.current !== 'reader') return
+      setJump(null)
+      goTo(reader.from)
+    })
+  }, [restored, goTo])
+
+  // The reader is kept with its paper and the screen it was opened from, which stands in for it.
+  const readerFrom = jump?.screen === 'reader' ? jump.from : 'papers'
+  const origin = readerFrom === 'reader' ? 'papers' : readerFrom
+  const kept = screen === 'reader' ? origin : screen
+  const keptPaper = screen === 'reader' && jump?.screen === 'reader' ? jump.target : null
+  useEffect(() => {
+    writeShellState({
+      sidebarWidth: width, sidebarHidden: hidden, screen: kept, inboxScope, inboxMode, chat: chatId,
+      reader: keptPaper === null ? null : { paper: keptPaper, from: origin },
+    })
+  }, [width, hidden, kept, inboxScope, inboxMode, chatId, keptPaper, origin])
 
   const chatSession = useMemo(() => {
     const open = chats.find((s) => s.id === chatId)
