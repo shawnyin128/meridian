@@ -52,7 +52,7 @@ function Runs({ runs }: { runs: ChatRun[] }) {
  * of the model that wrote it, or of an agent for an answer kept without one, and a status line is an
  * inline note led by an icon that never poses as a model answer. With `onRetry`, given to the status
  * line of a turn that got no answer, the line ends with Retry. With `writing`, the answer is being
- * written, and until it has text it shows the running ring, named as the model thinking.
+ * written, and until it has text it says the model is thinking, beside the running ring.
  */
 export function ChatMessageView({ message, onAct, onRetry, writing = false }: {
   message: ChatMessage
@@ -87,7 +87,7 @@ export function ChatMessageView({ message, onAct, onRetry, writing = false }: {
           : <ModelLabel model={message.model} className="msg-who" />}
         <div className={answer ? 'answer' : 'bubble'}>
           {writing && message.runs.every((run) => run.text === '')
-            ? <InlineMessage tone="info" variant="line" lead={<RunningRing />} aria-label={m.chat.thinking} aria-busy>{null}</InlineMessage>
+            ? <InlineMessage tone="info" variant="line" lead={<RunningRing />} aria-busy>{m.chat.thinking}</InlineMessage>
             : <Runs runs={message.runs} />}
           {message.actions.length > 0
             ? (

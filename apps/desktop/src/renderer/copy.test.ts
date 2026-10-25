@@ -145,6 +145,18 @@ const RULES: { rule: string; test: (path: string, text: string) => boolean; exem
   { rule: 'length', exempt: ['aria', 'content', 'tooltip'], test: (_, text) => units(text) > 12 },
 ]
 
+/** The keys the owner let through a rule, by rule; every other key stays under it. */
+const OWNER_EXEMPTIONS: Readonly<Record<string, readonly string[]>> = {
+  // The owner asked for a visible thinking label on chat answers on 2026-10-25.
+  busy: ['chat.thinking'],
+}
+
+/** The rules key `path`'s visible copy `text` breaks. */
+const brokenRules = (path: string, text: string) => RULES
+  .filter(({ rule, exempt, test }) => !exempt.includes(CLASSES.get(path) ?? '')
+    && !(OWNER_EXEMPTIONS[rule]?.includes(path) ?? false) && test(path, text))
+  .map(({ rule }) => rule)
+
 describe('文案只说名字、动作、状态和失败', () => {
   const keys = texts(zh as unknown as Node)
 
@@ -158,10 +170,14 @@ describe('文案只说名字、动作、状态和失败', () => {
   })
 
   it('没有一句提示：不像提示的键名，没有句读、括注、指令、正在…，不长于 12 个字', () => {
-    const broken = keys.flatMap(([path, text]) => RULES
-      .filter(({ exempt, test }) => !exempt.includes(CLASSES.get(path) ?? '') && test(path, text))
-      .map(({ rule }) => `${path} ${rule}: ${text}`))
+    const broken = keys.flatMap(([path, text]) => brokenRules(path, text).map((rule) => `${path} ${rule}: ${text}`))
     expect(broken).toEqual([])
+  })
+
+  it('店主放过的只是对话回答的「思考中…」这一个键：别的键写成「…中…」照样算正在…的提示', () => {
+    expect(brokenRules('chat.thinking', '思考中…')).toEqual([])
+    expect(brokenRules('chat.loading', '加载中…')).toEqual(['busy'])
+    expect(brokenRules('wiki.thinking', '思考中…')).toEqual(['busy'])
   })
 
   it('空的键只有共享的空值 — 和无结果，两种语言都是', () => {

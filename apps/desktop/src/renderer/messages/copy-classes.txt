@@ -34,7 +34,7 @@ chat.mentionGroup.page label
 chat.mentionGroup.paper label
 chat.mentionGroup.project label
 chat.messagesLabel aria
-chat.thinking aria
+chat.thinking state
 chat.newChat state
 chat.paperChatLabel aria
 chat.paperChatWidth aria

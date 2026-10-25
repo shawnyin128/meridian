@@ -61,15 +61,16 @@ describe('ChatMessageView', () => {
     expect(answerParts()[0]![1]).toBe('GPT-5.5 · API')
   })
 
-  it('还没写出字的回答在标签下面转着运行圈，读屏念「思考中…」；写出字后就是那些字', () => {
+  it('还没写出字的回答在标签下面转着运行圈，旁边写「思考中…」；写出字后就是那些字', () => {
     const model = { route: 'subscription' as const, cli: 'claude' as const, id: 'claude-opus-5-5[1m]' }
     show({ id: 'answer-so-far', role: 'ai', runs: [], actions: [], model }, true)
     expect(answerParts()).toEqual([
       ['tag tag--label tag--neutral source-label msg-who', 'Claude Opus 5.5 · 订阅'],
-      ['answer', ''],
+      ['answer', '思考中…'],
     ])
     const thinking = host.querySelector('.answer .inline-message')!
-    expect(['role', 'aria-label', 'aria-busy'].map((name) => thinking.getAttribute(name))).toEqual(['status', '思考中…', 'true'])
+    expect(['role', 'aria-label', 'aria-busy'].map((name) => thinking.getAttribute(name))).toEqual(['status', null, 'true'])
+    expect(thinking.querySelector('.inline-message-text')!.textContent).toBe('思考中…')
     expect(thinking.querySelector('.inline-message-lead svg.ring.spin')).not.toBeNull()
 
     show({ id: 'answer-so-far', role: 'ai', runs: [{ kind: 'text', text: 'EAGLE 快' }], actions: [], model }, true)

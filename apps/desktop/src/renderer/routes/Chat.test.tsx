@@ -425,9 +425,8 @@ describe('Chat composer', () => {
     await finish()
   })
 
-  it('一发出问题，回答那一行就带着模型标签和「思考中…」的运行圈出现，写出字后是那些字；存下的回答读到后，只剩存下的那一条', async () => {
-    const answers = () => [...document.querySelectorAll('.msgs .msg.ai .answer')]
-      .map((node) => node.querySelector('[aria-busy="true"]')?.getAttribute('aria-label') ?? node.textContent)
+  it('一发出问题，回答那一行就带着模型标签、运行圈和「思考中…」出现，写出字后是那些字；存下的回答读到后，只剩存下的那一条', async () => {
+    const answers = () => [...document.querySelectorAll('.msgs .msg.ai .answer')].map((node) => node.textContent)
     const tags = () => [...document.querySelectorAll('.msgs .msg.ai .msg-who')].map((node) => node.textContent)
     const model = { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' } as const
     api.writing.mockResolvedValue({ text: '', model })
