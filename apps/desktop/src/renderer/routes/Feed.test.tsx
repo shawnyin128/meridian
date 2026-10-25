@@ -54,7 +54,7 @@ describe('feed rows', () => {
       </MessagesProvider>,
     )
 
-    expect(html).toContain('<div class="feed-days"><div class="grouped-list"><div class="section-heading section-heading--group">今天</div><div class="msgs"><div class="mwrap">')
+    expect(html).toContain('<div class="feed-days"><div class="grouped-list"><div class="section-heading section-heading--group"><span role="heading" aria-level="3">今天</span></div><div class="msgs"><div class="mwrap">')
     expect(html).toMatch(/<span class="ftime"><span class="date-time-display">.*>9月20日<.*>14:05<.*<\/span><\/span>/)
   })
 
@@ -144,8 +144,8 @@ describe('feed rows', () => {
       </MessagesProvider>,
     )
 
-    expect(html).toContain('<div class="section-heading section-heading--group">Today</div>')
-    expect(html).toContain('<div class="section-heading section-heading--group">Earlier</div>')
+    expect(html).toContain('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">Today</span></div>')
+    expect(html).toContain('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">Earlier</span></div>')
     expect(html).toMatch(/>Sep 12<.*>09:28 AM</)
   })
 

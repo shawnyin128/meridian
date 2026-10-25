@@ -213,10 +213,14 @@ function hoverTip(selector: string): [string | undefined, string | undefined] {
   return [tip?.firstChild?.textContent ?? undefined, tip?.querySelector('.tooltip-key')?.textContent ?? undefined]
 }
 
-/** The button that activates a row: the row itself, or the first child of a row that holds other controls. */
+/**
+ * The button that activates a row: the row itself, or the first child of a row that holds other
+ * controls, or, for a section heading, the toggle its heading holds.
+ */
 function controlOf(selector: string): HTMLElement {
   const row = document.querySelector<HTMLElement>(selector)!
-  const control = row.tagName === 'BUTTON' ? row : row.firstElementChild as HTMLElement
+  const first = row.firstElementChild as HTMLElement
+  const control = row.tagName === 'BUTTON' ? row : first.getAttribute('role') === 'heading' ? first.firstElementChild as HTMLElement : first
   expect(control.tagName, selector).toBe('BUTTON')
   return control
 }
@@ -380,6 +384,17 @@ describe('AppShell sidebar collapse', () => {
     press('b', { metaKey: true })
     press('/')
     expect(document.activeElement).not.toBe(search)
+  })
+})
+
+describe('AppShell landmarks', () => {
+  it('names the sidebar the navigation landmark and the screen shown the one main landmark', async () => {
+    await mount(<p>feed</p>, { papers: <p>papers</p> })
+    expect([document.querySelector('#sidebar')!.getAttribute('role'), document.querySelector('#sidebar')!.getAttribute('aria-label')])
+      .toEqual(['navigation', '侧栏'])
+    await act(async () => { document.querySelector<HTMLButtonElement>('[data-desk="papers"]')!.click() })
+    const mains = [...document.querySelectorAll('[role="main"]')]
+    expect(mains.map((main) => [main.textContent, main.hasAttribute('hidden')])).toEqual([['feed', true], ['papers', false]])
   })
 })
 
@@ -1035,6 +1050,19 @@ describe('AppShell ⌘Z', () => {
     expect(fixture.undoChange.mock.calls).toEqual([['ch-1']])
     expect(document.querySelector('.screenslot:not([hidden]) #ch-1')).not.toBeNull()
   })
+
+  it('撤销放回来的那一项还没出现 App 就关了,之后出现的行不会被落上', async () => {
+    await mount(<Writes names={['ch-1']} />)
+    await writeOf('ch-1')
+    await pressZ()
+    act(() => root!.unmount())
+    root = null
+    const late = document.createElement('div')
+    late.id = 'sidebar'
+    late.innerHTML = '<div class="item">迟来的</div>'
+    await act(async () => { document.body.append(late) })
+    expect(late.querySelector('.item')!.hasAttribute('data-arrived')).toBe(false)
+  })
 })
 
 describe('AppShell 重新打开时回到上次的地方', () => {
@@ -1176,6 +1204,27 @@ describe('侧栏对话行的删除', () => {
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true }))
     })
     expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
+  })
+
+  it('从对话行的菜单删掉它之后,键盘焦点落到旁边那段对话上,不掉到页面外', async () => {
+    const chats = fixture.chats
+    fixture.chats = [...chats, { id: 'c2', title: '另一段', archived: false, messageCount: 1 }]
+    try {
+      await mount()
+      // A keyboard user's focus is on the row when they open its menu.
+      act(() => { document.querySelector<HTMLElement>('[data-chat="c1"] .nav-row-label')!.focus() })
+      const items = await chatMenu('c1')
+      fixture.chats = fixture.chats.filter((session) => session.id !== 'c1')
+      await act(async () => { items.find((item) => item.textContent === '删除')!.click() })
+      // The row goes once the chat list is read again after the delete; the menu hands its focus back first.
+      for (let turn = 0; turn < 50 && document.querySelector('[data-chat="c1"]') !== null; turn += 1) {
+        await act(async () => { await new Promise((done) => setTimeout(done, 10)) })
+      }
+      expect(document.querySelector('[data-chat="c1"]')).toBeNull()
+      expect(document.activeElement?.closest('[data-chat]')?.getAttribute('data-chat')).toBe('c2')
+    } finally {
+      fixture.chats = chats
+    }
   })
 
   it('删掉对话屏正打开着的那段对话，像归档一样回到动态', async () => {

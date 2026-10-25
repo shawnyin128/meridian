@@ -14,6 +14,7 @@ import { StatusDot } from '../components/StatusDot.js'
 import { FadeText } from '../components/FadeText.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
+import { useNeighbourFocus } from '../hooks/useNeighbourFocus.js'
 import { appUpdates } from '../ipc.js'
 import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type JumpAnchor, type ScreenKey } from './AppShell.js'
 import { GripTooltip } from './GripTooltip.js'
@@ -35,6 +36,9 @@ function WatchRow({ watch, count, on, onOpen }: {
     </NavRow>
   )
 }
+
+/** The chat rows of the sidebar's chat list, in order. */
+const chatRows = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('[data-chat]')]
 
 /** The dot of a row that lists one source of papers: filled while it has new papers, a ring otherwise. */
 function NewDot({ fresh }: { fresh: boolean }) {
@@ -145,6 +149,8 @@ export function Sidebar({
   hidden: boolean
 }) {
   const m = useMessages()
+  // A chat deleted or archived from its focused row hands the focus to the chat beside it.
+  const keepChatFocus = useNeighbourFocus(chatRows)
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   const toggle = (name: string) => setClosed((c) => ({ ...c, [name]: !c[name] }))
 
@@ -163,6 +169,7 @@ export function Sidebar({
 
   return (
     <NavPane
+      label={m.shell.sidebar.label}
       id="sidebar" collapsed={collapsed} hidden={hidden} top={<SearchBox onJump={onJump} />}
       pinned={(
         <>
@@ -257,7 +264,7 @@ export function Sidebar({
         id="chats" title={m.shell.nav.chats} fold={fold('chats')}
         action={<AddAction label={m.shell.nav.newChat} size="compact" onClick={(e) => { e.stopPropagation(); onNewChat() }} />}
       >
-        <div id="chatList">
+        <div id="chatList" ref={keepChatFocus}>
           {active.map((s) => (
             <ChatRow
               key={s.id} session={s} on={s.id === chatId} onOpen={() => onOpenChat(s.id)}

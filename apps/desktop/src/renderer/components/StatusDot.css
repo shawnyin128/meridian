@@ -11,4 +11,7 @@
 /* A half or ring dot outlines itself in its tone and fills only its left half, or nothing. */
 .status-dot--half{background:linear-gradient(to right,var(--dot) 50%,transparent 50%);box-shadow:inset 0 0 0 1px var(--dot)}
 .status-dot--ring{background:transparent;box-shadow:inset 0 0 0 1px var(--dot)}
+/* A cross dot draws two crossed bars in its tone, square-cornered, so its shape stands apart from a dot's. */
+.status-dot--cross{border-radius:0;background:linear-gradient(45deg,transparent 38%,var(--dot) 38%,var(--dot) 62%,transparent 62%),
+  linear-gradient(-45deg,transparent 38%,var(--dot) 38%,var(--dot) 62%,transparent 62%)}
 .status-dot-labelled{display:inline-flex;align-items:center;gap:var(--sp-6);min-width:0}

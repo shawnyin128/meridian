@@ -153,7 +153,7 @@ describe('idea and graph association', () => {
     const nodes = [...host.querySelectorAll<SVGGElement>('.rgn')]
     expect([group.getAttribute('role'), group.getAttribute('aria-label')]).toEqual(['radiogroup', '科研图'])
     expect(nodes.map((node) => [node.getAttribute('role'), node.getAttribute('aria-label'), node.getAttribute('aria-checked')]))
-      .toEqual([['radio', '根节点', 'false'], ['radio', '动态预算探针', 'true'], ['radio', '旁支', 'false']])
+      .toEqual([['radio', '根节点（已验证）', 'false'], ['radio', '动态预算探针（候选 / 搁置）', 'true'], ['radio', '旁支（候选 / 搁置）', 'false']])
     expect([group, ...nodes].filter((element) => element.tabIndex === 0)).toEqual([group])
     const press = async (key: string) => {
       await act(async () => {
@@ -171,6 +171,33 @@ describe('idea and graph association', () => {
     await press(' ')
     await press('a')
     expect(onSelect.mock.calls).toEqual([['side'], ['root']])
+    act(() => root.unmount())
+    host.remove()
+  })
+
+  it('draws each node state with its own shape as well as its colour, the legend keys the same shapes, and a node\'s name says its states', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const modes = ['supported', 'repairable', 'dead', 'unresolved'] as const
+    const graph: Graph = {
+      nodes: modes.map((mode, at) => ({ id: mode, label: mode, state: 'idle', mode, x: at * 220, y: 0, width: 180, writebacks: [] })),
+      edges: [],
+    }
+    act(() => root.render(withMessages(<ResearchGraph graph={graph} selected={null} onSelect={vi.fn()} ideaNodeIds={['dead']} />)))
+    /** A node's state mark: the element that draws it, and a path's number of closed parts (a ring is two, a half ring three). */
+    const mark = (mode: string) => {
+      const drawn = host.querySelector(`.rgn[data-node="${mode}"] .nd`)!
+      return [drawn.tagName.toLowerCase(), (drawn.getAttribute('d') ?? '').split('Z').length - 1]
+    }
+    expect(modes.map(mark)).toEqual([['circle', 0], ['path', 3], ['path', 1], ['path', 2]])
+    expect(host.querySelector('.rgn[data-node="dead"] .nd')!.getAttribute('d')!.split('L')).toHaveLength(12)
+    expect([...host.querySelectorAll('.glegend .status-dot')].map((dot) => dot.className))
+      .toEqual(['status-dot status-dot--md status-dot--warn status-dot--half', 'status-dot status-dot--md status-dot--good',
+        'status-dot status-dot--md status-dot--bad status-dot--cross', 'status-dot status-dot--md status-dot--neutral status-dot--ring'])
+    expect(modes.map((mode) => host.querySelector(`.rgn[data-node="${mode}"]`)!.getAttribute('aria-label')))
+      .toEqual(['supported（已验证）', 'repairable（待修复）', 'dead（失败，当前想法关联）', 'unresolved（候选 / 搁置）'])
     act(() => root.unmount())
     host.remove()
   })

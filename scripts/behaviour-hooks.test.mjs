@@ -49,6 +49,9 @@ describe('each shared behaviour has one implementation', () => {
   it('focus goes back to the element that opened a layer only through useOpenerFocus', () => {
     expect(copies(/[!=]== document\.body/, {
       'hooks/useOpenerFocus.ts': { reason: 'the opener focus itself' },
+      'hooks/useNeighbourFocus.ts': {
+        count: 1, reason: 'focus that fell to the body when its row went moves to a neighbouring row; no layer opened',
+      },
     })).toEqual([])
   })
 

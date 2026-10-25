@@ -1,3 +1,4 @@
+// @vitest-environment jsdom
 import { renderToStaticMarkup } from 'react-dom/server'
 import { describe, expect, it } from 'vitest'
 import { AddAction } from './AddAction.js'
@@ -8,6 +9,22 @@ import { SegmentedControl } from './SegmentedControl.js'
 import { SortMenu } from './SortMenu.js'
 
 describe('PageShell', () => {
+  it('reads to a screen reader as the page title at the first heading level, a section at the second and a group at the third, never with the actions beside it', () => {
+    const host = document.createElement('div')
+    host.innerHTML = renderToStaticMarkup(
+      <>
+        <PageTitle>论文</PageTitle>
+        <SectionHeading actions={<button type="button">新增</button>}>项目</SectionHeading>
+        <SectionHeading level="group" count={2}>今日</SectionHeading>
+        <SectionHeading level="group" fold={{ open: true, onToggle: () => {} }}>进行中</SectionHeading>
+      </>,
+    )
+    expect([...host.querySelectorAll('[role="heading"]')].map((heading) => [heading.getAttribute('aria-level'), heading.textContent]))
+      .toEqual([['1', '论文'], ['2', '项目'], ['3', '今日 · 2'], ['3', '进行中']])
+    expect(host.querySelector('[role="heading"] .section-heading-actions, [role="heading"] [type="button"]:not(.fold-toggle)')).toBeNull()
+    expect(host.querySelectorAll('[role="heading"]')[3]!.querySelector('[aria-expanded="true"]')).not.toBeNull()
+  })
+
   it('composes the canonical page regions without changing feature classes', () => {
     const html = renderToStaticMarkup(
       <PageShell className="paper-library">
@@ -26,7 +43,7 @@ describe('PageShell', () => {
 
   it('fades a page title that does not fit, as every one-line title does', () => {
     const html = renderToStaticMarkup(<PageHeader><PageTitle>推测解码和 KV 量化联合优化</PageTitle></PageHeader>)
-    expect(html).toBe('<div class="desk-head"><span class="fade-text t" data-state="closed">推测解码和 KV 量化联合优化</span></div>')
+    expect(html).toBe('<div class="desk-head"><span role="heading" aria-level="1" class="fade-text t" data-state="closed">推测解码和 KV 量化联合优化</span></div>')
   })
 
   it('renders errors and action headings through one contract', () => {
@@ -43,9 +60,9 @@ describe('PageShell', () => {
       .toBe('<div class="inline-message inline-message--box inline-message--error page-error page-error--section" role="alert">'
         + '<div class="inline-message-text">科研图读不了</div></div>')
     expect(html).toContain(
-      '<div class="section-heading section-heading--section">项目<div class="section-heading-actions"><button>新增</button></div></div>',
+      '<div class="section-heading section-heading--section"><span role="heading" aria-level="2">项目</span><div class="section-heading-actions"><button>新增</button></div></div>',
     )
-    expect(html).toContain('<div class="section-heading section-heading--group">今日</div>')
+    expect(html).toContain('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">今日</span></div>')
     expect(renderToStaticMarkup(<PageError error={null} />)).toBe('')
   })
 
@@ -53,7 +70,7 @@ describe('PageShell', () => {
     const html = renderToStaticMarkup(
       <PageHeader actions={<AddAction size="regular">Import</AddAction>}><PageTitle>Papers</PageTitle></PageHeader>,
     )
-    expect(html).toMatch(/^<div class="desk-head"><span class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button type="button" class="btn add-action">/)
+    expect(html).toMatch(/^<div class="desk-head"><span role="heading" aria-level="1" class="fade-text t" data-state="closed">Papers<\/span><div class="page-actions"><button type="button" class="btn add-action">/)
   })
 
   it('keeps peer-view switches in the shared content toolbar', () => {
@@ -74,17 +91,17 @@ describe('PageShell', () => {
       <SectionHeading level="group" actions={<button>＋</button>}>关联</SectionHeading>,
     )
     expect(html).toBe(
-      '<div class="section-heading section-heading--group">关联<div class="section-heading-actions"><button>＋</button></div></div>',
+      '<div class="section-heading section-heading--group"><span role="heading" aria-level="3">关联</span><div class="section-heading-actions"><button>＋</button></div></div>',
     )
   })
 
   it('writes a meta after the title on its line, after the count, and keeps actions at the end', () => {
     expect(renderToStaticMarkup(
       <SectionHeading level="group" meta="上次检查 10月24日" actions={<button>检查更新</button>}>Meridian Plugin</SectionHeading>,
-    )).toBe('<div class="section-heading section-heading--group"><span>Meridian Plugin<span class="section-heading-meta">上次检查 10月24日</span></span>'
+    )).toBe('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">Meridian Plugin<span class="section-heading-meta">上次检查 10月24日</span></span>'
       + '<div class="section-heading-actions"><button>检查更新</button></div></div>')
     expect(renderToStaticMarkup(<SectionHeading level="group" count={3} meta="3 篇种子">KV cache 量化</SectionHeading>))
-      .toBe('<div class="section-heading section-heading--group"><span>KV cache 量化<span class="heading-count"> · 3</span>'
+      .toBe('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">KV cache 量化<span class="heading-count"> · 3</span>'
         + '<span class="section-heading-meta">3 篇种子</span></span></div>')
   })
 
@@ -105,7 +122,7 @@ describe('PageShell', () => {
     const html = renderToStaticMarkup(
       <PageHeader size="pane" actions={<PageNote>第 3 页</PageNote>}><PageTitle count={2}>阅读笔记</PageTitle></PageHeader>,
     )
-    expect(html).toMatch(/^<div class="desk-head desk-head--pane"><span class="fade-text t" data-state="closed">阅读笔记<span class="heading-count">/)
+    expect(html).toMatch(/^<div class="desk-head desk-head--pane"><span role="heading" aria-level="1" class="fade-text t" data-state="closed">阅读笔记<span class="heading-count">/)
     expect(html).toMatch(/<div class="page-actions"><span class="page-note">第 3 页<\/span><\/div><\/div>$/)
   })
 

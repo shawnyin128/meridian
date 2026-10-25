@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens } from './colour-theme.js'
+import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens, increasedContrastTokens } from './colour-theme.js'
 
 const tokens = readFileSync(new URL('../renderer/shell/tokens.css', import.meta.url), 'utf8')
 
@@ -621,4 +621,73 @@ describe('tokens.css 的决定值', () => {
       }
     }
   })
+})
+
+describe('菜单里标红的项', () => {
+  it('删除这类标红的菜单项用危险文字色,不用标记用的红色', () => {
+    expect(lookOf('components/ActionMenu.css', '.mi.danger')).toBe('无 --bad-text')
+  })
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}标红的菜单项静止和悬停时,字在浮层面上都不低于 4.5:1`, () => {
+      for (const ground of [['--raised'], ['--raised', '--hover']]) {
+        const got = contrast(colour(theme, '--bad-text'), flatten(theme, ground))
+        expect(got, `--bad-text 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+  }
+})
+
+/**
+ * The custom properties of the Increase Contrast block for `selector` in tokens.css.
+ * @throws When tokens.css has no Increase Contrast block, or the block has no rule for `selector`.
+ */
+const increasedBlock = (selector: string): Record<string, string> => {
+  const css = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
+  const media = css.indexOf('@media (prefers-contrast:more){')
+  if (media < 0) throw new Error('tokens.css 里没有提高对比度的块')
+  const open = css.indexOf(`${selector}{`, media)
+  if (open < 0) throw new Error(`提高对比度的块里没有 ${selector}`)
+  const body = css.slice(open + selector.length + 1, css.indexOf('}', open))
+  return Object.fromEntries(body.split(';').map((declaration) => declaration.split(':').map((part) => part.trim())))
+}
+
+describe('系统提高对比度', () => {
+  for (const mode of ['light', 'dark'] as const) {
+    it(`默认主题${mode === 'dark' ? '暗色' : '亮色'}提高对比度时改的 token 和 colour-theme 推导的一个不差`, () => {
+      expect(increasedBlock(mode === 'dark' ? '[data-theme="dark"]' : ':root:not([data-theme="dark"])'))
+        .toEqual(increasedContrastTokens(DEFAULT_COLOUR_THEME[mode], mode))
+    })
+  }
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}提高对比度时,分隔线在画布、卡片和窗口底上不低于 3:1,聚焦输入框的边不低于 4.5:1,三级文字是次级文字`, () => {
+      const { light, dark } = BUILT_IN_COLOUR_THEMES.find(({ id }) => id === theme.id)!
+      const more = increasedContrastTokens(theme.mode === 'light' ? light : dark, theme.mode)
+      for (const ground of ['--content', '--card', '--window']) {
+        for (const [token, min] of [['--sep', MARK], ['--sep2', MARK], ['--sep-strong', TEXT]] as const) {
+          const got = contrast(parse(theme, token, more[token]), flatten(theme, [ground]))
+          expect(got, `${token} 压在 ${ground} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(min)
+        }
+      }
+      expect(parse(theme, '--ter', more['--ter'])).toEqual(colour(theme, '--sec'))
+    })
+  }
+})
+
+describe('暗色主题里反相的论文页', () => {
+  it('阅读器画出的论文页取 --paper-filter:亮色不动,暗色反相,色相转回原样', () => {
+    const css = readFileSync(new URL('../renderer/routes/Reader.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(/\.pdfpagebox canvas\{[^}]*filter:var\(--paper-filter\)/.test(css)).toBe(true)
+    expect([ROOT.get('--paper-filter'), DARK.get('--paper-filter')]).toEqual(['none', 'invert(.88) hue-rotate(180deg)'])
+  })
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}的论文页${theme.mode === 'dark' ? '是深底' : '是白底'},选中高亮的轮廓和批注底线压在页上不低于 3:1`, () => {
+      const page = colour(theme, '--paper')
+      expect(luminance(page) < 0.05).toBe(theme.mode === 'dark')
+      const got = contrast(flatten(theme, ['--paper', '--hl-note']), page)
+      expect(got, `--hl-note 压在 --paper 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(MARK)
+    })
+  }
 })

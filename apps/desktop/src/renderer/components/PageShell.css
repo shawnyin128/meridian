@@ -33,6 +33,8 @@
  * The actions take one line of the heading, and a compact control in them overhangs that line
  * evenly, so a heading with actions is as tall as one without.
  */
+/* A folding title's heading holds the toggle, which fills the row as it does on its own. */
+.section-heading-fold{flex:1;min-width:0}
 .section-heading-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8);height:1lh;margin-left:auto;font-weight:var(--fw-regular)}
 .section-heading-meta{margin-left:var(--sp-8);color:var(--ter);font-size:var(--fs-meta);font-weight:var(--fw-regular)}
 

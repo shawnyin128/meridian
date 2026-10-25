@@ -384,8 +384,10 @@ project.graph.legend.ideaLinked label
 project.graph.legend.inProgress label
 project.graph.legend.needsRepair label
 project.graph.legend.verified label
+project.graph.nodeName aria
 project.graph.records label
 project.graph.resetView action
+project.graph.stateSeparator aria
 project.graph.tasks label
 project.graph.zoomIn action
 project.graph.zoomOut action
@@ -860,6 +862,7 @@ shell.search.results label
 shell.sidebar.archive action
 shell.sidebar.collapse action
 shell.sidebar.expand action
+shell.sidebar.label aria
 shell.sidebar.manageChat action
 shell.sidebar.resize aria
 shell.sidebar.toggle action

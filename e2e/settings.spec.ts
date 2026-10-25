@@ -308,6 +308,8 @@ test('在设置里删掉已归档的对话,弹出的撤销提示盖在设置模�
   await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .row-actions [aria-label="删除"]`).click()
   await win.locator('#notice.show').waitFor()
   await expect(win.locator('#notice.show button', { hasText: '撤销' })).toHaveCount(1)
+  // By role, as a screen reader finds it: the modal hides the rest of the page, but not the notice.
+  await expect(win.getByRole('button', { name: '撤销' })).toHaveCount(1)
 
   const zIndex = await win.evaluate(() => ({
     notice: Number(getComputedStyle(document.querySelector('.notice-host')!).zIndex),
@@ -318,14 +320,19 @@ test('在设置里删掉已归档的对话,弹出的撤销提示盖在设置模�
   expect(zIndex.notice).toBeGreaterThan(zIndex.scrim)
 })
 
+/** For each selector, whether its element is out of the accessibility tree: it or an ancestor is aria-hidden. */
+const hiddenFromReaders = (win: Page, selectors: string[]) => win.evaluate((all) => all.map((selector) =>
+  document.querySelector(selector)!.closest('[aria-hidden="true"]') !== null), selectors)
+
 test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦点回到打开之前那一处', async ({ app, win }) => {
   await win.locator('#sbBtn').focus()
   expect(await win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
 
   await openSettings(app, win)
-  // The modal part: the scrim blocks the pointer, and the rest of the screen is hidden from screen readers.
+  // The modal part: the scrim blocks the pointer, and the rest of the screen but the notice is hidden from screen readers.
   await expect(win.locator('.scrim')).toHaveCount(1)
-  await expect(win.locator('#root')).toHaveAttribute('aria-hidden', 'true')
+  await expect.poll(() => hiddenFromReaders(win, ['.titlebar', '#sidebar', '.screenslot:not([hidden])', '.notice-host']))
+    .toEqual([true, true, true, false])
 
   const walk: string[] = []
   for (let i = 0; i < TAB_STEPS; i++) {
@@ -341,7 +348,8 @@ test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦
 
   await win.keyboard.press('Escape')
   await expect(win.locator('.setdlg')).toHaveCount(0)
-  await expect(win.locator('#root')).not.toHaveAttribute('aria-hidden', 'true')
+  await expect.poll(() => hiddenFromReaders(win, ['.titlebar', '#sidebar', '.screenslot:not([hidden])']))
+    .toEqual([false, false, false])
   // Focus returns in a timeout after the modal unmounts; the element being gone does not mean it is back.
   await expect.poll(() => win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
 })

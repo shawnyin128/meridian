@@ -159,3 +159,64 @@ describe('嵌入列表的五行上限', () => {
     expect(folded.classList.contains('list--scrollable')).toBe(false)
   })
 })
+
+describe('List focus when its focused item goes away', () => {
+  let root: Root
+  let host: HTMLDivElement
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+  afterEach(() => {
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
+  })
+
+  /** A list of button rows named by `names`, with `outside` a button after the list. */
+  // The list notices a removal in a mutation observer, which runs after the render's own task.
+  const render = (names: string[], outside = false) => act(async () => root.render(
+    <>
+      <List>{names.map((name) => <Item key={name} title={name} onActivate={() => {}} />)}</List>
+      {outside ? <button type="button" id="outside">外面</button> : null}
+    </>,
+  ))
+  /** The text of what holds the focus, or null while nothing in the page does. */
+  const focused = () => (document.activeElement === null || document.activeElement === document.body ? null : document.activeElement.textContent)
+  const row = (name: string) => [...host.querySelectorAll<HTMLElement>('.item')].find((item) => item.textContent === name)!
+
+  it('moves the focus to the item now in the removed one\'s place, or to the one before it when it was the last', async () => {
+    await render(['甲', '乙', '丙'])
+    row('乙').focus()
+    await render(['甲', '丙'])
+    expect(focused()).toBe('丙')
+    await render(['甲'])
+    expect(focused()).toBe('甲')
+  })
+
+  it('takes the focus on an item\'s first control when the item is not one itself', async () => {
+    await act(async () => root.render(
+      <List>
+        {['甲', '乙'].map((name) => (
+          <Item key={name} density="card" composite onActivate={() => {}}><button type="button">{`打开${name}`}</button></Item>
+        ))}
+      </List>,
+    ))
+    host.querySelectorAll<HTMLButtonElement>('button')[0]!.focus()
+    await act(async () => root.render(
+      <List><Item key="乙" density="card" composite onActivate={() => {}}><button type="button">打开乙</button></Item></List>,
+    ))
+    expect(focused()).toBe('打开乙')
+  })
+
+  it('leaves the focus where it went when it moved out of the list before the item went away', async () => {
+    await render(['甲', '乙'], true)
+    row('乙').focus()
+    host.querySelector<HTMLButtonElement>('#outside')!.focus()
+    await render(['甲'], true)
+    expect(document.activeElement?.id).toBe('outside')
+  })
+})

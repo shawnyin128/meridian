@@ -201,6 +201,8 @@ export const project = {
       activePath: '当前科研路径',
       ideaLinked: '当前想法关联',
     },
+    nodeName: (label: string, states: string) => `${label}（${states}）`,
+    stateSeparator: '，',
     branchSummary: '分支',
     records: '科研记录',
     tasks: '任务',

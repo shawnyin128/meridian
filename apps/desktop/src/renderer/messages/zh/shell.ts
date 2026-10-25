@@ -43,6 +43,7 @@ export const shell = {
   },
   watchKind: { topic: '关键词', author: '作者' },
   sidebar: {
+    label: '侧栏',
     toggle: '收起/展开侧栏',
     expand: '展开侧栏',
     resize: '侧栏宽度',

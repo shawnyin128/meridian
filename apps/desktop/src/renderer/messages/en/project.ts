@@ -204,6 +204,8 @@ export const project = {
       activePath: 'Active research path',
       ideaLinked: 'Linked to selected idea',
     },
+    nodeName: (label: string, states: string) => `${label} (${states})`,
+    stateSeparator: ', ',
     branchSummary: 'Branches',
     records: 'Research log',
     tasks: 'Tasks',

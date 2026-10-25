@@ -2,6 +2,8 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
+import { MessagesProvider } from '../messages/useMessages.js'
+import { ModalDialog, ModalTitle } from './ModalDialog.js'
 import { Notice, NOTICE_MS, type NoticeContent } from './Notice.js'
 
 declare global {
@@ -106,5 +108,21 @@ describe('Notice', () => {
     act(() => { buttons[0]!.click() })
     expect(onAction).toHaveBeenCalledTimes(1)
     expect(shown()).toBe(false)
+  })
+
+  it('模态框开着时，屏上其余部分对屏幕阅读器隐掉，提示和它的撤销仍读得到', () => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    act(() => {
+      root.render(
+        <MessagesProvider>
+          <div id="screen">论文</div>
+          <Notice notice={{ id: 1, tone: 'success', text: '已移入垃圾桶', action: { label: '撤销', onAction: () => {} } }} />
+          <ModalDialog open onOpenChange={() => {}} size="wide"><ModalTitle>设置</ModalTitle></ModalDialog>
+        </MessagesProvider>,
+      )
+    })
+    expect(document.querySelector('#screen')!.closest('[aria-hidden="true"]')).not.toBeNull()
+    expect(card().querySelector('button')!.closest('[aria-hidden="true"]')).toBeNull()
+    vi.unstubAllGlobals()
   })
 })

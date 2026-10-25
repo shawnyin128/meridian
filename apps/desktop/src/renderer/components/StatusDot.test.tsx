@@ -22,10 +22,11 @@ describe('StatusDot', () => {
       .toBe('<span class="status-dot status-dot--nav status-dot--new" aria-hidden="true"></span>')
   })
 
-  it('is filled by default, or half-filled or a hollow ring in its tone', () => {
+  it('is filled by default, or half-filled, a hollow ring or a cross in its tone', () => {
     expect(renderToStaticMarkup(<StatusDot tone="neutral" fill="half" />))
       .toBe('<span class="status-dot status-dot--sm status-dot--neutral status-dot--half" aria-hidden="true"></span>')
     expect(renderToStaticMarkup(<StatusDot tone="neutral" fill="ring" />)).toContain('status-dot--neutral status-dot--ring')
+    expect(renderToStaticMarkup(<StatusDot tone="bad" fill="cross" />)).toContain('status-dot--bad status-dot--cross')
   })
 
   it('writes its label after the dot, so the state does not rest on colour alone', () => {

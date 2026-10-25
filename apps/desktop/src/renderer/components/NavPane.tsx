@@ -10,10 +10,11 @@ import './NavPane.css'
  * same edge. The rows are one toolbar: one Tab stop, with the arrow keys between them. `grip` sits on
  * the pane's end edge. A `collapsed` pane leaves the layout at once, slides away over the content it
  * uncovers and takes no focus; a `hidden` one is out while another pane takes its place, as the
- * reader's paper chat does.
+ * reader's paper chat does. The pane is the window's navigation landmark, named `label`.
  */
-export function NavPane({ id, top, pinned, grip, collapsed, hidden, children }: {
+export function NavPane({ id, label, top, pinned, grip, collapsed, hidden, children }: {
   id: string
+  label: string
   top: ReactNode
   pinned: ReactNode
   grip: ReactNode
@@ -22,7 +23,10 @@ export function NavPane({ id, top, pinned, grip, collapsed, hidden, children }: 
   children: ReactNode
 }) {
   return (
-    <div className={collapsed ? 'nav-pane nav-pane--collapsed' : 'nav-pane'} id={id} inert={collapsed} hidden={hidden}>
+    <div
+      className={collapsed ? 'nav-pane nav-pane--collapsed' : 'nav-pane'} id={id} role="navigation" aria-label={label}
+      inert={collapsed} hidden={hidden}
+    >
       {top}
       <Toolbar orientation="vertical">
         <div className="nav-pane-nav">

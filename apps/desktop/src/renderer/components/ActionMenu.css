@@ -26,7 +26,7 @@
 .ctxmenu--toolbar{width:min-content;min-width:0}
 .mi{display:flex;align-items:center;gap:var(--sp-10);width:100%;min-height:var(--row-menu-h);padding:0 var(--row-menu-pad);border:0;border-radius:var(--r-menu-item);background:transparent;font-family:var(--sans);font-size:var(--fs-base);line-height:var(--lh-ui);text-align:left;color:var(--ink);cursor:pointer;user-select:none;transition:background var(--t-fast) var(--e-out)}
 .mi[data-highlighted],.mi.rrow.on,button.mi:not(:disabled):hover{background:var(--hover)}
-.mi.danger{color:var(--bad)}
+.mi.danger{color:var(--bad-text)}
 /* A disabled item takes the button set's disabled look. */
 .mi[data-disabled],button.mi:disabled{opacity:.45;cursor:default}
 /* A candidate with a grey second line under its title, and a row that creates what was typed */

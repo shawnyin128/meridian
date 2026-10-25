@@ -4,10 +4,20 @@ import { land } from '../hooks/useArrival.js'
 type Taker = (run: () => void) => void
 let taker: Taker | null = null
 
-/** Takes every Undo offered from now on, until the returned function is called. */
+/** The landings (`landOnRestored`) still waiting for their item; each entry stops one. */
+const landings = new Set<() => void>()
+
+/**
+ * Takes every Undo offered from now on, until the returned function is called; that call also stops
+ * every landing still waiting.
+ */
 export function takeUndoOffers(next: Taker): () => void {
   taker = next
-  return () => { if (taker === next) taker = null }
+  return () => {
+    if (taker !== next) return
+    taker = null
+    for (const stop of landings) stop()
+  }
 }
 
 /** Offers `run`, which undoes a write, to ⌘Z (see `useNotice`); with no shell mounted nothing takes it. */
@@ -40,18 +50,24 @@ export function itemsNow(): ItemsBefore {
  * Lands on and flashes (`land`) the item an undo brings back, once it shows on the screen shown or in
  * the sidebar: the first item that is neither an element of `before` nor one whose key `before` held,
  * so a row that only changed its text in place, or one drawn again as it was, is passed over. When no
- * such item shows within LANDING_MS, it lands nowhere.
+ * such item shows within LANDING_MS, or the shell lets go of the offers first (`takeUndoOffers`), it
+ * lands nowhere.
  */
 export function landOnRestored(before: ItemsBefore): void {
   const shown = `.screenslot:not([hidden]) :is(${ITEMS}), #sidebar :is(${ITEMS})`
   const restored = () => [...document.querySelectorAll(shown)].find((item) => !before.nodes.has(item) && !before.keys.has(keyOf(item)))
+  const stop = () => {
+    observer.disconnect()
+    window.clearTimeout(timer)
+    landings.delete(stop)
+  }
   const observer = new MutationObserver(() => {
     const item = restored()
     if (item === undefined) return
-    observer.disconnect()
-    window.clearTimeout(timer)
+    stop()
     land(item)
   })
   observer.observe(document.body, { childList: true, subtree: true })
-  const timer = window.setTimeout(() => observer.disconnect(), LANDING_MS)
+  const timer = window.setTimeout(stop, LANDING_MS)
+  landings.add(stop)
 }

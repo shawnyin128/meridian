@@ -56,9 +56,9 @@ export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElem
 )
 
 /**
- * The page's title on one line: when it does not fit it fades out at its end and the tooltip shows it
- * whole. `label` is that whole text, for a title that is not a plain string. `count` follows the title
- * as ` · N`.
+ * The page's title on one line, the page's first-level heading: when it does not fit it fades out at
+ * its end and the tooltip shows it whole. `label` is that whole text, for a title that is not a plain
+ * string. `count` follows the title as ` · N`.
  */
 export function PageTitle({ children, label, count, className, ...props }: {
   children: ReactNode
@@ -67,7 +67,10 @@ export function PageTitle({ children, label, count, className, ...props }: {
 } & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
   const whole = label ?? (typeof children === 'string' ? children : undefined)
   return (
-    <FadeText className={classes('t', className)} label={whole === undefined ? undefined : headingText(whole, count)} {...props}>
+    <FadeText
+      className={classes('t', className)} label={whole === undefined ? undefined : headingText(whole, count)}
+      role="heading" aria-level={1} {...props}
+    >
       {children}<HeadingCount count={count} />
     </FadeText>
   )
@@ -130,19 +133,25 @@ export const SectionHeading = forwardRef<HTMLDivElement, {
   level?: 'section' | 'group'
 } & HTMLAttributes<HTMLDivElement>>(
   function SectionHeading({ children, actions, count, meta, fold, className, level = 'section', ...rest }, ref) {
-    // The heading is a flex row, so a count and a meta share the title's span instead of becoming items of their own.
-    const title = count === undefined && meta === undefined ? children : (
-      <span>
+    // The title, with its count and meta, is the heading, without the actions beside it: a section's
+    // at the second level under the page title, a group's at the third.
+    const heading = { role: 'heading', 'aria-level': level === 'group' ? 3 : 2 } as const
+    const label = (
+      <>
         {children}<HeadingCount count={count} />
         {meta === undefined ? null : <span className="section-heading-meta">{meta}</span>}
-      </span>
+      </>
     )
     return (
       <div ref={ref} className={classes(`section-heading section-heading--${level}`, className)} {...rest}>
-        {fold === undefined ? title : (
-          <FoldToggle open={fold.open} onToggle={fold.onToggle} {...(fold.controls === undefined ? {} : { controls: fold.controls })}>
-            {title}
-          </FoldToggle>
+        {fold === undefined ? <span {...heading}>{label}</span> : (
+          // A folding title is the heading's toggle, as an accordion's is, and fills the row as the toggle does.
+          <span {...heading} className="section-heading-fold">
+            <FoldToggle open={fold.open} onToggle={fold.onToggle} {...(fold.controls === undefined ? {} : { controls: fold.controls })}>
+              {/* The toggle lays its label out as a flex row, so the count and meta share the title's span. */}
+              {count === undefined && meta === undefined ? children : <span>{label}</span>}
+            </FoldToggle>
+          </span>
         )}
         {actions === undefined ? null : <div className="section-heading-actions">{actions}</div>}
       </div>

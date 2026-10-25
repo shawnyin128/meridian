@@ -511,7 +511,7 @@ export function Ideas() {
       <PageBody className="ideas-body">
         <SplitPage columns="rail">
           <SplitColumn>
-            <main className="ideas-list">
+            <div className="ideas-list">
               <GroupedList>
                 <Group title={m.ideas.groups.open} count={open.length}>
                   {draft === null
@@ -565,7 +565,7 @@ export function Ideas() {
                   </Table>
                 </>
               )}
-            </main>
+            </div>
           </SplitColumn>
 
           {selected === undefined ? null : (

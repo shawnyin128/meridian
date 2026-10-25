@@ -12,13 +12,13 @@ declare global {
 describe('GroupedList', () => {
   it('不画自己的盒子：分组的标题和条目照旧排在列表外面的网格、栏或流里', () => {
     expect(renderToStaticMarkup(<GroupedList><Group title="今天">条目</Group></GroupedList>))
-      .toBe('<div class="grouped-list"><div class="section-heading section-heading--group">今天</div>条目</div>')
+      .toBe('<div class="grouped-list"><div class="section-heading section-heading--group"><span role="heading" aria-level="3">今天</span></div>条目</div>')
   })
 
   it('一组先是分组这一级的标题，写着条数和右端的操作，再是它的条目，中间没有包裹', () => {
     expect(renderToStaticMarkup(
       <Group title="进行中" count={3} actions={<button type="button">新建</button>}><p>条目</p></Group>,
-    )).toBe('<div class="section-heading section-heading--group"><span>进行中<span class="heading-count"> · 3</span></span>'
+    )).toBe('<div class="section-heading section-heading--group"><span role="heading" aria-level="3">进行中<span class="heading-count"> · 3</span></span>'
       + '<div class="section-heading-actions"><button type="button">新建</button></div></div><p>条目</p>')
   })
 

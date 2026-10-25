@@ -12,9 +12,10 @@
  *    --window-buttons-* / --cursor-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
- * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --ring / --star / --hl-* /
- *    --paper have the same value in both themes and do not flip (all but the last are written only in
- *    :root; the last is repeated with the same value next to its neighbours in the dark block). No dark
+ * 3. --accent-solid / --bad-solid / --press-solid / --hover-solid / --ring / --star and the four
+ *    highlight colours have the same value in both themes and do not flip (they are written only in
+ *    :root); the paper and the ink on it, --paper / --paper-filter / --hl-note / --hl-sel, flip with
+ *    the page, which dark themes invert. No dark
  *    value is missing.
  */
 :root{
@@ -113,10 +114,11 @@
   --tint-bad:rgba(224,69,58,.12);
   --tint-mut:rgba(17,17,17,.04);
   /*
-   * The paper does not flip with the theme, nor do the reading highlights on it, the underline of a
-   * highlight with a note and the selection being made on it, which is the light theme's --sel
+   * The paper and the ink drawn on it: the page, the filter its drawn page takes, the outline and note
+   * underline of a highlight (--hl-note) and the selection being made (--hl-sel). Dark themes invert
+   * the page, dark with light text, and these follow it; the highlight colours keep their own.
    */
-  --paper:#fff; --scrim:rgba(23,23,23,.42);
+  --paper:#fff; --paper-filter:none; --scrim:rgba(23,23,23,.42);
   --hl-yellow:#f8d84a; --hl-green:#87d99a; --hl-blue:#82c7f2; --hl-pink:#f0a0be; --hl-note:rgba(17,17,17,.55);
   --hl-sel:rgba(17,17,17,.14);
   /* Elevation. --sh-2 (menus, popovers) and --sh-3 (dialogs) draw the layer's edge as their first ring. */
@@ -182,11 +184,23 @@
   /* #ff453a on an 18% red tint over #0d1b2d is 4.26:1, short of body text's 4.5:1; 10% gives 4.68:1 */
   --tint-bad:rgba(255,69,58,.10);
   --tint-mut:rgba(245,247,251,.05);
-  --paper:#fff; --scrim:rgba(4,11,20,.55);
+  /* invert(.88) takes the page's white to #1f1f1f and its black ink to #e0e0e0; the hue turns back. */
+  --paper:#1f1f1f; --paper-filter:invert(.88) hue-rotate(180deg); --scrim:rgba(4,11,20,.55);
+  --hl-note:rgba(224,224,224,.55); --hl-sel:rgba(224,224,224,.2);
   --sh-1:0 1px 2px rgba(0,0,0,.5), 0 0 0 1px rgba(245,247,251,.05);
   --sh-2:0 0 0 1px rgba(245,247,251,.08), 0 8px 24px rgba(0,0,0,.55), 0 2px 6px rgba(0,0,0,.4);
   --sh-3:0 0 0 1px rgba(245,247,251,.07), 0 28px 70px rgba(0,0,0,.66), 0 8px 24px rgba(0,0,0,.5);
   --sh-paper:0 4px 22px rgba(0,0,0,.5);
+}
+
+/*
+ * With the system's Increase Contrast on, edges and tertiary text step toward the ink: a separator reaches
+ * 3:1 on the canvas, a card and the window, the focused field's border 4.5:1, and tertiary text is the
+ * secondary. colour-theme.ts derives the same steps for every other theme (increasedContrastTokens).
+ */
+@media (prefers-contrast:more){
+  :root:not([data-theme="dark"]){--sep:#8f8f8f;--sep2:#8f8f8f;--sep-strong:#717171;--ter:#555555}
+  [data-theme="dark"]{--sep:#5d6c83;--sep2:#5d6c83;--sep-strong:#7b899e;--ter:#aab6c8}
 }
 
 @media (max-width:900px){:root{--detailw:280px}}
