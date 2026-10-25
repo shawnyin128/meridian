@@ -199,8 +199,10 @@ Current shared contracts:
   page body has left, and both columns start at its top and end at its bottom, each scrolling inside
   itself and fading at a hidden edge: a `SplitColumn`, a `SplitRail` (properties and links after a rule,
   in small text) or a `ListColumn` fills its column, and a `SidePanel` or a card is as tall as its content
-  up to the column's height. `columns` is `rail` (a main column and a rail or panel as wide as it is) or
-  `index` (a narrow index and its detail).
+  up to the column's height. `columns` is `rail` (a main column and a rail or panel as wide as it is),
+  `index` (a narrow index and its detail) or `dialog`, the Settings modal and the theme editor: a
+  `SplitNav`, the navigation with its title and back button in a head, and a `SplitMain`, a head that
+  stays above a body that scrolls. Every column scrolls through `ScrollArea`.
 - `GroupedList` and `Group`: items grouped by status, kind, day, source, project or archive. Each group opens
   with the group heading, the third heading level, and the first group sits flush with the list's top; a
   group with `fold` folds its items through its heading, and `sticky` pins that heading while they scroll.
