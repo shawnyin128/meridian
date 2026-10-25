@@ -147,7 +147,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                                 </span>
                                 {member.chips.length === 0 ? null : (
                                   <FadeText className="research-map-why">
-                                    {member.chips.map((chip) => <Tag shape="chip" className="tagchip" key={chip.key}>{chip.text}</Tag>)}
+                                    {member.chips.map((chip) => <Tag shape="chip" key={chip.key}>{chip.text}</Tag>)}
                                   </FadeText>
                                 )}
                               </StructuredRow>

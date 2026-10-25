@@ -28,7 +28,7 @@ const RULES = STYLESHEETS.flatMap((path) => [...source(path).matchAll(/([^{}]+)\
 
 const STYLES = [
   'shell/tokens.css', 'routes/shell.css', 'components/IconButton.css', 'components/Tag.css', 'components/DragHandle.css',
-  'components/StructuredList.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
+  'components/StructuredList.css', 'components/TagChips.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
   'components/project/ProjectPlan.css', 'components/timeline/TimelineBoard.css', 'components/project/ResearchGraph.css',
 ].map(source)
 
