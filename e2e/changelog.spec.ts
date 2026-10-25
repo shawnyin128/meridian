@@ -157,8 +157,8 @@ test('归一条:它落到「已归档」那一节,屏头与侧栏的数都掉一
   await expect(shown(win, '.section-heading')).toContainText(['未归档', '已归档'])
 
   // Section headings use the main-area size, 15px. The first section (unarchived) has no top rule;
-  // a later one ("Archived") draws one.
-  const heads = shown(win, '.section-heading')
+  // a later one ("Archived") draws one. The day groups under them are group headings.
+  const heads = shown(win, '.section-heading--section')
   await expect(heads.nth(0)).toHaveCSS('font-size', '15px')
   await expect(heads.nth(0)).toHaveCSS('border-top-width', '0px')
   await expect(heads.nth(1)).toHaveCSS('font-size', '15px')
