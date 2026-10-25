@@ -183,6 +183,37 @@ App, the Python package, and the agent plugins. Data formats are compatible in b
 
 - The UI is hand-written CSS tokens plus Radix primitives. Do not add
   Tailwind or a component library.
+- The renderer has three layers: tokens (`shell/tokens.css`), shared
+  components (the flat `renderer/components/*`, one per function, each look an
+  explicit variant), and screens (`routes/*`, the feature folders
+  `components/<feature>/*` and `shell/AppShell`). Feature folders are screen
+  parts, not design-system components.
+- Screens hold no visual CSS. A screen stylesheet only places shared
+  components: grid and flex placement, `grid-template-*`, `grid-area`,
+  `order`, alignment, widths, heights and gaps through tokens, positions, and
+  container queries that drop whole columns. Colour, background, border,
+  radius, shadow, padding, item margins, font, line height, opacity, motion,
+  and hover, focus and selected states belong to shared components and tokens.
+  `scripts/check-screen-css.test.mjs` enforces this against
+  `scripts/screen-css-ratchet.txt`, the violations that predate it. The list
+  only shrinks, and it is empty by the v0.0.20.0 release.
+- No restyling through `className`. A screen rule that targets a shared
+  component's class, its own or one a screen passes in through `className`,
+  only places it. A component that needs another look gets a variant.
+- No raw elements for a pattern that has a component. A screen renders no
+  `<button>` (use `Button` or `IconButton`), no `<table>` (use `Table`) and no
+  hand-built list markup.
+- One spacing and type system. Spacing takes the roles in `shell/tokens.css`:
+  `--page-inset`, `--section-gap`, `--item-gap`, and `--item-inset`, which
+  rows and cards share. Text takes a type role: page title, section heading,
+  group heading, item title, body, meta or small (`--fs-page-title`,
+  `--fs-section`, `--fs-group`, `--fs-item-title`, `--fs-body`, `--fs-meta`,
+  `--fs-label`). Reading typography applies only inside Markdown bodies.
+- A UI function that no shared component covers becomes a shared component
+  first, with its variants; it is never built in a screen.
+- Behaviour lives in shared components and hooks: keyboard handling, hover
+  reveal, focus return, the selected look, busy and empty states, and drag
+  feedback are each implemented once.
 - Before building or restyling a UI pattern, find the shared component that
   owns it (`components/FormControls`, `components/PageShell`,
   `components/ConfirmDialog`, `components/InlineDraftInput`, and the others in
@@ -450,3 +481,11 @@ Each of these happened in this repository. The rule after each one is binding.
   Every automated launch passes its own `--user-data-dir`. Prove a change to how
   the App is launched with the profile's modification times, never by reading
   or writing it.
+- **Screens used the shared components, then restyled them.** The v0.0.19.0
+  inventory found 59 of the 66 patterns a shared component draws restyled by a
+  route or feature stylesheet; `routes/shell.css` alone restyled shared
+  components 141 times, and screens held 441 colour, 608 padding and margin
+  and 392 font declarations against 180, 207 and 104 in the shared
+  components. Each fix bent a component locally, so the same pattern drifted
+  apart screen by screen. Screens only place shared components; a look a
+  screen needs becomes a variant of the component.
