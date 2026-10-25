@@ -1,20 +1,20 @@
 .desk{flex:1;overflow:hidden;background:var(--content);display:flex;flex-direction:column;min-width:0;position:relative}
 .desk-head{display:flex;align-items:center;gap:var(--sp-8);box-sizing:border-box;height:46px;padding:0 var(--sp-16);border-bottom:1px solid var(--sep);background:var(--sidebar);backdrop-filter:blur(20px)}
 .desk-head .t{font-size:var(--fs-page-title);font-weight:var(--fw-title)}
-.desk-body{flex:1;overflow:auto;padding:var(--sp-20) var(--sp-24);scrollbar-gutter:stable}
+.desk-body{flex:1;overflow:auto;padding:var(--sp-20) var(--page-inset);scrollbar-gutter:stable}
 /* A page body holds sticky rails and headings, so it fades its scrolled edges in paint. */
 .desk-body{--fade-paint:var(--content);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
 /* Must override the margin shorthand of sections and grids, or they undo the centering of page content. */
 .desk .desk-body>*,.desk .desk-foot>*{max-width:var(--pagew);margin-left:auto;margin-right:auto}
 .desk .desk-body>.wkpage{max-width:var(--prosew)}
 .desk-foot{flex-shrink:0;border-top:1px solid var(--sep);background:var(--sidebar);backdrop-filter:blur(20px);padding:var(--sp-12) var(--sp-16) var(--sp-16)}
-.desk-foot.bare{background:transparent;border-top:0;backdrop-filter:none;padding:var(--sp-8) var(--sp-24) var(--sp-16);overflow:hidden;scrollbar-gutter:stable}
+.desk-foot.bare{background:transparent;border-top:0;backdrop-filter:none;padding:var(--sp-8) var(--page-inset) var(--sp-16);overflow:hidden;scrollbar-gutter:stable}
 .page-actions{display:flex;flex:none;align-items:center;gap:var(--sp-8);margin-left:auto}
 .page-toolbar{display:flex;align-items:flex-end;gap:var(--sp-8);min-height:28px;margin:0 0 var(--sp-14)}
 .page-toolbar+.section-heading{margin-top:0;padding-top:0;border-top:0}
 
 .section-heading{display:flex;align-items:center;gap:var(--sp-10);font-size:var(--fs-section);font-weight:var(--fw-title);color:var(--ink);
-  margin:var(--sp-24) 0 var(--sp-10);padding-top:var(--sp-16);border-top:1px solid var(--sep2)}
+  margin:var(--section-gap) 0 var(--sp-10);padding-top:var(--sp-16);border-top:1px solid var(--sep2)}
 .section-heading:first-child{margin-top:0;padding-top:0;border-top:0}
 /* A group inside a section or a card sits under its section's rule, a step smaller. */
 .section-heading--group{font-size:var(--fs-group);margin:var(--sp-20) 0 var(--sp-8);padding-top:0;border-top:0}
