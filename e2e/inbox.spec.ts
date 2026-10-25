@@ -639,7 +639,7 @@ test('没填 key 时关注建议从 arXiv 生成关键词与按姓名的作者,�
 
   await section.locator('input').fill('我想关注批量推理中的动态验证与草稿树')
   await section.locator('.btn.pri').click()
-  await expect(section.locator('.watch-suggestion-group')).toHaveCount(2)
+  await expect(section.locator('.section-heading--group')).toHaveCount(2)
   await expect(section).toContainText('batched inference')
   await expect(section).not.toContainText('h-index')
   const suggestedAuthor = section.locator('.watch-suggestion-row').filter({ hasText: 'Mei Lin' })

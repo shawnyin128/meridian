@@ -27,10 +27,6 @@
 .watch-suggestion-results{margin-top:var(--sp-10)}
 .watch-suggestion-results>.ph2{font-size:var(--fs-cap);color:var(--ter)}
 .watch-suggestion-results>.ph2>.tag{margin-left:var(--sp-8)}
-.watch-suggestion-group{margin-top:var(--sp-10)}
-.watch-suggestion-group-heading{display:flex;align-items:center;justify-content:space-between;gap:var(--sp-10);
-  min-height:24px;color:var(--sec);font-size:var(--fs-cap)}
-.watch-suggestion-group-heading strong{font-weight:var(--fw-semibold);color:var(--ink)}
 .watch-suggestion-row{display:flex;align-items:center;gap:var(--sp-12);min-height:42px;padding:var(--sp-6) var(--sp-2)}
 .watch-suggestion-copy{display:grid;gap:var(--sp-2);min-width:0;flex:1}
 .watch-suggestion-copy .nm{color:var(--ink);font-size:var(--fs-sm)}

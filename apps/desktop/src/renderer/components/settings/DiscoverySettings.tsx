@@ -11,7 +11,8 @@ import { PageError, SectionHeading } from '../PageShell.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
-import { Card } from '../Card.js'
+import { Group, GroupedList } from '../GroupedList.js'
+import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { Button } from '../Button.js'
@@ -65,56 +66,60 @@ export function DiscoverySettings() {
   const enabled = (profiles ?? []).reduce((total, profile) => total + profile.intentCount, 0)
   return (
     <section className="delivery-directions">
-      <SectionHeading level="group" count={enabled}>
-        {m.settings.discovery.directionsHeading}
-      </SectionHeading>
+      <SectionHeading count={enabled}>{m.settings.discovery.directionsHeading}</SectionHeading>
       <PageError error={error} variant="section" />
-      <Card flush className="direction-panel">
-        {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
-        {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
+      {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
+      {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
+      <GroupedList>
         {(profiles ?? []).map((profile) => (
-          <section className="direction-project" key={profile.id}>
-            <header>
-              <strong>{profile.name}</strong>
-              <span>{m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}</span>
+          <Group
+            key={profile.id} title={profile.name} meta={m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}
+            actions={(
               <Button
                 size="compact" variant="ghost" disabled={refreshing !== null || profile.intentCount === 0}
                 busy={refreshing === profile.id} busyLabel={m.settings.discovery.refreshing}
                 onClick={() => refresh(profile.id)}
               >{m.settings.discovery.refreshProject}</Button>
-            </header>
+            )}
+          >
             {profile.intents.length === 0 ? (
               <EmptyState variant="section">{m.settings.discovery.needsArxiv}</EmptyState>
-            ) : profile.intents.map((intent) => (
-              <div className={`direction-row${intent.enabled ? '' : ' disabled'}`} key={intent.id}>
-                <div className="direction-main">
-                  <div className="direction-name">
-                    {intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}
-                    <span>{intent.label}</span>
-                  </div>
-                  <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>
-                    {intent.seeds.map((seed, at) => (
-                      <Fragment key={seed.id}>{at === 0 ? null : ' · '}<PaperText text={seed.title} /></Fragment>
-                    ))}
-                  </FadeText>
-                </div>
-                <div className="direction-actions">
-                  {!intent.core && intent.enabled ? (
-                    <Button
-                      size="compact" variant="ghost" disabled={busy.has(intent.id)}
-                      onClick={() => update(profile.id, intent.id, 'set-core')}
-                    >{m.settings.discovery.setCoreAction}</Button>
-                  ) : null}
-                  <Switch
-                    label={intent.label} checked={intent.enabled} disabled={busy.has(intent.id)}
-                    onChange={(on) => update(profile.id, intent.id, on ? 'enable' : 'disable')}
-                  />
-                </div>
-              </div>
-            ))}
-          </section>
+            ) : (
+              <StructuredList>
+                {profile.intents.map((intent) => (
+                  <StructuredRow key={intent.id}>
+                    <div className={`direction-row${intent.enabled ? '' : ' disabled'}`}>
+                      <div className="direction-main">
+                        <div className="direction-name">
+                          {intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}
+                          <span>{intent.label}</span>
+                        </div>
+                        <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>
+                          {intent.seeds.map((seed, at) => (
+                            <Fragment key={seed.id}>{at === 0 ? null : ' · '}<PaperText text={seed.title} /></Fragment>
+                          ))}
+                        </FadeText>
+                      </div>
+                      <div className="direction-actions">
+                        {!intent.core && intent.enabled ? (
+                          <Button
+                            size="compact" variant="ghost" disabled={busy.has(intent.id)}
+                            onClick={() => update(profile.id, intent.id, 'set-core')}
+                          >{m.settings.discovery.setCoreAction}</Button>
+                        ) : null}
+                        <Switch
+                          label={intent.label} checked={intent.enabled} disabled={busy.has(intent.id)}
+                          onChange={(on) => update(profile.id, intent.id, on ? 'enable' : 'disable')}
+                        />
+                      </div>
+                    </div>
+                  </StructuredRow>
+                ))}
+              </StructuredList>
+            )}
+          </Group>
         ))}
-      </Card>
+      </GroupedList>
     </section>
   )
 }

@@ -182,7 +182,7 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'inline', size: 'chip', variant: 'icon', scope: 'a field adds a value after its chips' },
     { slot: 'sidebar heading', size: 'compact', variant: 'icon', scope: 'the sidebar starts a chat in its chats group' },
     { slot: 'row actions', size: 'compact', variant: 'labelled', scope: 'a suggestion row adds its suggestion' },
-    { slot: 'inline', size: 'compact', variant: 'labelled', scope: 'the heading of a suggestion group adds all of them' },
+    { slot: 'group heading', size: 'compact', variant: 'labelled', scope: 'a group adds to itself: a watch of its type, or all of its suggestions' },
   ],
   'view switch': [
     { slot: 'page toolbar', size: 'md', variant: 'plain' },

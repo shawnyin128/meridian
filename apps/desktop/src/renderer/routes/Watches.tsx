@@ -20,6 +20,7 @@ import { FormInput } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker } from '../components/FieldPickers.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { Switch } from '../components/Switch.js'
 import { Tag } from '../components/Tag.js'
@@ -62,12 +63,10 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
 }) {
   const m = useMessages()
   return (
-    <>
-      <SectionHeading
-        level="group"
-        actions={<AddAction size="compact" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
-      >{m.shell.watchKind[type]}
-      </SectionHeading>
+    <Group
+      title={m.shell.watchKind[type]}
+      actions={<AddAction size="compact" ref={add} label={m.watches.add(m.shell.watchKind[type])} onClick={onOpen}>{m.shell.watchKind[type]}</AddAction>}
+    >
       {watches === null
         ? (failed ? null : <LoadingPlaceholder shape="rows" count={2} />)
         : watches.length === 0 && editor === undefined
@@ -107,7 +106,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
               ))) }
           </StructuredList>
         )}
-    </>
+    </Group>
   )
 }
 
@@ -468,16 +467,18 @@ export function WatchSettings() {
   return (
     <div className="watch-settings">
       <PageError error={error} variant="section" />
-      {GROUPS.map((type) => (
-        <WatchGroup
-          key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
-          failed={error !== null}
-          add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
-          editor={editor?.type !== type || editorInput === null
-            ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}
-          onSetActive={setActive} onRemove={remove}
-        />
-      ))}
+      <GroupedList>
+        {GROUPS.map((type) => (
+          <WatchGroup
+            key={type} type={type} watches={listed === null ? null : watches.filter((w) => w.type === type)}
+            failed={error !== null}
+            add={type === 'topic' ? addTopic : addAuthor} onOpen={() => open(type)} onEdit={edit}
+            editor={editor?.type !== type || editorInput === null
+              ? undefined : { ...(editor.id === undefined ? {} : { id: editor.id }), row, input: editorInput }}
+            onSetActive={setActive} onRemove={remove}
+          />
+        ))}
+      </GroupedList>
 
       <SectionHeading>{m.watches.suggestHeading}</SectionHeading>
       <section className="watch-suggestions">
@@ -527,24 +528,23 @@ export function WatchSettings() {
             {suggestions.topics.length + suggestions.authors.length === 0
               ? <EmptyState variant="section">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</EmptyState>
               : (
-                <>
+                <GroupedList>
                   <div className="ph2">
                     {m.watches.suggestionBasis(suggestions.paperCount)}
                     {suggestions.stale === true ? <Tag tone="warn">{m.watches.suggestionStale}</Tag> : null}
                   </div>
                   {suggestions.topics.length === 0 ? null : (
-                    <section className="watch-suggestion-group">
-                      <div className="watch-suggestion-group-heading">
-                        <strong>{m.watches.topicSuggestions}</strong>
-                        {suggestions.topics.length > 1
-                          ? (
-                            <AddAction
-                              size="compact" disabled={addingSuggestion !== null}
-                              onClick={() => { void addAllSuggestedTopics() }}
-                            >{m.watches.addAllTopics}</AddAction>
-                          )
-                          : null}
-                      </div>
+                    <Group
+                      title={m.watches.topicSuggestions}
+                      actions={suggestions.topics.length > 1
+                        ? (
+                          <AddAction
+                            size="compact" disabled={addingSuggestion !== null}
+                            onClick={() => { void addAllSuggestedTopics() }}
+                          >{m.watches.addAllTopics}</AddAction>
+                        )
+                        : undefined}
+                    >
                       <StructuredList variant="embedded" className="watch-suggestion-list">
                         {suggestions.topics.map((item) => (
                           <StructuredRow className="watch-suggestion-row" key={item.name}>
@@ -561,13 +561,10 @@ export function WatchSettings() {
                           </StructuredRow>
                         ))}
                       </StructuredList>
-                    </section>
+                    </Group>
                   )}
                   {suggestions.authors.length === 0 ? null : (
-                    <section className="watch-suggestion-group">
-                      <div className="watch-suggestion-group-heading">
-                        <strong>{m.watches.authorSuggestions}</strong>
-                      </div>
+                    <Group title={m.watches.authorSuggestions}>
                       <StructuredList variant="embedded" className="watch-suggestion-list">
                         {suggestions.authors.map((item) => (
                           <StructuredRow className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
@@ -586,9 +583,9 @@ export function WatchSettings() {
                           </StructuredRow>
                         ))}
                       </StructuredList>
-                    </section>
+                    </Group>
                   )}
-                </>
+                </GroupedList>
               )}
           </div>
         )}

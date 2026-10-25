@@ -28,19 +28,24 @@ function rendered(source: string): string[] {
   return names
 }
 
-/** Every screen that lists items in groups by day, source, status or archive with its own heading or fold. */
+/** Every screen that lists items in groups: by status, kind, day, source, project or archive. */
 const GROUPING_SCREENS = [
-  'routes/Ideas.tsx', 'routes/Feed.tsx', 'routes/Later.tsx', 'routes/Changelog.tsx', 'routes/Inbox.tsx',
+  'routes/Projects.tsx', 'routes/Ideas.tsx', 'routes/Trash.tsx', 'routes/Feed.tsx', 'routes/Later.tsx',
+  'routes/Changelog.tsx', 'routes/Inbox.tsx', 'routes/Watches.tsx', 'components/settings/DiscoverySettings.tsx',
   'components/project/ProjectPlan.tsx',
 ]
 
 describe('分组列表', () => {
-  it('每个分组列表都用同一个 Group：没有一屏再画按天的灰色小字或自己的可折叠分组', () => {
+  it('每个分组列表都用同一个 Group：没有一屏再画按天的灰色小字、自己的可折叠分组或填色的分组条', () => {
     const own = SOURCES.flatMap((path) => rendered(FILES.get(path)!)
       .filter((name) => name === 'DayHeading' || name === 'CollapsibleGroup')
       .map((name) => `${path} <${name}>`))
     expect(own).toEqual([])
     expect(GROUPING_SCREENS.filter((path) => !rendered(FILES.get(path)!).includes('Group'))).toEqual([])
+    const handBuilt = SOURCES.flatMap((path) => ['watch-suggestion-group-heading', 'direction-project']
+      .filter((name) => new RegExp(`className="[^"]*(?<![\\w-])${name}(?![\\w-])`).test(FILES.get(path)!))
+      .map((name) => `${path} .${name}`))
+    expect(handBuilt).toEqual([])
   })
 
   it('一组排在一列分组里时，不能折叠的分组放在 GroupedList 里，第一组贴着列表顶', () => {
