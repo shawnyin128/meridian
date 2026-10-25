@@ -104,8 +104,9 @@ Current shared contracts:
   A tag keeps the width of its text: the text beside it gives way first, and when its row still has no
   room the tag hides as a whole. Only a `capped` tag, whose placement caps it for a long value, fades its text.
   A host places and sizes a tag through `className` but never sets its fill, colour, border, radius or padding.
-- `CountBadge`: the one count beside a row or button label, zero shown as 0. With `onClick` it is a button in
-  the same look that opens what it counts; with `more` it counts the items folded away as +N and unfolds them.
+- `CountBadge`: the one count beside a row or button label, zero shown as 0. With `more` it is a button in the
+  same look that counts the items folded away as +N and unfolds them. A property's value is not a count beside
+  a label: a property list shows a count as plain text, like its other values.
   A host only places it. A heading's count is not a badge: the heading shows it after its text as `· N`.
 - `StatusDot`: the one state dot, in two sizes, filled, half-filled or a ring. A dot whose state no nearby text names
   carries a `label`.

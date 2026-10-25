@@ -6,27 +6,26 @@ type CountBadgeProps = {
   /** Placement only; the badge's box, fill and type are its own. */
   className?: string | undefined
 } & (
-  | { onClick?: never; label?: never; more?: never }
+  | { more?: never; label?: never; onClick?: never }
   | {
-    onClick: (event: MouseEvent<HTMLButtonElement>) => void
-    label?: string | undefined
     /** The badge counts the items folded away; `open` while they are unfolded. */
-    more?: { open: boolean } | undefined
+    more: { open: boolean }
+    label: string
+    onClick: (event: MouseEvent<HTMLButtonElement>) => void
   }
 )
 
 /**
- * The one count beside a row or button label, in the quiet badge look; zero shows as 0. With
- * `onClick` it is a button in the same look, named by `label`, that opens what it counts. With
- * `more` it counts the items folded away as +N and unfolds them, and shows − while they are unfolded.
+ * The one count beside a row or button label, in the quiet badge look; zero shows as 0. With `more`
+ * it is a button in the same look, named by `label`, that counts the items folded away as +N and
+ * unfolds them, and shows − while they are unfolded.
  */
-export function CountBadge({ count, className, onClick, label, more }: CountBadgeProps) {
+export function CountBadge({ count, className, more, label, onClick }: CountBadgeProps) {
   const placed = className ? ` ${className}` : ''
-  if (onClick === undefined) return <span className={`count-badge${placed}`}>{count}</span>
+  if (more === undefined) return <span className={`count-badge${placed}`}>{count}</span>
   return (
-    <button
-      type="button" className={`count-badge${placed}`} aria-label={label}
-      aria-expanded={more?.open} onClick={onClick}
-    >{more === undefined ? count : more.open ? '−' : `+${count}`}</button>
+    <button type="button" className={`count-badge${placed}`} aria-label={label} aria-expanded={more.open} onClick={onClick}>
+      {more.open ? '−' : `+${count}`}
+    </button>
   )
 }

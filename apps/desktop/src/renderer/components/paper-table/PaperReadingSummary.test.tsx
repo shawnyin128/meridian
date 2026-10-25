@@ -63,7 +63,7 @@ describe('PaperReadingSummary', () => {
     await act(async () => {
       root!.render(
         <MessagesProvider>
-          <PaperReadingSummary paper={PAPER} onRead={(anchor) => { read.push(anchor) }} onConclusions={() => {}} />
+          <PaperReadingSummary paper={PAPER} onRead={(anchor) => { read.push(anchor) }} />
         </MessagesProvider>,
       )
     })
@@ -80,25 +80,19 @@ describe('PaperReadingSummary', () => {
     expect(read).toEqual([{ page: 2, highlight: 'h1', panel: 'highlights' }])
   })
 
-  it('shows the note and conclusion counts as count badges; one above zero opens what it counts, zero is only shown', async () => {
-    const read: JumpAnchor[] = []
+  it('shows the note and conclusion counts as plain property values, text like the other values of a property list', async () => {
     const host = document.createElement('div')
     document.body.appendChild(host)
     root = createRoot(host)
     await act(async () => {
       root!.render(
         <MessagesProvider>
-          <PaperReadingSummary paper={PAPER} onRead={(anchor) => { read.push(anchor) }} onConclusions={() => {}} />
+          <PaperReadingSummary paper={PAPER} onRead={() => {}} />
         </MessagesProvider>,
       )
     })
 
-    const counts = [...host.querySelectorAll('.paper-meta-list dd')].map((dd) => dd.firstElementChild)
-    expect(counts.map((badge) => [badge?.tagName, badge?.className, badge?.textContent])).toEqual([
-      ['BUTTON', 'count-badge', '3'],
-      ['SPAN', 'count-badge', '0'],
-    ])
-    await act(async () => { (counts[0] as HTMLElement).click() })
-    expect(read).toEqual([{ panel: 'notes' }])
+    expect([...host.querySelectorAll('.paper-meta-list dd')].map((dd) => [dd.childElementCount, dd.textContent]))
+      .toEqual([[0, '3'], [0, '0']])
   })
 })

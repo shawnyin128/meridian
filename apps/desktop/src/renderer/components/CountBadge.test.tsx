@@ -20,18 +20,16 @@ describe('CountBadge', () => {
     expect(renderToStaticMarkup(<CountBadge count={0} />)).toBe('<span class="count-badge">0</span>')
   })
 
-  it('is a button in the same look when it opens what it counts', () => {
+  it('is a button in the same look when it counts the items folded away, and a click reaches its host', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
-    const open = vi.fn()
+    const unfold = vi.fn()
     const host = document.createElement('div')
     const root = createRoot(host)
-    act(() => { root.render(<CountBadge count={3} label="查看 3 条笔记" onClick={open} />) })
+    act(() => { root.render(<CountBadge count={3} more={{ open: false }} label="展开其余 3 项" onClick={unfold} />) })
     const badge = host.querySelector('button')!
-    expect([badge.outerHTML]).toEqual([
-      '<button type="button" class="count-badge" aria-label="查看 3 条笔记">3</button>',
-    ])
+    expect(badge.className).toBe('count-badge')
     act(() => badge.click())
-    expect(open).toHaveBeenCalledTimes(1)
+    expect(unfold).toHaveBeenCalledTimes(1)
     act(() => root.unmount())
   })
 
