@@ -45,7 +45,7 @@ const core = vi.hoisted(() => {
 vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
-    send: core.send, cancel: core.cancel, messages: () => Promise.resolve([]),
+    send: core.send, cancel: core.cancel, messages: () => Promise.resolve([]), writing: () => Promise.resolve(null),
     forPaper: (paperId: string) => Promise.resolve({
       id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
     }),

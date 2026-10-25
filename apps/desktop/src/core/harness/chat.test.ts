@@ -374,6 +374,25 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
+  it('passes on the answer as far as the CLI has written it', async () => {
+    const { child, runner, chat, close } = chatRunner(CLI_MODEL, async (call) => {
+      call.onText?.('EAGLE reaches')
+      call.onText?.('EAGLE reaches 3.76x [p. 6].')
+      return { answer: 'EAGLE reaches 3.76x [p. 6].', durationMs: 1 }
+    })
+    const written: string[] = []
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal, (text) => written.push(text))
+    child.ready()
+    await child.frame()
+    child.callModel('call')
+    await child.frame()
+    child.send({ type: 'response', id: 1, ok: true, result: { answer: 'EAGLE reaches 3.76x [p. 6].' } })
+
+    await expect(answering).resolves.toBe('EAGLE reaches 3.76x [p. 6].')
+    expect(written).toEqual(['EAGLE reaches', 'EAGLE reaches 3.76x [p. 6].'])
+    close()
+  })
+
   it('passes a CLI failure to Harness as a model error in the CLI\'s own words', async () => {
     const { child, runner, chat, close } = chatRunner(CLI_MODEL, async () => {
       throw new CliRunError('failed', 'claude 运行失败：Claude AI usage limit reached')

@@ -285,11 +285,14 @@ export function createChatHarnessRunner(options: {
 
   /**
    * The one model call of a turn of chat `chatId` that answers `text` on `model`, ending when
-   * `signal` aborts. It resumes the chat's CLI session, with the new message alone, while that
-   * session holds the turns the chat holds; otherwise it starts a new session with the whole turn.
-   * `keep` makes the session resumable once the turn's `answer` is kept.
+   * `signal` aborts and telling `onText` the answer as far as the CLI has written it. It resumes the
+   * chat's CLI session, with the new message alone, while that session holds the turns the chat
+   * holds; otherwise it starts a new session with the whole turn. `keep` makes the session resumable
+   * once the turn's `answer` is kept.
    */
-  const cliTurn = (chatId: string, text: string, model: HarnessCliModel, signal: AbortSignal) => {
+  const cliTurn = (
+    chatId: string, text: string, model: HarnessCliModel, signal: AbortSignal, onText?: (text: string) => void,
+  ) => {
     const before = turnsOf(messagesBefore(options.store.chatMessages(chatId), text))
     let called = false
     let ran: { id: string; total?: CliUsage } | null = null
@@ -318,6 +321,7 @@ export function createChatHarnessRunner(options: {
             id = named
             options.sessions.started(chatId, model.cli, named)
           },
+          ...(onText === undefined ? {} : { onText }),
         })
       } catch (cause) {
         throw cliCallError(model.cli, cause, options.onLog)
@@ -365,11 +369,15 @@ export function createChatHarnessRunner(options: {
         return failedConnectionCheck(cause, secrets, modelCalls)
       }
     },
-    async answer(id: string, text: string, signal: AbortSignal): Promise<string> {
+    /**
+     * Asks Harness to answer `text` in chat `id` until `signal` aborts; a model that streams its
+     * answer tells `onText` the answer as far as it is written.
+     */
+    async answer(id: string, text: string, signal: AbortSignal, onText?: (text: string) => void): Promise<string> {
       const ended = new AbortController()
       try {
         const model = await options.model.runtime()
-        const turn = 'source' in model ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal])) : null
+        const turn = 'source' in model ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal]), onText) : null
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,

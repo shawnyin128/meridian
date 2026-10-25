@@ -288,6 +288,8 @@ export const chat = {
   /** Asks again for an answer to the chat's last question after its turn ended in a status line. */
   retry: (id: string) => call<ChatSendResult>('chat.retry', { id }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
+  /** The answer the model is writing in the chat, as far as it has written it, or null. */
+  writing: (id: string) => call<string | null>('chat.writing', { id }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>

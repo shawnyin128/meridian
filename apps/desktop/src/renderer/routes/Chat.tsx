@@ -26,6 +26,7 @@ import {
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useDraftSlot } from '../components/DraftSlot.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
+import { useAnswerSoFar } from '../hooks/useAnswerSoFar.js'
 import { useChatTurn } from '../hooks/useChatTurn.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useModelStatus } from '../hooks/useModelStatus.js'
@@ -110,6 +111,7 @@ export function Chat() {
   const ideaDraft = id === null ? undefined : ideaDrafts.get('idea')
   const ideaSlot = useDraftSlot<HTMLDivElement>(ideaDraft !== undefined, () => { if (id !== null) ideaDrafts.set('idea', { title: '', body: '' }) })
   const sending = id !== null && running(id)
+  const writing = useAnswerSoFar(id, sending, messages)
 
   useEffect(() => load('projects', project.list(), setProjects), [revision, load])
   useEffect(() => load('papers', papers.list({ page: 1, size: MENTION_PAPERS }), (r) => setRows(r.rows)), [revision, load])
@@ -202,6 +204,7 @@ export function Chat() {
                       : undefined}
                   />
                 ))}
+            {writing === null ? null : <ChatMessageView key={writing.id} message={writing} onAct={() => act(writing)} />}
             {id === null || ideaDraft === undefined
               ? null
               : (

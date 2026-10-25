@@ -32,6 +32,11 @@ export function createChatService(options: {
   runner: ChatHarnessRunner | null
 }) {
   const running = new Map<string, AbortController>()
+  const written = new Map<string, string>()
+  const stopped = (id: string) => {
+    running.delete(id)
+    written.delete(id)
+  }
 
   /**
    * Asks the model once to answer `text` in chat `id` and keeps the answer, or, when the turn gets
@@ -42,7 +47,9 @@ export function createChatService(options: {
     const controller = new AbortController()
     running.set(id, controller)
     try {
-      const answered = await options.runner.answer(id, text, controller.signal)
+      const answered = await options.runner.answer(id, text, controller.signal, (so) => {
+        if (running.get(id) === controller) written.set(id, so)
+      })
       options.store.appendChatMessages(id, [answerMessage(answered)])
       return { id, state: 'complete' }
     } catch (cause) {
@@ -53,7 +60,7 @@ export function createChatService(options: {
       const failure = callFailure(cause)
       return { id, state: 'failed', reason: failure === 'unknown' ? 'model' : failure }
     } finally {
-      if (running.get(id) === controller) running.delete(id)
+      if (running.get(id) === controller) stopped(id)
     }
   }
 
@@ -84,7 +91,7 @@ export function createChatService(options: {
       const controller = running.get(id)
       if (controller === undefined) return { id, cancelled: false }
       controller.abort()
-      running.delete(id)
+      stopped(id)
       return { id, cancelled: true }
     },
     /** Stops the reply chat `id` is generating, if any, then moves the chat into the trash; throws when there is no such chat. */
@@ -105,6 +112,10 @@ export function createChatService(options: {
         ...message,
         runs: message.runs.map((run) => (run.target === undefined || inVault(run.target) ? run : { kind: run.kind, text: run.text })),
       }))
+    },
+    /** The answer the model is writing in chat `id`, as far as it has written it, or null while it writes none there. */
+    writing(id: string): string | null {
+      return written.get(id) ?? null
     },
     /** The ids of the chats whose reply is being generated. */
     generating(): string[] {

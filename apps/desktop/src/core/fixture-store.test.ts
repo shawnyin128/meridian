@@ -2455,7 +2455,7 @@ describe('fixture store', () => {
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',
       'harness.updateSubscription', 'harness.subscriptionStatus',
       'harness.applyPaperWiki',
-      'harness.rejectPaperWiki', 'chat.send', 'chat.retry', 'chat.cancel',
+      'harness.rejectPaperWiki', 'chat.send', 'chat.retry', 'chat.cancel', 'chat.writing',
       'idea.placeOnGraph', 'wiki.propose', 'wiki.proposals', 'wiki.decide',
     ])
     for (const method of CONTRACT_METHODS.filter((candidate) => !coreMethods.has(candidate))) {

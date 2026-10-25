@@ -6,6 +6,7 @@ import {
   AuthorSearchParamsSchema,
   ChatAppendParamsSchema,
   ChatCancelParamsSchema,
+  ChatWritingParamsSchema,
   ChatRetryParamsSchema,
   ChatCreateParamsSchema,
   ChatDeleteParamsSchema,
@@ -894,6 +895,7 @@ registerHandler('chat.send', (params) => {
 registerHandler('chat.retry', (params) => chatService.retry(ChatRetryParamsSchema.parse(params).id))
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
+registerHandler('chat.writing', (params) => chatService.writing(ChatWritingParamsSchema.parse(params).id))
 registerHandler('idea.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listIdeas()

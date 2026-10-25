@@ -28,6 +28,7 @@ const api = vi.hoisted(() => ({
   }])),
   listPapers: vi.fn((): Promise<{ rows: PaperRow[]; total: number }> => Promise.resolve({ rows: [], total: 0 })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
+  writing: vi.fn<(id: string) => Promise<string | null>>(() => Promise.resolve(null)),
   create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
   recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
   feedAppend: vi.fn(() => Promise.resolve()),
@@ -48,6 +49,7 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, retry: api.retry, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction,
+    writing: api.writing,
   },
   feed: { append: api.feedAppend },
   harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
@@ -119,6 +121,7 @@ describe('Chat composer', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     api.generating.clear()
+    api.writing.mockResolvedValue(null)
     api.configured = true
     session.id = 'chat-1'
     session.revision = 0
@@ -420,6 +423,27 @@ describe('Chat composer', () => {
     const finish = await sendPending('再问')
     expect(retry()).toBeNull()
     await finish()
+  })
+
+  it('生成中时，模型已经写出的回答显示在问题下面，像一条回答；存下的回答读到后，只剩存下的那一条', async () => {
+    const answers = () => [...document.querySelectorAll('.msgs .msg.ai .answer')].map((node) => node.textContent)
+    api.writing.mockResolvedValue('EAGLE 快 3.76 倍')
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', 'EAGLE 快多少')])
+    session.revision = 1
+    await openChat('chat-1')
+    const finish = await sendPending('EAGLE 快多少')
+    await settle()
+    expect(api.writing).toHaveBeenCalledWith('chat-1')
+    expect(answers()).toEqual(['EAGLE 快 3.76 倍'])
+
+    await finish()
+    await settle()
+    expect(answers()).toEqual(['EAGLE 快 3.76 倍'])
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', 'EAGLE 快多少'), turnOf('2', 'ai', 'EAGLE 快 3.76 倍 [p. 6]')])
+    session.revision = 2
+    await openChat('chat-1')
+    await settle()
+    expect(answers()).toEqual(['EAGLE 快 3.76 倍 [p. 6]'])
   })
 
   it('换到另一条对话后，前一条晚到的消息不会顶替这一条的', async () => {

@@ -52,7 +52,7 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
-    recordAction: api.recordAction,
+    recordAction: api.recordAction, writing: () => Promise.resolve(null),
   },
   harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
   idea: { create: api.createIdea },
