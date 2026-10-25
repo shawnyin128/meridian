@@ -4,6 +4,7 @@ import type {
 } from '../../../shared/contract.js'
 import { HUMAN_PRODUCER } from '../../../shared/vocabulary.js'
 import { useDraft } from '../../hooks/useDrafts.js'
+import { useArrival } from '../../hooks/useArrival.js'
 import { project as projectApi } from '../../ipc.js'
 import { useFormat } from '../../lib/format.js'
 import { claimId } from '../../lib/slug.js'
@@ -138,7 +139,7 @@ export function ClaimSide({ item, title, point, links }: {
  * where it lands; a revision in its claim's place; a conflict under its claim's lines; a resolution
  * under its conflict. A retract is written at once and asks `onApply` for an `undoable` write. Each
  * write hands `onApply` the `note` that names its result.
- * `arrival`, a claim id, is brought into view once the claims show, after which `onArrived` is called.
+ * `arrival`, a claim id, is landed on (see useArrival) once the claims show, after which `onArrived` is called.
  */
 export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }: {
   page: WikiAggregation
@@ -154,11 +155,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const fmt = useFormat()
   const [draft, setDraft] = useDraft<ClaimDraft>(['wiki', page.id], 'claim')
   const arrivalRow = useRef<HTMLDivElement>(null)
-  useEffect(() => {
-    if (arrival === undefined) return
-    arrivalRow.current?.scrollIntoView({ block: 'center' })
-    onArrived?.()
-  }, [arrival, page, onArrived])
+  useArrival(arrival, true, () => arrivalRow.current, { block: 'center', ...(onArrived === undefined ? {} : { onLanded: onArrived }) })
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [conclusions, setConclusions] = useState<ProjectConclusion[]>([])
   const addRow = useRef<HTMLDivElement>(null)

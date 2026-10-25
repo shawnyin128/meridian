@@ -72,6 +72,7 @@ import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
+import { ARRIVAL_FLASH_MS, useArrival } from '../hooks/useArrival.js'
 import { FadeText } from '../components/FadeText.js'
 import './shell.css'
 import './ProjectDetail.css'
@@ -489,18 +490,10 @@ export function ProjectDetail({
     document.querySelector('.screenslot:not([hidden]) .node-document-pane')?.scrollTo({ top: 0 })
   }, [selectedNode, selectedIdeaId, selectedConclusion])
 
+  useArrival(flash, true, ({ id }) => planList.current?.querySelector(`[data-row="${CSS.escape(id)}"]`))
   useEffect(() => {
     if (!flash) return
-    const row = planList.current?.querySelector<HTMLElement>(`[data-row="${flash.id}"]`)
-    if (row) {
-      row.scrollIntoView({ block: 'nearest' })
-      // The row's class does not change: without clearing the animation and forcing a layout, locating
-      // the same row a second time would not replay the flash.
-      row.style.animation = 'none'
-      row.getBoundingClientRect()
-      row.style.animation = ''
-    }
-    const timer = window.setTimeout(() => setFlash(null), 1200)
+    const timer = window.setTimeout(() => setFlash(null), ARRIVAL_FLASH_MS)
     return () => window.clearTimeout(timer)
   }, [flash])
 

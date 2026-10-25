@@ -52,6 +52,7 @@ import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.j
 import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
+import { land } from '../hooks/useArrival.js'
 import { Button } from '../components/Button.js'
 import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
@@ -333,7 +334,10 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
           <li className={`l${h.depth - base + 1}${h.id === active ? ' on' : ''}`} key={h.id}>
             <button
               type="button"
-              onClick={() => main.current?.querySelector<HTMLElement>(`#${h.id}`)?.scrollIntoView({ block: 'start' })}
+              onClick={() => {
+                const heading = main.current?.querySelector(`#${h.id}`)
+                if (heading) land(heading, 'start')
+              }}
             ><FadeText label={h.text}>{h.text}</FadeText></button>
           </li>
         ))}

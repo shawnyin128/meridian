@@ -26,6 +26,15 @@ function copies(pattern, allowed) {
 }
 
 describe('each shared behaviour has one implementation', () => {
+  it('a jump lands on its row or anchor only through useArrival, which flashes it', () => {
+    expect(copies(/\.scrollIntoView\(/, {
+      'hooks/useArrival.ts': { reason: 'the landing itself' },
+      'shell/CommandPalette.tsx': { reason: 'the option the arrow keys reach stays in view; nothing jumped' },
+      'components/reader/ReadingNotes.tsx': { reason: 'the card of the highlight selected on the page, which shows as selected, stays in view' },
+      'routes/Reader.tsx': { count: 1, reason: 'opening a paper resumes at its last page, and a note being written is shown again; neither names an anchor' },
+    })).toEqual([])
+  })
+
   it('a field saves and cancels by key only through commitKeys', () => {
     expect(copies(/key [!=]== 'Escape'|'Enter' && !composing|commitsMultiline\(/, {
       'lib/keyboard.ts': { reason: 'commitKeys itself' },

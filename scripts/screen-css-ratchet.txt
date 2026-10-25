@@ -616,14 +616,10 @@ components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { b
 components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { color }
 components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { font-family }
 components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { font-size }
-components/project/ProjectPlan.css:42: @keyframes plan-row-flash 0% { background }
-components/project/ProjectPlan.css:42: @keyframes plan-row-flash 100% { background }
-components/project/ProjectPlan.css:42: @keyframes plan-row-flash 50% { background }
-components/project/ProjectPlan.css:43: .project-plan .ddlrow.flash { animation }
-components/project/ProjectPlan.css:44: .project-plan .task-row[draggable] { cursor }
-components/project/ProjectPlan.css:45: .project-plan .task-row[draggable]:active { cursor }
-components/project/ProjectPlan.css:45: .project-plan .task-row.dragging { cursor }
-components/project/ProjectPlan.css:46: .project-plan .row-actions { margin-left }
+components/project/ProjectPlan.css:42: .project-plan .task-row[draggable] { cursor }
+components/project/ProjectPlan.css:43: .project-plan .task-row[draggable]:active { cursor }
+components/project/ProjectPlan.css:43: .project-plan .task-row.dragging { cursor }
+components/project/ProjectPlan.css:44: .project-plan .row-actions { margin-left }
 components/project/ProjectSections.css:2: .agcard { background }
 components/project/ProjectSections.css:2: .agcard { border }
 components/project/ProjectSections.css:2: .agcard { border-radius }
@@ -1307,157 +1303,157 @@ routes/Reader.css:19: .reader { background }
 routes/Reader.css:20: .pdfwrap { overflow }
 routes/Reader.css:20: .pdfwrap { padding }
 routes/Reader.css:20: .pdfwrap { overscroll-behavior }
-routes/Reader.css:74: .selection-tools .form-textarea { resize }
-routes/Reader.css:74: .selection-tools .form-textarea { field-sizing }
-routes/Reader.css:74: .selection-tools .form-textarea { max-height }
-routes/Reader.css:76: .reading-notes { width }
-routes/Reader.css:76: .reading-notes { min-width }
-routes/Reader.css:76: .reading-notes { box-sizing }
-routes/Reader.css:76: .reading-notes { border-left }
-routes/Reader.css:76: .reading-notes { background }
-routes/Reader.css:76: .reading-notes { overflow }
-routes/Reader.css:78: .reader-panel-head { height }
-routes/Reader.css:78: .reader-panel-head { box-sizing }
-routes/Reader.css:78: .reader-panel-head { padding }
-routes/Reader.css:78: .reader-panel-head { border-bottom }
-routes/Reader.css:79: .reader-panel-head strong { font-size }
-routes/Reader.css:80: .reader-panel-head>span { font-size }
-routes/Reader.css:80: .reading-page { font-size }
-routes/Reader.css:80: .reader-panel-head>span { color }
-routes/Reader.css:80: .reading-page { color }
-routes/Reader.css:81: .note-compose { padding }
-routes/Reader.css:81: .note-compose { border-bottom }
-routes/Reader.css:83: .note-compose .form-textarea { min-height }
-routes/Reader.css:83: .reading-card .form-textarea { min-height }
-routes/Reader.css:84: .reading-list { overflow }
-routes/Reader.css:84: .reading-list { padding }
-routes/Reader.css:85: .reading-card { border }
-routes/Reader.css:85: .reading-card { border-radius }
-routes/Reader.css:85: .reading-card { padding }
-routes/Reader.css:85: .reading-card { background }
-routes/Reader.css:86: .highlight-card { border-left }
-routes/Reader.css:88: .reading-card.selected { background-color }
-routes/Reader.css:88: .reading-card.selected { color }
-routes/Reader.css:92: .highlight-card blockquote { max-height }
-routes/Reader.css:92: .highlight-card blockquote { margin }
-routes/Reader.css:92: .highlight-card blockquote { color }
-routes/Reader.css:92: .highlight-card blockquote { font-size }
-routes/Reader.css:92: .highlight-card blockquote { line-height }
-routes/Reader.css:93: .reading-remark { width }
-routes/Reader.css:93: .reading-remark { min-width }
-routes/Reader.css:93: .reading-remark { box-sizing }
-routes/Reader.css:93: .reading-remark { border-left }
-routes/Reader.css:93: .reading-remark { background }
-routes/Reader.css:93: .reading-remark { overflow }
-routes/Reader.css:94: .remark-compose { padding }
-routes/Reader.css:95: .remark-compose .form-textarea { min-height }
-routes/Reader.css:97: .reader-side { flex }
-routes/Reader.css:97: .reader-side { overflow }
-routes/Reader.css:97: .reader-side { background }
-routes/Reader.css:98: .reader-side.collapsed { flex-basis }
-routes/Reader.css:99: .reader-side:not(.collapsed)>:not(.reader-rail) { animation }
-routes/Reader.css:100: .reader-side>.reader-meta { width }
-routes/Reader.css:100: .reader-side>.reading-notes { width }
-routes/Reader.css:100: .reader-side>.reading-remark { width }
-routes/Reader.css:100: .reader-side>.wiki-ingest { width }
-routes/Reader.css:100: .reader-side>.reader-meta { min-width }
-routes/Reader.css:100: .reader-side>.reading-notes { min-width }
-routes/Reader.css:100: .reader-side>.reading-remark { min-width }
-routes/Reader.css:100: .reader-side>.wiki-ingest { min-width }
-routes/Reader.css:100: .reader-side>.reader-meta { border-left }
-routes/Reader.css:100: .reader-side>.reading-notes { border-left }
-routes/Reader.css:100: .reader-side>.reading-remark { border-left }
-routes/Reader.css:100: .reader-side>.wiki-ingest { border-left }
-routes/Reader.css:101: .reader-meta { overflow }
-routes/Reader.css:101: .reader-meta { background }
-routes/Reader.css:103: .reader-rail { width }
-routes/Reader.css:103: .reader-rail { min-width }
-routes/Reader.css:103: .reader-rail { border-left }
-routes/Reader.css:103: .reader-rail { background }
-routes/Reader.css:103: .reader-rail { display }
-routes/Reader.css:103: .reader-rail { flex-direction }
-routes/Reader.css:103: .reader-rail { align-items }
-routes/Reader.css:103: .reader-rail { padding-top }
-routes/Reader.css:103: .reader-rail { box-sizing }
-routes/Reader.css:103: .reader-rail { gap }
-routes/Reader.css:104: .reader-rail button { width }
-routes/Reader.css:104: .reader-rail button { height }
-routes/Reader.css:104: .reader-rail button { border }
-routes/Reader.css:104: .reader-rail button { border-radius }
-routes/Reader.css:104: .reader-rail button { background }
-routes/Reader.css:104: .reader-rail button { color }
-routes/Reader.css:104: .reader-rail button { cursor }
-routes/Reader.css:105: .reader-rail button:hover { background }
-routes/Reader.css:105: .reader-rail button:hover { color }
-routes/Reader.css:106: .reader-rail button.on { background }
-routes/Reader.css:106: .reader-rail button.on { color }
-routes/Reader.css:107: .reader-rail svg { width }
-routes/Reader.css:107: .reader-rail svg { height }
-routes/Reader.css:107: .reader-rail svg { fill }
-routes/Reader.css:107: .reader-rail svg { stroke }
-routes/Reader.css:107: .reader-rail svg { stroke-width }
-routes/Reader.css:107: .reader-rail svg { stroke-linecap }
-routes/Reader.css:107: .reader-rail svg { stroke-linejoin }
-routes/Reader.css:109: .zoomctl { bottom }
-routes/Reader.css:109: .zoomctl { transform }
-routes/Reader.css:109: .zoomctl { background }
-routes/Reader.css:109: .zoomctl { border-radius }
-routes/Reader.css:109: .zoomctl { padding }
-routes/Reader.css:109: .zoomctl { box-shadow }
-routes/Reader.css:110: .zoomctl .zoom-reset { min-width }
-routes/Reader.css:112: @media (max-width:1100px) .main.reading { --rrw }
-routes/Reader.css:113: @media (max-width:900px) .reader-side { flex-basis }
-routes/Reader.css:113: @media (max-width:900px) .reader-side.collapsed { flex-basis }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.reader-meta { width }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-notes { width }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-remark { width }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.wiki-ingest { width }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.reader-meta { min-width }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-notes { min-width }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.reading-remark { min-width }
-routes/Reader.css:113: @media (max-width:900px) .reader-side>.wiki-ingest { min-width }
-routes/Reader.css:115: .wiki-ingest { box-sizing }
-routes/Reader.css:115: .wiki-ingest { background }
-routes/Reader.css:115: .wiki-ingest { overflow }
-routes/Reader.css:116: .wiki-ingest-body { padding }
-routes/Reader.css:117: .wiki-ingest-body>p { font-size }
-routes/Reader.css:117: .wiki-ingest-body>p { line-height }
-routes/Reader.css:117: .wiki-ingest-body>p { color }
-routes/Reader.css:117: .wiki-ingest-body>p { margin }
-routes/Reader.css:118: .wiki-ingest-scope { margin }
-routes/Reader.css:118: .wiki-ingest-scope { border }
-routes/Reader.css:118: .wiki-ingest-scope { border-radius }
-routes/Reader.css:118: .wiki-ingest-scope { overflow }
-routes/Reader.css:118: .wiki-ingest-scope { background }
-routes/Reader.css:119: .wiki-ingest-scope>div { height }
-routes/Reader.css:119: .wiki-ingest-scope>div { padding }
-routes/Reader.css:119: .wiki-ingest-scope>div { border-top }
-routes/Reader.css:120: .wiki-ingest-scope>div:first-child { border-top }
-routes/Reader.css:121: .wiki-ingest-scope span { color }
-routes/Reader.css:121: .wiki-ingest-scope span { font-size }
-routes/Reader.css:122: .wiki-ingest-scope strong { font-size }
-routes/Reader.css:123: .wiki-ingest .wiki-ingest-status { margin-top }
-routes/Reader.css:123: .wiki-ingest .wiki-ingest-status { padding }
-routes/Reader.css:124: .wiki-ingest-actions { margin-top }
-routes/Reader.css:125: .wiki-ingest-review { margin-top }
-routes/Reader.css:125: .wiki-ingest-review { padding-top }
-routes/Reader.css:125: .wiki-ingest-review { border-top }
-routes/Reader.css:126: .wiki-ingest-review .form-textarea { min-height }
-routes/Reader.css:126: .wiki-ingest-review .form-textarea { font-family }
-routes/Reader.css:126: .wiki-ingest-review .form-textarea { font-size }
-routes/Reader.css:126: .wiki-ingest-review .form-textarea { line-height }
-routes/Reader.css:127: .wiki-ingest-body>.tag { margin-top }
-routes/Reader.css:128: .wiki-ingest-rejection { margin-top }
-routes/Reader.css:128: .wiki-ingest-rejection { padding }
-routes/Reader.css:128: .wiki-ingest-rejection { background }
-routes/Reader.css:128: .wiki-ingest-rejection { border-radius }
-routes/Reader.css:129: .wiki-ingest-rejection-head { margin-bottom }
-routes/Reader.css:130: .wiki-ingest-rejection-head strong { font-size }
-routes/Reader.css:131: .wiki-ingest-rejection-reasons { margin-bottom }
-routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { min-height }
-routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { font-family }
-routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { font-size }
-routes/Reader.css:133: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
+routes/Reader.css:78: .selection-tools .form-textarea { resize }
+routes/Reader.css:78: .selection-tools .form-textarea { field-sizing }
+routes/Reader.css:78: .selection-tools .form-textarea { max-height }
+routes/Reader.css:80: .reading-notes { width }
+routes/Reader.css:80: .reading-notes { min-width }
+routes/Reader.css:80: .reading-notes { box-sizing }
+routes/Reader.css:80: .reading-notes { border-left }
+routes/Reader.css:80: .reading-notes { background }
+routes/Reader.css:80: .reading-notes { overflow }
+routes/Reader.css:82: .reader-panel-head { height }
+routes/Reader.css:82: .reader-panel-head { box-sizing }
+routes/Reader.css:82: .reader-panel-head { padding }
+routes/Reader.css:82: .reader-panel-head { border-bottom }
+routes/Reader.css:83: .reader-panel-head strong { font-size }
+routes/Reader.css:84: .reader-panel-head>span { font-size }
+routes/Reader.css:84: .reading-page { font-size }
+routes/Reader.css:84: .reader-panel-head>span { color }
+routes/Reader.css:84: .reading-page { color }
+routes/Reader.css:85: .note-compose { padding }
+routes/Reader.css:85: .note-compose { border-bottom }
+routes/Reader.css:87: .note-compose .form-textarea { min-height }
+routes/Reader.css:87: .reading-card .form-textarea { min-height }
+routes/Reader.css:88: .reading-list { overflow }
+routes/Reader.css:88: .reading-list { padding }
+routes/Reader.css:89: .reading-card { border }
+routes/Reader.css:89: .reading-card { border-radius }
+routes/Reader.css:89: .reading-card { padding }
+routes/Reader.css:89: .reading-card { background }
+routes/Reader.css:90: .highlight-card { border-left }
+routes/Reader.css:92: .reading-card.selected { background-color }
+routes/Reader.css:92: .reading-card.selected { color }
+routes/Reader.css:96: .highlight-card blockquote { max-height }
+routes/Reader.css:96: .highlight-card blockquote { margin }
+routes/Reader.css:96: .highlight-card blockquote { color }
+routes/Reader.css:96: .highlight-card blockquote { font-size }
+routes/Reader.css:96: .highlight-card blockquote { line-height }
+routes/Reader.css:97: .reading-remark { width }
+routes/Reader.css:97: .reading-remark { min-width }
+routes/Reader.css:97: .reading-remark { box-sizing }
+routes/Reader.css:97: .reading-remark { border-left }
+routes/Reader.css:97: .reading-remark { background }
+routes/Reader.css:97: .reading-remark { overflow }
+routes/Reader.css:98: .remark-compose { padding }
+routes/Reader.css:99: .remark-compose .form-textarea { min-height }
+routes/Reader.css:101: .reader-side { flex }
+routes/Reader.css:101: .reader-side { overflow }
+routes/Reader.css:101: .reader-side { background }
+routes/Reader.css:102: .reader-side.collapsed { flex-basis }
+routes/Reader.css:103: .reader-side:not(.collapsed)>:not(.reader-rail) { animation }
+routes/Reader.css:104: .reader-side>.reader-meta { width }
+routes/Reader.css:104: .reader-side>.reading-notes { width }
+routes/Reader.css:104: .reader-side>.reading-remark { width }
+routes/Reader.css:104: .reader-side>.wiki-ingest { width }
+routes/Reader.css:104: .reader-side>.reader-meta { min-width }
+routes/Reader.css:104: .reader-side>.reading-notes { min-width }
+routes/Reader.css:104: .reader-side>.reading-remark { min-width }
+routes/Reader.css:104: .reader-side>.wiki-ingest { min-width }
+routes/Reader.css:104: .reader-side>.reader-meta { border-left }
+routes/Reader.css:104: .reader-side>.reading-notes { border-left }
+routes/Reader.css:104: .reader-side>.reading-remark { border-left }
+routes/Reader.css:104: .reader-side>.wiki-ingest { border-left }
+routes/Reader.css:105: .reader-meta { overflow }
+routes/Reader.css:105: .reader-meta { background }
+routes/Reader.css:107: .reader-rail { width }
+routes/Reader.css:107: .reader-rail { min-width }
+routes/Reader.css:107: .reader-rail { border-left }
+routes/Reader.css:107: .reader-rail { background }
+routes/Reader.css:107: .reader-rail { display }
+routes/Reader.css:107: .reader-rail { flex-direction }
+routes/Reader.css:107: .reader-rail { align-items }
+routes/Reader.css:107: .reader-rail { padding-top }
+routes/Reader.css:107: .reader-rail { box-sizing }
+routes/Reader.css:107: .reader-rail { gap }
+routes/Reader.css:108: .reader-rail button { width }
+routes/Reader.css:108: .reader-rail button { height }
+routes/Reader.css:108: .reader-rail button { border }
+routes/Reader.css:108: .reader-rail button { border-radius }
+routes/Reader.css:108: .reader-rail button { background }
+routes/Reader.css:108: .reader-rail button { color }
+routes/Reader.css:108: .reader-rail button { cursor }
+routes/Reader.css:109: .reader-rail button:hover { background }
+routes/Reader.css:109: .reader-rail button:hover { color }
+routes/Reader.css:110: .reader-rail button.on { background }
+routes/Reader.css:110: .reader-rail button.on { color }
+routes/Reader.css:111: .reader-rail svg { width }
+routes/Reader.css:111: .reader-rail svg { height }
+routes/Reader.css:111: .reader-rail svg { fill }
+routes/Reader.css:111: .reader-rail svg { stroke }
+routes/Reader.css:111: .reader-rail svg { stroke-width }
+routes/Reader.css:111: .reader-rail svg { stroke-linecap }
+routes/Reader.css:111: .reader-rail svg { stroke-linejoin }
+routes/Reader.css:113: .zoomctl { bottom }
+routes/Reader.css:113: .zoomctl { transform }
+routes/Reader.css:113: .zoomctl { background }
+routes/Reader.css:113: .zoomctl { border-radius }
+routes/Reader.css:113: .zoomctl { padding }
+routes/Reader.css:113: .zoomctl { box-shadow }
+routes/Reader.css:114: .zoomctl .zoom-reset { min-width }
+routes/Reader.css:116: @media (max-width:1100px) .main.reading { --rrw }
+routes/Reader.css:117: @media (max-width:900px) .reader-side { flex-basis }
+routes/Reader.css:117: @media (max-width:900px) .reader-side.collapsed { flex-basis }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.reader-meta { width }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.reading-notes { width }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.reading-remark { width }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.wiki-ingest { width }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.reader-meta { min-width }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.reading-notes { min-width }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.reading-remark { min-width }
+routes/Reader.css:117: @media (max-width:900px) .reader-side>.wiki-ingest { min-width }
+routes/Reader.css:119: .wiki-ingest { box-sizing }
+routes/Reader.css:119: .wiki-ingest { background }
+routes/Reader.css:119: .wiki-ingest { overflow }
+routes/Reader.css:120: .wiki-ingest-body { padding }
+routes/Reader.css:121: .wiki-ingest-body>p { font-size }
+routes/Reader.css:121: .wiki-ingest-body>p { line-height }
+routes/Reader.css:121: .wiki-ingest-body>p { color }
+routes/Reader.css:121: .wiki-ingest-body>p { margin }
+routes/Reader.css:122: .wiki-ingest-scope { margin }
+routes/Reader.css:122: .wiki-ingest-scope { border }
+routes/Reader.css:122: .wiki-ingest-scope { border-radius }
+routes/Reader.css:122: .wiki-ingest-scope { overflow }
+routes/Reader.css:122: .wiki-ingest-scope { background }
+routes/Reader.css:123: .wiki-ingest-scope>div { height }
+routes/Reader.css:123: .wiki-ingest-scope>div { padding }
+routes/Reader.css:123: .wiki-ingest-scope>div { border-top }
+routes/Reader.css:124: .wiki-ingest-scope>div:first-child { border-top }
+routes/Reader.css:125: .wiki-ingest-scope span { color }
+routes/Reader.css:125: .wiki-ingest-scope span { font-size }
+routes/Reader.css:126: .wiki-ingest-scope strong { font-size }
+routes/Reader.css:127: .wiki-ingest .wiki-ingest-status { margin-top }
+routes/Reader.css:127: .wiki-ingest .wiki-ingest-status { padding }
+routes/Reader.css:128: .wiki-ingest-actions { margin-top }
+routes/Reader.css:129: .wiki-ingest-review { margin-top }
+routes/Reader.css:129: .wiki-ingest-review { padding-top }
+routes/Reader.css:129: .wiki-ingest-review { border-top }
+routes/Reader.css:130: .wiki-ingest-review .form-textarea { min-height }
+routes/Reader.css:130: .wiki-ingest-review .form-textarea { font-family }
+routes/Reader.css:130: .wiki-ingest-review .form-textarea { font-size }
+routes/Reader.css:130: .wiki-ingest-review .form-textarea { line-height }
+routes/Reader.css:131: .wiki-ingest-body>.tag { margin-top }
+routes/Reader.css:132: .wiki-ingest-rejection { margin-top }
+routes/Reader.css:132: .wiki-ingest-rejection { padding }
+routes/Reader.css:132: .wiki-ingest-rejection { background }
+routes/Reader.css:132: .wiki-ingest-rejection { border-radius }
+routes/Reader.css:133: .wiki-ingest-rejection-head { margin-bottom }
+routes/Reader.css:134: .wiki-ingest-rejection-head strong { font-size }
+routes/Reader.css:135: .wiki-ingest-rejection-reasons { margin-bottom }
+routes/Reader.css:136: .wiki-ingest-rejection>.form-textarea { min-height }
+routes/Reader.css:136: .wiki-ingest-rejection>.form-textarea { font-family }
+routes/Reader.css:136: .wiki-ingest-rejection>.form-textarea { font-size }
+routes/Reader.css:137: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
 routes/ResearchOverview.css:8: .ovstat { background }
 routes/ResearchOverview.css:8: .ovstat { border }
 routes/ResearchOverview.css:8: .ovstat { border-radius }

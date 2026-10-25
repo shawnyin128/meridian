@@ -231,6 +231,22 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.aggregation).toHaveBeenLastCalledWith('methods/tree')
   })
 
+  it('点目录里的一节,正文滚到那一节的标题,标题闪一下', async () => {
+    const scrolled: [string, ScrollLogicalPosition | undefined][] = []
+    // jsdom lays nothing out and has no scrollIntoView.
+    Element.prototype.scrollIntoView = function (this: Element, options?: boolean | ScrollIntoViewOptions) {
+      scrolled.push([this.textContent ?? '', typeof options === 'object' ? options.block : undefined])
+    }
+    try {
+      await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+      await press(all('.wktoc li > button').find((button) => button.textContent === '结果')!)
+      expect(scrolled).toEqual([['结果', 'start']])
+      expect([...host.querySelectorAll('.wkmain [data-arrived]')].map((heading) => heading.textContent)).toEqual(['结果'])
+    } finally {
+      delete (Element.prototype as Partial<Element>).scrollIntoView
+    }
+  })
+
   it('比较表里的锚点是一个按钮:聚焦时显示原文,点它在阅读器里打开那篇论文的那一页', async () => {
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     const anchor = host.querySelector<HTMLButtonElement>('.cmp td .source-anchor')!
