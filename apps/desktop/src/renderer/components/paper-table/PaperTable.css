@@ -160,19 +160,9 @@
 .tblwrap .ptable thead th.th-add{z-index:8}
 
 
-/* Paper detail: a full-height right panel; the table and the footer make room for it together. */
-.paper-detail-slot{--detail-panel-width:var(--detailw);top:46px;right:0;bottom:0;border-left:1px solid var(--sep);
-  background:var(--content);z-index:5}
-.pdetail{height:100%;box-sizing:border-box;overflow:auto;overscroll-behavior:contain;padding:var(--sp-16)}
+/* Paper detail: a full-height right panel under the page head; the table and the footer make room for it together. */
+.paper-detail-slot{position:absolute;top:46px;right:0;bottom:0;z-index:5}
 .desk-body.withdetail,.desk-foot.withdetail{margin-right:var(--detailw)}
-/*
- * The buttons take a row of their own at the head's right end, and the title the whole row below them.
- * The title comes first in the markup, so Tab still reaches it before the buttons.
- */
-.pd-h{display:flex;flex-wrap:wrap;justify-content:flex-end;gap:var(--sp-4) var(--sp-8);margin-bottom:var(--sp-12)}
-.pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
-/* The title is the panel's head, in the head's ink rather than a property value's grey. */
-.pd-t .metadata-editable{color:inherit}
 .pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
 .pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
 .paper-reading-summary{margin-top:var(--sp-16)}

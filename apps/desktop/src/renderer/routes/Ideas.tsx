@@ -21,7 +21,7 @@ import { IdeaNodeCandidate } from '../components/ideas/IdeaNodeCandidate.js'
 import { IdeaRelations } from '../components/ideas/IdeaRelations.js'
 import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { DetailPanel } from '../components/DetailPanel.js'
+import { SidePanel } from '../components/SidePanel.js'
 import { TrailingDate } from '../components/DateTimeDisplay.js'
 import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
@@ -37,7 +37,6 @@ import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
@@ -249,7 +248,6 @@ function IdeaDetailPanel({
   onError: (error: Error) => void
 }) {
   const m = useMessages()
-  const panelFade = useScrollFade('y')
   // The edit keeps the title and body it started from; once the idea's own have changed it is stale and is not saved.
   const [edit, setEdit] = useDraft<{ title: string; body: string; base: { title: string; body: string } }>(['idea', idea.id], 'edit')
   const editing = edit !== null
@@ -280,7 +278,7 @@ function IdeaDetailPanel({
   }
 
   return (
-    <aside className="idea-detail-panel node-document-pane" ref={panelFade} data-fade-paint="" aria-label={m.ideas.detailHeading}>
+    <SidePanel surface="card" label={m.ideas.detailHeading} className="idea-detail-panel">
       <IdeaPanel
         idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
         sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
@@ -347,7 +345,7 @@ function IdeaDetailPanel({
           ? null
           : <IdeaNodeCandidate node={candidate} onConfirm={() => onPlace('confirm')} onDismiss={() => onPlace('dismiss')} />}
       </IdeaPanel>
-    </aside>
+    </SidePanel>
   )
 }
 
@@ -560,37 +558,35 @@ export function Ideas() {
             )}
           </main>
 
-          <DetailPanel open={selected !== undefined} mode="inline" className="idea-detail-slot">
-            {selected === undefined ? null : (
-              <IdeaDetailPanel
-                idea={selected}
-                sourceChatDeleted={chatDeleted(selected)}
-                linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
-                projects={projects}
-                pageTitles={pageTitles}
-                candidate={candidateNode === undefined ? undefined : { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }}
-                onClose={closeDetail}
-                onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
-                  note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,
-                })}
-                onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }), {
-                  note: kind === 'confirm' ? m.ideas.candidate.confirmed : m.ideas.candidate.dismissed,
-                })}
-                onError={report}
-                onSave={(title, body) => write(
-                  ideaApi.update(selected.id, { title, body }), { note: m.ideas.updatedNote },
-                )}
-                onProject={(projectId) => void write(
-                  ideaApi.update(selected.id, { project: projectId }),
-                  { note: projectId === null ? m.ideas.work.cleared : m.ideas.work.placed },
-                )}
-                onPromote={() => void write(
-                  ideaApi.promote(selected.id), { note: m.ideas.promote.createdNote },
-                )}
-                onOpen={jumpTo}
-              />
-            )}
-          </DetailPanel>
+          {selected === undefined ? null : (
+            <IdeaDetailPanel
+              idea={selected}
+              sourceChatDeleted={chatDeleted(selected)}
+              linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
+              projects={projects}
+              pageTitles={pageTitles}
+              candidate={candidateNode === undefined ? undefined : { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }}
+              onClose={closeDetail}
+              onRelations={(relations, removed) => write(ideaApi.update(selected.id, { relations }), {
+                note: removed === undefined ? m.project.links.added : <TitleNote message={m.project.links.removed} title={removed} />,
+              })}
+              onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }), {
+                note: kind === 'confirm' ? m.ideas.candidate.confirmed : m.ideas.candidate.dismissed,
+              })}
+              onError={report}
+              onSave={(title, body) => write(
+                ideaApi.update(selected.id, { title, body }), { note: m.ideas.updatedNote },
+              )}
+              onProject={(projectId) => void write(
+                ideaApi.update(selected.id, { project: projectId }),
+                { note: projectId === null ? m.ideas.work.cleared : m.ideas.work.placed },
+              )}
+              onPromote={() => void write(
+                ideaApi.promote(selected.id), { note: m.ideas.promote.createdNote },
+              )}
+              onOpen={jumpTo}
+            />
+          )}
         </div>
       </PageBody>
     </PageShell>

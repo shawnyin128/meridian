@@ -84,9 +84,8 @@ export const PATTERNS = {
   SidePanel: {
     metrics: 'panel',
     entries: [
-      entry('shared:DetailPanel', '.detail-panel.is-open, .detail-panel--inline, .detail-panel--resize'),
+      entry('shared:SidePanel', '.side-panel', { parts: { head: '.panel-head, .reader-panel-head' } }),
       entry('shared:PaperChat', '.paper-chat'),
-      entry('hand:components/reader/ReaderSidePanel.tsx', '.reader-side:not(.collapsed)'),
       entry('hand:routes/Settings.tsx', '.set-side'),
       entry('hand:routes/Wiki.tsx', '.wkside'),
     ],
@@ -95,10 +94,9 @@ export const PATTERNS = {
     metrics: 'head',
     entries: [
       entry('shared:ReaderPanelHeader', '.reader-panel-head'),
-      entry('shared:SectionHeading', '.node-document-head'),
+      entry('shared:PanelHead', '.panel-head', { parts: { title: '.panel-head-title' } }),
       entry('shared:ModalDialog', '.modal-title'),
       entry('hand:components/chat/PaperChat.tsx', '.paper-chat-head', { parts: { title: '.paper-chat-title' } }),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pd-h', { parts: { title: '.pd-t' } }),
       entry('hand:components/paper-table/ResearchMap.tsx', '.research-map-detail-head'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.ghead'),
       entry('hand:components/settings/ThemeEditor.tsx', '.theme-editor-title'),
@@ -107,7 +105,7 @@ export const PATTERNS = {
   SectionHeading: {
     metrics: 'heading',
     entries: [
-      entry('shared:SectionHeading', '.section-heading', { not: `.section-heading--group, .node-document-head, .section-heading:has(+ .tabbed-section-panel), ${GROUPED_SECTIONS}` }),
+      entry('shared:SectionHeading', '.section-heading', { not: `.section-heading--group, .section-heading:has(+ .tabbed-section-panel), ${GROUPED_SECTIONS}` }),
       entry('shared:ServiceStatus', '.service-status-head'),
       entry('hand:components/settings/ExtensionSettings.tsx', '.extension-head'),
       entry('hand:routes/Watches.tsx', '.af-h'),

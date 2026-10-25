@@ -15,7 +15,7 @@ const RENDERER = join(import.meta.dirname, '..', 'renderer')
 /** The stylesheets that style an in-place editor in a property list, in bundle order. */
 const SHEETS = [
   'components/FormControls.css', 'routes/shell.css', 'components/PaperMetadata.css',
-  'components/TagChips.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css', 'routes/Wiki.css',
+  'components/TagChips.css', 'components/SidePanel.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css', 'routes/Wiki.css',
 ]
 
 const MULTILINE = 'form-control form-textarea form-control-inline metadata-input multiline'
@@ -32,10 +32,12 @@ const MARKUP = `<div class="wkside" id="rail-column">
     <input class="${LINK_FIELD}" id="address"><input class="${LINK_FIELD}" id="link-name">
   </div></span></div>
 </div>
-<div class="pdetail">
-  <div class="pd-h"><span class="pd-t"><span class="metadata-field"><textarea class="${MULTILINE}" id="paper-title"></textarea></span></span></div>
-  <dl class="paper-meta-list"><dt>作者</dt><dd><span class="metadata-field"><textarea class="${MULTILINE}" id="paper-field"></textarea></span></dd></dl>
-</div>`
+<aside class="side-panel side-panel--edge paper-detail-slot"><div class="side-panel-content">
+  <header class="panel-head"><div class="panel-head-title"><span class="metadata-field"><textarea class="${MULTILINE}" id="paper-title"></textarea></span></div></header>
+  <div class="panel-body pdetail">
+    <dl class="paper-meta-list"><dt>作者</dt><dd><span class="metadata-field"><textarea class="${MULTILINE}" id="paper-field"></textarea></span></dd></dl>
+  </div>
+</div></aside>`
 
 /**
  * The width FormControls gives an inline editor, which reaches into its negative side margins by its

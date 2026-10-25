@@ -10,6 +10,7 @@ import { IconTrash } from '../icons.js'
 import { RowActions } from '../StructuredList.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { SidePanel } from '../SidePanel.js'
 import { useClipped } from '../../hooks/useClipped.js'
 import { CommitActions } from '../CommitActions.js'
 
@@ -125,7 +126,7 @@ export function ReadingNotes({
     if (await onMutate({ kind: 'note.add', page: currentPage, text })) drafts.drop(compose)
   }
   return (
-    <aside className="reading-notes" aria-label={m.reader.notes.ariaLabel}>
+    <SidePanel surface="edge" label={m.reader.notes.ariaLabel} className="reading-notes">
       <ReaderPanelHeader
         title={mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading}
         count={mode === 'highlights' ? undefined : reading.notes.length}
@@ -161,6 +162,6 @@ export function ReadingNotes({
             : (reading.highlights.length === 0 && reading.notes.length === 0
               ? <EmptyState variant="section">{m.reader.emptyReading}</EmptyState> : null)}
       </div>
-    </aside>
+    </SidePanel>
   )
 }

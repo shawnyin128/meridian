@@ -113,7 +113,7 @@ describe('project conclusions', () => {
 
   it('验证和写入 Wiki 是面板的操作,和关闭按钮一起放在面板头部;写不了时按钮旁写着未验证', async () => {
     await panel(PENDING)
-    const head = () => host.querySelector('.node-document-head > .section-heading-actions')!
+    const head = () => host.querySelector('.panel-head > .panel-head-actions')!
     expect([...head().children].map((child) => child.textContent || child.getAttribute('aria-label')))
       .toEqual(['验证', '未验证', '写入 Wiki', '收起详情'])
     expect(head().querySelector('.tag')!.nextElementSibling!.textContent).toBe('写入 Wiki')
@@ -122,7 +122,7 @@ describe('project conclusions', () => {
   })
 
   it('面板头部的验证、取消验证和写入 Wiki 与其他面板头部一样是小号的普通按钮', async () => {
-    const looks = () => [...host.querySelectorAll<HTMLButtonElement>('.node-document-head > .section-heading-actions > .btn')]
+    const looks = () => [...host.querySelectorAll<HTMLButtonElement>('.panel-head > .panel-head-actions > .btn')]
       .map((button) => `${button.textContent} ${button.className}`)
     await panel(PENDING)
     expect(looks()).toEqual(['验证 btn sm', '写入 Wiki btn sm'])

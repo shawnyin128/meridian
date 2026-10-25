@@ -138,10 +138,15 @@ Current shared contracts:
   is its tooltip, and its `note` the line under it: a disabled button that has a reason, such as a Trash row's
   Restore, states it there, never as a tag or a sentence beside the button. The pointer still opens the tooltip of
   a disabled button.
-- `PanelClose`: the close button of a detail panel, with one label and one glyph everywhere.
-- `DetailPanel`: the shared open/closed state and motion contract for right-side details. Its `inline`,
-  `overlay`, and `resize` modes cover panels that join layout, slide over it, or widen an existing rail;
-  routes provide only final geometry and domain content.
+- `SidePanel`: the one panel that opens beside a page body for one item or tool. Its `surface` is a
+  `card` inside the page body, beside its content, or an `edge` panel against the window's edge, with a
+  rule on its inner side; each surface has one width and one inset. It takes its width at once and only
+  its content moves in. Its content is a column: `PanelHead` stays at the top and `PanelBody`, under it,
+  scrolls and fades. `PanelHead` sets its buttons, the panel's actions and then the one close button,
+  compact on a row of their own at the top right, and under them the title, which spans the head and
+  wraps; the title comes first in the markup, so Tab reaches a title that is a control first. The panel
+  is named by that title, or by its `label`. Screens only place it: its position, its height and the gap
+  beside it.
 - `DayHeading`: the small heading that opens one day in a list grouped by day, with an optional count.
 - `hooks/useCandidateKeys`: arrow-key, pointer and Enter handling for a candidate list, shared by every
   suggestion and picker dropdown.

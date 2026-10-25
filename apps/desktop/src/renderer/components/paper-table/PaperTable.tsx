@@ -39,13 +39,12 @@ import { AddAction } from '../AddAction.js'
 import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
 import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
-import { PanelClose } from '../PanelClose.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
 import { Grip, type GripLimits } from '../Grip.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
-import { DetailPanel } from '../DetailPanel.js'
+import { PanelBody, PanelHead, SidePanel } from '../SidePanel.js'
 import { FadeText } from '../FadeText.js'
 import { ActionMenu, MenuRadioGroup, MenuRadioItem } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
@@ -333,7 +332,6 @@ export function PaperTable() {
   const drag = useRef<WidthDrag | null>(null)
   const table = useRef<HTMLTableElement>(null)
   const tableFade = useScrollFade('both')
-  const detailFade = useScrollFade('y')
   const consumed = useRef(0)
   // Write queue of the cell being edited: each link resolves to the values the previous step settled
   // on, or to null when a step failed, which voids this pick so it is not sent.
@@ -1364,27 +1362,28 @@ export function PaperTable() {
         )
         : null}
 
-      <DetailPanel open={detail !== null} mode="overlay" className="paper-detail-slot">
-        {detail === null
-          ? null
-          : (
-            <div className="pdetail" ref={detailFade}>
-              <div className="pd-h">
-                <span className="pd-t"><PaperTitleField paper={detail} onSaved={setDetail} /></span>
-                <IconButton label={m.papers.rowActions.openReader} onClick={() => open('reader', detail.id)}>
+      {detail === null
+        ? null
+        : (
+          <SidePanel surface="edge" className="paper-detail-slot">
+            <PanelHead
+              title={<PaperTitleField paper={detail} onSaved={setDetail} />} onClose={closeDetail}
+              actions={(
+                <IconButton label={m.papers.rowActions.openReader} size="nested" onClick={() => open('reader', detail.id)}>
                   <IconRead />
                 </IconButton>
-                <PanelClose onClose={closeDetail} />
-              </div>
+              )}
+            />
+            <PanelBody className="pdetail">
               <PaperMetadata paper={detail} readStateLabel={names.columns.st} onSaved={setDetail} titled={false} />
               <PaperReadingSummary
                 paper={detail}
                 onRead={(anchor) => open('reader', detail.id, anchor)}
                 onConclusions={() => open('wiki', `${PAPER_PAGE}${detail.id}`)}
               />
-            </div>
-          )}
-      </DetailPanel>
+            </PanelBody>
+          </SidePanel>
+        )}
 
     </PageShell>
   )

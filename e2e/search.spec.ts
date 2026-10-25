@@ -25,7 +25,7 @@ async function gotoReader(win: Page): Promise<void> {
   await win.locator('#libq').fill(READABLE)
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await shown(win, '.paper-detail-slot [aria-label="开始阅读"]').click()
   await shown(win, '.pdfpagebox').first().waitFor()
 }
 
@@ -100,7 +100,7 @@ test('从最近变动屏搜:命中多于上限时只出 SEARCH_LIMIT 条,没有�
   const title = 'EAGLE-2: Faster Inference of Language Models with Dynamic Draft Trees'
   await win.locator('#sRes .rrow', { hasText: title }).click()
   await expect(win.locator('#crumb .cseg')).toHaveText(['我的库', '论文'])
-  await expect(shown(win, '.pdetail')).toContainText(title)
+  await expect(shown(win, '.paper-detail-slot')).toContainText(title)
   await expect(win.locator('#libq')).toHaveValue('')
 
   await search(win, READABLE)

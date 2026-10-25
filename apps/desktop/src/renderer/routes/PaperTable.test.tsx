@@ -362,7 +362,7 @@ describe('PaperTable', () => {
 
     expect(gotIds[0]).toBe('p1')
     expect(host.querySelector<HTMLInputElement>('#libq')!.value).toBe('')
-    expect(host.querySelector('.pdetail')?.textContent).toContain('一篇论文')
+    expect(host.querySelector('.paper-detail-slot')?.textContent).toContain('一篇论文')
   })
 
   it('带导入 PDF 落点跳进来时打开导入的文件选择', async () => {
@@ -478,7 +478,7 @@ describe('PaperTable', () => {
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
+    expect(host.querySelector('.paper-detail-slot')).toBeNull()
 
     const bytes = Uint8Array.from([37, 80, 68, 70, 45])
     const input = host.querySelector<HTMLInputElement>('.pdfupload-input')!
@@ -495,7 +495,7 @@ describe('PaperTable', () => {
     importCall.resolve({ kind: 'added', paper })
     await flush()
     expect(host.querySelector<HTMLInputElement>('#libq')!.value).toBe('')
-    expect(host.querySelector('.pdetail')?.textContent).toContain('新论文')
+    expect(host.querySelector('.paper-detail-slot')?.textContent).toContain('新论文')
     expect(host.querySelector<HTMLButtonElement>('.pdfupload')!.disabled).toBe(false)
     expect(listParams.at(-1)).toMatchObject({ page: 1, sort: 'addedAt', direction: 'desc' })
   })
@@ -817,11 +817,15 @@ describe('PaperTable', () => {
     getCall.resolve(ROW)
     await flush()
 
-    const panel = host.querySelector<HTMLElement>('.pdetail')!
+    const panel = host.querySelector<HTMLElement>('.paper-detail-slot')!
     expect([...panel.querySelectorAll('dt')].map((label) => label.textContent)).not.toContain('标题')
     expect(panel.textContent!.split(ROW.title)).toHaveLength(2)
-    await act(async () => { panel.querySelector<HTMLButtonElement>('.pd-t button')!.click() })
-    const input = panel.querySelector<HTMLTextAreaElement>('.pd-t textarea')!
+    // The title comes first in the head, then its buttons, compact as in every panel head.
+    expect([...panel.querySelectorAll('.panel-head button')].map((button) => button.getAttribute('aria-label') ?? button.className))
+      .toEqual([panel.querySelector('.panel-head-title button')!.className, '开始阅读', '收起详情'])
+    expect([...panel.querySelectorAll('.panel-head .icbtn')].map((button) => button.className)).toEqual(['icbtn sm', 'icbtn sm panel-close'])
+    await act(async () => { panel.querySelector<HTMLButtonElement>('.panel-head-title button')!.click() })
+    const input = panel.querySelector<HTMLTextAreaElement>('.panel-head-title textarea')!
     expect(input.getAttribute('aria-label')).toBe('编辑标题')
     const setter = Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!
     await act(async () => {
@@ -1457,7 +1461,7 @@ describe('PaperTable', () => {
     getCall.resolve(latex)
     await flush()
 
-    const title = host.querySelector<HTMLElement>('.pdetail .pd-t')
+    const title = host.querySelector<HTMLElement>('.paper-detail-slot .panel-head-title')
     const short = host.querySelector<HTMLElement>('.paper-meta-list .paper-meta-editable')
     expect(title!.innerHTML).toMatch(/<strong>F<\/strong>luxBin <span><span class="katex">/)
     expect(short!.innerHTML).toContain('<em>Flux</em>')
@@ -1504,13 +1508,12 @@ describe('PaperTable', () => {
     await flush()
     expect(host.querySelector('th.th-new')).toBeNull()
     expect(host.querySelector('.pdetail')).not.toBeNull()
-    expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('open')
+    expect(host.querySelector('.paper-detail-slot')?.className).toBe('side-panel side-panel--edge paper-detail-slot')
 
     // Collapse details panel
     const closeDetail = host.querySelector<HTMLButtonElement>('[aria-label="收起详情"]')!
     await act(async () => { closeDetail.click() })
-    expect(host.querySelector('.pdetail')).toBeNull()
-    expect(host.querySelector('.paper-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
+    expect(host.querySelector('.paper-detail-slot')).toBeNull()
 
     // Open a new draft and type it without submitting it
     const plus = host.querySelector<HTMLButtonElement>('[aria-label="新建列"]')!

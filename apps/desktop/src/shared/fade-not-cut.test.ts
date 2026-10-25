@@ -26,13 +26,11 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.list-column': [['components/StructuredList.tsx', /<div ref=\{fade\} className=\{`list-column/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],
   '.tblwrap': [['components/paper-table/PaperTable.tsx', /className="tblwrap" ref=\{tableFade\}/]],
-  '.pdetail': [['components/paper-table/PaperTable.tsx', /className="pdetail" ref=\{detailFade\}/]],
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /className="reading-list" ref=\{listFade\}/]],
-  '.wiki-ingest': [['components/reader/PaperWikiIngest.tsx', /className="wiki-ingest" ref=\{ingestFade\}/]],
+  '.panel-body': [['components/SidePanel.tsx', /ref=\{attach\} className=\{`panel-body/]],
   // Only the paper chat's stream scrolls; on the Chat and Feed screens it grows inside the page body, which fades it.
   '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /streamFade\(area\)[\s\S]*className="msgs" ref=\{stream\}/]],
-  '.idea-detail-panel': [['routes/Ideas.tsx', /className="idea-detail-panel node-document-pane" ref=\{panelFade\}/]],
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
   '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /className="gwrap" ref=\{wrapFade\}/]],
@@ -66,15 +64,15 @@ const STUCK: Record<string, [container: string, fade: string]> = {
   '.ptable th:first-child,.ptable td:first-child': ['.ptable :is(th,td):first-child', '.ptable :is(th,td):first-child::before'],
   '.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add': ['.ptable td.row-actions-cell', '.ptable :is(td.row-actions-cell,th.th-add)::before'],
   '.collapsible-group-head': ['.collapsible-group-head', '.collapsible-group-head::after'],
-  '.node-document-pane .node-document-head': ['.node-document-pane .node-document-head', '.node-document-pane .node-document-head::after'],
   '.cmp th': ['.cmp th', '.cmp th::after'],
 }
 
 /** Sticky elements nothing slides under, and why. */
 const UNDER_NOTHING: Record<string, string> = {
-  // Both rails stand beside the content they pin next to, not over it.
+  // The rail and the panels stand beside the content they pin next to, not over it.
   '.wkside': 'rail beside the page',
-  '.idea-detail-slot': 'rail beside the board',
+  '.idea-detail-panel': 'panel beside the board',
+  '.project-detail-panel': 'panel beside the page',
   // The layer that paints a fade over the edge of a scroll area.
   '[data-fade~="top"][data-fade-paint]::before,[data-fade~="bottom"][data-fade-paint]::after': 'the fade itself',
 }
@@ -108,8 +106,8 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
     expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body"[\s>]/)
     expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body">/)
     expect(body('routes/shell.css', '.wkside')).toMatch(/max-height:\s*100cqh/)
-    expect(body('routes/ProjectDetail.css', '.wkside.node-document-pane')).toMatch(/(^|;)\s*height:\s*100cqh/)
-    for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.wkside.node-document-pane']] as const) {
+    expect(body('routes/ProjectDetail.css', '.project-detail-panel')).toMatch(/(^|;)\s*height:\s*100cqh/)
+    for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.project-detail-panel']] as const) {
       expect(body(path, selector), selector).not.toMatch(/vh\b/)
     }
   })
@@ -118,7 +116,7 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
     const body = (selector: string) => RULES.filter((rule) => rule.path === 'routes/Ideas.css' && rule.selector === selector)
       .map((rule) => rule.body).join(';')
     expect(body('.ideas-body')).toMatch(/container-type:\s*size/)
-    for (const selector of ['.idea-detail-slot', '.idea-detail-panel']) {
+    for (const selector of ['.idea-detail-panel']) {
       expect(body(selector), selector).toMatch(/max-height:\s*100cqh/)
       expect(body(selector), selector).not.toMatch(/vh\b/)
     }

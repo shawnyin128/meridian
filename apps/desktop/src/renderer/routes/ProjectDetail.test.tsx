@@ -303,9 +303,10 @@ describe('project idea panel', () => {
 
   it('shows the shared idea panel: the head, the content, the research node, then the source', () => {
     const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...handlers()} />)
+    expect(panel.host.querySelector('.panel-head-title')!.textContent).toBe('用动态预算控制校准成本')
     expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
-      .toEqual(['用动态预算控制校准成本', '内容', '科研节点关联节点', '来源'])
-    expect(panel.host.querySelector('.idea-panel-head .project-idea-open-idea')).not.toBeNull()
+      .toEqual(['内容', '科研节点关联节点', '来源'])
+    expect(panel.host.querySelector('.panel-head .project-idea-open-idea')).not.toBeNull()
     expect(panel.host.textContent).not.toContain('工作区科研图只读')
     panel.unmount()
   })
@@ -313,10 +314,10 @@ describe('project idea panel', () => {
   it('opens the idea in Ideas from the panel head, beside the close button', () => {
     const on = handlers()
     const panel = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...on} />)
-    const actions = panel.host.querySelector('.node-document-head > .section-heading-actions')!
-    // Like the paper detail's read action, opening elsewhere from a panel head is an icon button.
+    const actions = panel.host.querySelector('.panel-head > .panel-head-actions')!
+    // Like the paper detail's read action, opening elsewhere from a panel head is an icon button, compact like the close.
     expect([...actions.querySelectorAll('button')].map((b) => [b.getAttribute('aria-label'), b.className]))
-      .toEqual([['打开想法', 'icbtn project-idea-open-idea'], ['收起详情', 'icbtn panel-close']])
+      .toEqual([['打开想法', 'icbtn sm project-idea-open-idea'], ['收起详情', 'icbtn sm panel-close']])
     expect(panel.button('打开来源对话')).toBeUndefined()
     act(() => actions.querySelector<HTMLButtonElement>('[aria-label="打开想法"]')!.click())
     expect(on.onOpenIdea).toHaveBeenCalledOnce()
@@ -412,7 +413,7 @@ describe('project idea panel', () => {
   it('只是关联这个项目、不在这里做的想法，详情里没有科研节点一节', () => {
     const panel = mount(<ProjectIdeaPanel idea={{ ...idea, project: 'other' }} graph={graph} workspaceManaged={false} related {...handlers()} />)
     expect([...panel.host.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
-      .toEqual(['用动态预算控制校准成本', '内容', '来源'])
+      .toEqual(['内容', '来源'])
     panel.unmount()
   })
 

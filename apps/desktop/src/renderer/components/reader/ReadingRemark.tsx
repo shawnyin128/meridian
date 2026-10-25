@@ -5,6 +5,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { commitsMultiline } from '../../lib/keyboard.js'
 import { FormTextarea } from '../FormControls.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { SidePanel } from '../SidePanel.js'
 import { CommitActions } from '../CommitActions.js'
 
 /**
@@ -28,7 +29,7 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
     void onSave(text.trim()).then((saved) => { if (saved) edit.drop() })
   }
   return (
-    <aside className="reading-remark" aria-label={m.reader.rail.tabs.remark}>
+    <SidePanel surface="edge" label={m.reader.rail.tabs.remark} className="reading-remark">
       <ReaderPanelHeader title={m.reader.remark.heading} />
       <div className="remark-compose">
         <FormTextarea
@@ -41,6 +42,6 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
         />
         <CommitActions place="item" saving={saving} canSave={!unchanged} onSave={save} />
       </div>
-    </aside>
+    </SidePanel>
   )
 }

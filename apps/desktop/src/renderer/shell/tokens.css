@@ -63,8 +63,8 @@
    * draw them at its end, macOS its traffic lights at its start.
    */
   --window-buttons-end:154px; --window-buttons-start:78px;
-  /* A detail panel's width beside the list whose item it details, and a one-line form's in a popover. */
-  --detailw:360px; --formw:320px;
+  /* An edge side panel's width beside the page it details, and a one-line form's in a popover. */
+  --detailw:320px; --formw:320px;
   --cardw:230px; --card-tt:var(--fs-item-title); --card-fs:var(--fs-sm); --card-lines:2;
   --diff-add:rgba(40,167,69,.12); --diff-del:rgba(224,69,58,.1);
   --sans:-apple-system,BlinkMacSystemFont,"SF Pro Text","Segoe UI","PingFang SC","Microsoft YaHei","Noto Sans SC",sans-serif;
@@ -183,6 +183,7 @@
   --sh-paper:0 4px 22px rgba(0,0,0,.5);
 }
 
+@media (max-width:900px){:root{--detailw:280px}}
 @media (min-width:1600px){:root{--pagew:1320px;--prosew:1200px;--chatw:880px;--cardw:280px;--card-tt:var(--fs-item-title);--card-fs:var(--fs-sm);--card-lines:3}}
 @media (min-width:2000px){:root{--pagew:1560px;--prosew:1320px;--chatw:1000px;--cardw:320px;--card-tt:var(--fs-read);--card-fs:var(--fs-base);--card-lines:3}}
 

@@ -14,7 +14,7 @@ test('截下论文库表的一组基线图', async ({ win }) => {
   await parkPointer(win)
   await win.screenshot({ path: `${SHOTS}/papers-detail.png` })
 
-  await win.locator('.pdetail [aria-label="收起详情"]').click()
+  await win.locator('.paper-detail-slot [aria-label="收起详情"]').click()
   await win.locator('.filters .segmented-control>button', { hasText: '主题' }).click()
   await win.locator('.gxrow').first().waitFor()
   await parkPointer(win)
@@ -116,7 +116,7 @@ test('第 6 批:论文表的年份与发表、详情面板,四档窗口 × 亮�
       await win.locator('.pdetail').waitFor()
       await parkPointer(win)
       await win.screenshot({ path: `${B6}/detail-${theme}-${w}.png` })
-      await win.locator('.pdetail [aria-label="收起详情"]').click()
+      await win.locator('.paper-detail-slot [aria-label="收起详情"]').click()
       await expect(win.locator('.pdetail')).toHaveCount(0)
     }
   }

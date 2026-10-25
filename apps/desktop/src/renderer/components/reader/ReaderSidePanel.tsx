@@ -6,9 +6,9 @@ import { ReadingNotes } from './ReadingNotes.js'
 import { ReadingRemark } from './ReadingRemark.js'
 import { PaperWikiIngest } from './PaperWikiIngest.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { SidePanel } from '../SidePanel.js'
 import { ToggleGroup, ToggleItem } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
-import '../DetailPanel.css'
 
 export type ReaderSideTab = 'metadata' | 'highlights' | 'notes' | 'remark' | 'wiki'
 const TABS: ReaderSideTab[] = ['metadata', 'highlights', 'notes', 'remark', 'wiki']
@@ -59,10 +59,10 @@ export function ReaderSidePanel({
     <aside className={tab === null ? 'reader-side collapsed' : 'reader-side'}>
       {tab === 'metadata' && paper !== null
         ? (
-          <aside className="reader-meta" aria-label={m.reader.rail.tabs.metadata}>
+          <SidePanel surface="edge" label={m.reader.rail.tabs.metadata} className="reader-meta">
             <ReaderPanelHeader title={m.reader.rail.tabs.metadata} />
             <PaperMetadata paper={paper} readStateLabel={m.papers.metadata.fields.readState} onSaved={onPaper} />
-          </aside>
+          </SidePanel>
         )
         : null}
       {(tab === 'highlights' || tab === 'notes') && reading !== null
