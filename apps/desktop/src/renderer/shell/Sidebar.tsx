@@ -15,6 +15,7 @@ import { Toolbar } from '../components/Toolbar.js'
 import { FadeText } from '../components/FadeText.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
+import { useNeighbourFocus } from '../hooks/useNeighbourFocus.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { appUpdates } from '../ipc.js'
 import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type JumpAnchor, type ScreenKey } from './AppShell.js'
@@ -40,6 +41,9 @@ function WatchRow({ watch, count, on, onOpen }: {
     </NavRow>
   )
 }
+
+/** The chat rows of the sidebar's chat list, in order. */
+const chatRows = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('[data-chat]')]
 
 /**
  * A chat's row in the sidebar. The "More" button at its end opens a menu with Archive and Delete:
@@ -160,6 +164,8 @@ export function Sidebar({
 }) {
   const m = useMessages()
   const navFade = useScrollFade('y')
+  // A chat deleted or archived from its focused row hands the focus to the chat beside it.
+  const keepChatFocus = useNeighbourFocus(chatRows)
   const [closed, setClosed] = useState<Record<string, boolean>>({})
   const toggle = (name: string) => setClosed((c) => ({ ...c, [name]: !c[name] }))
   const sect = (name: string) => (closed[name] ? 'sect closed' : 'sect')
@@ -295,7 +301,7 @@ export function Sidebar({
               )}
             />
             <div className={sect('chats')} id="sect-chats">
-              <div id="chatList">
+              <div id="chatList" ref={keepChatFocus}>
                 {active.map((s) => (
                   <ChatRow
                     key={s.id} session={s} on={s.id === chatId} onOpen={() => onOpenChat(s.id)}

@@ -1,21 +1,23 @@
 import { useCallback, useRef } from 'react'
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
+import { useNeighbourFocus } from '../hooks/useNeighbourFocus.js'
 import { useRowCap } from '../hooks/useRowCap.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import './List.css'
 
 export const EMBEDDED_LIST_ROW_LIMIT = 5
 
-/**
- * The rendered items that belong to `list`, in document order: items of a nested list and items that
- * draw no box, such as those of a folded group, do not count.
- */
-const ownItems = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('.item')]
-  .filter((item) => item.closest('.list') === list && item.getClientRects().length > 0)
+/** The items that belong to `list`, in document order, without those of a nested list. */
+const listItems = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('.item')]
+  .filter((item) => item.closest('.list') === list)
+
+/** The rendered items that belong to `list`: those that draw no box, such as those of a folded group, do not count. */
+const ownItems = (list: HTMLElement) => listItems(list).filter((item) => item.getClientRects().length > 0)
 
 /**
  * The one container of `Item`s: its outline or the dividers between its rows, the grid of its cards,
- * and how many rows it shows before it scrolls inside itself.
+ * and how many rows it shows before it scrolls inside itself. When the item that holds the keyboard
+ * focus goes away, a neighbouring item takes it (useNeighbourFocus).
  */
 export function List({
   children, className = '', variant = 'card', rows, grid = false, nested = false, flush = false, style, ...props
@@ -46,10 +48,12 @@ export function List({
     : rows ?? (variant === 'embedded' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
   const list = useRef<HTMLDivElement | null>(null)
   const cap = useRowCap(list, ownItems, rowLimit)
+  const keepFocus = useNeighbourFocus(listItems)
   const listRef = useCallback((node: HTMLDivElement | null) => {
     list.current = node
     fade(node)
-  }, [fade])
+    keepFocus(node)
+  }, [fade, keepFocus])
 
   const variantClass = `${variant === 'embedded' ? ' list--embedded' : ''}${grid ? ' list--grid' : ''}${nested ? ' list--nested' : ''}`
   const scrollClass = `${rows === 'fill' ? ' list--fill' : cap === null ? '' : ' list--scrollable'}${flush ? ' list--flush' : ''}`

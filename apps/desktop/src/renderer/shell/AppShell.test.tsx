@@ -856,6 +856,24 @@ describe('侧栏对话行的删除', () => {
     expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
   })
 
+  it('从对话行的菜单删掉它之后,键盘焦点落到旁边那段对话上,不掉到页面外', async () => {
+    const chats = fixture.chats
+    fixture.chats = [...chats, { id: 'c2', title: '另一段', archived: false, messageCount: 1 }]
+    try {
+      await mount()
+      const items = await chatMenu('c1')
+      fixture.chats = fixture.chats.filter((session) => session.id !== 'c1')
+      await act(async () => {
+        items.find((item) => item.textContent === '删除')!.click()
+        await new Promise((done) => setTimeout(done, 20))
+      })
+      expect(document.querySelector('[data-chat="c1"]')).toBeNull()
+      expect(document.activeElement?.closest('[data-chat]')?.getAttribute('data-chat')).toBe('c2')
+    } finally {
+      fixture.chats = chats
+    }
+  })
+
   it('删掉对话屏正打开着的那段对话，像归档一样回到动态', async () => {
     await mount()
     await act(async () => { controlOf('#chatList [data-chat="c1"]').click() })
