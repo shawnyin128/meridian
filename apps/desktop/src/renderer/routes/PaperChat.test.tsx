@@ -44,6 +44,8 @@ const api = vi.hoisted(() => ({
   collapsed: false,
   revision: 0,
   openCategory: vi.fn(),
+  /** Whether the model settings set up a model. */
+  configured: true,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -52,6 +54,7 @@ vi.mock('../ipc.js', () => ({
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
     recordAction: api.recordAction,
   },
+  harness: { modelSettings: () => Promise.resolve({ configured: api.configured }) },
   idea: { create: api.createIdea },
   feed: { append: api.feedAppend },
   jobs: {
@@ -82,13 +85,18 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 
 const { PaperChat } = await import('../components/chat/PaperChat.js')
 const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { ModelStatusContext, useCoreModelStatus } = await import('../hooks/useModelStatus.js')
 const { useJobsPoll } = await import('../shell/useJobs.js')
 
 const noBump = () => {}
-/** The shell around the paper chat: the jobs poll and the generations it reports. */
+/** The shell around the paper chat: the jobs poll and the generations it reports, and the model status. */
 function Shell({ children }: { children: ReactNode }) {
   const { status, refresh } = useJobsPoll(noBump)
-  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+  return (
+    <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>
+      <ModelStatusContext.Provider value={useCoreModelStatus(false)}>{children}</ModelStatusContext.Provider>
+    </GenerationsContext.Provider>
+  )
 }
 
 /** Lets every pending call to Core answer and the chat render what it answered. */
@@ -150,6 +158,7 @@ describe('PaperChat', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     api.generating.clear()
+    api.configured = true
     api.writes.length = 0
     api.collapsed = false
     api.revision = 0
@@ -208,6 +217,7 @@ describe('PaperChat', () => {
 
   it('没配置模型时发送失败，输入框里的「AI 未连接」是一个按钮，打开设置的模型一栏', async () => {
     api.send.mockResolvedValueOnce({ id: 'chat-paper-1', state: 'failed', reason: 'no-model' } as never)
+    api.configured = false
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)

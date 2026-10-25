@@ -1,6 +1,6 @@
-import { useRef } from 'react'
 import type { ReactElement, ReactNode } from 'react'
 import * as AlertDialog from '@radix-ui/react-alert-dialog'
+import { useOpenerFocus } from '../hooks/useOpenerFocus.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { Button } from './Button.js'
@@ -11,8 +11,7 @@ import { modalSurface } from './ModalDialog.js'
  * dialog surface's confirmation step. `title` is the short question; `description` is the
  * consequence, on its own line under it. `state` is a short state shown beside the buttons, such as
  * what the confirmation costs or why it is disabled. `trigger` opens it; without one, the host opens
- * and closes it through `open` and `onOpenChange`, and closing returns focus to the element that held
- * it when it opened, while that element is still on the page.
+ * and closes it through `open` and `onOpenChange`, and closing returns focus as useOpenerFocus does.
  */
 export function ConfirmDialog({
   trigger, open, onOpenChange, title, description, state, confirmLabel, cancelLabel,
@@ -31,14 +30,8 @@ export function ConfirmDialog({
   const m = useMessages()
   const confirm = confirmLabel ?? m.common.confirm
   const cancel = cancelLabel ?? m.common.cancel
-  const opener = useRef<HTMLElement | null>(null)
-  const wasOpen = useRef(false)
-  // Radix returns focus only to a trigger, so a dialog without one notes the element focused as it opens.
-  if (open === true && !wasOpen.current) {
-    const active = document.activeElement
-    opener.current = active instanceof HTMLElement && active !== document.body ? active : null
-  }
-  wasOpen.current = open === true
+  // Radix returns focus only to a trigger.
+  const returnFocus = useOpenerFocus(open === true)
   return (
     <AlertDialog.Root {...(trigger === undefined ? { open, onOpenChange } : {})}>
       {trigger === undefined ? null : <AlertDialog.Trigger asChild>{trigger}</AlertDialog.Trigger>}
@@ -46,12 +39,7 @@ export function ConfirmDialog({
         <AlertDialog.Overlay className="scrim" />
         <AlertDialog.Content
           className={modalSurface('confirm')} onEscapeKeyDown={ignoreComposingEscape()}
-          {...(trigger === undefined ? {
-            onCloseAutoFocus: (event: Event) => {
-              event.preventDefault()
-              if (opener.current?.isConnected) opener.current.focus()
-            },
-          } : {})}
+          {...(trigger === undefined ? { onCloseAutoFocus: returnFocus } : {})}
         >
           <AlertDialog.Title className="modal-title">{title}</AlertDialog.Title>
           <div className="modal-body">

@@ -536,11 +536,7 @@ components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { b
 components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { color }
 components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { font-family }
 components/project/ProjectPlan.css:39: .project-plan .ddlrow .din.state-edit { font-size }
-components/project/ProjectPlan.css:42: @keyframes plan-row-flash 0% { background }
-components/project/ProjectPlan.css:42: @keyframes plan-row-flash 100% { background }
-components/project/ProjectPlan.css:42: @keyframes plan-row-flash 50% { background }
-components/project/ProjectPlan.css:43: .project-plan .ddlrow.flash { animation }
-components/project/ProjectPlan.css:44: .project-plan .row-actions { margin-left }
+components/project/ProjectPlan.css:42: .project-plan .row-actions { margin-left }
 components/project/ProjectSections.css:2: .agsteps { padding }
 components/project/ProjectSections.css:3: .agstep { font-size }
 components/project/ProjectSections.css:3: .agstep { color }

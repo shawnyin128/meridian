@@ -3,7 +3,6 @@ import type { ReactNode } from 'react'
 import type {
   ChatSession, ColourTheme, ExtensionStatus, LibraryBackup, LibraryLocation, PluginVersion,
 } from '../../shared/contract.js'
-import { localDayOf } from '../../shared/dates.js'
 import { appMenu, chat, extensions, library } from '../ipc.js'
 import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
@@ -325,7 +324,7 @@ export function Settings() {
               <SectionHeading count={backups.length}>{m.settings.storage.backupsHeading}</SectionHeading>
               <List className="storage-backup-list">
                 {backups.map((backup) => {
-                  const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
+                  const label = `${format.day(backup.createdAt)} ${format.clock(backup.createdAt)}`
                   const busy = switchingBackup !== null || deletingBackup !== null
                   return (
                     <Item

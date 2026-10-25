@@ -156,7 +156,7 @@
   --fs-dialog-title:var(--fs-title);
   --lh-tight:1.3; --lh-ui:1.45; --lh-read:1.7;
   --t-fast:120ms; --t:180ms; --t-slow:280ms;
-  /* The pause before content enters an opening container, a refusal shake, a located row's flash, a spinner turn. */
+  /* The pause before content enters an opening container, a refusal shake, a landed target's flash, a spinner turn. */
   --t-delay:60ms; --t-shake:320ms; --t-flash:500ms; --t-spin:1s;
   --e-out:cubic-bezier(.2,.6,.35,1); --e-inout:cubic-bezier(.4,0,.2,1);
 }
@@ -192,13 +192,11 @@
 /*
  * With the system's "Reduce motion" on, transitions and keyframe animations stop entirely but every
  * state change still shows. Only the spinning DownloadRing keeps turning: it is the live sign that a
- * job is running. A JS timer adds and removes .ddlrow.flash, so it gets a static background, and the
- * located row stays highlighted for that time.
+ * job is running.
  */
 @media (prefers-reduced-motion:reduce){
   :root{--t-fast:1ms;--t:1ms;--t-slow:1ms;--t-delay:0ms}
   :not(.ring.spin),::before,::after{animation:none!important}
-  .ddlrow.flash{background:var(--tint-warn)}
   .item--leaving{transform:none}
 }
 

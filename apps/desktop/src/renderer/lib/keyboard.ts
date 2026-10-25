@@ -1,3 +1,6 @@
+import type { KeyboardEvent as ReactKeyboardEvent } from 'react'
+import { appMenu } from '../ipc.js'
+
 /**
  * Whether a keydown arrives while an input method is composing text. Such a key belongs to the
  * input method: its Enter confirms a candidate and its Escape dismisses the candidate list, so the
@@ -26,6 +29,35 @@ export function ignoreComposingEscape(then?: (event: KeyboardEvent) => void): (e
  */
 export function commitsMultiline(platform: string, key: Pick<KeyboardEvent, 'key' | 'metaKey' | 'ctrlKey' | 'isComposing'>): boolean {
   return pressesCommand(platform, key, 'Enter') && !composing(key)
+}
+
+/**
+ * The keys of a field being edited, as its `onKeyDown`. Enter in a one-line field, or Enter with the
+ * App's platform's command key in a `multiline` one (see `commitsMultiline`), calls `onSave` and keeps
+ * the key from doing anything else, such as starting a line or submitting a form. With `onCancel`,
+ * Escape calls it and goes no further than the field; without it, Escape passes on to what holds the
+ * field. The keys of an input method composition are the input method's: they neither save nor
+ * cancel.
+ */
+export function commitKeys({ multiline = false, onSave, onCancel }: {
+  multiline?: boolean
+  onSave?: () => void
+  onCancel?: () => void
+}): (event: ReactKeyboardEvent) => void {
+  return (event) => {
+    if (event.key === 'Escape' && onCancel !== undefined) {
+      event.stopPropagation()
+      if (!composing(event.nativeEvent)) onCancel()
+      return
+    }
+    if (onSave === undefined) return
+    const commits = multiline
+      ? commitsMultiline(appMenu.platform(), event.nativeEvent)
+      : event.key === 'Enter' && !composing(event.nativeEvent)
+    if (!commits) return
+    event.preventDefault()
+    onSave()
+  }
 }
 
 /**

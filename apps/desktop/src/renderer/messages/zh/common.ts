@@ -21,6 +21,7 @@ export const common = {
   loading: '正在载入…',
   saving: '正在保存…',
   reading: '正在读取…',
+  noModel: 'AI 未连接',
   none: '暂无',
   all: '全部',
   trashed: '已移入垃圾桶',

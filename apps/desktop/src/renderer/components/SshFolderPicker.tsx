@@ -4,7 +4,7 @@ import type { SshFolders } from '../../shared/contract.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { ssh } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { EmptyState } from './EmptyState.js'
 import { FadeText } from './FadeText.js'
@@ -190,14 +190,13 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
           className="ssh-folders-path" value={choice.path} aria-label={m.common.sshFolders.path}
           spellCheck={false} autoComplete="off" data-inline-draft={edited ? '' : undefined}
           onChange={(event) => choice.type(event.target.value)}
-          onKeyDown={(event) => {
-            if (composing(event.nativeEvent)) return
-            if (event.key === 'Enter') {
-              event.preventDefault()
+          onKeyDown={commitKeys({
+            onSave: () => {
               refocus.current = false
               if (choice.path.trim() !== '') choice.open(choice.path.trim())
-            } else if (event.key === 'Escape' && edited) choice.type(folder.path)
-          }}
+            },
+            ...(edited ? { onCancel: () => choice.type(folder.path) } : {}),
+          })}
         />
       </div>
       <div className="ssh-folders-list">

@@ -28,6 +28,9 @@ const { ChatMessageView } = await import('./chat/ChatMessage.js')
 const { ReviewQueue } = await import('./wiki/ReviewQueue.js')
 const { Sidebar } = await import('../shell/Sidebar.js')
 const { GenerationsContext } = await import('../hooks/useGenerations.js')
+const { ModelStatusContext } = await import('../hooks/useModelStatus.js')
+/** A shell whose model status says a model is set up. */
+const CONNECTED: import('../hooks/useModelStatus.js').ModelStatus = { connected: true, source: 'api', track: (send) => send }
 /** A shell in which Core is generating nothing. */
 const IDLE = {
   running: () => false, run: async (work: Promise<unknown>) => { await work }, stop: vi.fn(),
@@ -90,7 +93,13 @@ describe('每个屏幕只有一个主操作', () => {
   afterEach(() => act(() => root.unmount()))
 
   const show = (node: ReactNode) => act(async () => {
-    root.render(<MessagesProvider><GenerationsContext.Provider value={IDLE}>{node}</GenerationsContext.Provider></MessagesProvider>)
+    root.render(
+      <MessagesProvider>
+        <GenerationsContext.Provider value={IDLE}>
+          <ModelStatusContext.Provider value={CONNECTED}>{node}</ModelStatusContext.Provider>
+        </GenerationsContext.Provider>
+      </MessagesProvider>,
+    )
   })
 
   it('阅读器右栏的每个面板都不放实心强调色:这一屏的主操作是论文对话的发送', async () => {

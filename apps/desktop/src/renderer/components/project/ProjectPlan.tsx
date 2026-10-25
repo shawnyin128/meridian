@@ -295,10 +295,9 @@ export function ProjectTaskPanel({
   )
 }
 
-function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, onOpen }: {
+function TaskRow({ projectId, task, selected, reorder, onSave, onDelete, onOpen }: {
   projectId: string
   task: Task
-  flash: boolean
   /** Whether this task's detail panel is the one currently open. */
   selected: boolean
   /**
@@ -318,7 +317,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
     <Toolbar label={task.title}>
       <Item
         composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
-        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
+        className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}`}
         actions={(
           <IconButton
             label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
@@ -351,10 +350,9 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
   )
 }
 
-function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }: {
+function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
   projectId: string
   milestone: Milestone
-  flash: boolean
   onHover: (milestoneId: string | null) => void
   onSave: (patch: Partial<Pick<Milestone, 'date' | 'title' | 'done'>>) => Promise<boolean>
   onDelete: () => void
@@ -364,7 +362,7 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
   return (
     <Item
       data-row={milestone.id}
-      className={`ddlrow milestone-row${milestone.done ? ' done' : ''}${flash ? ' flash' : ''}`}
+      className={`ddlrow milestone-row${milestone.done ? ' done' : ''}`}
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
       actions={(
         <IconButton
@@ -411,6 +409,7 @@ export function ProjectPlan({
   tab: PlanTab
   today: string
   creating: PlanCreating | null
+  /** The task or milestone being located, which shows, its archive group unfolded, while it flashes. */
   flashId: string | null
   /** The task whose detail panel is currently open, so its row can show as selected. */
   selectedTaskId: string | null
@@ -488,7 +487,7 @@ export function ProjectPlan({
                 {activeTasks.map((task) => (
                   <TaskRow
                     projectId={projectId}
-                    key={task.id} task={task} flash={flashId === task.id} selected={selectedTaskId === task.id}
+                    key={task.id} task={task} selected={selectedTaskId === task.id}
                     reorder={{ item: taskOrder.itemProps(task.id), handle: taskOrder.handleProps(task.id) }}
                     onSave={(patch) => onUpdateTask(task.id, patch)}
                     onDelete={() => onDeleteTask(task.id)}
@@ -505,7 +504,7 @@ export function ProjectPlan({
                       {archivedTasks.map((task) => (
                         <TaskRow
                           projectId={projectId}
-                          key={task.id} task={task} flash={flashId === task.id}
+                          key={task.id} task={task}
                           selected={selectedTaskId === task.id}
                           onSave={(patch) => onUpdateTask(task.id, patch)}
                           onDelete={() => onDeleteTask(task.id)}
@@ -524,7 +523,7 @@ export function ProjectPlan({
                 {activeMilestones.map((milestone) => (
                   <MilestoneRow
                     projectId={projectId}
-                    key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
+                    key={milestone.id} milestone={milestone}
                     onHover={onHoverMilestone}
                     onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
                     onDelete={() => onDeleteMilestone(milestone.id)}
@@ -549,7 +548,7 @@ export function ProjectPlan({
                       {archivedMilestones.map((milestone) => (
                         <MilestoneRow
                           projectId={projectId}
-                          key={milestone.id} milestone={milestone} flash={flashId === milestone.id}
+                          key={milestone.id} milestone={milestone}
                           onHover={onHoverMilestone}
                           onSave={(patch) => onUpdateMilestone(milestone.id, patch)}
                           onDelete={() => onDeleteMilestone(milestone.id)}
