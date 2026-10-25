@@ -4,11 +4,11 @@
  */
 .side-panel{display:flex;flex:0 0 var(--side-panel-w);width:var(--side-panel-w);min-width:0;min-height:0;box-sizing:border-box;overflow:hidden;
   font-size:var(--fs-body);line-height:var(--lh-ui)}
-.side-panel--card{--side-panel-w:min(520px,48vw);--side-panel-block:var(--sp-20);--side-panel-inline:var(--sp-24);
+.side-panel--card{--side-panel-w:min(420px,42vw);--side-panel-block:var(--sp-20);--side-panel-inline:var(--sp-24);
   border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);box-shadow:var(--sh-1)}
 .side-panel--edge{--side-panel-w:var(--detailw);--side-panel-block:var(--sp-16);--side-panel-inline:var(--sp-16);
   border-left:1px solid var(--sep);background:var(--content)}
-@media (max-width:1150px){.side-panel--card{--side-panel-w:44%;--side-panel-block:var(--sp-16);--side-panel-inline:var(--sp-20)}}
+@media (max-width:1150px){.side-panel--card{--side-panel-w:38%;--side-panel-block:var(--sp-16);--side-panel-inline:var(--sp-20)}}
 
 /* The panel takes its width at once; only its content moves in, so nothing beside it reflows frame by frame. */
 .side-panel-content{display:flex;flex:1;flex-direction:column;min-width:0;min-height:0;animation:side-panel-in var(--t-slow) var(--e-out) both}

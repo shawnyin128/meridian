@@ -4,7 +4,10 @@ import { join, relative } from 'node:path'
 import { describe, expect, it } from 'vitest'
 
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
-type Style = { whiteSpace: string; overflow: string; textOverflow: string; maskImage: string; overflowWrap: string }
+type Style = {
+  whiteSpace: string; overflow: string; textOverflow: string; maskImage: string; overflowWrap: string
+  getPropertyValue(name: string): string
+}
 type Window = {
   document: { head: { innerHTML: string }; body: { innerHTML: string }; querySelector(selector: string): object }
   getComputedStyle(element: object): Style
@@ -81,6 +84,15 @@ describe('侧面板只有一种', () => {
         return selectors.length > 0 && declared.length > 0 ? [`${file}: ${selectors.join(', ')} { ${declared.join('; ')} }`] : []
       }))
     expect(owned).toEqual([])
+  })
+
+  it('卡片面板在想法页和项目页上都是 420px 宽,窄窗口里取 38%;贴边面板是贴边宽度', () => {
+    const css = read('components/SidePanel.css')
+    document.head.innerHTML = `<style>${css}</style>`
+    document.body.innerHTML = '<aside class="side-panel side-panel--card" id="card"></aside><aside class="side-panel side-panel--edge" id="edge"></aside>'
+    expect(['card', 'edge'].map((id) => getComputedStyle(document.querySelector(`#${id}`)).getPropertyValue('--side-panel-w').trim()))
+      .toEqual(['min(420px,42vw)', 'var(--detailw)'])
+    expect(css.replace(/\s+/g, '')).toContain('@media(max-width:1150px){.side-panel--card{--side-panel-w:38%;')
   })
 
   it('面板头的标题放不下时换行,整段露出,不淡出也不截断', () => {
