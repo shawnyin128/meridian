@@ -26,6 +26,7 @@ import { ProjectBlockerView, ProjectNextActionView } from '../components/project
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
+import { DraftSlot, useDraftSlot } from '../components/DraftSlot.js'
 import { Item, ItemOpen } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { Tag } from '../components/Tag.js'
@@ -139,7 +140,7 @@ function ProjectMenu({ project, onRename, onMove, canMove, onStatus, onDelete }:
  * `onCreate` returns whether the row is done.
  */
 function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
-  row: RefObject<HTMLDivElement | null>
+  row: RefObject<HTMLElement | null>
   triggers: Array<RefObject<HTMLElement | null>>
   onCreate: (name: string) => boolean | Promise<boolean>
   onCancel: () => void
@@ -147,12 +148,12 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
 }) {
   const m = useMessages()
   return (
-    <Item density="card" className="projpanel" elementRef={row}>
+    <DraftSlot as="card" className="projpanel" slot={row}>
       <InlineDraftInput
         className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
         onSubmit={onCreate} onCancel={onCancel} kept={kept}
       />
-    </Item>
+    </DraftSlot>
   )
 }
 
@@ -292,7 +293,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const write = useVaultWrite()
   const undo = useUndo()
   const stopCreating = useCallback(() => setCreating(false), [setCreating])
-  const createRow = useRef<HTMLDivElement>(null)
+  const createDraft = useDraftSlot(creating, () => setCreating(true))
   const projNew = useRef<HTMLButtonElement>(null)
   const newTriggers = useMemo(() => [projNew], [])
   const { filter, shown } = useAreaFilter(projects ?? [])
@@ -382,15 +383,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                 ]}
               />
             )}
-            <AddAction
-              size="regular" id="projNew" ref={projNew}
-              onClick={() => {
-                // An open row is only refocused, keeping the half-typed name, so this click does not
-                // count as outside the row.
-                if (creating) createRow.current?.querySelector('input')?.focus()
-                else setCreating(true)
-              }}
-            >{m.research.list.create}</AddAction>
+            <AddAction size="regular" id="projNew" ref={projNew} onClick={createDraft.start}>{m.research.list.create}</AddAction>
           </>
         )}
       >
@@ -407,7 +400,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
             {i === 0 && creating
               ? (
                 <ProjectCreateRow
-                  row={createRow} triggers={newTriggers}
+                  row={createDraft.slot} triggers={newTriggers}
                   onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
                 />
               )

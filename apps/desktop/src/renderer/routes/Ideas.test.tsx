@@ -84,6 +84,7 @@ vi.mock('../ipc.js', () => ({
   wiki: { cards: async () => [{ id: 'topics/sd', title: '推测解码' }, { id: 'topics/kv', title: 'KV 量化' }] },
   chat: { list: async () => structuredClone(api.chats) },
   trash: { restore: async (id: string) => { api.restored.push(id) } },
+  library: { location: async () => ({ root: '/vaults/ideas-test' }) },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
@@ -97,6 +98,7 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 const { Ideas } = await import('./Ideas.js')
+const { DraftsProvider } = await import('../hooks/useDrafts.js')
 
 describe('Ideas', () => {
   let host: HTMLDivElement
@@ -213,6 +215,21 @@ describe('Ideas', () => {
     expect(document.activeElement).toBe(draft()!.querySelector('input'))
     expect(draft()!.querySelector('textarea')).not.toBeNull()
     expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
+  })
+
+  it('新建想法打到一半离开这一屏，回来时草稿卡还在原处，打到的字也在，按新建只把光标送回去', async () => {
+    const screen = (shown: boolean) => <DraftsProvider><MessagesProvider>{shown ? <Ideas /> : null}</MessagesProvider></DraftsProvider>
+    await act(async () => { root.render(screen(true)) })
+    await openDraft()
+    act(() => { type(draft()!.querySelector('input')!, '按层分配位宽') })
+    await act(async () => { root.render(screen(false)) })
+    expect(draft()).toBeNull()
+    await act(async () => { root.render(screen(true)) })
+    expect(draft()!.querySelector('input')!.value).toBe('按层分配位宽')
+    await openDraft()
+    expect(host.querySelectorAll('.idea-draft-card')).toHaveLength(1)
+    expect(document.activeElement).toBe(draft()!.querySelector('input'))
+    window.localStorage.clear()
   })
 
   it('新建想法的草稿卡里是对话存为想法用的同一个草稿表单，取消和保存在它的底部', async () => {

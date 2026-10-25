@@ -55,6 +55,8 @@
 .item-head>.item-actions{align-self:flex-start;margin-top:calc((1lh - var(--sp-24)) / 2)}
 .item-leading{display:flex;flex:none;align-items:center;color:var(--ter)}
 .item-leading>svg{width:13px;height:13px}
+/* A leading mark belongs with the title it marks: it stands 8px before it, not a whole slot gap. */
+.item-leading{margin-right:calc(var(--sp-8) - var(--sp-12))}
 .item-main{display:flex;flex:1;min-width:0;align-items:center;gap:var(--sp-8)}
 .item--two-line .item-main,.item--card .item-main{flex-direction:column;align-items:stretch;gap:var(--sp-2)}
 .item-title{display:flex;min-width:0;align-items:center;gap:var(--sp-6);font-size:var(--fs-item-title)}

@@ -38,9 +38,13 @@ Current shared contracts:
 - `DraftForm`: the one form drafted in place, for a new item, or a change to one, that takes more than one
   field. It opens where the item lands with its first field focused, and Cancel and Save at its foot. Enter
   in a one-line field or ⌘Enter in a long text saves, Escape cancels, and a press outside keeps the draft.
-  An item that lands elsewhere names its destination after an arrow, on a card of its own. Hosts provide
+  An item that lands elsewhere names its destination after an arrow, on a card Item of its own. Hosts provide
   the fields and the write; the refused look of a missing field, input method keys, menu keys and the save
   lock are implemented once. No create action opens a dialog.
+- `DraftSlot` and `useDraftSlot`: the place a new item's draft opens, the row or card it will be, holding
+  its DraftForm or InlineDraftInput, and the one way its AddAction opens it: `start` opens the draft, or,
+  when it is open, puts the caret back after what is typed (`focusDraft`). The draft it holds is kept with
+  `useDraft` or `useDrafts`, so it comes back in its place after a restart.
 - `PickerPopover`: the shared anchored surface for input suggestions and compact pickers. It owns
   portal positioning, focus retention, anchor-aware outside interaction, spacing, and optional event
   isolation; picker contents and domain selection policy stay configurable. Its `size` is a field's

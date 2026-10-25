@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import type {
   ConclusionState, GraphNode, ProjectConclusion, ProposalOp, WikiAggregationCard,
 } from '../../../shared/contract.js'
@@ -15,6 +15,7 @@ import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
+import { useDraftSlot } from '../DraftSlot.js'
 import { Item } from '../Item.js'
 import { List } from '../List.js'
 import { Tag } from '../Tag.js'
@@ -95,16 +96,10 @@ export function ProjectConclusionPanel({
   // A draft belongs to the conclusion it was opened from and shows only with it.
   const [draft, setDraft] = useDraft<{ page: string; text: string }>(['project', projectId, 'conclusion', conclusion.id], 'claim')
   const [pages, setPages] = useState<WikiAggregationCard[]>([])
-  const draftAt = useRef<HTMLDivElement>(null)
-
-  const startWriting = () => {
-    if (draft !== null) {
-      draftAt.current?.querySelector<HTMLElement>('.form-control')?.focus()
-      return
-    }
+  const claimDraft = useDraftSlot<HTMLDivElement>(draft !== null, () => {
     setDraft({ page: '', text: conclusion.text })
     void wiki.cards().then((cards) => setPages([...cards].sort((a, b) => a.title.localeCompare(b.title))))
-  }
+  })
 
   const submit = async (): Promise<void> => {
     const { page, text } = draft!
@@ -134,7 +129,7 @@ export function ProjectConclusionPanel({
               ? <Button size="compact" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</Button>
               : null}
             {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
-            <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={startWriting}>{c.write}</Button>
+            <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={claimDraft.start}>{c.write}</Button>
             <PanelClose onClose={onClose} />
           </>
         )}
@@ -148,7 +143,7 @@ export function ProjectConclusionPanel({
       {draft === null
         ? null
         : (
-          <div className="conclusion-draft" ref={draftAt}>
+          <div className="conclusion-draft" ref={claimDraft.slot}>
             <DraftForm
               destination={(invalid) => (
                 <>

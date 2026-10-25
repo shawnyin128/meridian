@@ -48,6 +48,7 @@ import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
 import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
+import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
 import { Item, ItemOpen, RowActions } from '../components/Item.js'
 import { EMBEDDED_LIST_ROW_LIMIT, List } from '../components/List.js'
 import { Tooltip } from '../components/Tooltip.js'
@@ -443,8 +444,7 @@ export function Wiki() {
   const open = (what: 'child' | 'paper') => {
     setNewCol(false)
     if (adding !== what) { setAdding(what); return }
-    const held = what === 'paper' ? newPaperRow.current : addRow.current
-    held?.querySelector('input')?.focus()
+    focusDraft(what === 'paper' ? newPaperRow.current : addRow.current)
   }
 
   // An entry from the sidebar lands on the Wiki home; a jump from another screen lands on the page it
@@ -802,8 +802,8 @@ export function Wiki() {
                       ))}
                       {adding === 'child'
                         ? (
-                          <Item
-                            density="card" className="wkcard newcard" elementRef={addRow}
+                          <DraftSlot
+                            as="card" className="wkcard newcard" slot={addRow}
                             leading={<Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>}
                             title={(
                               <PickRow
@@ -816,7 +816,7 @@ export function Wiki() {
                             )}
                           >
                             <div className="wf" />
-                          </Item>
+                          </DraftSlot>
                         )
                         : null}
                     </List>
@@ -858,7 +858,7 @@ export function Wiki() {
                             size="compact" ref={colAdd} disabled={pending}
                             label={m.wiki.aggregation.addColumn}
                             onClick={() => {
-                              if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
+                              if (newCol) { focusDraft(newColCell.current); return }
                               setAdding(null)
                               setNewCol(true)
                             }}

@@ -23,6 +23,7 @@ import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { TrailingDate } from '../components/DateTimeDisplay.js'
+import { DraftSlot, useDraftSlot } from '../components/DraftSlot.js'
 import { Item, ItemMeta, ItemOpen } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
@@ -359,7 +360,6 @@ export function Ideas() {
   const write = useVaultWrite()
   const undo = useUndo()
   const consumedJump = useRef(0)
-  const draftCard = useRef<HTMLElement>(null)
   const newIdea = useRef<HTMLButtonElement>(null)
   const draftTriggers = useMemo(() => [newIdea], [])
   const [rows, setRows] = useState<ResearchIdea[] | null>(null)
@@ -370,7 +370,9 @@ export function Ideas() {
   const [details, setDetails] = useState<ReadonlyMap<string, ProjectDetail>>(new Map())
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const [archiveOpen, setArchiveOpen] = useState(false)
-  const [draft, setDraft] = useState<IdeaDraftText | null>(null)
+  // The new idea's draft is kept as it is typed and opens again after a restart.
+  const [draft, setDraft] = useDraft<IdeaDraftText>(['ideas'], 'new')
+  const draftSlot = useDraftSlot(draft !== null, () => setDraft({ title: '', body: '' }))
   const { error, load, report } = useScreenLoad()
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
@@ -394,9 +396,10 @@ export function Ideas() {
   useEffect(() => {
     if (jump === null || jump.seq === consumedJump.current) return
     consumedJump.current = jump.seq
-    if (jump.anchor?.newIdea === true) setDraft((held) => held ?? { title: '', body: '' })
-    else setSelectedId(jump.target)
-  }, [jump])
+    if (jump.anchor?.newIdea === true) {
+      if (draft === null) setDraft({ title: '', body: '' })
+    } else setSelectedId(jump.target)
+  }, [jump, draft, setDraft])
   useEscapeLayer(selectedId !== null, closeDetail)
 
   const projectsById = useMemo(
@@ -492,12 +495,7 @@ export function Ideas() {
             ? null
             : <SortMenu label={m.ideas.sort} options={[{ label: m.ideas.sortUpdated, onSelect: sortByUpdated }]} />}
           <AddAction
-            size="regular" ref={newIdea}
-            onClick={() => {
-              // An open draft is only refocused, keeping what is typed.
-              if (draft !== null) draftCard.current?.querySelector<HTMLElement>('.form-control')?.focus()
-              else setDraft({ title: '', body: '' })
-            }}
+            size="regular" ref={newIdea} onClick={draftSlot.start}
           >{m.ideas.create}</AddAction>
         </>
       )}
@@ -513,11 +511,11 @@ export function Ideas() {
             {draft === null
               ? null
               : (
-                <Item density="card" className="idea-draft-card" elementRef={draftCard}>
+                <DraftSlot as="card" className="idea-draft-card" slot={draftSlot.slot}>
                   <IdeaDraft
                     draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
                   />
-                </Item>
+                </DraftSlot>
               )}
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null

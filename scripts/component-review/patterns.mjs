@@ -186,7 +186,7 @@ export const PATTERNS = {
   Row: {
     metrics: 'item',
     entries: [
-      entry('shared:Item', '.item--row', { not: '.item--row:has(> .form-control)', parts: ITEM_PARTS }),
+      entry('shared:Item', '.item--row', { not: '.draft-slot', parts: ITEM_PARTS }),
       entry('shared:NavRow', '.nav-row', { not: '.srow.disc, .sb-h' }),
       entry('shared:PickOption', '.mi.rrow', { parts: { title: '.rt', meta: '.rm' } }),
       entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr', { parts: { title: '.pt-title' } }),
@@ -200,7 +200,7 @@ export const PATTERNS = {
   Card: {
     metrics: 'item',
     entries: [
-      entry('shared:Item', '.item--card', { not: '.newcard, .item--card:has(.form-control)', parts: ITEM_PARTS }),
+      entry('shared:Item', '.item--card', { not: '.draft-slot, .draft-form-card', parts: ITEM_PARTS }),
       entry('shared:Card', '.card-surface'),
       entry('shared:ProposalCard', '.proposal-card'),
       entry('shared:PaperUnderstanding', '.paper-understanding'),
@@ -211,9 +211,7 @@ export const PATTERNS = {
   DraftRow: {
     metrics: 'item',
     entries: [
-      entry('shared:InlineDraftInput', '.item--row:has(> .form-control)'),
-      entry('hand:routes/Projects.tsx', '.item--card:has(.form-control)'),
-      entry('hand:routes/Wiki.tsx', '.wkcard.newcard'),
+      entry('shared:DraftSlot', '.draft-slot'),
       entry('hand:routes/Wiki.tsx', '.cmp .newrow'),
       entry('hand:components/project/ProjectSections.tsx', '.reladd'),
     ],

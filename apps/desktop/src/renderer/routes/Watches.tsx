@@ -13,6 +13,7 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
+import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
 import { Item } from '../components/Item.js'
 import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
@@ -77,7 +78,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
           <List className="wlist">
             {editor === undefined || editor.id !== undefined
               ? null
-              : <Item className="wrow newrow" elementRef={editor.row}>{editor.input}</Item>}
+              : <DraftSlot className="wrow newrow" slot={editor.row}>{editor.input}</DraftSlot>}
             {watches.map((w) => (editor?.id === w.id
               ? (
                 <Item className="wrow editrow" data-w={w.id} key={w.id} elementRef={editor.row}>
@@ -155,7 +156,6 @@ export function WatchSettings() {
   const [authorSearchNonce, setAuthorSearchNonce] = useState(0)
   const authorSearchRevision = useRef(0)
   const row = useRef<HTMLDivElement>(null)
-  const nameInput = useRef<HTMLInputElement>(null)
   const addTopic = useRef<HTMLButtonElement>(null)
   const addAuthor = useRef<HTMLButtonElement>(null)
   const suggestionRequest = useRef(0)
@@ -238,7 +238,7 @@ export function WatchSettings() {
    */
   const open = (type: Watch['type']) => {
     if (editor?.type === type && editor.id === undefined) {
-      nameInput.current?.focus()
+      focusDraft(row.current)
       return
     }
     afterLeaving(leaveDraft, () => {
@@ -388,7 +388,7 @@ export function WatchSettings() {
   const editorInput = editor === null ? null : editor.type === 'topic'
     ? (
       <InlineDraftInput
-        ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
+        className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
         placeholder={m.shell.watchKind.topic} onCancel={stop}
         onSubmit={(next) => next === editingWatch?.name || persist({ type: 'topic', name: next })}
         value={name} onChange={(e) => setName(e.target.value)}
@@ -397,7 +397,7 @@ export function WatchSettings() {
     : (
       <div className="author-resolver">
         <InlineDraftInput
-          ref={nameInput} className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
+          className="inedit" scopeRef={row} triggers={triggers} leaveRef={leaveDraft}
           placeholder={m.watches.authorNamePlaceholder} onCancel={stop}
           onSubmit={(next, leaving) => next === editingWatch?.name
             || (leaving && persist({ type: 'author', name: next }))}

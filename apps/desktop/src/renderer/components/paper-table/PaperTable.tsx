@@ -38,6 +38,7 @@ import {
 import { AddAction } from '../AddAction.js'
 import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
+import { focusDraft } from '../DraftSlot.js'
 import { holdRepeatSelection, Item, RowActions } from '../Item.js'
 import { List } from '../List.js'
 import { PanelClose } from '../PanelClose.js'
@@ -1156,7 +1157,7 @@ export function PaperTable() {
                 <AddAction
                   size="compact" ref={colAdd} label={m.papers.columnHeader.addColumn}
                   onClick={() => {
-                    if (newCol) { newColCell.current?.querySelector('input')?.focus(); return }
+                    if (newCol) { focusDraft(newColCell.current); return }
                     setNewCol(true)
                   }}
                 />

@@ -22,6 +22,7 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { AgentLabel } from '../SourceLabel.js'
+import { DraftSlot, useDraftSlot } from '../DraftSlot.js'
 import { Item, RowActions } from '../Item.js'
 import { List } from '../List.js'
 import { Tag } from '../Tag.js'
@@ -162,7 +163,6 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   }, [arrival, page, onArrived])
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [conclusions, setConclusions] = useState<ProjectConclusion[]>([])
-  const addRow = useRef<HTMLDivElement>(null)
   // A draft picked in a claim's menu opens once the menu has closed, so it keeps the focus.
   const opening = useRef<Form | null>(null)
   const formClaim = draft?.claim === null ? undefined : page.claims.find((x) => x.id === draft?.claim)
@@ -185,10 +185,6 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const patch = (fields: Partial<ClaimDraft>) => { if (draft !== null) setDraft({ ...draft, ...fields }) }
 
   const open = (next: Form) => {
-    if (next.kind === 'add' && form?.kind === 'add') {
-      addRow.current?.querySelector<HTMLElement>('.form-control')?.focus()
-      return
-    }
     setDraft({
       kind: next.kind,
       claim: next.kind === 'add' ? null : next.claim.id,
@@ -198,6 +194,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
     })
   }
   const close = () => setDraft(null)
+  const addSlot = useDraftSlot(form?.kind === 'add', () => open({ page: page.id, kind: 'add' }))
 
   useEffect(() => {
     if (form?.kind !== 'add' || basis !== 'conclusion') return
@@ -285,7 +282,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const addDraft = form?.kind !== 'add'
     ? null
     : (
-      <Item className="wkclaim wkclaim-draft" elementRef={addRow}>
+      <DraftSlot className="wkclaim wkclaim-draft" slot={addSlot.slot}>
         <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
           {(invalid) => (
             <>
@@ -334,13 +331,13 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
             </>
           )}
         </DraftForm>
-      </Item>
+      </DraftSlot>
     )
 
   return (
     <>
       <SectionHeading
-        actions={<AddAction size="compact" disabled={pending} label={c.add} onClick={() => open({ page: page.id, kind: 'add' })}>{c.addShort}</AddAction>}
+        actions={<AddAction size="compact" disabled={pending} label={c.add} onClick={addSlot.start}>{c.addShort}</AddAction>}
       >{c.heading}
       </SectionHeading>
       {page.claims.length === 0 && addDraft === null

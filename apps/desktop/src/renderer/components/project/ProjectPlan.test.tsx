@@ -38,7 +38,7 @@ function renderPlan(tab: 'task' | 'ms', options: {
       <ProjectPlan
         projectId="p1" project={{ tasks, milestones }} tab={tab} today="2026-09-16"
         creating={creating} flashId={flashId} selectedTaskId={null}
-        listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+        listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
         onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
         onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
@@ -107,7 +107,7 @@ describe('ProjectPlan', () => {
         <ProjectPlan
           projectId="p1" project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
           creating={null} flashId={null} selectedTaskId={null}
-          listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+          listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
           onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
           onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
           onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
@@ -210,7 +210,7 @@ describe('ProjectPlan', () => {
           <ProjectPlan
             projectId="p1" project={{ tasks: [task], milestones: [] }} tab="task" today="2026-09-16"
             creating={null} flashId={null} selectedTaskId={null}
-            listRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
+            listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
             onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
             onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
             onUpdateTask={onUpdateTask} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
