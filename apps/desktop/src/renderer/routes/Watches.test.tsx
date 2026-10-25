@@ -393,7 +393,7 @@ describe('WatchSettings', () => {
     const section = host.querySelector('.watch-suggestions')!
     await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
-    expect(section.querySelector('.watch-suggestion-error.inline-message--error')?.textContent).toBe('生成关注建议失败 · 正在限流')
+    expect(section.querySelector('.watch-suggestion-error.inline-message--error')?.textContent).toBe('生成关注建议失败 · 被限流')
     await act(async () => { root.unmount() })
   })
 

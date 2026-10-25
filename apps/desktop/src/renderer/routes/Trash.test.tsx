@@ -149,8 +149,14 @@ describe('Trash', () => {
     expect([host.querySelector('.page-error'), host.querySelectorAll('.trow').length]).toEqual([null, 4])
   })
 
-  it('每条只写几天后自动清除，页脚不再用一句话重复保留期', () => {
-    expect(host.querySelector('.trow .tm2')!.textContent).toBe('7 天后自动清除')
+  it('每条只写还剩几天，几天后自动清除那句放进它的提示，页脚不再用一句话重复保留期', () => {
+    const left = host.querySelector<HTMLElement>('.trow .tm2')!
+    expect(left.textContent).toBe('7 天')
+    vi.useFakeTimers()
+    act(() => { left.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
+    act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
+    vi.useRealTimers()
+    expect(document.querySelector('[role="tooltip"]')?.textContent).toBe('7 天后自动清除')
     expect(host.querySelector('.desk-foot')).toBeNull()
   })
 

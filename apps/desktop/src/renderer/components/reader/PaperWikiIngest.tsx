@@ -273,9 +273,6 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
       </ProposalChange>
       {rejection !== undefined ? (
         <div className="wiki-ingest-rejection" aria-label={m.wiki.ingest.rejectionFeedbackLabel}>
-          <div className="wiki-ingest-rejection-head">
-            <strong>{m.wiki.ingest.rejectionPrompt}</strong>
-          </div>
           <ChipToggles
             className="wiki-ingest-rejection-reasons" label={m.wiki.ingest.rejectReasonsLabel}
             value={rejectionReasons} options={rejectReasonOptions(m)} disabled={rejecting}

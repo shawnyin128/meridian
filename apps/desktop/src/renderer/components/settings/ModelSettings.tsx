@@ -11,7 +11,6 @@ import { ChoicePicker } from '../FieldPickers.js'
 import { FormInput } from '../FormControls.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
-import { Tag } from '../Tag.js'
 import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
@@ -399,7 +398,6 @@ export function ModelSettings() {
               }}
             />
           ) : null}
-          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
           <Button
             size="regular" disabled={!canTestConnection || saving}
             busy={connectionCheck.state === 'testing'} busyLabel={m.settings.model.connection.testing}
@@ -413,7 +411,7 @@ export function ModelSettings() {
         </ServiceActions>
       </ServiceFoot>
       {settings.error === undefined ? null : (
-        <ServiceError>{m.settings.model.errorHint(reasonLabel(m, settings.error))}</ServiceError>
+        <ServiceError>{reasonLabel(m, settings.error)}</ServiceError>
       )}
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>

@@ -358,7 +358,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('[data-setcat="model"]')?.classList.contains('on')).toBe(true)
   })
 
-  it('未配置 key 时科研卡片显示未配置，测试连接不可用，按钮旁写着未保存', async () => {
+  it('未配置 key 时科研卡片显示未配置，测试连接不可用，按钮旁不写字', async () => {
     api.requestedCategory = 'research'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -366,17 +366,17 @@ describe('Settings', () => {
     expect(card.querySelector('.service-status-pill')?.textContent).toBe('未配置')
     const buttons = [...card.querySelectorAll<HTMLButtonElement>('button')]
     expect(buttons.find((b) => b.textContent === '测试连接')!.disabled).toBe(true)
-    expect(buttons.find((b) => b.textContent === '测试连接')!.previousElementSibling?.textContent).toBe('未保存')
+    expect(card.querySelector('.service-actions .tag')).toBeNull()
     expect(buttons.find((b) => b.textContent === '保存配置')!.disabled).toBe(true)
     expect(buttons.some((b) => b.textContent === '清除已保存的 Key')).toBe(false)
   })
 
-  it('模型配置还没保存时测试连接不可用，按钮旁写着未保存；保存过的可以测试，不写', async () => {
+  it('模型配置还没保存时测试连接不可用，按钮旁不写字；保存过的可以测试', async () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const test = () => [...document.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
       .find((b) => b.textContent === '测试连接')!
-    expect([test().disabled, test().previousElementSibling?.textContent]).toEqual([true, '未保存'])
+    expect([test().disabled, document.querySelector('.model-settings-card .service-actions .tag')]).toEqual([true, null])
     api.modelSettings.mockResolvedValueOnce({ ...(await api.updateModelSettings()) })
     await act(async () => { root.render(<MessagesProvider key="saved"><Settings /></MessagesProvider>) })
     expect(test().disabled).toBe(false)
@@ -469,7 +469,7 @@ describe('Settings', () => {
     await act(async () => { test.click() })
     const status = card.querySelector('.service-connection-status')!
     expect(status.matches('.inline-message--line.inline-message--error[role="alert"]')).toBe(true)
-    expect(status.textContent).toContain('认证失败，请检查 API Key。')
+    expect(status.querySelector('.inline-message-text > div')?.textContent).toBe('认证失败')
     expect(status.textContent).toContain('HTTP 401')
   })
 
@@ -805,12 +805,13 @@ describe('Settings', () => {
     }
   })
 
-  it('库位置固定或要重启时，各写一个短状态：外部配置固定、重启后生效和立即重启', async () => {
+  it('库位置固定时只有来源标签和按不了的选择，不另写一句；要重启时写重启后生效和立即重启', async () => {
     api.requestedCategory = 'storage'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const card = () => document.querySelector('.setdlg .storage-card')!
     const states = () => [...card().querySelectorAll(':scope > .tag, :scope > [role="status"] > *')].map((node) => node.textContent)
-    expect(states()).toEqual(['库位置由外部配置固定'])
+    expect([states(), card().querySelector('.storage-head .tag')?.textContent, card().querySelector<HTMLButtonElement>('.storage-root button')?.disabled])
+      .toEqual([[], '测试数据', true])
     api.libraryLocation.mockResolvedValue({
       root: '/tmp/meridian', source: 'configured', locked: false, restartRequired: true, openError: null,
     })
@@ -1109,14 +1110,14 @@ describe('Settings', () => {
     expect(field.type).toBe('password')
   })
 
-  it('已存的模型配置读不进来时只显示原因的标签', async () => {
+  it('已存的模型配置读不进来时只显示原因，不叫人检查后重新保存', async () => {
     const unreadable = { ...(await api.modelSettings()), error: 'key-unreadable' as const }
     api.modelSettings.mockResolvedValueOnce(unreadable)
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    expect(dialog.textContent).toContain('没能读取已存的密钥。请检查后重新保存。')
+    expect(dialog.querySelector('.service-error')?.textContent).toBe('没能读取已存的密钥')
     expect(dialog.textContent).not.toContain('key-unreadable')
   })
 
@@ -1180,7 +1181,7 @@ describe('Settings', () => {
     await act(async () => { test.click() })
 
     const status = dialog.querySelector('.service-connection-status')!
-    expect(status.textContent).toContain('没有找到模型或接口。')
+    expect(status.querySelector('.inline-message-text > div')?.textContent).toBe('没有找到模型或接口')
     expect(status.textContent).toContain('详情: HTTP 404: model deepseek-flash was not found')
   })
 

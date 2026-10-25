@@ -488,7 +488,7 @@ describe('PaperWikiIngest', () => {
     expect(host.querySelector('.wiki-ingest-tip')).toBeNull()
   })
 
-  it('collects optional local feedback before rejecting a proposal', async () => {
+  it('collects optional local feedback before rejecting a proposal, opening on the reasons without a question above them', async () => {
     await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
     await act(async () => {
       host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click()
@@ -499,7 +499,7 @@ describe('PaperWikiIngest', () => {
     })
 
     expect(api.reject).not.toHaveBeenCalled()
-    expect(host.querySelector('.wiki-ingest-rejection-head')!.textContent).toBe('可选：这份提案哪里不好？')
+    expect(host.querySelector('.wiki-ingest-rejection')!.firstElementChild!.matches('.wiki-ingest-rejection-reasons')).toBe(true)
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('button')]
         .find((button) => button.textContent === '论文事实不准确')!.click()

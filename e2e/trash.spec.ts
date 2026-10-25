@@ -16,7 +16,7 @@ async function restore(row: Locator): Promise<void> {
 const DAY_MS = 86_400_000
 
 /** What an entry deleted on the vault's today shows: the full retention period. */
-const FULL_RETENTION = `${TRASH_RETENTION_DAYS} 天后自动清除`
+const FULL_RETENTION = `${TRASH_RETENTION_DAYS} 天`
 
 /** Calls `trash.list` directly, bypassing the UI, for each entry's deletion time, newest first. */
 const deletedAt = (win: Page) => win.evaluate(async () => {

@@ -1109,14 +1109,14 @@ describe('PaperTable', () => {
     expect([width('t'), width('short')]).toEqual(['410px', '170px'])
   })
 
-  it('列宽把手在共享 tooltip 里写出它调的是哪一列,下一行说可以拖动', async () => {
+  it('列宽把手在共享 tooltip 里只写出它调的是哪一列,不再说可以拖动', async () => {
     const { grip } = await laidOutTable()
     vi.useFakeTimers()
     act(() => { grip.dispatchEvent(new PointerEvent('pointermove', { bubbles: true, pointerType: 'mouse' })) })
     act(() => { vi.advanceTimersByTime(TOOLTIP_DELAY) })
     vi.useRealTimers()
     const tip = document.querySelector('[role="tooltip"]')
-    expect([tip?.firstChild?.textContent, tip?.querySelector('.tooltip-note')?.textContent]).toEqual(['「标题」列宽', '拖动调整宽度'])
+    expect([tip?.textContent, tip?.querySelector('.tooltip-note')]).toEqual(['「标题」列宽', null])
     expect(grip.hasAttribute('title')).toBe(false)
   })
 

@@ -1448,13 +1448,11 @@ routes/Reader.css:128: .wiki-ingest-rejection { margin-top }
 routes/Reader.css:128: .wiki-ingest-rejection { padding }
 routes/Reader.css:128: .wiki-ingest-rejection { background }
 routes/Reader.css:128: .wiki-ingest-rejection { border-radius }
-routes/Reader.css:129: .wiki-ingest-rejection-head { margin-bottom }
-routes/Reader.css:130: .wiki-ingest-rejection-head strong { font-size }
-routes/Reader.css:131: .wiki-ingest-rejection-reasons { margin-bottom }
-routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { min-height }
-routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { font-family }
-routes/Reader.css:132: .wiki-ingest-rejection>.form-textarea { font-size }
-routes/Reader.css:133: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
+routes/Reader.css:129: .wiki-ingest-rejection-reasons { margin-bottom }
+routes/Reader.css:130: .wiki-ingest-rejection>.form-textarea { min-height }
+routes/Reader.css:130: .wiki-ingest-rejection>.form-textarea { font-family }
+routes/Reader.css:130: .wiki-ingest-rejection>.form-textarea { font-size }
+routes/Reader.css:131: .wiki-ingest-rejection .wiki-ingest-actions { margin-top }
 routes/ResearchOverview.css:8: .ovstat { background }
 routes/ResearchOverview.css:8: .ovstat { border }
 routes/ResearchOverview.css:8: .ovstat { border-radius }
@@ -1604,58 +1602,57 @@ routes/Settings.css:73: .storage-root { border-top }
 routes/Settings.css:73: .storage-root { border-bottom }
 routes/Settings.css:74: .storage-root span { color }
 routes/Settings.css:74: .storage-root span { font-size }
-routes/Settings.css:75: .storage-state { margin-top }
-routes/Settings.css:76: .storage-pending { margin-top }
-routes/Settings.css:77: .storage-reset { margin-top }
-routes/Settings.css:78: .storage-reset { padding-top }
-routes/Settings.css:78: .storage-reset { border-top }
-routes/Settings.css:78: .storage-reset { color }
-routes/Settings.css:78: .storage-reset { font-size }
-routes/Settings.css:79: .storage-backup-row { display }
-routes/Settings.css:79: .storage-backup-row { grid-template-columns }
-routes/Settings.css:79: .storage-backup-row { align-items }
-routes/Settings.css:79: .storage-backup-row { gap }
-routes/Settings.css:80: .storage-backup-row { min-height }
-routes/Settings.css:80: .storage-backup-row { padding }
-routes/Settings.css:82: .storage-backup-path { color }
-routes/Settings.css:82: .storage-backup-path { font-family }
-routes/Settings.css:82: .storage-backup-path { font-size }
-routes/Settings.css:86: .model-protocol { margin-top }
-routes/Settings.css:87: .model-protocol { color }
-routes/Settings.css:87: .model-protocol { font-size }
-routes/Settings.css:88: .model-protocol strong { color }
-routes/Settings.css:88: .model-protocol strong { font-size }
-routes/Settings.css:88: .model-protocol strong { font-weight }
-routes/Settings.css:89: .model-template-summary { margin }
-routes/Settings.css:89: .model-template-summary { padding }
-routes/Settings.css:89: .model-template-summary { border-radius }
-routes/Settings.css:89: .model-template-summary { background }
-routes/Settings.css:90: .model-template-summary { color }
-routes/Settings.css:90: .model-template-summary { font-size }
-routes/Settings.css:90: .model-template-summary { line-height }
-routes/Settings.css:91: .model-template-summary code { color }
-routes/Settings.css:91: .model-template-summary code { font-family }
-routes/Settings.css:91: .model-template-summary code { font-size }
-routes/Settings.css:91: .model-template-summary code { overflow-wrap }
-routes/Settings.css:93: .delivery-settings-card { display }
-routes/Settings.css:93: .delivery-settings-card { grid-template-columns }
-routes/Settings.css:93: .delivery-settings-card { align-items }
-routes/Settings.css:93: .delivery-settings-card { gap }
-routes/Settings.css:94: .delivery-setting-copy strong { font-size }
-routes/Settings.css:94: .delivery-setting-copy strong { font-weight }
-routes/Settings.css:94: .delivery-setting-copy strong { color }
-routes/Settings.css:95: .delivery-setting-control { color }
-routes/Settings.css:95: .delivery-setting-control { font-size }
-routes/Settings.css:96: .delivery-setting-control .form-input { width }
-routes/Settings.css:96: .delivery-setting-control .form-input { text-align }
-routes/Settings.css:97: .delivery-settings-card>.service-foot { margin-top }
-routes/Settings.css:99: .set-main .watch-settings>.section-heading:first-of-type { margin-top }
-routes/Settings.css:100: .set-main .watch-suggestions { margin-bottom }
-routes/Settings.css:101: .delivery-directions { margin-top }
-routes/Settings.css:101: .delivery-directions { padding-top }
-routes/Settings.css:101: .delivery-directions { border-top }
-routes/Settings.css:102: .delivery-directions>.section-heading { border-top }
-routes/Settings.css:103: .delivery-directions .direction-panel { margin-bottom }
+routes/Settings.css:75: .storage-pending { margin-top }
+routes/Settings.css:76: .storage-reset { margin-top }
+routes/Settings.css:77: .storage-reset { padding-top }
+routes/Settings.css:77: .storage-reset { border-top }
+routes/Settings.css:77: .storage-reset { color }
+routes/Settings.css:77: .storage-reset { font-size }
+routes/Settings.css:78: .storage-backup-row { display }
+routes/Settings.css:78: .storage-backup-row { grid-template-columns }
+routes/Settings.css:78: .storage-backup-row { align-items }
+routes/Settings.css:78: .storage-backup-row { gap }
+routes/Settings.css:79: .storage-backup-row { min-height }
+routes/Settings.css:79: .storage-backup-row { padding }
+routes/Settings.css:81: .storage-backup-path { color }
+routes/Settings.css:81: .storage-backup-path { font-family }
+routes/Settings.css:81: .storage-backup-path { font-size }
+routes/Settings.css:85: .model-protocol { margin-top }
+routes/Settings.css:86: .model-protocol { color }
+routes/Settings.css:86: .model-protocol { font-size }
+routes/Settings.css:87: .model-protocol strong { color }
+routes/Settings.css:87: .model-protocol strong { font-size }
+routes/Settings.css:87: .model-protocol strong { font-weight }
+routes/Settings.css:88: .model-template-summary { margin }
+routes/Settings.css:88: .model-template-summary { padding }
+routes/Settings.css:88: .model-template-summary { border-radius }
+routes/Settings.css:88: .model-template-summary { background }
+routes/Settings.css:89: .model-template-summary { color }
+routes/Settings.css:89: .model-template-summary { font-size }
+routes/Settings.css:89: .model-template-summary { line-height }
+routes/Settings.css:90: .model-template-summary code { color }
+routes/Settings.css:90: .model-template-summary code { font-family }
+routes/Settings.css:90: .model-template-summary code { font-size }
+routes/Settings.css:90: .model-template-summary code { overflow-wrap }
+routes/Settings.css:92: .delivery-settings-card { display }
+routes/Settings.css:92: .delivery-settings-card { grid-template-columns }
+routes/Settings.css:92: .delivery-settings-card { align-items }
+routes/Settings.css:92: .delivery-settings-card { gap }
+routes/Settings.css:93: .delivery-setting-copy strong { font-size }
+routes/Settings.css:93: .delivery-setting-copy strong { font-weight }
+routes/Settings.css:93: .delivery-setting-copy strong { color }
+routes/Settings.css:94: .delivery-setting-control { color }
+routes/Settings.css:94: .delivery-setting-control { font-size }
+routes/Settings.css:95: .delivery-setting-control .form-input { width }
+routes/Settings.css:95: .delivery-setting-control .form-input { text-align }
+routes/Settings.css:96: .delivery-settings-card>.service-foot { margin-top }
+routes/Settings.css:98: .set-main .watch-settings>.section-heading:first-of-type { margin-top }
+routes/Settings.css:99: .set-main .watch-suggestions { margin-bottom }
+routes/Settings.css:100: .delivery-directions { margin-top }
+routes/Settings.css:100: .delivery-directions { padding-top }
+routes/Settings.css:100: .delivery-directions { border-top }
+routes/Settings.css:101: .delivery-directions>.section-heading { border-top }
+routes/Settings.css:102: .delivery-directions .direction-panel { margin-bottom }
 routes/Trash.css:6: .tgroup { margin }
 routes/Trash.css:7: .trow { display }
 routes/Trash.css:7: .trow { align-items }

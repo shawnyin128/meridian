@@ -48,7 +48,6 @@ export const shell = {
     resize: '侧栏宽度',
     collapse: '收起侧栏',
     toggleGroup: (name: string) => `收起/展开「${name}」`,
-    dragHint: '拖动调整宽度',
     manageChat: (title: string) => `管理对话：${title}`,
     archive: '归档',
   },

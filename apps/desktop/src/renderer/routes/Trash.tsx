@@ -14,6 +14,7 @@ import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { TitleNote } from '../components/TitleNote.js'
+import { Tooltip } from '../components/Tooltip.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -119,7 +120,9 @@ export function Trash() {
                 {g.items.map((entry) => (
                   <StructuredRow className="trow" key={entry.id}>
                     <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
-                    <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
+                    <Tooltip label={m.trash.autoClear(daysLeft(entry.deletedAt, today))}>
+                      <span className="tm2">{m.trash.daysLeft(daysLeft(entry.deletedAt, today))}</span>
+                    </Tooltip>
                     <RowActions>
                       <IconButton
                         label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}

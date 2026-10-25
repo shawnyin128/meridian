@@ -50,7 +50,6 @@ export const shell = {
     resize: 'Sidebar width',
     collapse: 'Collapse the sidebar',
     toggleGroup: (name: string) => `Collapse or expand ${name}`,
-    dragHint: 'Drag to resize',
     manageChat: (title: string) => `Manage chat: ${title}`,
     archive: 'Archive',
   },

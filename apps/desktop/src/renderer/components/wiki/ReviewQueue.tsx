@@ -373,11 +373,9 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                           : p.reason?.kind === 'declined' ? r.rejected : `${r.rejected} · ${r.reasonKind[p.reason?.kind ?? 'invalid']}`}
                       </Tag>
                       {p.decided === null ? null : <span>{fmt.date(dayOf(p.decided.at))}</span>}
-                      {p.reason === null || p.reason.message === '' ? null : (
+                      {p.reason === null || p.reason.message === '' || p.reason.kind === 'stale' ? null : (
                         <span className="review-reason">
-                          {p.reason.kind === 'declined' ? p.reason.message
-                            : p.reason.kind === 'stale' ? r.staleReason
-                              : <LinePieces pieces={named(p.reason.message, p.titles)} />}
+                          {p.reason.kind === 'declined' ? p.reason.message : <LinePieces pieces={named(p.reason.message, p.titles)} />}
                         </span>
                       )}
                     </ProposalDecision>

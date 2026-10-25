@@ -499,8 +499,7 @@ export const PATTERNS = {
   Caption: {
     metrics: 'text',
     entries: [
-      entry('hand:routes/Inbox.tsx', '.fetchnote, .discovery-note'),
-      entry('hand:routes/Settings.tsx', '.storage-state'),
+      entry('hand:routes/Inbox.tsx', '.fetchnote'),
       entry('hand:routes/Projects.tsx', '.project-card-label'),
       entry('hand:components/project/ResearchGraph.tsx', '.glegend'),
       entry('hand:components/FirstRunChecklist.tsx', '.firstrun-heading'),

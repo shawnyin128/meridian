@@ -289,9 +289,7 @@ export function Settings() {
                 </label>
               </>
             )}
-          {location?.locked
-            ? <Tag className="storage-state">{m.settings.storage.lockedNote}</Tag>
-            : location?.restartRequired
+          {location?.locked !== true && location?.restartRequired
               ? (
                 <InlineMessage
                   tone="warning" variant="box" className="storage-pending"
