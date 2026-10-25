@@ -28,7 +28,7 @@ const RULES = STYLESHEETS.flatMap((path) => [...source(path).matchAll(/([^{}]+)\
 
 const STYLES = [
   'shell/tokens.css', 'routes/shell.css', 'components/IconButton.css', 'components/Tag.css', 'components/DragHandle.css',
-  'components/StructuredList.css', 'components/ChipList.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
+  'components/Item.css', 'components/List.css', 'components/ChipList.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
   'components/project/ProjectPlan.css', 'components/timeline/TimelineBoard.css', 'components/project/ResearchGraph.css',
 ].map(source)
 
@@ -42,7 +42,7 @@ const SPOTS: Record<string, [markup: string, spot: string, held: string[]]> = {
   '关联 chip': ['<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" data-row-actions="" data-actionable="" data-reorder-item="r1" data-reorder-axis="x" draggable="true"><button type="button" class="tagchip-open">链接</button></span></div>', '.tagchip', ['press', 'dragging']],
   '时间线的任务条': ['<div class="grow"><button type="button" class="gbar"></button></div>', '.gbar', ['press', 'dragging']],
   '时间线的里程碑菱形': ['<div class="grow msrow"><span class="gddl"></span></div>', '.gddl', ['press', 'dragging']],
-  '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div></div>', '.task-row', ['press', 'dragging']],
+  '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="item item--row item--actionable ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div></div>', '.task-row', ['press', 'dragging']],
   '时间线的任务标签行': ['<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"><button type="button" class="timeline-label-open">任务</button></div></div>', '.glrow', ['press', 'dragging']],
   // ResearchGraph adds `panning` as the pointer goes down on the background.
   '科研图的背景': ['<div class="rgraph"><div class="rgraph-viewport"><svg></svg></div></div>', '.rgraph-viewport', ['panning']],
@@ -93,16 +93,20 @@ describe('拖动处的光标', () => {
 })
 
 describe('拖动中的条目和落点', () => {
-  /** Each reorderable item: the stylesheets that draw it and its markup as its component renders it with useDragReorder's attributes. */
-  const ITEMS: Record<string, [sheets: string[], markup: string]> = {
-    '项目行': [['components/StructuredList.css', 'routes/Projects.css'], '<div class="structured-row structured-row--composite prow" data-reorder-item="p1" data-reorder-axis="y"></div>'],
-    '项目卡片': [['components/ResearchObjectCard.css', 'routes/Projects.css'], '<article class="research-object-card projpanel" data-row-actions="" data-reorder-item="p1" data-reorder-axis="y"></article>'],
-    '想法行': [['components/StructuredList.css', 'routes/Ideas.css'], '<div class="structured-row structured-row--composite idea-row" data-reorder-item="i1" data-reorder-axis="y"></div>'],
-    '想法卡片': [['components/ResearchObjectCard.css', 'routes/Ideas.css'], '<article class="research-object-card idea-card" data-row-actions="" data-reorder-item="i1" data-reorder-axis="y"></article>'],
-    '计划的任务行': [['components/StructuredList.css', 'components/project/ProjectPlan.css'], '<div class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
-    '时间线的任务标签行': [['components/timeline/TimelineBoard.css'], '<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
-    '关联 chip': [['components/Tag.css', 'components/ChipList.css', 'components/project/ProjectSections.css'], '<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true" data-reorder-item="r1" data-reorder-axis="x"></span></div>'],
-    '论文表的列': [['routes/shell.css', 'components/paper-table/PaperTable.css'], '<div class="tblwrap"><table class="ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"></th></tr></thead></table></div>'],
+  /**
+   * Each reorderable item: the stylesheets of its screen, the shared one that draws its drop look (Item
+   * its rows and cards, DragHandle.css the rest), and its markup as its component renders it with
+   * useDragReorder's attributes.
+   */
+  const ITEMS: Record<string, [sheets: string[], drawn: string, markup: string]> = {
+    '项目行': [['routes/Projects.css'], 'components/Item.css', '<div class="item item--row item--actionable prow" data-reorder-item="p1" data-reorder-axis="y"></div>'],
+    '项目卡片': [['routes/Projects.css'], 'components/Item.css', '<article class="item item--card item--actionable projpanel" data-row-actions="" data-reorder-item="p1" data-reorder-axis="y"></article>'],
+    '想法行': [['routes/Ideas.css'], 'components/Item.css', '<div class="item item--row item--actionable idea-row" data-reorder-item="i1" data-reorder-axis="y"></div>'],
+    '想法卡片': [['routes/Ideas.css'], 'components/Item.css', '<article class="item item--card item--actionable idea-card" data-row-actions="" data-reorder-item="i1" data-reorder-axis="y"></article>'],
+    '计划的任务行': [['components/project/ProjectPlan.css'], 'components/Item.css', '<div class="project-plan"><div class="item item--row item--actionable ddlrow task-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
+    '时间线的任务标签行': [['components/timeline/TimelineBoard.css'], 'components/DragHandle.css', '<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
+    '关联 chip': [['components/Tag.css', 'components/ChipList.css', 'components/project/ProjectSections.css'], 'components/DragHandle.css', '<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true" data-reorder-item="r1" data-reorder-axis="x"></span></div>'],
+    '论文表的列': [['routes/shell.css', 'components/paper-table/PaperTable.css'], 'components/DragHandle.css', '<div class="tblwrap"><table class="ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"></th></tr></thead></table></div>'],
   }
   /** The opacity and box shadow of the item in `markup` under `sheets`, held, then with the drop line before and after it. */
   const feedback = (sheets: string[], markup: string) => ['dragging', 'drag-over-before', 'drag-over-after'].map((state) => {
@@ -121,19 +125,19 @@ describe('拖动中的条目和落点', () => {
     header: [['0.4', ''], ['1', 'inset 2px 0 0 0 var(--ink)'], ['1', 'inset -2px 0 0 0 var(--ink)']],
   }
 
-  it('每个可拖动排序的条目拖动时变淡、落点画一条 2px 的线,都只来自共享的拖动样式,竖排画在上下,横排画在左右', () => {
+  it('每个可拖动排序的条目拖动时变淡、落点画一条 2px 的线,只来自画它的共享样式,竖排画在上下,横排画在左右', () => {
     const items = Object.entries(ITEMS)
-    expect(Object.fromEntries(items.map(([name, [sheets, markup]]) => [name, [
-      feedback(sheets, markup),
-      feedback([...sheets, 'components/DragHandle.css'], markup),
-    ]]))).toEqual(Object.fromEntries(items.map(([name, [, markup]]) => [name, [
+    expect(Object.fromEntries(items.map(([name, [sheets, drawn, markup]]) => [name, [
+      feedback([...sheets, 'components/DragHandle.css', 'components/Item.css'].filter((sheet) => sheet !== drawn), markup),
+      feedback([...sheets, 'components/DragHandle.css', 'components/Item.css'], markup),
+    ]]))).toEqual(Object.fromEntries(items.map(([name, [, , markup]]) => [name, [
       [['1', ''], ['1', ''], ['1', '']],
       markup.includes('<th ') ? LOOK.header : markup.includes('data-reorder-axis="x"') ? LOOK.x : LOOK.y,
     ]])))
   })
 
-  it('落点只有共享的一套标记:别的样式表不写 drag-over-*,也不另起 drop-before、column-drop、column-moving 之类的落点类', () => {
-    const own = RULES.filter((rule) => rule.path !== 'components/DragHandle.css'
+  it('落点只有共享的一套标记:Item 和 DragHandle.css 之外的样式表不写 drag-over-*,也不另起 drop-before、column-drop、column-moving 之类的落点类', () => {
+    const own = RULES.filter((rule) => !['components/DragHandle.css', 'components/Item.css'].includes(rule.path)
       && /\.(drag-over-(before|after)|drop-(before|after)|column-drop-(before|after)|column-moving)\b/.test(rule.selector))
       .map((rule) => `${rule.path}: ${rule.selector}`)
     expect(own).toEqual([])

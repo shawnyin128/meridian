@@ -24,7 +24,9 @@ import { TaskScheduleField } from '../TaskScheduleField.js'
 import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
-import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { DraftSlot } from '../DraftSlot.js'
+import { Item, RowActions } from '../Item.js'
+import { List } from '../List.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { editText, useDrafts, type EditDraft } from '../../hooks/useDrafts.js'
@@ -70,8 +72,9 @@ export function newPlanRow(kind: PlanTab, date: string, window: TaskWindow | nul
     : { kind, draft: { title: '', start: date, end: window ? date : isoOf(dnum(date) + 6), priority: 'p1', state: 'act', window } }
 }
 
-/** The new-task row, a view of `draft`, which every change replaces through `onDraft`. */
-function TaskCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
+/** The new-task row, a view of `draft`, which every change replaces through `onDraft`; `row` is its draft slot. */
+function TaskCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
+  row: RefObject<HTMLElement | null>
   draft: TaskDraft
   onDraft: (draft: TaskDraft) => void
   triggers: Array<RefObject<HTMLElement | null>>
@@ -80,7 +83,6 @@ function TaskCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
 }) {
   const { start, end, priority, state, title, window: taskWindow } = draft
   const patch = (fields: Partial<TaskDraft>) => onDraft({ ...draft, ...fields })
-  const row = useRef<HTMLDivElement>(null)
   const m = useMessages()
 
   const pickStart = (iso: string) => {
@@ -117,7 +119,7 @@ function TaskCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
     })
   }
   return (
-    <StructuredRow className="ddlrow task-create-row" rowRef={row}>
+    <DraftSlot className="ddlrow task-create-row" slot={row}>
       <DateButton iso={start} className="din" onPick={pickStart} />
       <span className="dsep">–</span>
       <DateButton iso={end} className="din" onPick={pickEnd} />
@@ -155,12 +157,13 @@ function TaskCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
         onSubmit={save} onCancel={onCancel}
         value={title} onChange={(event) => patch({ title: event.target.value })}
       />
-    </StructuredRow>
+    </DraftSlot>
   )
 }
 
-/** The new-milestone row, a view of `draft`, which every change replaces through `onDraft`. */
-function MilestoneCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
+/** The new-milestone row, a view of `draft`, which every change replaces through `onDraft`; `row` is its draft slot. */
+function MilestoneCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
+  row: RefObject<HTMLElement | null>
   draft: MilestoneDraft
   onDraft: (draft: MilestoneDraft) => void
   triggers: Array<RefObject<HTMLElement | null>>
@@ -168,7 +171,6 @@ function MilestoneCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
   onCancel: () => void
 }) {
   const { date, done, title } = draft
-  const row = useRef<HTMLDivElement>(null)
   const m = useMessages()
 
   const save = (nextTitle: string): boolean | Promise<boolean> => {
@@ -176,7 +178,7 @@ function MilestoneCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
   }
 
   return (
-    <StructuredRow className="ddlrow milestone-create-row" rowRef={row}>
+    <DraftSlot className="ddlrow milestone-create-row" slot={row}>
       <DateButton iso={date} className="din" onPick={(next) => onDraft({ ...draft, date: next })} />
       <button
         className="din state-edit" type="button"
@@ -187,7 +189,7 @@ function MilestoneCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
         onSubmit={save} onCancel={onCancel}
         value={title} onChange={(event) => onDraft({ ...draft, title: event.target.value })}
       />
-    </StructuredRow>
+    </DraftSlot>
   )
 }
 
@@ -314,9 +316,15 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
   return (
     // The row is the toolbar of its own controls, from its date to its delete.
     <Toolbar label={task.title}>
-      <StructuredRow
+      <Item
         composite selected={selected} data-row={task.id} {...reorder} onActivate={onOpen}
         className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
+        actions={(
+          <IconButton
+            label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
+            className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
+          ><IconTrash /></IconButton>
+        )}
       >
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
         <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
@@ -338,13 +346,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
             </span>
           )
           : <TaskNameCell projectId={projectId} task={task} onSave={onSave} />}
-        <RowActions>
-          <IconButton
-            label={m.project.plan.deleteTaskFor(task.title)} size="nested" tone="danger"
-            className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
-          ><IconTrash /></IconButton>
-        </RowActions>
-      </StructuredRow>
+      </Item>
     </Toolbar>
   )
 }
@@ -360,10 +362,16 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
   const m = useMessages()
   const milestoneState: typeof MILESTONE_STATES[number] = milestone.done ? 'done' : 'open'
   return (
-    <StructuredRow
+    <Item
       data-row={milestone.id}
       className={`ddlrow milestone-row${milestone.done ? ' done' : ''}${flash ? ' flash' : ''}`}
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
+      actions={(
+        <IconButton
+          label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
+          tone="danger" className="row-delete" onClick={onDelete}
+        ><IconTrash /></IconButton>
+      )}
     >
       <DateButton
         iso={milestone.date} className="plan-cell plan-date-button"
@@ -382,13 +390,7 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
         keep={{ scope: ['project', projectId, 'milestone', milestone.id], target: 'name' }}
         onSave={(title) => onSave({ title })}
       />
-      <RowActions>
-        <IconButton
-          label={m.project.plan.deleteMilestoneFor(milestone.title)} size="nested"
-          tone="danger" className="row-delete" onClick={onDelete}
-        ><IconTrash /></IconButton>
-      </RowActions>
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -398,7 +400,7 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
  */
 export function ProjectPlan({
   projectId, project, tab, today, creating, flashId, selectedTaskId,
-  listRef, addRef, timelineAddRef,
+  listRef, draftRef, addRef, timelineAddRef,
   onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCreating, onCancelCreate,
   onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
@@ -413,6 +415,8 @@ export function ProjectPlan({
   /** The task whose detail panel is currently open, so its row can show as selected. */
   selectedTaskId: string | null
   listRef: RefObject<HTMLDivElement | null>
+  /** The draft slot of the new row, which the plan's add controls put the caret back in. */
+  draftRef: RefObject<HTMLElement | null>
   addRef: RefObject<HTMLButtonElement | null>
   timelineAddRef: RefObject<HTMLButtonElement | null>
   onTab: (tab: PlanTab) => void
@@ -471,11 +475,11 @@ export function ProjectPlan({
           {
             value: 'task', label: m.project.plan.taskMode, empty: m.project.plan.noTasks,
             content: project.tasks.length === 0 && creating?.kind !== 'task' ? null : (
-              <StructuredList id="taskList" variant="embedded">
+              <List id="taskList" variant="embedded">
                 {creating?.kind === 'task'
                   ? (
                     <TaskCreateRow
-                      draft={creating.draft} onDraft={(draft) => onCreating({ kind: 'task', draft })}
+                      row={draftRef} draft={creating.draft} onDraft={(draft) => onCreating({ kind: 'task', draft })}
                       triggers={[addRef, timelineAddRef]}
                       onCancel={onCancelCreate} onSave={onCreateTask}
                     />
@@ -510,13 +514,13 @@ export function ProjectPlan({
                       ))}
                     </CollapsibleGroup>
                   )}
-              </StructuredList>
+              </List>
             ),
           },
           {
             value: 'ms', label: m.project.plan.milestoneMode, empty: m.project.plan.noMilestones,
             content: project.milestones.length === 0 && creating?.kind !== 'ms' ? null : (
-              <StructuredList id="msList" variant="embedded">
+              <List id="msList" variant="embedded">
                 {activeMilestones.map((milestone) => (
                   <MilestoneRow
                     projectId={projectId}
@@ -529,7 +533,7 @@ export function ProjectPlan({
                 {creating?.kind === 'ms'
                   ? (
                     <MilestoneCreateRow
-                      draft={creating.draft} onDraft={(draft) => onCreating({ kind: 'ms', draft })}
+                      row={draftRef} draft={creating.draft} onDraft={(draft) => onCreating({ kind: 'ms', draft })}
                       triggers={[addRef, timelineAddRef]}
                       onCancel={onCancelCreate} onSave={onCreateMilestone}
                     />
@@ -553,7 +557,7 @@ export function ProjectPlan({
                       ))}
                     </CollapsibleGroup>
                   )}
-              </StructuredList>
+              </List>
             ),
           },
         ]}

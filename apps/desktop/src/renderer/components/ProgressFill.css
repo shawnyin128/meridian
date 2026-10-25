@@ -1,5 +1,6 @@
 .progress-host{position:relative;isolation:isolate;overflow:hidden}
 .progress-host>:not(.progress-fill){position:relative;z-index:1}
-.progress-fill{position:absolute;z-index:0;inset:0;border-radius:inherit;overflow:hidden;background:transparent;pointer-events:none}
-.progress-fill>span{display:block;height:100%;background:var(--chip);transition:width var(--t-slow) var(--e-out)}
+/* A thin line along the host's bottom edge: the track, filled from the left in the accent mark. The host's rounded corners clip its ends. */
+.progress-fill{position:absolute;z-index:0;right:0;bottom:0;left:0;height:2px;background:var(--track);pointer-events:none}
+.progress-fill>span{display:block;height:100%;background:var(--accent-mark);transition:width var(--t-slow) var(--e-out)}
 @media (prefers-reduced-motion:reduce){.progress-fill>span{transition:none}}

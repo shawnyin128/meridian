@@ -45,6 +45,9 @@ const GROUPED_SECTIONS = '.desk-body:has(.projpanel) > .section-heading, .desk-b
 /** One selector entry: `impl` is `shared:<Component>` or `hand:<file>`, `selector` finds its elements. */
 const entry = (impl, selector, options = {}) => ({ id: `${impl} ${selector}`, impl, selector, ...options })
 
+/** The slots of an Item that its title, meta and trailing metrics read. */
+const ITEM_PARTS = { title: '.item-title', meta: '.item-meta', trailing: '.item-trailing' }
+
 /**
  * Every pattern: its metric class and its entries, the shared component's classes first, then the
  * hand-built classes the inventory lists. An element that matches `not` is left out; `parts` names
@@ -147,14 +150,10 @@ export const PATTERNS = {
   List: {
     metrics: 'list',
     entries: [
-      entry('shared:StructuredList', '.structured-list'),
+      entry('shared:List', '.list'),
       entry('shared:PaperMetadata', '.paper-meta-list'),
       entry('shared:ProposalRows', '.proposal-rows'),
       entry('hand:shell/CommandPalette.tsx', '.cmdk-list'),
-      entry('hand:components/settings/ExtensionSettings.tsx', '.extension-prompt-list'),
-      entry('hand:components/settings/DiscoverySettings.tsx', '.direction-project'),
-      entry('hand:routes/Feed.tsx', '.brief'),
-      entry('hand:routes/Watches.tsx', '.author-matches'),
       entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope'),
       entry('hand:routes/Wiki.tsx', '.wktoc'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glabels'),
@@ -187,7 +186,7 @@ export const PATTERNS = {
   Row: {
     metrics: 'item',
     entries: [
-      entry('shared:StructuredRow', '.structured-row', { not: '.structured-row:has(> .form-control)' }),
+      entry('shared:Item', '.item--row', { not: '.draft-slot', parts: ITEM_PARTS }),
       entry('shared:NavRow', '.nav-row', { not: '.srow.disc, .sb-h' }),
       entry('shared:PickOption', '.mi.rrow', { parts: { title: '.rt', meta: '.rm' } }),
       entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr', { parts: { title: '.pt-title' } }),
@@ -196,20 +195,15 @@ export const PATTERNS = {
       entry('hand:components/wiki/WikiClaims.tsx', '.wkclaim-lines li'),
       entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope > div'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glrow'),
-      entry('hand:components/settings/DiscoverySettings.tsx', '.direction-row'),
-      entry('hand:components/settings/ExtensionSettings.tsx', '.extension-prompt'),
     ],
   },
   Card: {
     metrics: 'item',
     entries: [
-      entry('shared:ResearchObjectCard', '.research-object-card', { not: '.newcard, .research-object-card:has(.form-control)' }),
+      entry('shared:Item', '.item--card', { not: '.draft-slot, .draft-form-card', parts: ITEM_PARTS }),
       entry('shared:Card', '.card-surface'),
-      entry('shared:PaperCard', '.paper-card', { parts: { title: 'h3', meta: '.paper-card-metadata' } }),
       entry('shared:ProposalCard', '.proposal-card'),
       entry('shared:PaperUnderstanding', '.paper-understanding'),
-      entry('hand:routes/Feed.tsx', '.fitem', { parts: { title: '.fbody', meta: '.fsrc', trailing: '.ftime' } }),
-      entry('hand:components/reader/ReadingNotes.tsx', '.reading-card'),
       entry('hand:components/paper-table/ResearchMap.tsx', '.research-map-detail'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.gantt'),
     ],
@@ -217,9 +211,7 @@ export const PATTERNS = {
   DraftRow: {
     metrics: 'item',
     entries: [
-      entry('shared:InlineDraftInput', '.structured-row:has(> .form-control)'),
-      entry('hand:routes/Projects.tsx', '.research-object-card:has(.form-control)'),
-      entry('hand:routes/Wiki.tsx', '.wkcard.newcard'),
+      entry('shared:DraftSlot', '.draft-slot'),
       entry('hand:routes/Wiki.tsx', '.cmp .newrow'),
       entry('hand:components/project/ProjectSections.tsx', '.reladd'),
     ],
@@ -257,31 +249,22 @@ export const PATTERNS = {
   ItemTitle: {
     metrics: 'text',
     entries: [
-      entry('shared:PaperCard', '.paper-card h3'),
+      entry('shared:Item', '.item-title'),
       entry('shared:PickOption', '.mi.rrow .rt'),
       entry('hand:components/project/ProjectIdentity.tsx', '.project-identity-name'),
-      entry('hand:routes/Ideas.tsx', '.idea-card-title, .idea-row-title'),
       entry('hand:components/paper-table/PaperTable.tsx', '.pt-title'),
-      entry('hand:routes/Changelog.tsx', '.crow .ct'),
-      entry('hand:routes/Trash.tsx', '.tt2'),
       entry('hand:routes/Feed.tsx', '.fbody'),
-      entry('hand:routes/Wiki.tsx', '.wkcard .wt'),
       entry('hand:routes/ResearchOverview.tsx', '.ovpulse-title'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.timeline-item-label'),
-      entry('hand:routes/ProjectDetail.tsx', '.project-idea-title'),
-      entry('hand:routes/Watches.tsx', '.wrow .nm'),
     ],
   },
   ItemMeta: {
     metrics: 'text',
     entries: [
-      entry('shared:PaperCard', '.paper-card-metadata'),
+      entry('shared:Item', '.item-meta'),
       entry('shared:PickOption', '.mi.rrow .rm'),
       entry('hand:components/project/ProjectIdentity.tsx', '.project-identity-topic'),
       entry('hand:components/project/ProjectControl.tsx', '.project-control-text, .project-control-meta'),
-      entry('hand:routes/Ideas.tsx', '.idea-card-meta, .idea-card-source, .idea-row-meta'),
-      entry('hand:routes/Projects.tsx', '.prow .m'),
-      entry('hand:routes/Changelog.tsx', '.crow .cm'),
       entry('hand:components/paper-table/PaperTable.tsx', '.pt-dim'),
       entry('hand:routes/Wiki.tsx', '.wkcard .wm'),
       entry('hand:routes/ResearchOverview.tsx', '.ovpulse-sub'),
@@ -290,14 +273,12 @@ export const PATTERNS = {
   TrailingMeta: {
     metrics: 'text',
     entries: [
+      entry('shared:Item', '.item-trailing'),
       entry('shared:TrailingDate', '.trailing-date'),
       entry('shared:PaperCardCitations', '.paper-card-citations'),
       entry('shared:SourceAnchor', '.source-anchor'),
       entry('hand:routes/Feed.tsx', '.ftime'),
-      entry('hand:routes/Trash.tsx', '.tm2'),
       entry('hand:routes/ResearchOverview.tsx', '.ovlist-meta'),
-      entry('hand:routes/Projects.tsx', '.pp-h > .dd'),
-      entry('hand:routes/ProjectDetail.tsx', '.project-idea-source'),
     ],
   },
   RowActions: {
@@ -318,11 +299,10 @@ export const PATTERNS = {
   SelectedState: {
     metrics: 'state',
     entries: [
-      entry('shared:StructuredRow', '.structured-row--selected'),
+      entry('shared:Item', '.item--selected'),
       entry('shared:NavRow', '.srow.on'),
       entry('shared:IconButton', '.icbtn[aria-pressed="true"]'),
       entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr.selected'),
-      entry('hand:components/reader/ReadingNotes.tsx', '.reading-card.selected'),
     ],
   },
   Tag: {

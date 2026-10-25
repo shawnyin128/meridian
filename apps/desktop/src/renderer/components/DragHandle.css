@@ -5,19 +5,19 @@
 /* An inline grip sits on the line before its item's label and shows while its item is hovered or holds focus. */
 .icbtn.xs.drag-handle{margin-inline:calc(-1 * var(--sp-6)) var(--sp-2);vertical-align:middle;opacity:0}
 [data-reorder-item]:is(:hover,:focus-within) .icbtn.xs.drag-handle{opacity:1}
-/* An item that is its own handle shows the drag cursors the grip shows. */
-[data-reorder-item][draggable="true"]{cursor:var(--cursor-draggable)}
-[data-reorder-item][draggable="true"]:active,[data-reorder-item][draggable="true"].dragging{cursor:var(--cursor-dragging)}
 /*
- * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a 2px line
- * shows the side it would land on, above or below in a column, left or right in a run. :where() keeps
- * these weaker than an item's own look, such as a card's.
+ * The reorderable items no shared component draws, which Item draws for its own: a relation chip, a
+ * timeline label row, a table header cell. One that is its own handle shows the drag cursors the grip
+ * shows. The item held dims, and a 2px line shows the side it would land on, above or below in a
+ * column, left or right in a run, from useDragReorder's classes and data-reorder-axis.
  */
-:where([data-reorder-item]).dragging{opacity:.4}
-:where([data-reorder-axis="y"]).drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
-:where([data-reorder-axis="y"]).drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
-:where([data-reorder-axis="x"]).drag-over-before{box-shadow:-2px 0 0 0 var(--ink)}
-:where([data-reorder-axis="x"]).drag-over-after{box-shadow:2px 0 0 0 var(--ink)}
+[data-reorder-item][draggable="true"]:not(.item){cursor:var(--cursor-draggable)}
+[data-reorder-item][draggable="true"]:not(.item):active,[data-reorder-item][draggable="true"]:not(.item).dragging{cursor:var(--cursor-dragging)}
+:where([data-reorder-item]:not(.item)).dragging{opacity:.4}
+:where([data-reorder-axis="y"]:not(.item)).drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
+:where([data-reorder-axis="y"]:not(.item)).drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
+:where([data-reorder-axis="x"]:not(.item)).drag-over-before{box-shadow:-2px 0 0 0 var(--ink)}
+:where([data-reorder-axis="x"]:not(.item)).drag-over-after{box-shadow:2px 0 0 0 var(--ink)}
 /* A table header cell's neighbours paint over its edges, so its line lies just inside them. */
 :where(th[data-reorder-axis="x"]).drag-over-before{box-shadow:inset 2px 0 0 0 var(--ink)}
 :where(th[data-reorder-axis="x"]).drag-over-after{box-shadow:inset -2px 0 0 0 var(--ink)}
