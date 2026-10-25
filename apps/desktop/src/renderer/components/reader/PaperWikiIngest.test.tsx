@@ -75,6 +75,7 @@ const api = vi.hoisted(() => ({
 }))
 
 vi.mock('../../ipc.js', () => ({
+  appMenu: { platform: () => 'darwin' },
   harness: {
     pendingPaperWiki: api.pending,
     preparePaperWiki: api.prepare,
@@ -546,6 +547,39 @@ describe('PaperWikiIngest', () => {
       note: '第 4 页的限制条件被遗漏。',
     })
     expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--info')].map((line) => line.textContent)).toContain('提案已丢弃')
+  })
+
+  it('discards with the note on ⌘Enter in the note, as its discard button does; a plain Enter starts a new line', async () => {
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click() })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '丢弃提案')!.click()
+    })
+    const note = host.querySelector<HTMLTextAreaElement>('[aria-label="丢弃提案的补充说明"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLTextAreaElement.prototype, 'value')!.set!.call(note, '少了第 4 页的限制条件。')
+      note.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const key = (init: KeyboardEventInit) => act(async () => {
+      note.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init }))
+    })
+    await key({ key: 'Enter' })
+    expect(api.reject).not.toHaveBeenCalled()
+    await key({ key: 'Enter', metaKey: true })
+    expect(api.reject).toHaveBeenCalledExactlyOnceWith('proposal-1', { reasons: ['other'], note: '少了第 4 页的限制条件。' })
+  })
+
+  it('writes the proposal to the Wiki only on a click of 确认写入 Wiki, never on ⌘Enter in its content', async () => {
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    await act(async () => { host.querySelector<HTMLButtonElement>('[data-testid="start-harness"]')!.click() })
+    await act(async () => {
+      [...host.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === 'Markdown 编辑')!.click()
+    })
+    const editor = host.querySelector<HTMLTextAreaElement>('[aria-label="Wiki 提案内容"]')!
+    await act(async () => {
+      editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
+    })
+    expect(api.apply).not.toHaveBeenCalled()
   })
 
   it('offers the rejection reasons as chips that each toggle on their own, not as segments', async () => {

@@ -8,6 +8,7 @@ import { harness } from '../../ipc.js'
 import { editField, useDrafts, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useModelStatus } from '../../hooks/useModelStatus.js'
+import { commitKeys } from '../../lib/keyboard.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useScrollFade } from '../../hooks/useScrollFade.js'
@@ -285,7 +286,8 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           <FormTextarea appearance="field" rows={2} maxLength={500}
             aria-label={m.wiki.ingest.rejectionNoteLabel} placeholder={m.wiki.ingest.rejectionNotePlaceholder}
             disabled={rejecting}
-            value={rejectionNote} onChange={(event) => setRejection({ reasons: rejectionReasons, note: event.target.value })} />
+            value={rejectionNote} onChange={(event) => setRejection({ reasons: rejectionReasons, note: event.target.value })}
+            onKeyDown={commitKeys({ multiline: true, onSave: submitRejection })} />
           <div className="wiki-ingest-actions">
             <Button size="compact" disabled={rejecting} onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</Button>
             <Button size="compact" tone="danger" busy={rejecting} busyLabel={m.wiki.ingest.discarding} onClick={submitRejection}>
