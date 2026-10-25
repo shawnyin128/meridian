@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { driftMarkdown, driftRanking, driftSummary } from './drift.mjs'
+import { driftMarkdown, driftRanking, driftSummary, newInstance } from './drift.mjs'
 
 const row = (screen, padding, extra = {}) => ({ combo: '1440x900-light', screen, pattern: 'Row', metrics: { padding, inset: 12, ...extra } })
 
@@ -51,5 +51,29 @@ describe('the drift summary', () => {
     expect(report).toContain('| Row | 2 | 2 | padding | 3 |')
     expect(report).toContain('| padding | 2 | `0` ×1 (想法)<br>`8 12` ×1 (项目) |')
     expect(report).toContain('- 设置 · watches: timeout')
+  })
+})
+
+describe('counting instances across states', () => {
+  const record = (id, path, label = 'structured-row 项目 A', metrics = { padding: '8' }) => ({ id, path, label, metrics })
+
+  it('counts an element a later state draws anew at the same place once', () => {
+    const seen = new Set()
+    expect(newInstance(seen, '项目详情 Row', record(1, '0.2.4'))).toBe(true)
+    expect(newInstance(seen, '项目详情 Row', record(7, '0.2.4'))).toBe(false)
+  })
+
+  it('counts two different elements at the same place twice', () => {
+    const seen = new Set()
+    expect(newInstance(seen, 'Wiki Card', record(1, '0.2.4', 'wkcard 主题'))).toBe(true)
+    expect(newInstance(seen, 'Wiki Card', record(2, '0.2.4', 'wkcard 论文'))).toBe(true)
+    expect(newInstance(seen, 'Wiki Card', record(3, '0.2.4', 'wkcard 主题', { padding: '0' }))).toBe(true)
+  })
+
+  it('counts an element that moved once, and the same place on another screen again', () => {
+    const seen = new Set()
+    expect(newInstance(seen, '论文 Row', record(1, '0.2.4'))).toBe(true)
+    expect(newInstance(seen, '论文 Row', record(1, '0.2.5'))).toBe(false)
+    expect(newInstance(seen, '想法 Row', record(9, '0.2.4'))).toBe(true)
   })
 })
