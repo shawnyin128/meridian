@@ -71,7 +71,8 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
   /**
    * The nearest block above (`dir` -1) or below (+1) `el` in document order, below `root`: a
    * visible sibling of `el` or of an ancestor that shares some of its width and lies wholly on
-   * that side, so blocks in another column or overlaid ones are passed over.
+   * that side, so blocks in another column or overlaid ones are passed over. Null when `el` is
+   * the first or last block in `root`.
    */
   const neighbour = (el, dir, root) => {
     const own = rect(el)
@@ -188,7 +189,11 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
     const parts = item.parts ?? {}
     switch (item.metrics) {
       case 'heading': {
-        const root = el.closest('.screenslot, .modal, [data-radix-popper-content-wrapper]') ?? document.body
+        // Gaps are taken inside the heading's scroll container, so a scrolled page reads the same.
+        let root = el.parentElement
+        while (root !== document.body && !['auto', 'scroll'].includes(getComputedStyle(root).overflowY)
+          && !root.matches('.desk, .modal, [data-radix-popper-content-wrapper]')) root = root.parentElement
+        const top = rect(root).top + root.clientTop - root.scrollTop
         const before = neighbour(el, -1, root)
         const after = neighbour(el, 1, root)
         const host = part(el, parts.title) ?? textHost(el)
@@ -197,8 +202,8 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
         return {
           font: host ? font(getComputedStyle(host)) : null,
           color: host ? tok(getComputedStyle(host).color) : null,
-          above: before ? r1(box.top - rect(before).bottom) : null,
-          below: after ? r1(rect(after).top - box.bottom) : null,
+          above: r1(box.top - (before ? rect(before).bottom : top)),
+          below: r1((after ? rect(after).top : top + root.scrollHeight) - box.bottom),
           count: badge ? `badge ${fontColour(badge)}` : inline ? 'inline' : 'none',
         }
       }
