@@ -12,7 +12,7 @@ import { dnum } from '../../shared/dates.js'
 import { useFormat, type Format } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
-import { ChatMessageView } from '../components/chat/ChatMessage.js'
+import { ChatMessageView, endsUnanswered } from '../components/chat/ChatMessage.js'
 import {
   ChatComposer, draftText, type ChatComposerHandle, type MentionCandidate,
 } from '../components/chat/ChatComposer.js'
@@ -26,6 +26,7 @@ import {
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useDraftSlot } from '../components/DraftSlot.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
+import { useChatTurn } from '../hooks/useChatTurn.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useModelStatus } from '../hooks/useModelStatus.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
@@ -94,7 +95,7 @@ export function Chat() {
   // The message being typed and an idea being drafted belong to their chat.
   const drafts = useDrafts<ChatRun[]>(['chat', id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['chat', id ?? ''])
-  const { running, run, stop } = useGenerations()
+  const { running, stop } = useGenerations()
   const { track } = useModelStatus()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
   const [rows, setRows] = useState<PaperRow[]>([])
@@ -126,10 +127,11 @@ export function Chat() {
   // Empty until the vault data arrives, after which an `@` already typed opens the picker by itself.
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
 
+  const turn = useChatTurn(track)
   const send = useCallback((session: string, runs: ChatRun[]) => {
     follow()
-    return run(write(track(chat.send(session, runs))))
-  }, [follow, run, write, track])
+    return turn.send(session, runs)
+  }, [follow, turn])
 
   const stopSending = () => {
     if (id !== null) stop(id)
@@ -187,13 +189,18 @@ export function Chat() {
         <div className="stream">
           <PageError error={error} />
 
-          <div className="msgs">
+          <div className="msgs" role="log" aria-label={m.chat.messagesLabel}>
             {messages === null
               ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
               : messages.length === 0
                 ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
-                : messages.map((msg) => (
-                  <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
+                : messages.map((msg, at) => (
+                  <ChatMessageView
+                    key={msg.id} message={msg} onAct={() => act(msg)}
+                    onRetry={id !== null && !sending && at === messages.length - 1 && endsUnanswered(messages)
+                      ? () => { follow(); void turn.retry(id) }
+                      : undefined}
+                  />
                 ))}
             {id === null || ideaDraft === undefined
               ? null

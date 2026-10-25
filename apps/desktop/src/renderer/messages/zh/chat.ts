@@ -12,6 +12,7 @@ export const chat = {
   recordedNote: (project: string) => `已记入《${project}》的科研记录`,
   archivedSuffix: (title: string) => `${title} · 已归档`,
   paperChatLabel: '当前论文对话',
+  messagesLabel: '对话记录',
   expandPaperChat: '展开论文对话',
   collapsePaperChat: '收起论文对话',
   paperChatWidth: '论文对话宽度',

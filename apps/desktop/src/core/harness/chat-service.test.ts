@@ -4,7 +4,7 @@ import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { callFailure } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
-import { sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
+import { ChatFailure, sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
 import { createChatService } from './chat-service.js'
 import type { CredentialVault } from './credential-vault.js'
 import { createHarnessModelConfig } from './model-config.js'
@@ -177,6 +177,69 @@ describe('Core chat service', () => {
     const service = createChatService({ store, model: await configuredModel(), runner })
 
     await expect(service.send('amortize', written('测试'))).resolves.toEqual({ id: 'amortize', state: 'failed', reason: 'model' })
+  })
+
+  /** A runner whose model answers with each of `answers` in turn: a string is an answer, an Error a failure. */
+  const runnerOf = (...answers: Array<string | Error>): ChatHarnessRunner => {
+    const queue = [...answers]
+    return {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn(async () => {
+        const next = queue.shift()!
+        if (next instanceof Error) throw next
+        return next
+      }),
+      close: vi.fn(),
+    }
+  }
+  const textsAfter = (store: ReturnType<typeof createFixtureStore>, before: number) =>
+    store.chatMessages('amortize').slice(before).map((message) => [message.role, message.runs.map((run) => run.text).join('')])
+
+  it('没得到回答的那一轮,状态行用平白的话说出了什么事:模型服务自己说清的原因照写,其他报错的原文不写进来', async () => {
+    const store = createFixtureStore()
+    const service = createChatService({
+      store, model: await configuredModel(),
+      runner: runnerOf(new ChatFailure('模型服务请求超时'), new Error('TypeError: Cannot read properties of undefined (reading "answer")')),
+    })
+    const before = store.chatMessages('amortize').length
+    await service.send('amortize', written('第一问'))
+    await service.send('amortize', written('第二问'))
+    expect(textsAfter(store, before)).toEqual([
+      ['you', '第一问'], ['status', '生成失败：模型服务请求超时'],
+      ['you', '第二问'], ['status', '生成失败：模型服务调用失败'],
+    ])
+  })
+
+  it('重试一轮没回答的问题:再问模型一次同一个问题,问题不再写一遍,回答接在状态行后面', async () => {
+    const store = createFixtureStore()
+    const runner = runnerOf(new ChatFailure('AI 服务停了'), '重试后的回答')
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const before = store.chatMessages('amortize').length
+    await service.send('amortize', written('  要重试的问题 '))
+
+    await expect(service.retry('amortize')).resolves.toEqual({ id: 'amortize', state: 'complete' })
+    expect(runner.answer).toHaveBeenLastCalledWith('amortize', '要重试的问题', expect.any(AbortSignal))
+    expect(textsAfter(store, before)).toEqual([
+      ['you', '要重试的问题'], ['status', '生成失败：AI 服务停了'], ['ai', '重试后的回答'],
+    ])
+  })
+
+  it('最后一问已经有回答时不重试,还在生成时报忙', async () => {
+    const store = createFixtureStore()
+    let reply: (answer: string) => void = () => {}
+    const runner: ChatHarnessRunner = {
+      ...runnerOf(),
+      answer: vi.fn(() => new Promise<string>((resolve) => { reply = resolve })),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const sending = service.send('amortize', written('问'))
+    expect(callFailure(await service.retry('amortize').catch((error: unknown) => error))).toBe('busy')
+    reply('答')
+    await sending
+    expect(callFailure(await service.retry('amortize').catch((error: unknown) => error))).toBe('refused')
+    expect(runner.answer).toHaveBeenCalledTimes(1)
   })
 
   it('fails a second send to a chat that is still generating as busy', async () => {

@@ -33,6 +33,7 @@ chat.ideaSavedNote notice
 chat.mentionGroup.page label
 chat.mentionGroup.paper label
 chat.mentionGroup.project label
+chat.messagesLabel aria
 chat.newChat state
 chat.paperChatLabel aria
 chat.paperChatWidth aria
