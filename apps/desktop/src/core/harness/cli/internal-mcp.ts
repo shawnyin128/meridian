@@ -116,6 +116,35 @@ function serve(socket: Socket, token: Buffer, reply: (line: string) => Promise<R
 }
 
 /**
+ * The arguments that give each CLI the internal MCP server, started as `server` with `env`, offering
+ * `tools`: Claude reads its configuration from `configFile`, Codex takes per-run overrides.
+ */
+export function internalMcpArgs(options: {
+  configFile: string
+  server: InternalMcpServer
+  env: Record<string, string>
+  tools: readonly string[]
+}): Pick<InternalMcp, 'claudeArgs' | 'codexArgs'> {
+  const key = `mcp_servers.${SERVER_NAME}`
+  return {
+    claudeArgs: ['--mcp-config', options.configFile, '--allowedTools', options.tools.map((name) => `mcp__${SERVER_NAME}__${name}`).join(',')],
+    // Each `-c` value is TOML, which a JSON string or array of strings already is. The token reaches
+    // the server through Codex's own environment, so it never shows on a command line. A model that
+    // calls tools only from code mode gets this server's tools as direct tools, so code mode's host,
+    // which runs model-written JavaScript, stays off.
+    codexArgs: [
+      '-c', `${key}.command=${JSON.stringify(options.server.command)}`,
+      '-c', `${key}.args=${JSON.stringify(options.server.args)}`,
+      '-c', `${key}.env={${Object.entries(options.env).map(([name, value]) => `${name}=${JSON.stringify(value)}`).join(', ')}}`,
+      '-c', `${key}.env_vars=${JSON.stringify([TOKEN_VARIABLE])}`,
+      '-c', `${key}.enabled_tools=${JSON.stringify(options.tools)}`,
+      '-c', `${key}.default_tools_approval_mode="approve"`,
+      '-c', `features.code_mode.direct_only_tool_namespaces=${JSON.stringify([`mcp__${SERVER_NAME}`])}`,
+    ],
+  }
+}
+
+/**
  * The opener of a run's internal MCP server: for each run it opens a channel only that run's token
  * can use, a Unix socket in the run's folder that only the user can open or, on Windows, a named
  * pipe, and writes the configuration that has the CLI start `server` and reach the channel. Every
@@ -161,20 +190,9 @@ export function createInternalMcp(deps: {
     })
     if (!windows) chmodSync(address, 0o600)
 
-    const key = `mcp_servers.${SERVER_NAME}`
     let closed: Promise<void> | undefined
     return {
-      claudeArgs: ['--mcp-config', configFile, '--allowedTools', names.map((name) => `mcp__${SERVER_NAME}__${name}`).join(',')],
-      // Each `-c` value is TOML, which a JSON string or array of strings already is. The token reaches
-      // the server through Codex's own environment, so it never shows on a command line.
-      codexArgs: [
-        '-c', `${key}.command=${JSON.stringify(server.command)}`,
-        '-c', `${key}.args=${JSON.stringify(server.args)}`,
-        '-c', `${key}.env={${Object.entries(env).map(([name, value]) => `${name}=${JSON.stringify(value)}`).join(', ')}}`,
-        '-c', `${key}.env_vars=${JSON.stringify([TOKEN_VARIABLE])}`,
-        '-c', `${key}.enabled_tools=${JSON.stringify(names)}`,
-        '-c', `${key}.default_tools_approval_mode="approve"`,
-      ],
+      ...internalMcpArgs({ configFile, server, env, tools: names }),
       env: { [TOKEN_VARIABLE]: token },
       close: () => closed ??= new Promise((resolve) => {
         for (const socket of connections) socket.destroy()

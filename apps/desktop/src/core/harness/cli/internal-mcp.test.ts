@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { HarnessCli } from '../../../shared/contract.js'
 import { createFixtureStore } from '../../fixture-store.js'
-import { CODEX_DISABLED_FEATURES, createCliRunner } from './runner.js'
+import { CODEX_DISABLED_FEATURES, createCliRunner, runnerFlags } from './runner.js'
 import { createInternalMcp, type InternalMcpOpener } from './internal-mcp.js'
 
 const STAR = '13979-STAR-Speculative-Decodin'
@@ -267,7 +267,8 @@ describe('the internal MCP server of a subscription CLI run', () => {
     expect(mcp.claudeArgs).toEqual(['--mcp-config', configFile, '--allowedTools', TOOLS.map((tool) => `mcp__vault__${tool}`).join(',')])
     const overrides = mcp.codexArgs.filter((_, at) => at % 2 === 1)
     expect(mcp.codexArgs.filter((_, at) => at % 2 === 0)).toEqual(overrides.map(() => '-c'))
-    expect(overrides.every((override) => override.startsWith('mcp_servers.vault.'))).toBe(true)
+    expect(overrides.filter((override) => !override.startsWith('mcp_servers.vault.')))
+      .toEqual(['features.code_mode.direct_only_tool_namespaces=["mcp__vault"]'])
     expect(overrides).toContain(`mcp_servers.vault.enabled_tools=${JSON.stringify(TOOLS)}`)
     expect(overrides).toContain('mcp_servers.vault.env_vars=["MERIDIAN_VAULT_MCP_TOKEN"]')
     expect([...mcp.claudeArgs, ...mcp.codexArgs].join(' ')).not.toContain(token)
@@ -312,8 +313,10 @@ describe('the internal MCP server of a subscription CLI run', () => {
     } else {
       expect(seen!.argv).toEqual(expect.arrayContaining(['--ignore-user-config', '--ignore-rules']))
       const disabled = seen!.argv.flatMap((arg, at) => (seen!.argv[at - 1] === '--disable' ? [arg] : []))
-      expect(disabled).toEqual(CODEX_DISABLED_FEATURES.filter((feature) => feature !== 'code_mode_host'))
+      expect(disabled).toEqual([...CODEX_DISABLED_FEATURES])
     }
+    const flags = seen!.argv.filter((arg) => arg.startsWith('-') && arg !== '-').map((arg) => arg.split('=')[0])
+    expect(runnerFlags(cli)).toEqual(expect.arrayContaining([...new Set(flags)]))
     expect(opened).toEqual([expect.any(String), 'closed'])
     expect(alive(seen!.serverPid)).toBe(false)
     expect(existsSync(opened[0]!)).toBe(false)

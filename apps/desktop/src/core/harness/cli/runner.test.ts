@@ -326,14 +326,14 @@ describe('subscription CLI runner', () => {
     expect(existsSync(record!.cwd)).toBe(false)
   })
 
-  it('names every flag it passes, the way each CLI\'s help lists them', () => {
+  it('names every flag it passes, a call that looks up the vault included, the way each CLI\'s help lists them', () => {
     expect(runnerFlags('claude')).toEqual([
       '-p', '--output-format', '--json-schema', '--tools', '--strict-mcp-config', '--setting-sources',
-      '--no-session-persistence', '--system-prompt', '--model',
+      '--no-session-persistence', '--system-prompt', '--model', '--mcp-config', '--allowedTools',
     ])
     expect(runnerFlags('codex')).toEqual([
       '--ephemeral', '--skip-git-repo-check', '--sandbox', '--ignore-user-config', '--ignore-rules', '--json',
-      '--color', '--output-schema', '-o', '-C', '--disable', '--model',
+      '--color', '--output-schema', '-o', '-C', '--disable', '--model', '-c',
     ])
   })
 
