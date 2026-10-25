@@ -285,7 +285,9 @@ process.stdin.on('end', () => {
       } as unknown as VaultStore,
       model: { runtime: async () => ({ source: 'cli', cli: 'claude' }) } as unknown as HarnessModelConfig,
       cli: createCliRunner({
-        binary: async () => claude,
+        discover: async (cli) => ({
+          cli, installed: true, binary: claude, version: '2.1.280', missingFlags: [], signIn: 'subscription',
+        }),
         environment: { ...process.env, ANTHROPIC_API_KEY: 'sk-ant-must-not-cross' },
       }),
       launch: () => launchHarnessProcess(config),

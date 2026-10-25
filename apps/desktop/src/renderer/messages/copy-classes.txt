@@ -89,10 +89,14 @@ common.failure.label failure
 common.failure.reasons.busy failure
 common.failure.reasons.cancelled failure
 common.failure.reasons.changed failure
+common.failure.reasons.cli-missing failure
+common.failure.reasons.cli-signed-out failure
+common.failure.reasons.cli-unsupported failure
 common.failure.reasons.in-use failure
 common.failure.reasons.invalid failure
 common.failure.reasons.key-unreadable failure
 common.failure.reasons.key-unsaved failure
+common.failure.reasons.malformed-output failure
 common.failure.reasons.model failure
 common.failure.reasons.newer-changes failure
 common.failure.reasons.newer-version failure
@@ -107,6 +111,7 @@ common.failure.reasons.server failure
 common.failure.reasons.timeout failure
 common.failure.reasons.unavailable failure
 common.failure.reasons.update-files failure
+common.failure.reasons.usage-limit failure
 common.failure.reasons.write failure
 common.failure.unknown failure
 common.field.chooseDirectory action
@@ -751,6 +756,9 @@ settings.model.connection.connected state
 settings.model.connection.connectedNoModelCall state
 settings.model.connection.detailLabel label
 settings.model.connection.failures.authentication failure
+settings.model.connection.failures.cli-missing failure
+settings.model.connection.failures.cli-signed-out failure
+settings.model.connection.failures.cli-unsupported failure
 settings.model.connection.failures.configuration failure
 settings.model.connection.failures.model-or-endpoint failure
 settings.model.connection.failures.provider failure

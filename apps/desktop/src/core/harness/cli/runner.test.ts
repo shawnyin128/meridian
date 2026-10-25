@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, parse } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
 import type { HarnessCli } from '../../../shared/contract.js'
+import type { CliDiscovery } from './discovery.js'
 import { CODEX_DISABLED_FEATURES, createCliRunner, runnerFlags, strictSchema } from './runner.js'
 
 /** What a stand-in CLI saw: its arguments, stdin, the variables of interest and its folder. */
@@ -66,8 +67,13 @@ afterEach(() => {
   for (const folder of folders.splice(0)) rmSync(folder, { recursive: true, force: true })
 })
 
+/** `cli` found at `binary`, supported and signed in with the user's subscription, unless `fields` say otherwise. */
+const found = (cli: HarnessCli, binary: string, fields: Partial<Extract<CliDiscovery, { installed: true }>> = {}): CliDiscovery => ({
+  cli, installed: true, binary, version: '2.1.280', missingFlags: [], signIn: 'subscription', ...fields,
+})
+
 /** A folder holding stand-in `claude` and `codex` executables and the file they record to. */
-function standIns(reply: Reply) {
+function standIns(reply: Reply, discovered: Partial<Extract<CliDiscovery, { installed: true }>> = {}) {
   const root = mkdtempSync(join(tmpdir(), 'meridian-cli-test-'))
   folders.push(root)
   const bin = join(root, 'bin')
@@ -88,7 +94,7 @@ function standIns(reply: Reply) {
     STAND_IN_REPLY: JSON.stringify(reply),
   }
   const runner = createCliRunner({
-    binary: async (cli: HarnessCli) => join(bin, cli),
+    discover: async (cli: HarnessCli) => found(cli, join(bin, cli), discovered),
     environment,
   })
   const records = (): Seen[] => existsSync(recordFile)
@@ -247,27 +253,27 @@ describe('subscription CLI runner', () => {
 
   it('reports an error the CLI gives as a failure in its own words, once and without a retry', async () => {
     const claude = standIns({
-      stdout: claudeResult({ is_error: true, result: 'Claude AI usage limit reached' }),
+      stdout: claudeResult({ is_error: true, result: 'API Error: 500 Internal server error' }),
       exit: 1,
     })
     await expect(claude.runner(call('claude'))).rejects.toMatchObject({
-      kind: 'failed', message: expect.stringContaining('Claude AI usage limit reached'),
+      kind: 'failed', message: expect.stringContaining('API Error: 500 Internal server error'),
     })
     expect(claude.records()).toHaveLength(1)
 
     const codex = standIns({
-      stdout: `${codexEvents()}\n${JSON.stringify({ type: 'turn.failed', error: { message: 'You hit your usage limit' } })}`,
+      stdout: `${codexEvents()}\n${JSON.stringify({ type: 'turn.failed', error: { message: 'stream disconnected before completion' } })}`,
       exit: 1,
     })
     await expect(codex.runner(call('codex'))).rejects.toMatchObject({
-      kind: 'failed', message: expect.stringContaining('You hit your usage limit'),
+      kind: 'failed', message: expect.stringContaining('stream disconnected before completion'),
     })
     expect(codex.records()).toHaveLength(1)
   })
 
   it('gives a failure the CLI\'s exit code and the redacted end of its stderr', async () => {
     const claude = standIns({
-      stdout: claudeResult({ is_error: true, result: 'Claude AI usage limit reached' }),
+      stdout: claudeResult({ is_error: true, result: 'API Error: 500 Internal server error' }),
       stderr: 'warming up\nAuthorization: Bearer sk-ant-oat01-secretsecretsecret\nrate limited until 15:00\n',
       exit: 1,
     })
@@ -318,10 +324,46 @@ describe('subscription CLI runner', () => {
   })
 
   it('a CLI that is not installed or does not start is unavailable', async () => {
-    const missing = createCliRunner({ binary: async () => null, environment: {} })
+    const missing = createCliRunner({ discover: async (cli) => ({ cli, installed: false }), environment: {} })
     await expect(missing(call('claude'))).rejects.toMatchObject({ kind: 'unavailable' })
 
-    const broken = createCliRunner({ binary: async () => join(tmpdir(), 'meridian-no-such-cli'), environment: {} })
+    const broken = createCliRunner({
+      discover: async (cli) => found(cli, join(tmpdir(), 'meridian-no-such-cli')), environment: {},
+    })
     await expect(broken(call('codex'))).rejects.toMatchObject({ kind: 'unavailable' })
+  })
+
+  it('starts no call on a CLI that lacks a flag it passes or is not signed in with the user\'s subscription', async () => {
+    const unsupported = standIns({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) }, { missingFlags: ['--json-schema'] })
+    await expect(unsupported.runner(call('claude'))).rejects.toMatchObject({ kind: 'unsupported' })
+    expect(unsupported.records()).toEqual([])
+
+    for (const signIn of ['other', 'signed-out', 'unknown'] as const) {
+      const { runner, records } = standIns({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) }, { signIn })
+      await expect(runner(call('claude'))).rejects.toMatchObject({ kind: 'signed-out' })
+      expect(records()).toEqual([])
+    }
+  })
+
+  it('reports a reached usage limit as its own failure, from the error the CLI reports or the end of its stderr', async () => {
+    const claude = standIns({
+      stdout: claudeResult({ is_error: true, result: "You've hit your session limit · resets 3pm (Europe/Paris)" }),
+      exit: 1,
+    })
+    await expect(claude.runner(call('claude'))).rejects.toMatchObject({
+      kind: 'usage-limit', exitCode: 1, message: expect.stringContaining("You've hit your session limit"),
+    })
+
+    const codex = standIns({
+      stdout: `${codexEvents()}\n${JSON.stringify({
+        type: 'turn.failed', error: { message: 'You’ve hit your usage limit. Try again at 3:05 PM.' },
+      })}`,
+      exit: 1,
+    })
+    await expect(codex.runner(call('codex'))).rejects.toMatchObject({ kind: 'usage-limit', exitCode: 1 })
+
+    const printed = standIns({ stdout: 'not json', stderr: "starting\nYou've hit your weekly limit · resets Oct 31\n", exit: 1 })
+    await expect(printed.runner(call('claude'))).rejects.toMatchObject({ kind: 'usage-limit', exitCode: 1 })
+    expect([claude, codex, printed].map(({ records }) => records().length)).toEqual([1, 1, 1])
   })
 })

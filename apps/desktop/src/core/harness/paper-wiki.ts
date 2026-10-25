@@ -9,6 +9,7 @@ import { CallError } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { extractPdfPages, probePdf } from '../paper-library/index.js'
 import { CliRunError } from './cli/child.js'
+import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { CliResult, CliRunner } from './cli/runner.js'
 import type { HarnessExecution, HarnessRunner } from './cost-gate.js'
 import type { HarnessModelConfig } from './model-config.js'
@@ -18,6 +19,9 @@ import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcEr
 const CLI_CALL_TIMEOUT_MS = 10 * 60_000
 /** A CLI run's request also covers the reads before its model call and the checks after it. */
 const CLI_REQUEST_TIMEOUT_MS = CLI_CALL_TIMEOUT_MS + 2 * 60_000
+
+/** What Harness names as the detail of a model error whose output failed the draft schema or cited outside the run's scope. */
+const MALFORMED_OUTPUT_DETAILS: ReadonlySet<unknown> = new Set(['structured_output', 'invalid_anchor'])
 
 const ModelInvokeParamsSchema = z.object({
   system: z.string().min(1).max(20_000),
@@ -378,6 +382,19 @@ export function paperWikiHarnessError(cause: unknown): Error {
   return new CallError('model', cause.message, { cause })
 }
 
+/**
+ * The error a run on a subscription CLI fails with for `cause`: the reason its CLI call failed for
+ * when that call reported `failure`, malformed output when Harness found the CLI's output invalid,
+ * and otherwise what `paperWikiHarnessError` makes of it.
+ */
+function subscriptionRunError(cause: unknown, failure: CliRunError | undefined): Error {
+  if (failure !== undefined) return new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })
+  if (cause instanceof HarnessRpcError && cause.kind === 'model_error' && MALFORMED_OUTPUT_DETAILS.has(cause.detail)) {
+    return new CallError('malformed-output', cause.message, { cause })
+  }
+  return paperWikiHarnessError(cause)
+}
+
 function usageLine(cli: HarnessCliModel['cli'], result: CliResult): string {
   const parts = [`${(result.durationMs / 1_000).toFixed(1)} s`]
   if (result.turns !== undefined) parts.push(`${result.turns} turns`)
@@ -437,8 +454,10 @@ export function createPaperWikiHarnessRunner(options: {
     },
   })
 
-  /** The one model call of a run on `model`, which ends when `signal` aborts. */
-  const modelCall = (model: HarnessCliModel, signal: AbortSignal): HarnessCallback => {
+  /** The one model call of a run on `model`, which ends when `signal` aborts and reports a CLI failure to `onFailure`. */
+  const modelCall = (
+    model: HarnessCliModel, signal: AbortSignal, onFailure: (failure: CliRunError) => void,
+  ): HarnessCallback => {
     let called = false
     return async (params) => {
       if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
@@ -455,6 +474,7 @@ export function createPaperWikiHarnessRunner(options: {
         })
       } catch (cause) {
         if (!(cause instanceof CliRunError)) throw cause
+        onFailure(cause)
         if (cause.exitCode !== undefined || cause.stderr !== undefined) {
           const stderr = cause.stderr === undefined || cause.stderr === '' ? '' : `: ${cause.stderr.replace(/\n/g, ' | ')}`
           options.onLog?.(`${model.cli} failed, exit ${String(cause.exitCode ?? 'none')}${stderr}`)
@@ -469,8 +489,11 @@ export function createPaperWikiHarnessRunner(options: {
   const run: HarnessRunner = async (execution: HarnessExecution) => {
     let result: z.infer<typeof DraftEnvelopeSchema>
     const ended = new AbortController()
+    let onCli = false
+    let failure: CliRunError | undefined
     try {
       const model = await options.model.runtime()
+      onCli = 'source' in model
       result = DraftEnvelopeSchema.parse(await rpc.request('paper-wiki.propose', {
         workflow: execution.plan.workflow,
         targetId: execution.plan.targetId,
@@ -482,11 +505,13 @@ export function createPaperWikiHarnessRunner(options: {
         signal: execution.signal,
         ...('source' in model ? {
           timeoutMs: CLI_REQUEST_TIMEOUT_MS,
-          callbacks: { 'model.invoke': modelCall(model, AbortSignal.any([execution.signal, ended.signal])) },
+          callbacks: {
+            'model.invoke': modelCall(model, AbortSignal.any([execution.signal, ended.signal]), (cause) => { failure = cause }),
+          },
         } : {}),
       }))
     } catch (cause) {
-      throw paperWikiHarnessError(cause)
+      throw onCli ? subscriptionRunError(cause, failure) : paperWikiHarnessError(cause)
     } finally {
       ended.abort()
     }

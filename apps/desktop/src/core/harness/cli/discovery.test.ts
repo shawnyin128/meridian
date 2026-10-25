@@ -139,24 +139,30 @@ describe('subscription CLI discovery', () => {
     await expect(discoverCli('codex', signedOut.options)).resolves.toMatchObject({ signIn: 'signed-out' })
   })
 
-  it('checks the connection from installation, the flags its help lists and sign-in, with no model call', async () => {
+  it('checks the connection from installation, the flags its help lists and sign-in, with no model call, naming the CLI problem', async () => {
     const missing = machine()
     await expect(checkCliConnection('claude', missing.options)).resolves.toEqual({
-      state: 'failed', reason: 'unavailable', detail: '没有找到 claude 命令', modelCalls: 0, maxOutputTokens: 1,
+      state: 'failed', reason: 'cli-missing', detail: '没有找到 claude 命令', modelCalls: 0, maxOutputTokens: 1,
     })
 
     const logs: string[] = []
     const old = machine({ version: '2.0.9 (Claude Code)\n', help: FULL_HELP.replace(/^ {2}--json-schema .*$/m, '') })
     executable(join(old.home, '.local', 'bin', 'claude'), STAND_IN)
     const unsupported = await checkCliConnection('claude', { ...old.options, onLog: (line) => logs.push(line) })
-    expect(unsupported).toMatchObject({ state: 'failed', reason: 'configuration', version: '2.0.9', modelCalls: 0 })
+    expect(unsupported).toMatchObject({ state: 'failed', reason: 'cli-unsupported', version: '2.0.9', modelCalls: 0 })
     expect(JSON.stringify(unsupported)).not.toContain('json-schema')
     expect(logs).toEqual([expect.stringContaining('--json-schema')])
 
     const apiKey = machine({ status: JSON.stringify({ loggedIn: true, authMethod: 'api_key' }) })
     executable(join(apiKey.home, '.local', 'bin', 'claude'), STAND_IN)
     await expect(checkCliConnection('claude', apiKey.options)).resolves.toMatchObject({
-      state: 'failed', reason: 'authentication', detail: 'claude 没有用 Claude 订阅登录', modelCalls: 0,
+      state: 'failed', reason: 'cli-signed-out', detail: 'claude 没有用 Claude 订阅登录', modelCalls: 0,
+    })
+
+    const signedOut = machine({ status: JSON.stringify({ loggedIn: false }) })
+    executable(join(signedOut.home, '.local', 'bin', 'claude'), STAND_IN)
+    await expect(checkCliConnection('claude', signedOut.options)).resolves.toMatchObject({
+      state: 'failed', reason: 'cli-signed-out', detail: 'claude 还没有登录', modelCalls: 0,
     })
 
     const signedIn = machine({ version: '0.0.1 (Claude Code)\n' })

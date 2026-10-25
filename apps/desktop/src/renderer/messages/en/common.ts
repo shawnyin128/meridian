@@ -84,6 +84,8 @@ export const common = {
       'not-library': 'Not a Meridian library', busy: 'Still in progress', 'newer-version': 'Needs a newer App',
       'key-unsaved': 'Could not save the key', 'key-unreadable': 'Could not read the saved key', 'no-model': 'No model set up',
       cancelled: 'Generation stopped', model: 'The model call failed', 'update-files': 'Could not access the update files',
+      'cli-missing': 'CLI not found', 'cli-unsupported': 'Unsupported CLI version', 'cli-signed-out': 'Not signed in with subscription',
+      'usage-limit': 'Plan usage limit reached', 'malformed-output': 'Invalid model output',
     },
     unknown: 'Something went wrong',
   },

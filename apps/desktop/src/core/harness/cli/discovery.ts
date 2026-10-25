@@ -3,6 +3,7 @@ import { homedir, userInfo } from 'node:os'
 import { basename, isAbsolute, join } from 'node:path'
 import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../../shared/contract.js'
 import { cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
+import { CLI_CALL_FAILURES, readiness } from './failure.js'
 import { runnerFlags } from './runner.js'
 
 const SYSTEM_FOLDERS = ['/opt/homebrew/bin', '/usr/local/bin'] as const
@@ -160,16 +161,16 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
 
 /**
  * The connection check of a subscription CLI: connected when `cli` is installed, its help lists
- * every flag the runner passes, and it is signed in with the user's subscription. Reports the
- * CLI's version when it has one, and logs through `onLog` which flags an unsupported CLI lacks.
- * Makes no model call.
+ * every flag the runner passes, and it is signed in with the user's subscription; otherwise failed
+ * for the CLI problem a call would fail with. Reports the CLI's version when it has one, and logs
+ * through `onLog` which flags an unsupported CLI lacks. Makes no model call.
  */
 export async function checkCliConnection(
   cli: HarnessCli,
   options: DiscoveryOptions & { onLog?: (line: string) => void } = {},
 ): Promise<HarnessModelConnectionCheckResult> {
   let version: string | null = null
-  const failed = (reason: 'unavailable' | 'timeout' | 'configuration' | 'authentication', detail: string) => ({
+  const failed = (reason: 'cli-missing' | 'cli-unsupported' | 'cli-signed-out' | 'timeout', detail: string) => ({
     state: 'failed' as const, reason, detail, ...(version === null ? {} : { version }),
     modelCalls: 0 as const, maxOutputTokens: 1 as const,
   })
@@ -178,22 +179,15 @@ export async function checkCliConnection(
     found = await discoverCli(cli, options)
   } catch (cause) {
     if (!(cause instanceof CliRunError)) throw cause
-    return failed(cause.kind === 'timeout' ? 'timeout' : 'unavailable', cause.message)
+    return failed(cause.kind === 'timeout' ? 'timeout' : 'cli-missing', cause.message)
   }
-  if (!found.installed) return failed('unavailable', `没有找到 ${cli} 命令`)
-  version = found.version
-  if (found.missingFlags.length > 0) {
+  if (found.installed) version = found.version
+  const ready = readiness(found)
+  if ('binary' in ready) {
+    return { state: 'connected', ...(version === null ? {} : { version }), modelCalls: 0, maxOutputTokens: 1 }
+  }
+  if (found.installed && ready.kind === 'unsupported') {
     options.onLog?.(`${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
-    return failed('configuration', `这个版本的 ${cli} 不支持 Meridian 需要的选项，请更新`)
   }
-  switch (found.signIn) {
-    case 'subscription':
-      return { state: 'connected', ...(version === null ? {} : { version }), modelCalls: 0, maxOutputTokens: 1 }
-    case 'other':
-      return failed('authentication', cli === 'claude' ? 'claude 没有用 Claude 订阅登录' : 'codex 没有用 ChatGPT 登录')
-    case 'signed-out':
-      return failed('authentication', `${cli} 还没有登录`)
-    case 'unknown':
-      return failed('authentication', `读不出 ${cli} 的登录状态`)
-  }
+  return failed(CLI_CALL_FAILURES[ready.kind], ready.message)
 }

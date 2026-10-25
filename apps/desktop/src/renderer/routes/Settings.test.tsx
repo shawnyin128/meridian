@@ -1416,6 +1416,26 @@ describe('Settings', () => {
     expect(api.subscriptionStatus).toHaveBeenCalledTimes(2)
   })
 
+  it('订阅的连接测试失败时，标题说出 CLI 的问题：没有找到、版本不受支持或未用订阅登录', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+    await pick(dialog, '模型服务', 'Claude 订阅')
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
+
+    const headlines = []
+    for (const [reason, detail] of [
+      ['cli-missing', '没有找到 claude 命令'], ['cli-unsupported', '这个版本的 claude 不支持 Meridian 需要的选项，请更新'],
+      ['cli-signed-out', 'claude 还没有登录'],
+    ] as const) {
+      api.checkModelConnection.mockResolvedValueOnce({ state: 'failed', reason, detail, modelCalls: 0, maxOutputTokens: 1 })
+      await act(async () => { testButton(dialog).click() })
+      const status = dialog.querySelector('.model-settings-card .service-connection-status')!
+      headlines.push([status.querySelector('.inline-message-text > div')?.textContent, status.textContent?.includes(detail)])
+    }
+    expect(headlines).toEqual([['没有找到 CLI', true], ['CLI 版本不受支持', true], ['未用订阅登录', true]])
+  })
+
   it('订阅的模型按 CLI 各存一份，选 ChatGPT 订阅时用 Codex 和它自己的模型', async () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

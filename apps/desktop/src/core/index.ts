@@ -139,7 +139,7 @@ import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-t
 import {
   checkCliConnection, createChatHarnessRunner, createChatService, createCliRunner, createHarnessCostGate,
   createHarnessModelConfig, createHarnessProposalAudit, createMainCredentialVault, createPaperWikiHarnessRunner,
-  discoverCli, listCliModels, resolveCliBinary, subscriptionStatus,
+  discoverCli, listCliModels, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -238,7 +238,7 @@ const background = createBackground({
   now: Date.now,
   semanticScholarApiKey: semanticKey.current,
 })
-const cliRunner = createCliRunner({ binary: (cli) => resolveCliBinary(cli) })
+const cliRunner = createCliRunner({ discover: (cli) => discoverCli(cli) })
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
   store,
   model: harnessModel,

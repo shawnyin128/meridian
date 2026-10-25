@@ -3,7 +3,7 @@ import { act, useCallback, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  HarnessPaperWikiQuality, HarnessPlan, JobsStatus, PaperReading, PaperRow,
+  CallFailure, HarnessPaperWikiQuality, HarnessPlan, JobsStatus, PaperReading, PaperRow,
 } from '../../../shared/contract.js'
 import { CallError } from '../../call-error.js'
 import type { EditDraft } from '../../hooks/useDrafts.js'
@@ -12,7 +12,7 @@ import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
 
 /** The papers Core is running a Wiki proposal for, and how to make the shell ask Core for a new report now. */
-const core = vi.hoisted(() => ({ runs: new Set<string>(), failures: {} as Record<string, 'model' | 'cancelled'>, poll: () => {} }))
+const core = vi.hoisted(() => ({ runs: new Set<string>(), failures: {} as Record<string, CallFailure>, poll: () => {} }))
 
 /** The shell's generations over Core's reported runs, and its model status, as AppShell provides them. */
 function Shell({ children }: { children: ReactNode }) {
@@ -369,6 +369,21 @@ describe('PaperWikiIngest', () => {
     expect(api.dismiss).toHaveBeenCalledExactlyOnceWith('p1')
     expect(host.querySelector('.wiki-ingest-status.inline-message--error')).toBeNull()
     expect(host.querySelector('[data-testid="start-harness"]')).not.toBeNull()
+  })
+
+  it('names why a run on a subscription failed, each reason in a line of its own words', async () => {
+    await act(async () => { root.render(withMessages(<Panel paper={paper} reading={reading} onJump={api.jump} />)) })
+    const shown: (string | null | undefined)[] = []
+    for (const reason of [
+      'cli-missing', 'cli-unsupported', 'cli-signed-out', 'usage-limit', 'timeout', 'cancelled', 'malformed-output', 'model',
+    ] as const) {
+      core.failures = { p1: reason }
+      await act(async () => { core.poll() })
+      shown.push(host.querySelector('.wiki-ingest-status.inline-message--line.inline-message--error')?.textContent)
+    }
+    expect(shown).toEqual([
+      '没有找到 CLI', 'CLI 版本不受支持', '未用订阅登录', '订阅额度已用完', '连接超时', '已停止生成', '模型输出无效', '模型调用失败',
+    ])
   })
 
   it('keeps the edited Markdown through the write, so an undo brings back what was reviewed', async () => {

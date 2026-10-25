@@ -25,7 +25,13 @@ const CMD_SPECIAL = /([()\][%!^"`<>&|;, *?])/g
 /** The longest command line cmd.exe accepts. */
 const CMD_LINE_LIMIT = 8_191
 
-export type CliFailureKind = 'unavailable' | 'failed' | 'timeout' | 'cancelled'
+/**
+ * Why a CLI call did not complete: the CLI is not installed or cannot start, lacks options the
+ * runner passes, is not signed in with the user's subscription, reports the plan's usage limit
+ * reached or fails any other way, runs past its timeout, or is cancelled.
+ */
+export type CliFailureKind =
+  | 'unavailable' | 'unsupported' | 'signed-out' | 'usage-limit' | 'failed' | 'timeout' | 'cancelled'
 
 /** A CLI call that did not complete, `kind` saying why and the message saying it in plain words. */
 export class CliRunError extends Error {
