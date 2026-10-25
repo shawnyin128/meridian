@@ -5,7 +5,6 @@ import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useVaultRevision, type JumpAnchor } from '../../shell/AppShell.js'
 import { entryAnchor, readingEntries } from './reading-entries.js'
-import { CountBadge } from '../CountBadge.js'
 import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
@@ -14,13 +13,13 @@ import { StructuredList, StructuredRow } from '../StructuredList.js'
 const EXCERPT = 2
 
 /**
- * The reading summary in the paper detail: the counts are clickable, and the remark and recent
- * notes come from the same stored record the reader uses.
+ * The reading summary in the paper detail: the note and conclusion counts as property values, and the
+ * remark and recent notes from the same stored record the reader uses, each opening the reader through
+ * `onRead`.
  */
-export function PaperReadingSummary({ paper, onRead, onConclusions }: {
+export function PaperReadingSummary({ paper, onRead }: {
   paper: PaperRow
   onRead: (anchor: JumpAnchor) => void
-  onConclusions: () => void
 }) {
   const m = useMessages()
   const { revision } = useVaultRevision()
@@ -36,13 +35,9 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
     <div className="paper-reading-summary">
       <dl className="paper-meta-list">
         <dt>{m.papers.reading.notes}</dt>
-        <dd>{paper.noteCount === 0
-          ? <CountBadge count={0} />
-          : <CountBadge count={paper.noteCount} onClick={() => onRead({ panel: 'notes' })} />}</dd>
+        <dd>{paper.noteCount}</dd>
         <dt>{m.papers.reading.conclusions}</dt>
-        <dd>{paper.conclusionCount === 0
-          ? <CountBadge count={0} />
-          : <CountBadge count={paper.conclusionCount} onClick={onConclusions} />}</dd>
+        <dd>{paper.conclusionCount}</dd>
       </dl>
       <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />

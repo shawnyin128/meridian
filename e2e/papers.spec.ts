@@ -1182,6 +1182,23 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   await expect(rows.first()).toHaveAttribute('aria-current', 'true')
 })
 
+test('详情里笔记与实验结论的数是普通的属性值:只是一段字,不算分隔线的行高和「Wiki」「文件」两行一样', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
+  const counts = win.locator('.pdetail .paper-reading-summary .paper-meta-list dd')
+  await expect(counts).toHaveCount(2)
+  expect(await counts.evaluateAll((dds) => dds.map((dd) => [dd.childElementCount, /^\d+$/.test(dd.textContent ?? '')])))
+    .toEqual([[0, true], [0, true]])
+  const plain = win.locator('.pdetail .paper-meta .paper-meta-list').locator('dt:text-is("Wiki") + dd, dt:text-is("文件") + dd')
+  await expect(plain).toHaveCount(2)
+  // The last row of each list draws no divider under it, so rows are compared without theirs.
+  const heights = [...new Set(await counts.or(plain).evaluateAll((dds) => dds.map((dd) => (
+    dd.getBoundingClientRect().height - parseFloat(getComputedStyle(dd).borderBottomWidth)).toFixed(1))))]
+  console.log(`详情里笔记、实验结论、Wiki、文件四行不算分隔线的行高 ${heights.join(', ')}px`)
+  expect(heights).toHaveLength(1)
+})
+
 test('齿轮里没有新建入口,建列归表头末尾的 ＋', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
