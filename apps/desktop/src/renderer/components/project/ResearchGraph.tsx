@@ -25,9 +25,10 @@ import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from '../Toolbar.js'
+import { ToggleGroup, ToggleItem, Toolbar } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProjectEventList, ProjectEventRow } from './ProjectSignals.js'
+import { Button } from '../Button.js'
 import './ResearchGraph.css'
 
 type GraphNode = Graph['nodes'][number]
@@ -377,13 +378,13 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               <IconMinus />
             </IconButton>
             <Tooltip label={m.project.graph.resetView}>
-              <ToolbarButton
-                className="btn ghost sm graph-zoom-reset"
+              <Button
+                size="compact" variant="ghost" className="graph-zoom-reset"
                 onClick={() => {
                   moved.current = false
                   setView(fitted)
                 }}
-              >{Math.round(view.zoom * 100)}%</ToolbarButton>
+              >{Math.round(view.zoom * 100)}%</Button>
             </Tooltip>
             <IconButton
               label={m.project.graph.zoomIn} size="nested" disabled={view.zoom >= GRAPH_MAX_ZOOM}

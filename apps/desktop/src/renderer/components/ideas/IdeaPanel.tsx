@@ -11,6 +11,7 @@ import { plainTitle } from '../paper/paper-text.js'
 import { SLOT } from '../TitleNote.js'
 import { Tag } from '../Tag.js'
 import { FadeText } from '../FadeText.js'
+import { Button } from '../Button.js'
 import './IdeaPanel.css'
 
 /** Whether `idea` is one the user wrote down on their own, from no chat and no agent: such an idea shows no source. */
@@ -121,7 +122,7 @@ export function IdeaPanel({
             variant="rail"
             actions={onOpenSourceChat === undefined || chatId === undefined || sourceChatDeleted
               ? undefined
-              : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
+              : <Button size="regular" className="idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</Button>}
           >{m.project.sections.source}
           </SectionHeading>
           <p className="idea-panel-source">

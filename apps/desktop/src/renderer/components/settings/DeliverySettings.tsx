@@ -9,6 +9,7 @@ import { composing } from '../../lib/keyboard.js'
 import { FormInput } from '../FormControls.js'
 import { Card } from '../Card.js'
 import { ServiceActions, ServiceFoot } from './ServiceCard.js'
+import { CommitActions } from '../CommitActions.js'
 
 const MIN_ITEMS = 1
 const MAX_ITEMS = 100
@@ -28,7 +29,7 @@ export function DeliverySettings() {
   })
   const { error: loadingError, load } = useScreenLoad()
   const [saving, setSaving] = useState(false)
-  // After a save the button says so in place, until a field changes again.
+  // Whether the last save succeeded with no field changed since; Save shows its check as it turns true.
   const [justSaved, setJustSaved] = useState(false)
   const write = useVaultWrite()
 
@@ -87,9 +88,10 @@ export function DeliverySettings() {
       {loadingError === null ? null : <p className="delivery-setting-error">{loadingError}</p>}
       <ServiceFoot>
         <ServiceActions>
-          <button className="btn pri" disabled={!changed || saving} onClick={() => { void save() }}>
-            {saving ? m.settings.delivery.saving : justSaved ? m.common.saved : m.common.save}
-          </button>
+          <CommitActions
+            place="foot" saving={saving} canSave={changed} done={justSaved} busyLabel={m.settings.delivery.saving}
+            onSave={() => { void save() }}
+          />
         </ServiceActions>
       </ServiceFoot>
     </Card>

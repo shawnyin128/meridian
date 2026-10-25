@@ -361,7 +361,7 @@ test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;
     await hex.fill('#2f6fbf')
     const save = win.locator('.setdlg .theme-module-card .btn.pri')
     await save.click()
-    await expect(save).toHaveText('已保存')
+    await expect(save).toHaveAccessibleName('已保存')
 
     const file = join(configHome, 'themes', 'e2e-theme.json')
     const written = JSON.parse(readFileSync(file, 'utf8'))
@@ -394,7 +394,7 @@ test('外观主题从新建、保存、套用,到重新加载后还在、在卡�
     await win.locator('.setdlg input[aria-label="色值"]').fill('#2f6fbf')
     const save = win.locator('.setdlg .theme-module-card .btn.pri')
     await save.click()
-    await expect(save).toHaveText('已保存')
+    await expect(save).toHaveAccessibleName('已保存')
     const file = join(configHome, 'themes', 'theme.json')
     expect(JSON.parse(readFileSync(file, 'utf8')).name).toBe('晨雾')
 

@@ -26,6 +26,8 @@ import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
 import { useColourThemeName } from './AppearanceSettings.js'
 import { ServiceActions, ServiceError, ServiceFoot } from './ServiceCard.js'
+import { Button } from '../Button.js'
+import { CommitActions } from '../CommitActions.js'
 import './ThemeEditor.css'
 
 /** The modules in the left column, in groups that sit apart: surfaces, text, accents, states. */
@@ -93,8 +95,8 @@ function ThemePreview({ modules, mode }: { modules: ColourThemeModules; mode: Co
         <div className="theme-preview-controls">
           <FormInput className="theme-preview-field" placeholder={m.shell.search.placeholder} readOnly />
           <Switch checked onChange={ignore} label={m.settings.categories.delivery} />
-          <button type="button" className="btn theme-preview-focus">{m.inbox.actions.readLater}</button>
-          <button type="button" className="btn pri">{m.inbox.actions.download}</button>
+          <Button size="regular" className="theme-preview-focus">{m.inbox.actions.readLater}</Button>
+          <Button size="regular" variant="primary">{m.inbox.actions.download}</Button>
         </div>
       </div>
     </div>
@@ -238,10 +240,10 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
               label={t.mode} value={mode} onChange={setMode}
               options={[{ value: 'light', label: m.settings.appearance.light }, { value: 'dark', label: m.settings.appearance.dark }]}
             />
-            <button
-              type="button" className="btn ghost sm"
+            <Button
+              size="compact" variant="ghost"
               onClick={() => { change({ dark: deriveDarkModules(draft.light, base) }); setMode('dark') }}
-            >{t.deriveDark}</button>
+            >{t.deriveDark}</Button>
           </div>
           <ThemePreview modules={colours} mode={mode} />
           <Card className="theme-module-card">
@@ -257,10 +259,10 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
             <ServiceFoot>
               {form.outside ? <Tag tone="warn">{t.changedOutside}</Tag> : null}
               <ServiceActions>
-                <button
-                  type="button" className="btn pri" disabled={saving || draft.name.trim() === '' || !(dirty || form.outside)}
-                  onClick={() => { void save() }}
-                >{form.saved ? m.common.saved : m.common.save}</button>
+                <CommitActions
+                  place="foot" saving={saving} canSave={draft.name.trim() !== '' && (dirty || form.outside)} done={form.saved}
+                  onSave={() => { void save() }}
+                />
               </ServiceActions>
             </ServiceFoot>
           </Card>
