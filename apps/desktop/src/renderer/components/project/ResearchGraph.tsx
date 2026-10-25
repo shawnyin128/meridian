@@ -375,7 +375,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
                 ]
                 return (
                   <Tooltip key={node.id} label={node.label} whenClipped>
-                    <ToggleItem asChild value={node.id} aria-label={m.project.graph.nodeName(node.label, states)}>
+                    <ToggleItem asChild value={node.id} aria-label={m.project.graph.nodeName(node.label, states.join(m.project.graph.stateSeparator))}>
                       <g
                         className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
                         data-node={node.id} transform={`translate(${node.x},${node.y})`}
