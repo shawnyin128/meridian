@@ -709,14 +709,16 @@ describe('PaperTable', () => {
     expect([pressed(1), pressed(2)]).toEqual([false, true])
   })
 
-  it('论文行是操作槽的宿主，行尾的删除在槽里', async () => {
+  it('论文行是操作槽的宿主，行尾的删除在槽里;主题的 + 和每个主题的 × 也在槽里,随这一行显出', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
-    listCall.resolve({ rows: [ROW], total: 1 })
+    listCall.resolve({ rows: [{ ...ROW, topics: ['推理'] }], total: 1 })
     await flush()
     const row = host.querySelector('.ptable tbody tr')!
     expect(row.hasAttribute('data-row-actions')).toBe(true)
-    expect([...row.querySelectorAll('.row-actions button')].map((item) => item.getAttribute('aria-label'))).toEqual(['删除'])
+    const slotted = (cell: string) => [...row.querySelectorAll(`${cell} .row-actions button`)].map((item) => item.getAttribute('aria-label'))
+    expect(slotted('td.row-actions-cell')).toEqual(['删除'])
+    expect(slotted('td .ci')).toEqual(['移除主题「推理」', '添加主题'])
   })
 
   it('行尾的删除把论文移到垃圾桶，画的是垃圾桶而不是关闭用的叉', async () => {

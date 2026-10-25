@@ -10,13 +10,7 @@
 
 .memo{font-size:var(--fs-base)}
 
-/* A project's areas: the + stays shown, and a click on an area edits it, as on any other property. */
-.project-areas .tagchip.tagadd{opacity:1;pointer-events:auto}
-.project-areas .tagchip-open{cursor:pointer}
-.wkrel .reladd{display:flex;align-items:center;gap:var(--sp-6);flex:1 1 auto;min-width:190px}
-.wkrel .reladd .segmented-control{flex-shrink:0}
-.wkrel .reladd .inedit{flex:1;min-width:0}
-.wkrel .reladd:has(.urldraft){flex-wrap:wrap}
+/* A web address relation's draft: its two fields on a line of their own below the group switch. */
 .wkrel .reladd .urldraft{display:flex;flex-direction:column;gap:var(--sp-6);flex:1 1 100%;min-width:0}
 .wkrel .reladd .urldraft .inedit{flex:none}
 

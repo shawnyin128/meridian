@@ -179,10 +179,14 @@ Current shared contracts:
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.
-- `TagChips`: the one editor of a list of values as chips, with × to remove, `+` to add from a vocabulary,
+- `ChipList`: the one list of removable chips. Each chip's name opens what it names, and its pencil and
+  × sit in the chip's row-actions slot; the `+` after the chips is AddAction's chip-sized circle, in the
+  row's actions slot with `reveal="hover"`; with `label` the list is a relation row (`wkrel`). It draws a
+  paper's topics and projects, a project's areas and relations, and an idea's relations. `ChipList.css`
+  holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name button
+  (`tagchip-open`) and the relation row with its label (`wkrel`).
+- `TagChips`: the one editor of a list of values as chips on ChipList, with `+` to add from a vocabulary
   and an optional click on a chip to edit it in place; a paper's topics and a project's areas use it.
-  `TagChips.css` holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name
-  button (`tagchip-open`) and the relation row with its label (`wkrel`).
 - `paper/PaperCard`: discovery-card composition, actions/notices slots, metadata badges, recommendations,
   and the shared LaTeX-capable `PaperAbstract`. Inbox and read-later configure the same card.
 - `paper/PaperText`: every display of a paper title (inline) or abstract (block, through `Markdown`) with

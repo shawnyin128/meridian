@@ -246,132 +246,110 @@ components/paper-table/PaperTable.css:103: .pt-title:hover { text-underline-offs
 components/paper-table/PaperTable.css:104: .ptable tbody tr { cursor }
 components/paper-table/PaperTable.css:105: .pt-dim { color }
 components/paper-table/PaperTable.css:105: .pt-dim { white-space }
-components/paper-table/PaperTable.css:111: .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:111: .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:111: .tagchip.tagadd { transition }
-components/paper-table/PaperTable.css:112: .ptable tr:hover .tagadd { opacity }
-components/paper-table/PaperTable.css:112: .tagchip.tagadd:focus-visible { opacity }
-components/paper-table/PaperTable.css:112: .ptable tr:hover .tagadd { pointer-events }
-components/paper-table/PaperTable.css:112: .tagchip.tagadd:focus-visible { pointer-events }
-components/paper-table/PaperTable.css:114: .ptable .tagchip .rx { opacity }
-components/paper-table/PaperTable.css:114: .ptable .tagchip .rx { pointer-events }
-components/paper-table/PaperTable.css:114: .ptable .tagchip .rx { transition }
-components/paper-table/PaperTable.css:115: .ptable tr:hover .tagchip .rx { opacity }
-components/paper-table/PaperTable.css:115: .ptable .tagchip .rx:focus-visible { opacity }
-components/paper-table/PaperTable.css:115: .ptable tr:hover .tagchip .rx { pointer-events }
-components/paper-table/PaperTable.css:115: .ptable .tagchip .rx:focus-visible { pointer-events }
-components/paper-table/PaperTable.css:116: .ptable tr:has(.stchip[data-state="open"]) .tagadd { opacity }
-components/paper-table/PaperTable.css:117: .paper-meta-projects .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:117: .paper-meta-topics .tagchip.tagadd { opacity }
-components/paper-table/PaperTable.css:117: .paper-meta-projects .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:117: .paper-meta-topics .tagchip.tagadd { pointer-events }
-components/paper-table/PaperTable.css:118: .form-input.form-control-inline.tagin { display }
-components/paper-table/PaperTable.css:118: .form-input.form-control-inline.tagin { width }
-components/paper-table/PaperTable.css:118: .form-input.form-control-inline.tagin { vertical-align }
-components/paper-table/PaperTable.css:121: .pt-cust { color }
-components/paper-table/PaperTable.css:121: .pt-remark { color }
-components/paper-table/PaperTable.css:121: .pt-cust { font-size }
-components/paper-table/PaperTable.css:121: .pt-remark { font-size }
-components/paper-table/PaperTable.css:121: .pt-cust { cursor }
-components/paper-table/PaperTable.css:121: .pt-remark { cursor }
-components/paper-table/PaperTable.css:121: .pt-cust { min-width }
-components/paper-table/PaperTable.css:121: .pt-remark { min-width }
-components/paper-table/PaperTable.css:123: .ptable td .paper-text-cell-input { display }
-components/paper-table/PaperTable.css:128: .cmx { margin }
-components/paper-table/PaperTable.css:132: .ctbtn { border }
-components/paper-table/PaperTable.css:132: .ctbtn { background }
-components/paper-table/PaperTable.css:132: .ctbtn { color }
-components/paper-table/PaperTable.css:132: .ctbtn { cursor }
-components/paper-table/PaperTable.css:132: .ctbtn { padding }
-components/paper-table/PaperTable.css:132: .ctbtn { border-radius }
-components/paper-table/PaperTable.css:133: .ctbtn:hover { color }
-components/paper-table/PaperTable.css:134: .ctbtn.on { background }
-components/paper-table/PaperTable.css:134: .ctbtn.on { border-color }
-components/paper-table/PaperTable.css:134: .ctbtn.on { color }
-components/paper-table/PaperTable.css:135: .ctbtn svg { width }
-components/paper-table/PaperTable.css:135: .ctbtn svg { height }
-components/paper-table/PaperTable.css:141: .typerow { padding-left }
-components/paper-table/PaperTable.css:149: .ptable td.row-actions-cell { background-color }
-components/paper-table/PaperTable.css:150: .ptable td.row-actions-cell { background-image }
-components/paper-table/PaperTable.css:155: .paper-detail-slot { --detail-panel-width }
-components/paper-table/PaperTable.css:155: .paper-detail-slot { top }
-components/paper-table/PaperTable.css:155: .paper-detail-slot { border-left }
-components/paper-table/PaperTable.css:156: .paper-detail-slot { background }
-components/paper-table/PaperTable.css:157: .pdetail { box-sizing }
-components/paper-table/PaperTable.css:157: .pdetail { overflow }
-components/paper-table/PaperTable.css:157: .pdetail { overscroll-behavior }
-components/paper-table/PaperTable.css:157: .pdetail { padding }
-components/paper-table/PaperTable.css:158: .desk-body.withdetail { margin-right }
-components/paper-table/PaperTable.css:158: .desk-foot.withdetail { margin-right }
-components/paper-table/PaperTable.css:163: .pd-h { margin-bottom }
-components/paper-table/PaperTable.css:164: .pd-t { font-size }
-components/paper-table/PaperTable.css:164: .pd-t { font-weight }
-components/paper-table/PaperTable.css:164: .pd-t { line-height }
-components/paper-table/PaperTable.css:166: .pd-t .metadata-editable { color }
-components/paper-table/PaperTable.css:167: .pdetail .wkprops { grid-template-columns }
-components/paper-table/PaperTable.css:167: .pdetail .wkprops { font-size }
-components/paper-table/PaperTable.css:168: .pdetail>.paper-meta { margin }
-components/paper-table/PaperTable.css:169: .paper-reading-summary { margin-top }
-components/paper-table/PaperTable.css:170: .paper-reading-summary .paper-meta-list { padding }
-components/paper-table/PaperTable.css:171: .paper-reading-summary .reading-summary-all { margin }
-components/paper-table/PaperTable.css:178: .libbar .filters { margin }
-components/paper-table/PaperTable.css:179: .libbar .filters>.pt-dim { font-size }
-components/paper-table/PaperTable.css:184: .research-map { padding }
-components/paper-table/PaperTable.css:185: .research-map-limit { color }
-components/paper-table/PaperTable.css:185: .research-map-limit { font-size }
-components/paper-table/PaperTable.css:186: .research-map-layout { grid-template-columns }
-components/paper-table/PaperTable.css:188: .research-map-index { gap }
-components/paper-table/PaperTable.css:190: .research-map-group { display }
-components/paper-table/PaperTable.css:190: .research-map-group { grid-template-columns }
-components/paper-table/PaperTable.css:190: .research-map-group { align-items }
-components/paper-table/PaperTable.css:190: .research-map-group { gap }
-components/paper-table/PaperTable.css:190: .research-map-group { min-height }
-components/paper-table/PaperTable.css:190: .research-map-group { padding }
-components/paper-table/PaperTable.css:193: .research-map-group-copy .research-map-group-name { color }
-components/paper-table/PaperTable.css:193: .research-map-group-copy .research-map-group-name { font-size }
-components/paper-table/PaperTable.css:193: .research-map-group-copy .research-map-group-name { font-weight }
-components/paper-table/PaperTable.css:194: .research-map-group-copy>span { color }
-components/paper-table/PaperTable.css:194: .research-map-group-copy>span { font-size }
-components/paper-table/PaperTable.css:196: .research-map-detail { border }
-components/paper-table/PaperTable.css:196: .research-map-detail { border-radius }
-components/paper-table/PaperTable.css:196: .research-map-detail { background }
-components/paper-table/PaperTable.css:196: .research-map-detail { overflow }
-components/paper-table/PaperTable.css:197: .research-map-detail-head { padding }
-components/paper-table/PaperTable.css:197: .research-map-detail-head { border-bottom }
-components/paper-table/PaperTable.css:199: .research-map-detail-head .research-map-detail-name { color }
-components/paper-table/PaperTable.css:199: .research-map-detail-head .research-map-detail-name { font-size }
-components/paper-table/PaperTable.css:199: .research-map-detail-head .research-map-detail-name { font-weight }
-components/paper-table/PaperTable.css:200: .research-map-detail-head>div>span { color }
-components/paper-table/PaperTable.css:200: .research-map-detail-head>div>span { font-size }
-components/paper-table/PaperTable.css:202: .research-map-detail>.research-map-papers.structured-list--fill { padding }
-components/paper-table/PaperTable.css:202: .research-map-detail>.research-map-papers.structured-list--fill { margin-inline }
-components/paper-table/PaperTable.css:203: .research-map-paper { display }
-components/paper-table/PaperTable.css:203: .research-map-paper { grid-template-columns }
-components/paper-table/PaperTable.css:203: .research-map-paper { grid-template-areas }
-components/paper-table/PaperTable.css:203: .research-map-paper { align-items }
-components/paper-table/PaperTable.css:203: .research-map-paper { gap }
-components/paper-table/PaperTable.css:203: .research-map-paper { min-height }
-components/paper-table/PaperTable.css:203: .research-map-paper { padding }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { display }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { padding }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { border }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { background }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { color }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { font }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { text-align }
-components/paper-table/PaperTable.css:204: .research-map-paper-open { cursor }
-components/paper-table/PaperTable.css:205: .research-map-paper-title { font-weight }
-components/paper-table/PaperTable.css:207: .research-map-paper-meta { color }
-components/paper-table/PaperTable.css:207: .research-map-paper-meta { font-size }
-components/paper-table/PaperTable.css:207: .research-map-paper-meta { white-space }
-components/paper-table/PaperTable.css:208: .research-map-why { display }
-components/paper-table/PaperTable.css:208: .research-map-why { align-items }
-components/paper-table/PaperTable.css:208: .research-map-why { gap }
-components/paper-table/PaperTable.css:208: .research-map-why { color }
-components/paper-table/PaperTable.css:208: .research-map-why { font-size }
-components/paper-table/PaperTable.css:211: @media (max-width:900px) .research-map-groups { display }
-components/paper-table/PaperTable.css:211: @media (max-width:900px) .research-map-groups { grid-template-columns }
-components/paper-table/PaperTable.css:212: @media (max-width:900px) .research-map-groups>.structured-row:nth-child(2) { border-top }
+components/paper-table/PaperTable.css:108: .pt-cust { color }
+components/paper-table/PaperTable.css:108: .pt-remark { color }
+components/paper-table/PaperTable.css:108: .pt-cust { font-size }
+components/paper-table/PaperTable.css:108: .pt-remark { font-size }
+components/paper-table/PaperTable.css:108: .pt-cust { cursor }
+components/paper-table/PaperTable.css:108: .pt-remark { cursor }
+components/paper-table/PaperTable.css:108: .pt-cust { min-width }
+components/paper-table/PaperTable.css:108: .pt-remark { min-width }
+components/paper-table/PaperTable.css:110: .ptable td .paper-text-cell-input { display }
+components/paper-table/PaperTable.css:115: .cmx { margin }
+components/paper-table/PaperTable.css:119: .ctbtn { border }
+components/paper-table/PaperTable.css:119: .ctbtn { background }
+components/paper-table/PaperTable.css:119: .ctbtn { color }
+components/paper-table/PaperTable.css:119: .ctbtn { cursor }
+components/paper-table/PaperTable.css:119: .ctbtn { padding }
+components/paper-table/PaperTable.css:119: .ctbtn { border-radius }
+components/paper-table/PaperTable.css:120: .ctbtn:hover { color }
+components/paper-table/PaperTable.css:121: .ctbtn.on { background }
+components/paper-table/PaperTable.css:121: .ctbtn.on { border-color }
+components/paper-table/PaperTable.css:121: .ctbtn.on { color }
+components/paper-table/PaperTable.css:122: .ctbtn svg { width }
+components/paper-table/PaperTable.css:122: .ctbtn svg { height }
+components/paper-table/PaperTable.css:128: .typerow { padding-left }
+components/paper-table/PaperTable.css:136: .ptable td.row-actions-cell { background-color }
+components/paper-table/PaperTable.css:137: .ptable td.row-actions-cell { background-image }
+components/paper-table/PaperTable.css:142: .paper-detail-slot { --detail-panel-width }
+components/paper-table/PaperTable.css:142: .paper-detail-slot { top }
+components/paper-table/PaperTable.css:142: .paper-detail-slot { border-left }
+components/paper-table/PaperTable.css:143: .paper-detail-slot { background }
+components/paper-table/PaperTable.css:144: .pdetail { box-sizing }
+components/paper-table/PaperTable.css:144: .pdetail { overflow }
+components/paper-table/PaperTable.css:144: .pdetail { overscroll-behavior }
+components/paper-table/PaperTable.css:144: .pdetail { padding }
+components/paper-table/PaperTable.css:145: .desk-body.withdetail { margin-right }
+components/paper-table/PaperTable.css:145: .desk-foot.withdetail { margin-right }
+components/paper-table/PaperTable.css:150: .pd-h { margin-bottom }
+components/paper-table/PaperTable.css:151: .pd-t { font-size }
+components/paper-table/PaperTable.css:151: .pd-t { font-weight }
+components/paper-table/PaperTable.css:151: .pd-t { line-height }
+components/paper-table/PaperTable.css:153: .pd-t .metadata-editable { color }
+components/paper-table/PaperTable.css:154: .pdetail .wkprops { grid-template-columns }
+components/paper-table/PaperTable.css:154: .pdetail .wkprops { font-size }
+components/paper-table/PaperTable.css:155: .pdetail>.paper-meta { margin }
+components/paper-table/PaperTable.css:156: .paper-reading-summary { margin-top }
+components/paper-table/PaperTable.css:157: .paper-reading-summary .paper-meta-list { padding }
+components/paper-table/PaperTable.css:158: .paper-reading-summary .reading-summary-all { margin }
+components/paper-table/PaperTable.css:165: .libbar .filters { margin }
+components/paper-table/PaperTable.css:166: .libbar .filters>.pt-dim { font-size }
+components/paper-table/PaperTable.css:171: .research-map { padding }
+components/paper-table/PaperTable.css:172: .research-map-limit { color }
+components/paper-table/PaperTable.css:172: .research-map-limit { font-size }
+components/paper-table/PaperTable.css:173: .research-map-layout { grid-template-columns }
+components/paper-table/PaperTable.css:175: .research-map-index { gap }
+components/paper-table/PaperTable.css:177: .research-map-group { display }
+components/paper-table/PaperTable.css:177: .research-map-group { grid-template-columns }
+components/paper-table/PaperTable.css:177: .research-map-group { align-items }
+components/paper-table/PaperTable.css:177: .research-map-group { gap }
+components/paper-table/PaperTable.css:177: .research-map-group { min-height }
+components/paper-table/PaperTable.css:177: .research-map-group { padding }
+components/paper-table/PaperTable.css:180: .research-map-group-copy .research-map-group-name { color }
+components/paper-table/PaperTable.css:180: .research-map-group-copy .research-map-group-name { font-size }
+components/paper-table/PaperTable.css:180: .research-map-group-copy .research-map-group-name { font-weight }
+components/paper-table/PaperTable.css:181: .research-map-group-copy>span { color }
+components/paper-table/PaperTable.css:181: .research-map-group-copy>span { font-size }
+components/paper-table/PaperTable.css:183: .research-map-detail { border }
+components/paper-table/PaperTable.css:183: .research-map-detail { border-radius }
+components/paper-table/PaperTable.css:183: .research-map-detail { background }
+components/paper-table/PaperTable.css:183: .research-map-detail { overflow }
+components/paper-table/PaperTable.css:184: .research-map-detail-head { padding }
+components/paper-table/PaperTable.css:184: .research-map-detail-head { border-bottom }
+components/paper-table/PaperTable.css:186: .research-map-detail-head .research-map-detail-name { color }
+components/paper-table/PaperTable.css:186: .research-map-detail-head .research-map-detail-name { font-size }
+components/paper-table/PaperTable.css:186: .research-map-detail-head .research-map-detail-name { font-weight }
+components/paper-table/PaperTable.css:187: .research-map-detail-head>div>span { color }
+components/paper-table/PaperTable.css:187: .research-map-detail-head>div>span { font-size }
+components/paper-table/PaperTable.css:189: .research-map-detail>.research-map-papers.structured-list--fill { padding }
+components/paper-table/PaperTable.css:189: .research-map-detail>.research-map-papers.structured-list--fill { margin-inline }
+components/paper-table/PaperTable.css:190: .research-map-paper { display }
+components/paper-table/PaperTable.css:190: .research-map-paper { grid-template-columns }
+components/paper-table/PaperTable.css:190: .research-map-paper { grid-template-areas }
+components/paper-table/PaperTable.css:190: .research-map-paper { align-items }
+components/paper-table/PaperTable.css:190: .research-map-paper { gap }
+components/paper-table/PaperTable.css:190: .research-map-paper { min-height }
+components/paper-table/PaperTable.css:190: .research-map-paper { padding }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { display }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { padding }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { border }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { background }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { color }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { font }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { text-align }
+components/paper-table/PaperTable.css:191: .research-map-paper-open { cursor }
+components/paper-table/PaperTable.css:192: .research-map-paper-title { font-weight }
+components/paper-table/PaperTable.css:194: .research-map-paper-meta { color }
+components/paper-table/PaperTable.css:194: .research-map-paper-meta { font-size }
+components/paper-table/PaperTable.css:194: .research-map-paper-meta { white-space }
+components/paper-table/PaperTable.css:195: .research-map-why { display }
+components/paper-table/PaperTable.css:195: .research-map-why { align-items }
+components/paper-table/PaperTable.css:195: .research-map-why { gap }
+components/paper-table/PaperTable.css:195: .research-map-why { color }
+components/paper-table/PaperTable.css:195: .research-map-why { font-size }
+components/paper-table/PaperTable.css:198: @media (max-width:900px) .research-map-groups { display }
+components/paper-table/PaperTable.css:198: @media (max-width:900px) .research-map-groups { grid-template-columns }
+components/paper-table/PaperTable.css:199: @media (max-width:900px) .research-map-groups>.structured-row:nth-child(2) { border-top }
 components/paper/PaperCard.css:1: .paper-card { border }
 components/paper/PaperCard.css:1: .paper-card { border-radius }
 components/paper/PaperCard.css:1: .paper-card { padding }
@@ -602,34 +580,30 @@ components/project/ProjectSections.css:9: .agstep .agt { font-size }
 components/project/ProjectSections.css:9: .agstep .agt { color }
 components/project/ProjectSections.css:9: .agstep .agt { width }
 components/project/ProjectSections.css:11: .memo { font-size }
-components/project/ProjectSections.css:14: .project-areas .tagchip.tagadd { opacity }
-components/project/ProjectSections.css:14: .project-areas .tagchip.tagadd { pointer-events }
-components/project/ProjectSections.css:15: .project-areas .tagchip-open { cursor }
-components/project/ProjectSections.css:16: .wkrel .reladd { min-width }
-components/project/ProjectSections.css:23: .attrow { display }
-components/project/ProjectSections.css:23: .attrow { align-items }
-components/project/ProjectSections.css:23: .attrow { gap }
-components/project/ProjectSections.css:23: .attrow { font-size }
-components/project/ProjectSections.css:23: .attrow { padding }
-components/project/ProjectSections.css:24: .attrow>svg { width }
-components/project/ProjectSections.css:24: .attrow>svg { height }
-components/project/ProjectSections.css:24: .attrow>svg { color }
-components/project/ProjectSections.css:25: .attrow .an { padding }
-components/project/ProjectSections.css:25: .attrow .an { border }
-components/project/ProjectSections.css:25: .attrow .an { background }
-components/project/ProjectSections.css:25: .attrow .an { color }
-components/project/ProjectSections.css:25: .attrow .an { font }
-components/project/ProjectSections.css:25: .attrow .an { text-align }
-components/project/ProjectSections.css:25: .attrow .an { cursor }
-components/project/ProjectSections.css:26: .attrow .an:disabled { cursor }
-components/project/ProjectSections.css:27: .attrow .as { font-size }
-components/project/ProjectSections.css:27: .attrow .as { color }
-components/project/ProjectSections.css:28: .attrow .row-actions { margin }
-components/project/ProjectSections.css:29: .attachments { border-radius }
-components/project/ProjectSections.css:29: .attachments { transition }
-components/project/ProjectSections.css:29: .attachments { outline }
-components/project/ProjectSections.css:30: .attachments.drag { background }
-components/project/ProjectSections.css:30: .attachments.drag { outline-color }
+components/project/ProjectSections.css:17: .attrow { display }
+components/project/ProjectSections.css:17: .attrow { align-items }
+components/project/ProjectSections.css:17: .attrow { gap }
+components/project/ProjectSections.css:17: .attrow { font-size }
+components/project/ProjectSections.css:17: .attrow { padding }
+components/project/ProjectSections.css:18: .attrow>svg { width }
+components/project/ProjectSections.css:18: .attrow>svg { height }
+components/project/ProjectSections.css:18: .attrow>svg { color }
+components/project/ProjectSections.css:19: .attrow .an { padding }
+components/project/ProjectSections.css:19: .attrow .an { border }
+components/project/ProjectSections.css:19: .attrow .an { background }
+components/project/ProjectSections.css:19: .attrow .an { color }
+components/project/ProjectSections.css:19: .attrow .an { font }
+components/project/ProjectSections.css:19: .attrow .an { text-align }
+components/project/ProjectSections.css:19: .attrow .an { cursor }
+components/project/ProjectSections.css:20: .attrow .an:disabled { cursor }
+components/project/ProjectSections.css:21: .attrow .as { font-size }
+components/project/ProjectSections.css:21: .attrow .as { color }
+components/project/ProjectSections.css:22: .attrow .row-actions { margin }
+components/project/ProjectSections.css:23: .attachments { border-radius }
+components/project/ProjectSections.css:23: .attachments { transition }
+components/project/ProjectSections.css:23: .attachments { outline }
+components/project/ProjectSections.css:24: .attachments.drag { background }
+components/project/ProjectSections.css:24: .attachments.drag { outline-color }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-kind-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-date-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-gap }

@@ -14,8 +14,6 @@ const { parse } = require('@babel/parser')
 export const RAW_BUTTONS = [
   { reason: 'the open button of a composite row, which holds the row\'s other controls beside it',
     keys: ['routes/Projects.tsx prow-open', 'routes/Ideas.tsx idea-row-open', 'components/wiki/WikiTidy.tsx tidy-open'] },
-  { reason: 'the open part of a chip whose remove sits beside it',
-    keys: ['components/ideas/IdeaRelations.tsx tagchip-open', 'components/project/ProjectSections.tsx tagchip-open'] },
   { reason: 'a name in a list row that opens what it names', keys: ['components/project/ProjectSections.tsx an'] },
   { reason: 'a link of the page contents that scrolls to its heading', keys: ['routes/Wiki.tsx wktoc > button'] },
   { reason: 'a breadcrumb segment of the title bar that opens its place', keys: ['shell/AppShell.tsx cseg'] },

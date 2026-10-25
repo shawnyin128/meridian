@@ -332,7 +332,7 @@ export const PATTERNS = {
   Chip: {
     metrics: 'tag',
     entries: [
-      entry('shared:TagChips', '.tagchip', { not: '.tagadd' }),
+      entry('shared:ChipList', '.tagchip', { not: '.tagadd' }),
       entry('shared:ChipToggles', '.chip-toggle'),
     ],
   },
@@ -340,7 +340,7 @@ export const PATTERNS = {
     metrics: 'list',
     entries: [
       entry('shared:RailLinks', '.rail-links'),
-      entry('hand:components/project/ProjectSections.tsx', '.wkrel', { not: '.rail-links' }),
+      entry('shared:ChipList', '.wkrel', { not: '.rail-links' }),
       entry('hand:routes/Wiki.tsx', '.memb'),
       entry('hand:components/project/ResearchGraph.tsx', '.node-branch-groups'),
     ],

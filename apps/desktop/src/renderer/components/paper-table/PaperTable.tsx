@@ -598,8 +598,8 @@ export function PaperTable() {
         if (hidden > 0 || chip.getBoundingClientRect().right > limit) {
           chip.classList.add('hid')
           hidden++
-          // The trailing + is not content, so folding it away does not count toward +N.
-          if (!chip.classList.contains('tagadd')) real++
+          // The trailing +, alone or in its row's actions slot, is not content, so folding it away does not count toward +N.
+          if (!chip.classList.contains('tagadd') && chip.querySelector('.tagadd') === null) real++
         }
       })
       if (real > 0) next.set(ci.dataset['fold']!, real)
@@ -1045,7 +1045,7 @@ export function PaperTable() {
       <td key={k}>
         {chipCell(`${p.id}:${k}`, (
           <PaperTopics
-            topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report}
+            topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report} reveal="hover"
             onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
           />
         ))}

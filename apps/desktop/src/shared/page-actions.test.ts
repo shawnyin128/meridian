@@ -151,6 +151,8 @@ const OPTION_SWITCHES = new Set(['f.basisLabel', 'm.project.workspace.kindLabel'
 const LABELLED: [RegExp, string][] = [
   [/^m\.(common\.(delete|deletePermanently|remove)|project\.attachments\.delete|project\.plan\.delete\w+For|papers\.rowActions\.delete)\b/, 'delete'],
   [/^m\.(inbox\.actions\.dismiss|later\.actions\.removeFrom|wiki\.removeFromPage|common\.removeLink|papers\.tags\.remove)\b/, 'remove'],
+  // ChipList names the × of each chip it draws `chip.remove`.
+  [/^chip\.remove\.label$/, 'remove'],
   [/^m\.(papers\.rowActions\.openReader|settings\.archived\.open|project\.idea\.openIdea|papers\.understanding\.goRead|wiki\.viewInPaperList)\b/, 'open'],
   [/^m\.(common\.(restore|undo)|settings\.archived\.unarchive)\b/, 'restore'],
   [/^m\.(trash\.clear|changelog\.clearArchived)\b/, 'clear'],

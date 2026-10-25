@@ -103,19 +103,6 @@
 .pt-title:hover{text-decoration:underline;text-underline-offset:2px}
 .ptable tbody tr{cursor:pointer}
 .pt-dim{color:var(--ter);white-space:nowrap}
-/*
- * The + at the end of a tag cell: a ghost tag, hidden at rest and shown only while the row is hovered
- * or it has keyboard focus. The focus state names both classes, or it ties with the resting state and
- * only source order decides.
- */
-.tagchip.tagadd{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible{opacity:1;pointer-events:auto}
-/* A topic chip's × in the table shows with the row's +, so a resting table reads as plain tags. */
-.ptable .tagchip .rx{opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-.ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible{opacity:1;pointer-events:auto}
-.ptable tr:has(.stchip[data-state="open"]) .tagadd{opacity:1}
-.paper-meta-projects .tagchip.tagadd,.paper-meta-topics .tagchip.tagadd{opacity:1;pointer-events:auto}
-.form-input.form-control-inline.tagin{display:inline-block;width:110px;vertical-align:middle}
 
 /* Custom columns: clicking a cell edits it in place */
 .pt-cust,.pt-remark{color:var(--sec);font-size:var(--fs-sm);cursor:text;min-width:70px}

@@ -7,9 +7,8 @@ import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
-import { IconCross, IconPencil, IconTrash } from '../icons.js'
+import { IconTrash } from '../icons.js'
 import { EditActions } from '../EditActions.js'
-import { ExternalMark } from '../EntityLink.js'
 import { EmptyState } from '../EmptyState.js'
 import { MarkdownBox } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -22,9 +21,9 @@ import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
-import { Tag, tagClass } from '../Tag.js'
+import { ChipList } from '../ChipList.js'
+import { Tag } from '../Tag.js'
 import { TagChips } from '../TagChips.js'
-import { Tooltip } from '../Tooltip.js'
 import './ProjectSections.css'
 
 /** Local-only grouping key for linked papers inside the relations list; never sent to Core. */
@@ -230,77 +229,47 @@ export function ProjectRelations({
   return (
     <>
       {rows.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
-      {rows.map((row) => (
-        <div
-          className="wkrel" key={row.group}
-          ref={adding !== undefined && sameRow(adding.group, row.group) ? adding.row : undefined}
-        >
-          <span className="rl">{groupLabel(row.group)}</span>
-          {adding !== undefined && sameRow(adding.group, row.group)
-            ? (
-              <div className="reladd">
-                <SegmentedControl
-                  label={m.project.links.groupLabel}
-                  value={adding.group}
-                  options={PROJECT_RELATION_GROUPS.map((group) => ({ value: group, label: groupLabel(group) }))}
-                  onChange={adding.onGroup}
-                />
-                {adding.input}
-              </div>
-            )
-            : null}
-          {isPaperRow(row.group)
-            ? linked.map((paper) => (
-              <span
-                className={tagClass('neutral', 'chip', 'tagchip')} key={paper.id} data-paper={paper.id} data-row-actions=""
-                onClick={() => onOpenPaper(paper.id)} {...reorder.itemProps(paper.id)}
-              >
-                <button type="button" className="tagchip-open">
-                  <FadeText className="tagchip-text"><PaperText text={paper.title} /></FadeText>
-                </button>
-                <RowActions>
-                  <IconButton
-                    label={m.common.removeLink} size="inline" className="rx"
-                    onClick={(event) => { event.stopPropagation(); onRemovePaper(paper.id, paper.title) }}
-                  ><IconCross /></IconButton>
-                </RowActions>
-              </span>
-            ))
-            : null}
-          {row.items.map((item) => (editing?.id === item.id
-            ? <div className="reladd" key={item.id} ref={editing.row}>{editing.input}</div>
-            : (
-              <span
-                className={tagClass('neutral', 'chip', 'tagchip')} key={item.id} data-wk={item.page} data-url={item.url}
-                data-row-actions="" {...reorder.itemProps(item.id)}
-                onClick={item.url !== undefined
-                  ? () => { window.open(item.url, '_blank') }
-                  : item.page === undefined ? undefined : () => onOpenPage(item.page!)}
-              >
-                {item.url === undefined && item.page === undefined
-                  ? <FadeText className="tagchip-text">{item.text}</FadeText>
-                  : (
-                    <Tooltip label={item.url}>
-                      <button type="button" className="tagchip-open">
-                        <FadeText className="tagchip-text">{item.text}</FadeText>
-                        {item.url === undefined ? null : <ExternalMark />}
-                      </button>
-                    </Tooltip>
-                  )}
-                <RowActions>
-                  <IconButton
-                    label={m.project.links.editTitle} size="inline" className="tagchip-edit"
-                    onClick={(event) => { event.stopPropagation(); onEdit(item) }}
-                  ><IconPencil /></IconButton>
-                  <IconButton
-                    label={m.common.removeLink} size="inline" className="rx"
-                    onClick={(event) => { event.stopPropagation(); onRemove(item.id, item.text) }}
-                  ><IconCross /></IconButton>
-                </RowActions>
-              </span>
-            )))}
-        </div>
-      ))}
+      {rows.map((row) => {
+        const adds = adding !== undefined && sameRow(adding.group, row.group)
+        return (
+          <ChipList
+            key={row.group} label={groupLabel(row.group)} ref={adds ? adding.row : undefined} reorder={reorder.itemProps}
+            before={adds
+              ? (
+                <div className="reladd">
+                  <SegmentedControl
+                    label={m.project.links.groupLabel}
+                    value={adding.group}
+                    options={PROJECT_RELATION_GROUPS.map((group) => ({ value: group, label: groupLabel(group) }))}
+                    onChange={adding.onGroup}
+                  />
+                  {adding.input}
+                </div>
+              )
+              : null}
+            chips={[
+              ...(isPaperRow(row.group) ? linked : []).map((paper) => ({
+                id: paper.id,
+                name: <PaperText text={paper.title} />,
+                onOpen: () => onOpenPaper(paper.id),
+                data: { 'data-paper': paper.id },
+                remove: { label: m.common.removeLink, onRemove: () => onRemovePaper(paper.id, paper.title) },
+              })),
+              ...row.items.map((item) => ({
+                id: item.id,
+                name: item.text,
+                ...(item.url !== undefined
+                  ? { onOpen: () => { window.open(item.url, '_blank') }, tooltip: item.url, external: true }
+                  : item.page === undefined ? {} : { onOpen: () => onOpenPage(item.page!) }),
+                data: { 'data-wk': item.page, 'data-url': item.url },
+                edit: { label: m.project.links.editTitle, onEdit: () => onEdit(item) },
+                remove: { label: m.common.removeLink, onRemove: () => onRemove(item.id, item.text) },
+                ...(editing?.id === item.id ? { editor: <div className="reladd" ref={editing.row}>{editing.input}</div> } : {}),
+              })),
+            ]}
+          />
+        )
+      })}
     </>
   )
 }

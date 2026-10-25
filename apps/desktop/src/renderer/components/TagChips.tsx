@@ -4,14 +4,11 @@ import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useDrafts, type Drafts, type KeptText } from '../hooks/useDrafts.js'
 import { useInlineDraft } from '../hooks/useInlineDraft.js'
-import { AddAction } from './AddAction.js'
-import { FadeText } from './FadeText.js'
+import { ChipList } from './ChipList.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
-import { IconButton } from './IconButton.js'
-import { IconCross, IconPlus } from './icons.js'
+import { IconPlus } from './icons.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
-import { Tag, tagClass } from './Tag.js'
-import './TagChips.css'
+import { Tag } from './Tag.js'
 
 /** What a chip list calls its parts: the `+`, a chip's ×, and the heading over the candidates. */
 export type TagChipLabels = { add: string; remove: (value: string) => string; existing: string }
@@ -102,32 +99,18 @@ function useChipDraft({ open, initial, appearance, values, vocabulary, labels, i
   return { field, content }
 }
 
-/**
- * The `+` after the chips: clicking it turns it into the draft input, in its place, whose value goes
- * to `onAdd`. The `+` button opens it with its own `setOpen(true)`; the input's styling follows the
- * demo's .tagin/tagSug.
- */
-function ChipAdd({ onAdd, drafts, ...props }: DraftProps & { onAdd: (value: string) => Promise<boolean>; drafts: Drafts<string> }) {
-  const [ownOpen, setOpen] = useState(false)
-  const open = ownOpen || drafts.get('add') !== undefined
+/** The draft input in the `+`'s place, whose value goes to `onAdd`, until `onClose`. */
+function ChipAdd({ onAdd, onClose, drafts, ...props }: DraftProps & {
+  onAdd: (value: string) => Promise<boolean>
+  onClose: () => void
+  drafts: Drafts<string>
+}) {
   const input = useRef<HTMLInputElement>(null)
   const { field, content } = useChipDraft({
-    ...props, open, initial: '', appearance: 'inline', input, onSubmit: onAdd, onClose: () => setOpen(false),
+    ...props, open: true, initial: '', appearance: 'inline', input, onSubmit: onAdd, onClose,
     kept: { drafts, target: 'add' },
   })
-  return (
-    <PickerPopover
-      open={open} anchorRef={input} stopClickPropagation content={content}
-      anchor={open
-        ? field
-        : (
-          <AddAction
-            size="chip" className="tagchip tagadd" label={props.labels.add}
-            onClick={(e) => { e.stopPropagation(); setOpen(true) }}
-          />
-        )}
-    />
-  )
+  return <PickerPopover open anchorRef={input} stopClickPropagation content={content} anchor={field} />
 }
 
 /** Chip `value` being edited: the draft input in the chip's place, holding its value, whose result goes to `onReplace`. */
@@ -146,50 +129,51 @@ function ChipEdit({ value, onReplace, onClose, drafts, ...props }: DraftProps & 
 }
 
 /**
- * A list of values edited as chips the same way wherever it appears: a chip per value, whose × hands
- * it to `onRemove`, then the `+` that adds one through `onAdd`. With `onReplace`, clicking a chip
- * turns it into an input holding its value, in its place, and the value that input hands over
- * replaces it through `onReplace`. Every input offers the values of `vocabulary` the list does not
- * hold. `onAdd`, `onRemove` and `onReplace` return whether the write completed. What an input holds
- * is kept as a draft of `keep` (see `useDrafts`), the scope of the item the values belong to, and an
- * input with a kept draft opens again with it.
+ * A list of values edited as chips the same way wherever it appears, on ChipList: a chip per value,
+ * whose × hands it to `onRemove`, then the `+` that turns into an input, in its place, whose value goes
+ * to `onAdd`. With `onReplace`, clicking a chip turns it into an input holding its value, in its place,
+ * and the value that input hands over replaces it through `onReplace`. Every input offers the values of
+ * `vocabulary` the list does not hold. `onAdd`, `onRemove` and `onReplace` return whether the write
+ * completed. What an input holds is kept as a draft of `keep` (see `useDrafts`), the scope of the item
+ * the values belong to, and an input with a kept draft opens again with it. `reveal` places the `+` as
+ * ChipList does.
  */
-export function TagChips({ values, onAdd, onRemove, onReplace, keep, ...props }: DraftProps & {
+export function TagChips({ values, onAdd, onRemove, onReplace, keep, reveal, ...props }: DraftProps & {
   onAdd: (value: string) => Promise<boolean>
   onRemove: (value: string) => Promise<boolean>
   onReplace?: (from: string, to: string) => Promise<boolean>
   keep: readonly string[]
+  reveal?: 'rest' | 'hover' | undefined
 }) {
   const drafts = useDrafts<string>(keep, [
     'add', ...(onReplace === undefined ? [] : values.map((value) => `edit:${value}`)),
   ])
   const [ownEditing, setEditing] = useState<string | null>(null)
   const editing = ownEditing ?? values.find((value) => drafts.get(`edit:${value}`) !== undefined) ?? null
+  const [ownAdding, setAdding] = useState(false)
+  const adding = ownAdding || drafts.get('add') !== undefined
   return (
-    <>
-      {values.map((value) => (onReplace !== undefined && editing === value
-        ? (
-          <ChipEdit
-            key={value} value={value} values={values} {...props} drafts={drafts}
-            onReplace={(to) => onReplace(value, to)} onClose={() => setEditing(null)}
-          />
-        )
-        : (
-          <span className={tagClass('neutral', 'chip', 'tagchip')} key={value}>
-            {onReplace === undefined
-              ? value
-              : (
-                <button type="button" className="tagchip-open" onClick={(e) => { e.stopPropagation(); setEditing(value) }}>
-                  <FadeText className="tagchip-text">{value}</FadeText>
-                </button>
-              )}
-            <IconButton
-              label={props.labels.remove(value)} size="inline" className="rx"
-              onClick={(event) => { event.stopPropagation(); void onRemove(value) }}
-            ><IconCross sw={2.5} /></IconButton>
-          </span>
-        )))}
-      <ChipAdd values={values} onAdd={onAdd} {...props} drafts={drafts} />
-    </>
+    <ChipList
+      reveal={reveal}
+      chips={values.map((value) => ({
+        id: value,
+        name: value,
+        ...(onReplace === undefined ? {} : { onOpen: () => setEditing(value) }),
+        remove: { label: props.labels.remove(value), onRemove: () => { void onRemove(value) } },
+        ...(onReplace === undefined || editing !== value ? {} : {
+          editor: (
+            <ChipEdit
+              value={value} values={values} {...props} drafts={drafts}
+              onReplace={(to) => onReplace(value, to)} onClose={() => setEditing(null)}
+            />
+          ),
+        }),
+      }))}
+      add={{
+        label: props.labels.add,
+        onAdd: () => setAdding(true),
+        draft: adding ? <ChipAdd values={values} onAdd={onAdd} onClose={() => setAdding(false)} {...props} drafts={drafts} /> : undefined,
+      }}
+    />
   )
 }

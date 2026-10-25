@@ -28,7 +28,7 @@ const RULES = STYLESHEETS.flatMap((path) => [...source(path).matchAll(/([^{}]+)\
 
 const STYLES = [
   'shell/tokens.css', 'routes/shell.css', 'components/IconButton.css', 'components/Tag.css', 'components/DragHandle.css',
-  'components/StructuredList.css', 'components/TagChips.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
+  'components/StructuredList.css', 'components/ChipList.css', 'components/paper-table/PaperTable.css', 'components/project/ProjectSections.css',
   'components/project/ProjectPlan.css', 'components/timeline/TimelineBoard.css', 'components/project/ResearchGraph.css',
 ].map(source)
 
@@ -39,7 +39,7 @@ const STYLES = [
 const SPOTS: Record<string, [markup: string, spot: string, held: string[]]> = {
   '列表的拖动把手': ['<span class="icbtn sm drag-handle" aria-hidden="true" draggable="true"></span>', '.drag-handle', ['press']],
   '论文表的列移动把手': ['<table class="ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"><span class="icbtn xs drag-handle" aria-hidden="true" draggable="true"></span></th></tr></thead></table>', '.drag-handle', ['press']],
-  '关联 chip': ['<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" data-reorder-item="r1" data-reorder-axis="x" draggable="true"><button type="button" class="tagchip-open">链接</button></span></div>', '.tagchip', ['press', 'dragging']],
+  '关联 chip': ['<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" data-row-actions="" data-actionable="" data-reorder-item="r1" data-reorder-axis="x" draggable="true"><button type="button" class="tagchip-open">链接</button></span></div>', '.tagchip', ['press', 'dragging']],
   '时间线的任务条': ['<div class="grow"><button type="button" class="gbar"></button></div>', '.gbar', ['press', 'dragging']],
   '时间线的里程碑菱形': ['<div class="grow msrow"><span class="gddl"></span></div>', '.gddl', ['press', 'dragging']],
   '计划的任务行': ['<div class="project-plan"><div id="taskList"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions="" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div></div>', '.task-row', ['press', 'dragging']],
@@ -101,7 +101,7 @@ describe('拖动中的条目和落点', () => {
     '想法卡片': [['components/ResearchObjectCard.css', 'routes/Ideas.css'], '<article class="research-object-card idea-card" data-row-actions="" data-reorder-item="i1" data-reorder-axis="y"></article>'],
     '计划的任务行': [['components/StructuredList.css', 'components/project/ProjectPlan.css'], '<div class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
     '时间线的任务标签行': [['components/timeline/TimelineBoard.css'], '<div class="glabels"><div class="glrow timeline-label-row" draggable="true" data-reorder-item="t1" data-reorder-axis="y"></div></div>'],
-    '关联 chip': [['components/Tag.css', 'components/TagChips.css', 'components/project/ProjectSections.css'], '<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true" data-reorder-item="r1" data-reorder-axis="x"></span></div>'],
+    '关联 chip': [['components/Tag.css', 'components/ChipList.css', 'components/project/ProjectSections.css'], '<div class="wkrel"><span class="tag tag--chip tag--neutral tagchip" draggable="true" data-reorder-item="r1" data-reorder-axis="x"></span></div>'],
     '论文表的列': [['routes/shell.css', 'components/paper-table/PaperTable.css'], '<div class="tblwrap"><table class="ptable"><thead><tr><th data-reorder-item="short" data-reorder-axis="x"></th></tr></thead></table></div>'],
   }
   /** The opacity and box shadow of the item in `markup` under `sheets`, held, then with the drop line before and after it. */
