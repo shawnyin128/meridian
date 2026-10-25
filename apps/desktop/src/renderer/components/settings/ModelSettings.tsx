@@ -496,7 +496,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
           >{m.settings.model.connection.action}</Button>
           <CommitActions
             place="foot" saving={saving} done={saved}
-            canSave={cli !== null ? cliStatus?.state !== 'unsupported' : !compatibleTemplatePending}
+            canSave={cli !== null ? statusFailure === null && cliStatus?.state === 'found' : !compatibleTemplatePending}
             saveLabel={m.settings.model.save} busyLabel={m.settings.model.saving}
             onSave={() => { void save() }}
           />
