@@ -153,7 +153,7 @@ describe('idea and graph association', () => {
     const nodes = [...host.querySelectorAll<SVGGElement>('.rgn')]
     expect([group.getAttribute('role'), group.getAttribute('aria-label')]).toEqual(['radiogroup', '科研图'])
     expect(nodes.map((node) => [node.getAttribute('role'), node.getAttribute('aria-label'), node.getAttribute('aria-checked')]))
-      .toEqual([['radio', '根节点', 'false'], ['radio', '动态预算探针', 'true'], ['radio', '旁支', 'false']])
+      .toEqual([['radio', '根节点（已验证）', 'false'], ['radio', '动态预算探针（候选 / 搁置）', 'true'], ['radio', '旁支（候选 / 搁置）', 'false']])
     expect([group, ...nodes].filter((element) => element.tabIndex === 0)).toEqual([group])
     const press = async (key: string) => {
       await act(async () => {
@@ -175,13 +175,40 @@ describe('idea and graph association', () => {
     host.remove()
   })
 
+  it('draws each node state with its own shape as well as its colour, the legend keys the same shapes, and a node\'s name says its states', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const modes = ['supported', 'repairable', 'dead', 'unresolved'] as const
+    const graph: Graph = {
+      nodes: modes.map((mode, at) => ({ id: mode, label: mode, state: 'idle', mode, x: at * 220, y: 0, width: 180, writebacks: [] })),
+      edges: [],
+    }
+    act(() => root.render(withMessages(<ResearchGraph graph={graph} selected={null} onSelect={vi.fn()} ideaNodeIds={['dead']} />)))
+    /** A node's state mark: the element that draws it, and a path's number of closed parts (a ring is two, a half ring three). */
+    const mark = (mode: string) => {
+      const drawn = host.querySelector(`.rgn[data-node="${mode}"] .nd`)!
+      return [drawn.tagName.toLowerCase(), (drawn.getAttribute('d') ?? '').split('Z').length - 1]
+    }
+    expect(modes.map(mark)).toEqual([['circle', 0], ['path', 3], ['path', 1], ['path', 2]])
+    expect(host.querySelector('.rgn[data-node="dead"] .nd')!.getAttribute('d')!.split('L')).toHaveLength(12)
+    expect([...host.querySelectorAll('.glegend .status-dot')].map((dot) => dot.className))
+      .toEqual(['status-dot status-dot--md status-dot--warn status-dot--half', 'status-dot status-dot--md status-dot--good',
+        'status-dot status-dot--md status-dot--bad status-dot--cross', 'status-dot status-dot--md status-dot--neutral status-dot--ring'])
+    expect(modes.map((mode) => host.querySelector(`.rgn[data-node="${mode}"]`)!.getAttribute('aria-label')))
+      .toEqual(['supported（已验证）', 'repairable（待修复）', 'dead（失败，当前想法关联）', 'unresolved（候选 / 搁置）'])
+    act(() => root.unmount())
+    host.remove()
+  })
+
   it('keeps the zoom controls one Tab stop, with the arrow keys between zoom out, the reset and zoom in', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
     act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={vi.fn()} />)))
-    const controls = host.querySelector<HTMLElement>('.graph-view-controls')!
+    const controls = host.querySelector<HTMLElement>('.zoom-control')!
     expect([controls, ...controls.querySelectorAll<HTMLElement>('*')].filter((element) => element.tabIndex === 0)).toEqual([controls])
     await act(async () => { controls.focus() })
     const walked: (string | null)[] = []
@@ -245,7 +272,7 @@ describe('idea and graph association', () => {
           .exec(host.querySelector('svg > g')!.getAttribute('transform')!)!
         return { x: Number(x), y: Number(y), zoom: Number(zoom) }
       }
-      const shown = () => host.querySelector('.graph-zoom-reset')!.textContent
+      const shown = () => host.querySelector('.zoom-control-reset')!.textContent
       return { host, root, view, shown }
     }
     afterEach(() => { vi.restoreAllMocks() })
@@ -304,7 +331,7 @@ describe('idea and graph association', () => {
       const opened = view()
       act(() => host.querySelector<HTMLButtonElement>('[aria-label="放大科研图"]')!.click())
       expect(view().zoom).toBeGreaterThan(opened.zoom)
-      act(() => host.querySelector<HTMLButtonElement>('.graph-zoom-reset')!.click())
+      act(() => host.querySelector<HTMLButtonElement>('.zoom-control-reset')!.click())
       expect(view()).toEqual(opened)
       act(() => root.unmount())
     })
@@ -339,13 +366,14 @@ describe('idea and graph association', () => {
     )))
 
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1'])
+    expect([host.querySelector('.panel-head-title')!.textContent, ...headings])
+      .toEqual([GRAPH.nodes[0]!.label, '分支 · 1', '任务 · 1', '关联想法 · 1'])
     expect(host.querySelector('.node-task-row')?.textContent).toBe('重跑延迟矩阵agent')
     act(() => (host.querySelector('.node-task-row') as HTMLButtonElement).click())
     expect(onSelectTask).toHaveBeenCalledWith('task-7')
     expect(host.querySelector('.node-idea-row')?.textContent)
       .toContain('用动态预算控制校准成本')
-    expect(host.querySelector('.node-ideas')?.classList.contains('structured-list--embedded')).toBe(true)
+    expect(host.querySelector('.node-ideas')?.classList.contains('list--embedded')).toBe(true)
 
     act(() => (host.querySelector('.node-idea-row') as HTMLButtonElement).click())
     expect(onSelectIdea).toHaveBeenCalledWith('idea-1')
@@ -412,8 +440,8 @@ describe('idea and graph association', () => {
       />,
     )))
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1)).toEqual(['任务 · 0', '关联想法 · 0'])
-    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['还没有任务', '还没有关联想法'])
+    expect([host.querySelector('.panel-head-title')!.textContent, ...headings]).toEqual([leaf.label, '任务 · 0', '关联想法 · 0'])
+    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['—', '—'])
     act(() => root.unmount())
   })
 

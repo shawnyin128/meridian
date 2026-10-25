@@ -6,8 +6,8 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
-import { IconChevron } from '../icons.js'
+import { FoldToggle } from '../FoldToggle.js'
+import { ScrollArea } from '../ScrollArea.js'
 import { ProjectPriorityTag } from '../project/ProjectIdentity.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -18,7 +18,7 @@ import {
 import type { TimelinePeriod } from './TimelineScale.js'
 import { useGanttDrag } from '../../hooks/useGanttDrag.js'
 import { useDragReorder } from '../../hooks/useDragReorder.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
+import { isClipped } from '../../hooks/useClipped.js'
 import './TimelineBoard.css'
 
 export type TimelineProject = {
@@ -102,7 +102,6 @@ export function TimelineBoard({
   const fmt = useFormat()
   const m = useMessages()
   const wrap = useRef<HTMLDivElement>(null)
-  const wrapFade = useScrollFade('x', wrap)
   const canvas = useRef<HTMLDivElement>(null)
   const todayIso = useToday()
   const { anchor, scale } = period
@@ -147,6 +146,7 @@ export function TimelineBoard({
         }
       }
     },
+    { axis: 'y', handle: 'row' },
   )
 
   const onMove = useCallback((grab: Grab, delta: number) => {
@@ -195,7 +195,7 @@ export function TimelineBoard({
   // The title inside a one-day bar keeps its box, hidden while it is drawn beside, so its fit is measured the same way in both.
   useLayoutEffect(() => {
     const cut = new Map([...canvas.current!.querySelectorAll<HTMLElement>('.gbar.one-day .gbar-label')]
-      .filter((label) => label.scrollWidth > label.clientWidth + 1)
+      .filter((label) => isClipped(label, 'x'))
       .map((label) => {
         const bar = label.closest<HTMLElement>('.gbar')!
         return [`${bar.dataset['proj']}/task/${bar.dataset['task']}`, label.scrollWidth] as const
@@ -241,22 +241,21 @@ export function TimelineBoard({
                   data-task={row.kind === 'task' ? row.task.id : undefined}
                   key={key}
                   {...(row.kind === 'task' && onReorderTasks !== undefined
-                    ? { ...labelReorder.handleProps(row.task.id), ...labelReorder.itemProps(row.task.id) }
+                    ? labelReorder.itemProps(row.task.id)
                     : {})}
                   onClick={open}
                 >
-                  {foldable && row.kind === 'milestones' ? (
-                    <IconButton
-                      label={folded.has(row.project.id)
-                        ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
-                      size="nested" className="timeline-fold" aria-expanded={!folded.has(row.project.id)}
-                      onClick={(event) => { event.stopPropagation(); toggleFold(row.project.id) }}
-                    ><IconChevron /></IconButton>
-                  ) : null}
                   {/* A label that opens something is the row's button; its click reaches the row. */}
                   <Tooltip label={labelFor(row)} whenClipped>
                     {open === undefined ? text : <ToolbarButton className="timeline-label-open">{text}</ToolbarButton>}
                   </Tooltip>
+                  {foldable && row.kind === 'milestones' ? (
+                    <FoldToggle
+                      variant="caret" label={folded.has(row.project.id)
+                        ? m.timeline.fold.expand(row.project.name) : m.timeline.fold.collapse(row.project.name)}
+                      open={!folded.has(row.project.id)} onToggle={() => toggleFold(row.project.id)}
+                    />
+                  ) : null}
                   {row.kind === 'milestones' && folded.has(row.project.id) && shown.get(row.project.id)!.length > 0
                     ? <span className="timeline-folded-count">{m.timeline.fold.hidden(shown.get(row.project.id)!.length)}</span>
                     : null}
@@ -268,7 +267,7 @@ export function TimelineBoard({
             })}
           </div>
         </Toolbar>
-        <div className="gwrap" ref={wrapFade}>
+        <ScrollArea axis="x" fill className="gwrap" ref={wrap}>
           <Toolbar orientation="vertical">
             <div className="gcanvas" ref={canvas} style={{ width: days * dayWidth }}>
               <TimelineGrid window={window} scale={scale} today={today} />
@@ -401,7 +400,7 @@ export function TimelineBoard({
               {canvasOverlay}
             </div>
           </Toolbar>
-        </div>
+        </ScrollArea>
       </div>
     </div>
   )

@@ -64,6 +64,12 @@ async function rowAction(row: Locator, sel: string): Promise<void> {
   await row.locator(sel).click()
 }
 
+/** Picks `item` from the … menu at the end of the column menu's row `row`, which hovering the row shows. */
+async function fromRowMenu(row: Locator, item: '重命名' | '删除'): Promise<void> {
+  await rowAction(row, '.dots')
+  await row.page().getByRole('menuitem', { name: item, exact: true }).click()
+}
+
 /**
  * Writes the column configuration through Core, then fills `cells[i]` into the i-th paper by date
  * added, the table's default sort, and returns those papers' ids. The papers screen mounts and
@@ -108,7 +114,7 @@ test('论文表每一行等高,行高是 38px', async ({ win }) => {
 
 /** Index on the current page of the first row whose title cell is truncated. */
 const truncatedTitleRow = (win: Page) => win.locator('.ptable tbody tr')
-  .evaluateAll((rows) => rows.findIndex((tr) => tr.querySelector('td.pt-title.trunc') !== null))
+  .evaluateAll((rows) => rows.findIndex((tr) => tr.querySelector('td.pt-title .table-cut') !== null))
 
 test('论文表每一格的内容都在行内垂直居中,悬停展开截断的标题时文字不动', async ({ win }) => {
   await gotoPapers(win)
@@ -134,7 +140,7 @@ test('论文表每一格的内容都在行内垂直居中,悬停展开截断的�
   const title = row.locator('td.pt-title')
   const textTop = () => title.evaluate((td) => {
     const range = document.createRange()
-    range.selectNodeContents(td.querySelector('.ci')!)
+    range.selectNodeContents(td.querySelector('.table-text')!)
     return range.getBoundingClientRect().top
   })
   const resting = await textTop()
@@ -166,14 +172,14 @@ test('悬停截断的作者格与自定义文本格,浮框比格子宽,压到邻
   const row = win.locator('.ptable tbody tr').first()
 
   for (const [name, cell] of [
-    ['作者', row.locator('td.pt-dim', { hasText: LONG_AUTHORS[0] })],
+    ['作者', row.locator('td.table-cell--meta', { hasText: LONG_AUTHORS[0] })],
     ['备注', row.locator('td.pt-cust')],
   ] as const) {
     await parkPointer(win)
-    await expect(cell).toHaveClass(/\btrunc\b/)
+    await expect(cell.locator('.table-text')).toHaveClass(/\btable-cut\b/)
     await cell.hover()
     const reveal = await cell.evaluate((td) => {
-      const box = td.querySelector('.ci')!
+      const box = td.querySelector('.table-text')!
       const edge = td.getBoundingClientRect().right
       const rect = box.getBoundingClientRect()
       // A point just past the cell's right edge hits the box only when the cell does not clip it.
@@ -275,7 +281,9 @@ test('研究地图左右两栏都铺到视图底边，在同一高度开始各�
   await win.getByRole('radio', { name: '研究地图', exact: true }).click()
   await expect(win.locator('.research-map-detail .research-map-paper').nth(5)).toBeVisible()
 
-  for (const [width, height] of [[1440, 900], [1280, 800]] as const) {
+  // The fixture's ten groups fit the index column at 1440×900 and 1280×800, so a shorter window shows that
+  // column scrolling and fading inside itself as the paper list does.
+  for (const [width, height] of [[1440, 900], [1280, 800], [1280, 560]] as const) {
     await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
     await expect.poll(() => win.evaluate(() => window.innerHeight)).toBe(height)
     const columns = await win.evaluate(() => {
@@ -286,6 +294,9 @@ test('研究地图左右两栏都铺到视图底边，在同一高度开始各�
       // The column keeps the focus-ring room inside its edges and reaches out by as much, so its lists end above that room.
       const indexEnd = Math.round(index.getBoundingClientRect().bottom - parseFloat(getComputedStyle(index).paddingBottom))
       const headTop = head.getBoundingClientRect().top
+      // A list measures its fades on scroll; make it measure the new window size before reading them.
+      papers.dispatchEvent(new Event('scroll'))
+      index.dispatchEvent(new Event('scroll'))
       const before = { index: index.dataset.fade, papers: papers.dataset.fade }
       papers.scrollTop = papers.scrollHeight
       index.scrollTop = index.scrollHeight
@@ -298,8 +309,7 @@ test('研究地图左右两栏都铺到视图底边，在同一高度开始各�
         fades: { before, after: { index: index.dataset.fade, papers: papers.dataset.fade } },
       }
     })
-    // At 1440×900 the fixture's ten groups fit the column, so only the paper list has more to show.
-    const groupsOverflow = height === 800
+    const groupsOverflow = height === 560
     expect(columns, `${width}×${height}`).toEqual({
       view: columns.view, index: columns.view, detail: columns.view,
       indexScrolls: groupsOverflow, papersScroll: true, headStays: true,
@@ -327,12 +337,12 @@ test('论文表比可视区宽,横向溢出大于零', async ({ win }) => {
   await firstPage(win)
   await parkPointer(win)
 
-  const { scrollWidth, clientWidth, expanded } = await win.locator('.tblwrap').evaluate((el) => ({
+  const { scrollWidth, clientWidth, expanded } = await win.locator('.table-scroll:has(> .ptable)').evaluate((el) => ({
     scrollWidth: el.scrollWidth,
     clientWidth: el.clientWidth,
-    expanded: document.querySelectorAll('.ptable td.trunc:hover').length,
+    expanded: document.querySelectorAll('.ptable td:hover > .table-cut').length,
   }))
-  console.log(`.tblwrap 横向溢出 ${scrollWidth - clientWidth}px(scrollWidth ${scrollWidth} − clientWidth ${clientWidth})`)
+  console.log(`论文表横向溢出 ${scrollWidth - clientWidth}px(scrollWidth ${scrollWidth} − clientWidth ${clientWidth})`)
   expect(expanded, '指针压在被截断的格子上,量到的不是表格自身的宽度').toBe(0)
   expect(scrollWidth - clientWidth).toBeGreaterThan(0)
 })
@@ -341,7 +351,7 @@ test('别的屏上的写不摘掉论文表的截断标记', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
   await parkPointer(win)
-  const truncated = win.locator('.ptable td.trunc')
+  const truncated = win.locator('.ptable .table-cut')
   const badges = win.locator('.ptable .morebadge')
   const cells = await truncated.count()
   const folded = await badges.count()
@@ -371,7 +381,9 @@ test('分组加筛选后,索引层计数、值 chip 计数与分页总数三者�
   const indexCount = await indexRow.locator('.n').innerText()
   await indexRow.click()
 
-  await expect(win.locator('.gnav button[aria-label="分组取值"]')).toHaveText(`${TOPIC} · ${indexCount}`)
+  const picker = win.locator('.gnav button[aria-label="分组取值"]')
+  await expect(picker).toHaveText(`${TOPIC}${indexCount}`)
+  await expect(picker.locator('.count-badge')).toHaveText(indexCount)
   await expect(win.locator('.pginfo')).toHaveText(`共 ${indexCount} 条`)
 })
 
@@ -379,7 +391,7 @@ test('表内给论文加一个主题后,重新取数确认这一行的主题真�
   await gotoPapers(win)
   await firstPage(win)
   const row = win.locator('.ptable tbody tr').first()
-  const title = await row.locator('.pt-title .ci').innerText()
+  const title = await row.locator('.pt-title .table-text').innerText()
   const chips = row.locator('td:nth-child(7) .tagchip:not(.tagadd)')
   const before = await chips.allTextContents()
 
@@ -407,7 +419,7 @@ test('阅读状态列点它选一档就写回 core,页面状态不受影响', as
   await gotoPapers(win)
   await firstPage(win)
   const row = win.locator('.ptable tbody tr').first()
-  const title = await row.locator('.pt-title .ci').innerText()
+  const title = await row.locator('.pt-title .table-text').innerText()
   const chip = row.locator('.stchip')
 
   // The vault's paper pages store no reading status, so Core reports them as unread; this column
@@ -496,7 +508,7 @@ test('标签添加框:写被拒时输入框与打好的字都留着', async ({ w
   await input.press('Enter')
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
 })
@@ -522,7 +534,7 @@ test('标签添加框:点联想项写被拒时,候选层与打开的占位都留
   await hit.click()
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(hit).toHaveText(picked)
 })
@@ -560,7 +572,7 @@ test('标签添加框:提交在路上时点外,写落地前候选层与占位都
   })
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(picked)
   await expect(hit).toHaveCount(1)
@@ -596,7 +608,7 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   })
 
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('这一项已不存在')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
   await expect(newRow).toHaveCount(1)
@@ -704,9 +716,9 @@ test('文本格开着时按住表格自己的滚动条,不算点到格外:格子
   await cell.click()
   await input.fill('按滚动条也不丢')
 
-  const wrap = win.locator('.tblwrap')
+  const wrap = win.locator('.table-scroll:has(> .ptable)')
   const box = (await wrap.boundingBox())!
-  // The bottom 5px of .tblwrap is the horizontal scrollbar track; no body row reaches this y.
+  // The bottom 5px of the table's scroll box is the horizontal scrollbar track; no body row reaches this y.
   await win.mouse.move(box.x + box.width / 2, box.y + box.height - 5)
   await win.mouse.down()
   await win.mouse.up()
@@ -724,12 +736,12 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
 
-  // At 50 per page the body is far taller than the viewport, so .tblwrap really scrolls vertically
+  // At 50 per page the body is far taller than the viewport, so the table's scroll box really scrolls vertically
   // and the check is not vacuous.
   await win.locator('.pagebar .segmented-control>button', { hasText: '50 / 页' }).click()
   await expect(win.locator('.ptable tbody tr')).toHaveCount(50)
 
-  const wrap = win.locator('.tblwrap')
+  const wrap = win.locator('.table-scroll:has(> .ptable)')
   const overflowsVertically = await wrap.evaluate((el) => el.scrollHeight > el.clientHeight)
   expect(overflowsVertically).toBe(true)
 
@@ -739,7 +751,7 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await input.fill('按竖滚动条也不丢')
 
   const box = (await wrap.boundingBox())!
-  // The rightmost 5px of .tblwrap is the vertical scrollbar track; no body column reaches this x.
+  // The rightmost 5px of the table's scroll box is the vertical scrollbar track; no body column reaches this x.
   await win.mouse.move(box.x + box.width - 5, box.y + box.height / 2)
   await win.mouse.down()
   await win.mouse.up()
@@ -823,22 +835,20 @@ test('列管理:内置列显隐持久到离开再回来,固定列藏不了;自�
 
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '备注' }).hover()
-  await menu.filter({ hasText: '备注' }).locator('[aria-label="重命名列"]').click()
+  await fromRowMenu(menu.filter({ hasText: '备注' }), '重命名')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').fill('批注')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').press('Enter')
   await expect.poll(head).toContain('批注')
-  await menu.filter({ hasText: '批注' }).hover()
-  await menu.filter({ hasText: '批注' }).locator('.cmx.danger').click()
+  await fromRowMenu(menu.filter({ hasText: '批注' }), '删除')
   await expect.poll(head).not.toContain('批注')
 })
 
-/** Clicks Undo on the notice the last write showed, and waits for the notice saying it was undone. */
+/** Clicks Undo on the notice the last write showed, and waits for the notice to close; the caller waits for what comes back. */
 async function undoFromNotice(win: Page): Promise<void> {
   const undo = win.locator('#notice .btn')
   await expect(undo).toHaveText('撤销')
   await undo.click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已撤销')
+  await expect(win.locator('#notice')).not.toHaveClass(/\bshow\b/)
 }
 
 test('删掉一列,提示里的撤销把它放回,格子里的值还在', async ({ win }) => {
@@ -850,8 +860,7 @@ test('删掉一列,提示里的撤销把它放回,格子里的值还在', async 
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '备注' }).hover()
-  await menu.filter({ hasText: '备注' }).locator('[aria-label="删除列"]').click()
+  await fromRowMenu(menu.filter({ hasText: '备注' }), '删除')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除列「备注」')
   await expect.poll(head).not.toContain('备注')
 
@@ -869,10 +878,9 @@ test('删掉一个没人用的选项,提示里的撤销把它放回', async ({ w
   const menu = win.locator('[data-radix-popper-content-wrapper] .mi.colrow')
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const spare = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
-  await spare.hover()
-  await spare.locator('[aria-label="删除选项"]').click()
+  await fromRowMenu(spare, '删除')
   await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已删除选项')
   await expect(spare).toHaveCount(0)
 
@@ -947,7 +955,6 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   await win.locator('.ptable thead th.th-new input').fill('读法')
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect.poll(head).toContain('读法')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已新建列 · 全库可用')
   expect((await call<{ custom: { label: string; type: string }[] }>(win, 'papers.columns', {}))
     .custom[0]).toMatchObject({ label: '读法', type: 'select' })
 
@@ -984,10 +991,9 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   const title = await rows.first().locator('td.pt-title').innerText()
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const option = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '精读' })
-  await option.hover()
-  await option.locator('.cmx').first().click()
+  await fromRowMenu(option, '重命名')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').fill('细读')
   await win.locator('[data-radix-popper-content-wrapper] input.celledit').press('Enter')
   await win.keyboard.press('Escape')
@@ -1012,12 +1018,11 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   // is unchanged.
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.optx').click()
+  await menu.filter({ hasText: '读法' }).locator('.fold-toggle').click()
   const still = win.locator('[data-radix-popper-content-wrapper] .mi.optrow', { hasText: '略读' })
-  await still.hover()
-  await still.locator('.cmx.danger').click()
+  await fromRowMenu(still, '删除')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect.poll(head).toContain('读法')
 
   // Delete the column while grouping by it: its header and grouping-bar button go, and grouping
@@ -1032,8 +1037,7 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
 
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
-  await menu.filter({ hasText: '读法' }).hover()
-  await menu.filter({ hasText: '读法' }).locator('.cmx.danger').click()
+  await fromRowMenu(menu.filter({ hasText: '读法' }), '删除')
   await expect(shown(win, '.filters .segmented-control>button').filter({ hasText: '读法' })).toHaveCount(0)
   await expect(shown(win, '.filters .segmented-control>button[aria-checked="true"]')).toHaveText('无')
   await expect.poll(head).not.toContain('读法')
@@ -1180,6 +1184,27 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   await expect(rows.first()).toHaveAttribute('aria-current', 'true')
 })
 
+test('详情里笔记与实验结论的数是属性值:一段字,不为零时是实体链接,不算分隔线的行高和「Wiki」「文件」两行一样', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
+  const counts = win.locator('.pdetail .paper-reading-summary .property-list dd')
+  await expect(counts).toHaveCount(2)
+  // A count above zero is the one entity link, holding only the number; a zero is the number alone.
+  expect(await counts.evaluateAll((dds) => dds.map((dd) => {
+    const shown = /^\d+$/.test(dd.textContent ?? '')
+    const link = dd.querySelector(':scope > .entity-link')
+    return shown && (dd.textContent === '0' ? dd.childElementCount === 0 : dd.childElementCount === 1 && link !== null)
+  }))).toEqual([true, true])
+  const plain = win.locator('.pdetail .paper-meta .paper-meta-list').locator('dt:text-is("Wiki") + dd, dt:text-is("文件") + dd')
+  await expect(plain).toHaveCount(2)
+  // The last row of each list draws no divider under it, so rows are compared without theirs.
+  const heights = [...new Set(await counts.or(plain).evaluateAll((dds) => dds.map((dd) => (
+    dd.getBoundingClientRect().height - parseFloat(getComputedStyle(dd).borderBottomWidth)).toFixed(1))))]
+  console.log(`详情里笔记、实验结论、Wiki、文件四行不算分隔线的行高 ${heights.join(', ')}px`)
+  expect(heights).toHaveLength(1)
+})
+
 test('齿轮里没有新建入口,建列归表头末尾的 ＋', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
@@ -1219,14 +1244,14 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
   await expect(win.locator('.pdetail')).toHaveCount(1)
   const detailSlot = win.locator('.paper-detail-slot')
-  await expect(detailSlot).toHaveAttribute('data-panel-state', 'open')
-  expect(await detailSlot.evaluate((element) => getComputedStyle(element).transitionProperty))
-    .toContain('transform')
+  // The panel takes its place at once and only its content moves in, as every side panel does.
+  expect(await detailSlot.evaluate((element) => [
+    getComputedStyle(element).transitionDuration, getComputedStyle(element.firstElementChild!).animationName,
+  ])).toEqual(['0s', 'side-panel-in'])
   expect(await win.locator('.ptable thead th').allTextContents()).toEqual(headersBefore)
   await expect(win.locator('.ptable thead [aria-label="新建列"]')).toBeEnabled()
   await win.keyboard.press('Escape')
-  await expect(win.locator('.pdetail')).toHaveCount(0)
-  await expect(detailSlot).toHaveAttribute('data-panel-state', 'closed')
+  await expect(detailSlot).toHaveCount(0)
   // Closing the details opens no popover; an add-column popover opened while the details were open
   // would show up now.
   await expect(win.locator('[data-radix-popper-content-wrapper]')).toHaveCount(0)
@@ -1243,11 +1268,11 @@ test('详情面板头部的打开和收起在标题上方单独一行靠右,长�
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
-  await expect(win.locator('.pdetail .pd-t')).toHaveText(title)
+  await expect(win.locator('.paper-detail-slot .panel-head-title')).toHaveText(title)
 
-  const head = await panelHead(win.locator('.pdetail .pd-h'), '.pd-t', '.icbtn')
+  const head = await panelHead(win.locator('.paper-detail-slot .panel-head'), '.panel-head-title', '.icbtn')
   expect(head.actions.map(({ label, width, height }) => [label, width, height]))
-    .toEqual([['开始阅读', 30, 30], ['收起详情', 30, 30]])
+    .toEqual([['开始阅读', 24, 24], ['收起详情', 24, 24]])
   expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
   expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
   expect(head.actions.map((action) => action.top + action.height <= head.title.top)).toEqual([true, true])
@@ -1289,8 +1314,7 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   await win.locator('.ptable thead').hover()
   await win.locator('.ptable thead [aria-label="列设置"]').click()
   const menu = pop.locator('.mi.colrow')
-  await menu.filter({ hasText: MULTI_COLUMN }).hover()
-  await menu.filter({ hasText: MULTI_COLUMN }).locator('.cmx.danger').click()
+  await fromRowMenu(menu.filter({ hasText: MULTI_COLUMN }), '删除')
   await expect.poll(head).not.toContain(MULTI_COLUMN)
   await win.keyboard.press('Escape')
   // The table sorts by date added by default, so the first paper listed that way is its first row.
@@ -1313,7 +1337,7 @@ test('建列被 core 拒绝:占位格与打好的列名都留着,改了再回车
   expect(await head()).not.toContain('读法')
   await expect(newInput).toBeFocused()
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   // After the rejection the placeholder, type popover, typed name and chosen type (Single choice,
   // not the default Text) all remain.
   await expect(newHead).toHaveCount(1)
@@ -1649,7 +1673,7 @@ test.describe(() => {
     await parkPointer(win)
     const resting = (await title.screenshot()).toString('base64')
     // The row hovered away from the title: the hover lies over the selected tint, the title stays folded.
-    await row.locator('td.pt-dim').last().hover()
+    await row.locator('td.table-cell--meta').last().hover()
     const rowHovered = (await title.screenshot()).toString('base64')
     await title.hover()
     const hovered = (await title.screenshot()).toString('base64')
@@ -1697,7 +1721,7 @@ test.describe(() => {
 
     const before = await list(listQuery)
     const row = win.locator('.ptable tbody tr').first()
-    const title = await row.locator('.pt-title .ci').innerText()
+    const title = await row.locator('.pt-title .table-text').innerText()
     const rowx = row.locator('.rowx')
     const menu = win.locator('[role="menu"]')
 
@@ -1711,7 +1735,7 @@ test.describe(() => {
     await win.mouse.click(box.x + box.width / 2, box.y + box.height / 2)
     await expect(menu).toHaveCount(0)
 
-    await expect(row.locator('.pt-title .ci')).toHaveText(title)
+    await expect(row.locator('.pt-title .table-text')).toHaveText(title)
     expect((await list(listQuery)).total).toBe(before.total)
   })
 })
@@ -1872,7 +1896,7 @@ test('改类型:多选 → 单选时有论文填着多个值,整次被拒,拒绝
   await firstPage(win)
   await retype(win, '标签', '单选')
   await expect(win.locator('#notice[data-tone="refusal"] .notice-text')).toHaveText('还有内容在用')
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   // Rejected: Multiple choice stays selected in the type row; the table cells and Core are unchanged.
   await expect(win.locator('[data-radix-popper-content-wrapper] .typerow .ctbtn[aria-label="多选"]'))
     .toHaveAttribute('aria-checked', 'true')

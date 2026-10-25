@@ -10,6 +10,8 @@ import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { ProgressFill } from './ProgressFill.js'
 import { Card } from './Card.js'
+import { Button } from './Button.js'
+import { Tag } from './Tag.js'
 import './ParseProgress.css'
 
 const PROGRESS: Record<MetadataJob['step'], number> = {
@@ -36,12 +38,9 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
       if (job.step !== 'done' && job.step !== 'failed') continue
       if (reported.current.has(job.id)) continue
       reported.current.add(job.id)
-      if (job.step === 'done' && job.found !== 'none') {
-        onParsed(job)
-        notice.success(m.papers.parse.addedFixable)
-      }
+      if (job.step === 'done' && job.found !== 'none') onParsed(job)
     }
-  }, [status, notice, onParsed, m])
+  }, [status, onParsed])
 
   const uploads = status?.uploads ?? []
   const shown = uploads.filter((job) => !closed.has(job.id))
@@ -64,7 +63,6 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
         <Card floating className="upcard compact progress-host" role="status">
           <ProgressFill percent={progress} label={m.papers.parse.progressAria} />
           <div className="upt">
-            <span>{m.papers.parse.working}</span>
             <span className="upcount">{m.papers.parse.count(active.length)}</span>
           </div>
         </Card>
@@ -72,18 +70,18 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
       {failed.length > 0 ? (
         <Card floating className="upcard compact quiet" role="status">
           <div className="upt">
-            <span>{m.papers.parse.needsAttention(failed.length)}</span>
+            <Tag state="warning">{m.papers.parse.count(failed.length)}</Tag>
             <IconButton
               label={m.papers.parse.collapse} size="nested" className="upclose"
               onClick={() => close(failed)}
             ><IconCross /></IconButton>
           </div>
           <div className="upacts">
-            {retryable.length === 0 ? null : <button type="button" className="btn sm" onClick={retry}>{m.common.retry}</button>}
-            <button
-              type="button" className="btn sm"
+            {retryable.length === 0 ? null : <Button size="compact" onClick={retry}>{m.common.retry}</Button>}
+            <Button
+              size="compact"
               onClick={() => { close([failed[0]!]); onOpenPaper(failed[0]!.paperId) }}
-            >{m.papers.parse.fill}</button>
+            >{m.papers.parse.fill}</Button>
           </div>
         </Card>
       ) : null}

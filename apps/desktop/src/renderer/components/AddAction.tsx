@@ -1,43 +1,46 @@
 import { forwardRef } from 'react'
-import type { ButtonHTMLAttributes, ReactNode } from 'react'
-import { IconButton } from './IconButton.js'
+import type { ButtonHTMLAttributes } from 'react'
+import { Button } from './Button.js'
 import { IconPlus } from './icons.js'
 import { useToolbarItem } from './Toolbar.js'
 import { Tooltip } from './Tooltip.js'
+import './AddAction.css'
 
-export type AddActionVariant = 'page' | 'section' | 'icon' | 'chip'
-
+/**
+ * `size` follows the slot: `regular` (30px) in the page header bar; `compact` (24px) in section, group,
+ * panel and sidebar headings, in table headers and inside rows; `chip`, the height of a chip, for the ＋
+ * alone after the chips of a field.
+ */
 type AddActionProps = Omit<ButtonHTMLAttributes<HTMLButtonElement>, 'children' | 'title' | 'aria-label'> & (
-  | { variant?: 'page' | 'section'; label?: string; children?: ReactNode }
-  | { variant: 'icon' | 'chip'; label: string; children?: never }
+  | ({ size: 'regular' | 'compact'; label?: string; children: string }
+    & ({ busy?: undefined; busyLabel?: never } | { busy: boolean; busyLabel: string }))
+  | { size: 'compact' | 'chip'; label: string; children?: never; busy?: never; busyLabel?: never }
 )
 
 /**
- * The one add entry for the whole product. A page's main action, a section action and a pure icon
- * entry differ only in weight instead of each drawing its own plus sign. `icon` is the shared icon
- * button at the nested size, for a table header or a toolbar; `chip` is a bare plus whose look the
- * chip classes in `className` give. `label` names the whole action: the tooltip of the two bare
- * variants, and the spoken name of a page or section action whose visible text is a short word.
- * Inside a toolbar it is one of the toolbar's controls.
+ * The one create or add control: the ＋ on the soft fill of a secondary Button, at the size of its
+ * slot. With `children` it is a Button showing the ＋ and that short word, and `label`, when given, is
+ * the whole action's spoken name; while `busy` it shows the Button's busy state, named `busyLabel`.
+ * Without them it is the ＋ alone, named `label`, which its tooltip
+ * shows: a square, or at the `chip` size a circle like the chips it follows. Further classes in
+ * `className` only place it. Inside a toolbar it is one of the toolbar's controls.
  */
-export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function AddAction({
-  variant = 'section', className, children, label, ...props
-}, ref) {
+export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function AddAction(props, ref) {
   const asItem = useToolbarItem()
-  if (variant === 'icon') {
+  if (props.children === undefined) {
+    const { size, label, className, type = 'button', ...rest } = props
+    const classes = ['add-action', 'add-action-icon', size === 'chip' ? 'add-action-chip' : '', className].filter(Boolean).join(' ')
     return (
-      <IconButton {...props} ref={ref} size="nested" label={label!} className={className}>
-        <IconPlus />
-      </IconButton>
+      <Tooltip label={label}>
+        {asItem(<button {...rest} ref={ref} type={type} className={classes} aria-label={label}><IconPlus /></button>)}
+      </Tooltip>
     )
   }
-  const visual = variant === 'page' ? 'btn pri' : variant === 'section' ? 'btn sm' : ''
-  const classes = [visual, 'add-action', `add-action-${variant}`, className].filter(Boolean).join(' ')
-  const button = asItem(
-    <button {...props} ref={ref} className={classes} aria-label={label}>
-      <IconPlus />
-      {children === undefined ? null : <span>{children}</span>}
-    </button>,
+  const { size, label, className, children, busy, busyLabel, ...rest } = props
+  return (
+    <Button
+      {...rest} ref={ref} size={size} className={['add-action', className].filter(Boolean).join(' ')}
+      aria-label={label} icon={<IconPlus />} busy={busy ?? false} busyLabel={busyLabel ?? ''}
+    ><span>{children}</span></Button>
   )
-  return variant === 'chip' ? <Tooltip label={label!}>{button}</Tooltip> : button
 })

@@ -109,7 +109,7 @@ test('标题栏整条可拖,交互元素让出拖拽区', async ({ win }) => {
   await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await win.locator('.screenslot:not([hidden]) .pdetail [aria-label="开始阅读"]').click()
+  await win.locator('.screenslot:not([hidden]) .paper-detail-slot [aria-label="开始阅读"]').click()
   expect(await region('.titlebar .cseg.link'), '能点的面包屑段落在拖拽区里就点不动了').toBe('no-drag')
   expect(await region('.titlebar .cseg:not(.link)'), '不能点的面包屑段要能拖动窗口').toBe('drag')
 })
@@ -133,7 +133,7 @@ test('标题栏给窗口按钮让出了留白', async ({ win }) => {
 })
 
 test('长会话标题不把侧栏顶宽', async ({ win }) => {
-  const width = () => win.locator('.sidebar').evaluate((el) => el.getBoundingClientRect().width)
+  const width = () => win.locator('#sidebar').evaluate((el) => el.getBoundingClientRect().width)
   await win.locator('#chatList .chat-row').first().waitFor()
   const before = await width()
 
@@ -141,15 +141,26 @@ test('长会话标题不把侧栏顶宽', async ({ win }) => {
   await win.evaluate((title) => (window as unknown as MeridianWindow).meridian
     .call('chat.create', { title, named: true }), LONG_CHAT_TITLE)
   await win.reload()
-  await expect(win.locator('#chatList .ct-t').filter({ hasText: LONG_CHAT_TITLE })).toHaveCount(1)
+  await expect(win.locator('#chatList .fade-text').filter({ hasText: LONG_CHAT_TITLE })).toHaveCount(1)
 
   expect(await width()).toBe(before)
 })
 
 test('侧栏分组抬头是 11px 半粗体,比正文分节抬头小一号', async ({ win }) => {
-  const head = win.locator('.sb-h').first()
+  const head = win.locator('.nav-section-head').first()
   await expect(head).toHaveCSS('font-size', '11px')
   await expect(head).toHaveCSS('font-weight', '600')
+})
+
+test('侧栏的分组抬头一样高:收件、对话、我的库、研究都是 24px 的一行,折叠钮在每一行的同一处', async ({ win }) => {
+  await expect(win.locator('#sidebar .nav-section-head')).toHaveCount(4)
+  const heads = await win.locator('#sidebar .nav-section-head').evaluateAll((all) => all.map((head) => {
+    const box = head.getBoundingClientRect()
+    const toggle = head.querySelector('.fold-toggle')!.getBoundingClientRect()
+    return [(head as HTMLElement).dataset['sect'], box.height, toggle.x - box.x, toggle.y + toggle.height / 2 - box.y]
+  }))
+  expect(heads.map(([sect, height]) => [sect, height])).toEqual([['inbox', 24], ['chats', 24], ['lib', 24], ['research', 24]])
+  expect(new Set(heads.map(([, , x, middle]) => `${x} ${middle}`)).size).toBe(1)
 })
 
 test('侧栏在论文与项目两屏之间切换,面包屑跟着换', async ({ win }) => {
@@ -177,7 +188,7 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   await expect.poll(titles).not.toEqual(byYear)
 
   // The grip's center lies on the border with the next header cell; 2px inward lands on the grip itself.
-  const grip = (await win.locator('.ptable thead th[data-k="title"] .thgrip').boundingBox())!
+  const grip = (await win.locator('.ptable thead th[data-k="title"] .table-grip').boundingBox())!
   const y = grip.y + grip.height / 2
   const titleColumn = win.locator('col[data-cw="t"]')
   const width = () => titleColumn.evaluate((c) => (c as HTMLElement).style.width)
@@ -237,7 +248,7 @@ test('全应用的齿轮是同一颗:一条闭合轮廓加一个轴孔,四处逐
   // same tooltip as on aggregation pages.
   expect(await win.locator('.ptable thead [aria-label="列设置"] svg path').getAttribute('d')).toBe(gear)
   // Settings entries no longer crowd the sidebar; the only Watch settings gear is in the Inbox toolbar.
-  await expect(win.locator('.sidebar [aria-label="管理关注"]')).toHaveCount(0)
+  await expect(win.locator('#sidebar [aria-label="管理关注"]')).toHaveCount(0)
   await win.locator('[data-inbox="all"] > .nav-row-label').click()
   expect(await win.locator('.screenslot:not([hidden]) [aria-label="关注设置"] svg path').getAttribute('d'))
     .toBe(gear)

@@ -1,29 +1,43 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Task } from '../../shared/contract.js'
+import { dnum } from '../../shared/dates.js'
 import { useToday } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import { ActionMenu, MenuRadioGroup, MenuRadioItem } from './ActionMenu.js'
+import { ActionMenu, MenuItem, MenuRadioGroup, MenuRadioItem, type MenuSurface } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
 import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
 import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
 import { FadeText } from './FadeText.js'
+import { typesText } from '../lib/keyboard.js'
+import { Button } from './Button.js'
 import './FieldPickers.css'
+import './InlineField.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
+
+/** Where a menu opened by a right-click sits: its top-left corner at the pointer, from the trigger's bottom-left. */
+type PointerPlace = { sideOffset: number; alignOffset: number }
 
 /**
  * The one overflow-menu trigger, named and tooltipped by `label`, which says which object the menu
  * belongs to, or by the shared "more actions" label without one. `stopRowActivation` keeps the click
  * off a clickable row or card underneath. It goes in its row's `RowActions` slot, which shows it.
+ * The same menu opens on a right-click anywhere on the row or card that hosts the slot (the nearest
+ * element marked `data-row-actions`: an `Item` holding it in its `menu` slot, or a row hosting
+ * `RowActions`), at the pointer, and on the ContextMenu key or Shift+F10 there,
+ * at the trigger; a right-click in a text field or on selected text keeps the system's edit menu, and
+ * a row inside another opens only its own menu.
  * `onCloseAutoFocus` runs once the closed menu is about to hand focus back to its trigger; preventing
- * it leaves focus to an editor an item opens in place.
+ * it leaves focus to an editor an item opens in place. With `onRename` the menu starts with Rename,
+ * the one place a name is renamed from: picking it closes the menu, and once the menu has let go of
+ * focus, keeping it from the trigger, `onRename` opens the name's field in place, which takes focus.
  */
 export function DotsMenu({
-  children, label, stopRowActivation = false, open, onOpenChange, contentClassName, onCloseAutoFocus,
+  children, label, stopRowActivation = false, open, onOpenChange, surface, onCloseAutoFocus, onRename,
 }: {
   children: ReactNode
   /** The name, e.g. naming which idea or chat the menu manages. Falls back to the shared "more actions" label when omitted. */
@@ -32,24 +46,80 @@ export function DotsMenu({
   stopRowActivation?: boolean
   open?: boolean
   onOpenChange?: (open: boolean) => void
-  contentClassName?: string
+  surface?: MenuSurface
   onCloseAutoFocus?: (event: Event) => void
+  onRename?: () => void
 }) {
   const m = useMessages()
+  const [own, setOwn] = useState(false)
+  const renaming = useRef(false)
+  const [place, setPlace] = useState<PointerPlace | null>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const change = (next: boolean) => {
+    if (open === undefined) setOwn(next)
+    onOpenChange?.(next)
+  }
+  const changeNow = useRef(change)
+  changeNow.current = change
+  useEffect(() => {
+    const button = trigger.current
+    const host = button === null ? null : button.closest<HTMLElement>('[data-row-actions]')
+    if (button === null || host === null) return
+    const pointer = (event: MouseEvent) => {
+      const selection = window.getSelection()
+      const selected = selection !== null && !selection.isCollapsed && event.target instanceof Node
+        && selection.getRangeAt(0).intersectsNode(event.target)
+      if (event.defaultPrevented || typesText(event.target) || selected) return
+      event.preventDefault()
+      const anchor = button.getBoundingClientRect()
+      setPlace({ sideOffset: event.clientY - anchor.bottom, alignOffset: event.clientX - anchor.left })
+      changeNow.current(true)
+    }
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+      if (event.defaultPrevented || typesText(event.target)) return
+      event.preventDefault()
+      setPlace(null)
+      changeNow.current(true)
+    }
+    host.addEventListener('contextmenu', pointer)
+    host.addEventListener('keydown', key)
+    return () => {
+      host.removeEventListener('contextmenu', pointer)
+      host.removeEventListener('keydown', key)
+    }
+  }, [])
   return (
     <ActionMenu
-      {...(open === undefined ? {} : { open })}
-      {...(onOpenChange === undefined ? {} : { onOpenChange })}
-      {...(contentClassName === undefined ? {} : { contentClassName })}
-      {...(onCloseAutoFocus === undefined ? {} : { contentProps: { onCloseAutoFocus } })}
+      open={open ?? own}
+      onOpenChange={(next) => {
+        if (next) setPlace(null)
+        change(next)
+      }}
+      {...(place === null ? {} : { align: 'start' as const, ...place })}
+      {...(surface === undefined ? {} : { surface })}
+      {...(onCloseAutoFocus === undefined && onRename === undefined ? {} : {
+        contentProps: {
+          onCloseAutoFocus: (event: Event) => {
+            onCloseAutoFocus?.(event)
+            if (!renaming.current) return
+            renaming.current = false
+            event.preventDefault()
+            onRename?.()
+          },
+        },
+      })}
       stopContentClickPropagation
       trigger={(
         <IconButton
-          label={label ?? m.common.menu.more} size="nested" className="dots"
+          ref={trigger} label={label ?? m.common.menu.more} size="nested" className="dots"
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><IconDots /></IconButton>
       )}
-    >{children}</ActionMenu>
+    >
+      {onRename === undefined ? null : <MenuItem onSelect={() => { renaming.current = true }}>{m.common.rename}</MenuItem>}
+      {children}
+    </ActionMenu>
   )
 }
 
@@ -57,9 +127,10 @@ export function DotsMenu({
  * The one single-value picker: a menu of `options` with the picked one marked. With
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
  * `placeholder` while `value` matches no option, and with the refused look of a field while
- * `aria-invalid` holds. Otherwise the host field supplies the trigger's class, and its content as
- * `children`, which defaults to the picked option's label, and the trigger is one of the controls of
- * the toolbar it renders in.
+ * `aria-invalid` holds. With `appearance="button"` its trigger is a compact Button showing
+ * `children`, for a heading's actions. Otherwise the host field supplies the trigger's class, and its
+ * content as `children`, which defaults to the picked option's label. Outside the field appearance
+ * the trigger is one of the controls of the toolbar it renders in.
  */
 export function ChoicePicker<T extends string>({
   value, options, onPick, label = (option) => option, className, appearance, placeholder = '',
@@ -70,7 +141,7 @@ export function ChoicePicker<T extends string>({
   onPick: (next: T) => void
   label?: (option: T) => string
   className?: string
-  appearance?: 'field'
+  appearance?: 'field' | 'button'
   placeholder?: string
   disabled?: boolean
   'aria-label'?: string
@@ -91,16 +162,23 @@ export function ChoicePicker<T extends string>({
         <IconChevron />
       </FormButton>
     )
-    : asItem(
-      <button
-        className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
-        disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-      >{children ?? label(value)}</button>,
-    )
+    : appearance === 'button'
+      ? (
+        <Button
+          size="compact" className={className} aria-label={ariaLabel} disabled={disabled}
+          onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+        >{children ?? label(value)}</Button>
+      )
+      : asItem(
+        <button
+          className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
+          disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+        >{children ?? label(value)}</button>,
+      )
   return (
     <ActionMenu
       align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
-      {...(appearance === 'field' ? { contentClassName: 'ctxmenu choice-picker-menu', scrolls: true } : {})}
+      {...(appearance === 'field' ? { contentClassName: 'choice-picker-menu', scrolls: true } : {})}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => (
@@ -145,7 +223,8 @@ export function PriorityPicker({ value, className, onPick, children, stopRowActi
   )
 }
 
-function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string) => void }) {
+/** A month of days to pick `selected` from; days before `min`, when given, cannot be picked. */
+function Calendar({ selected, min, onPick }: { selected: string; min: string | undefined; onPick: (iso: string) => void }) {
   const m = useMessages()
   const today = useToday()
   const fmt = useFormat()
@@ -180,6 +259,7 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
           return (
             <ToggleItem
               asChild key={iso} value={iso} aria-label={fmt.date(iso)} aria-current={iso === today ? 'date' : undefined}
+              disabled={min !== undefined && dnum(iso) < dnum(min)}
             >
               <PopoverClose className={`cd${iso === today ? ' today' : ''}${iso === selected ? ' sel' : ''}`}>{index + 1}</PopoverClose>
             </ToggleItem>
@@ -191,12 +271,13 @@ function Calendar({ selected, onPick }: { selected: string; onPick: (iso: string
 }
 
 /**
- * Shared calendar trigger for the ISO date `iso`. With `appearance="field"` it is the boxed field of a
- * form, as ChoicePicker's is, showing the date; otherwise consumers control only the trigger's class
- * and its content, which defaults to the date.
+ * Shared calendar trigger for the ISO date `iso`; days before `min`, when given, cannot be picked.
+ * With `appearance="field"` it is the boxed field of a form, as ChoicePicker's is, showing the date;
+ * otherwise consumers control only the trigger's class and its content, which defaults to the date.
  */
-export function DateButton({ iso, className, appearance, onPick, children }: {
+export function DateButton({ iso, min, className, appearance, onPick, children }: {
   iso: string
+  min?: string
   className?: string
   appearance?: 'field'
   onPick: (next: string) => void
@@ -216,7 +297,29 @@ export function DateButton({ iso, className, appearance, onPick, children }: {
         )
         : <button className={className}>{shown}</button>}
     >
-      <Calendar selected={iso} onPick={onPick} />
+      <Calendar selected={iso} min={min} onPick={onPick} />
     </ActionPopover>
+  )
+}
+
+/** A date range of ISO dates; `start` is never after `end`. */
+export type DateRange = { start: string; end: string }
+
+/**
+ * The one date range field: its start and its end, each a DateButton on the one calendar, under one
+ * rule for the end before the start: the end's calendar starts at the start, and a start picked after
+ * the end takes the end along to it. `onChange` receives each new range. `children` lays out the two
+ * triggers, given as `start` and `end`; `className` and `appearance` dress both as DateButton's do.
+ */
+export function DateRangeField({ start, end, onChange, className, appearance, children }: DateRange & {
+  onChange: (range: DateRange) => void
+  className?: string
+  appearance?: 'field'
+  children: (start: ReactNode, end: ReactNode) => ReactNode
+}) {
+  const dressed = { ...(className === undefined ? {} : { className }), ...(appearance === undefined ? {} : { appearance }) }
+  return children(
+    <DateButton {...dressed} iso={start} onPick={(next) => onChange({ start: next, end: dnum(end) < dnum(next) ? next : end })} />,
+    <DateButton {...dressed} iso={end} min={start} onPick={(next) => onChange({ start, end: next })} />,
   )
 }

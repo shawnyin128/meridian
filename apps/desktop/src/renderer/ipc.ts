@@ -1,4 +1,5 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
+import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
   ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
@@ -19,7 +20,7 @@ import type {
   ResearchIdeaPromoteResult,
   ProjectOverview,
   ProjectSummary,
-  RelationFields, SearchHit, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
+  RelationFields, SearchHit, SshFolders, SshFoldersParams, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
   WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
 } from '../shared/contract.js'
@@ -52,6 +53,13 @@ export const appMenu = {
   onOpenAgentTutorial: (handler: () => void) => window.meridian.onOpenAgentTutorial(handler),
   /** Open the command palette from the native menu, whose accelerator is the palette's shortcut. */
   onOpenPalette: (handler: () => void) => window.meridian.onOpenPalette(handler),
+  /**
+   * Calls `handler` with each command Main hands the page, from the application menu or a trackpad
+   * swipe, and returns its unsubscribe function.
+   */
+  onAppCommand: (handler: (command: AppCommand) => void) => window.meridian.onAppCommand(handler),
+  /** Tells Main whether the sidebar is hidden and the reader shown, which title and route menu items. */
+  setMenuState: (state: MenuState) => { window.meridian.setMenuState(state) },
   /** Open the system directory selector. The page only gets the final path, not any Electron channel. */
   chooseLibraryRoot: () => window.meridian.chooseLibraryRoot(),
   /** Open the system directory selector and connect the code workspace to a project. */
@@ -272,6 +280,8 @@ export const chat = {
     call<void>('chat.append', { id, messages }),
   /** Sends what the user wrote in `runs`, each mention as a run of its own. */
   send: (id: string, runs: ChatRun[]) => call<ChatSendResult>('chat.send', { id, runs }),
+  /** Asks again for an answer to the chat's last question after its turn ended in a status line. */
+  retry: (id: string) => call<ChatSendResult>('chat.retry', { id }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
@@ -328,6 +338,13 @@ export const delivery = {
   setSemanticKey: (apiKey: string | null) => call<SemanticKeyStatus>('delivery.setSemanticKey', { apiKey }),
   /** Makes one Semantic Scholar request with the saved key and reports how it went. */
   checkSemanticKey: () => call<SemanticKeyCheckResult>('delivery.checkSemanticKey', {}),
+}
+
+export const ssh = {
+  /** The `Host` aliases of the user's OpenSSH config, in its order. */
+  hosts: () => call<string[]>('ssh.hosts', {}),
+  /** One folder of an SSH host, the remote home without `path`, or why it could not be listed. */
+  folders: (params: SshFoldersParams) => call<SshFolders>('ssh.folders', params),
 }
 
 export const colourThemes = {

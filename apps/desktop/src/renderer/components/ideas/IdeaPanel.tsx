@@ -5,12 +5,12 @@ import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ENTITY_SCREEN, EntityLink } from '../EntityLink.js'
 import { SectionHeading } from '../PageShell.js'
-import { PanelClose } from '../PanelClose.js'
+import { PanelBody, PanelHead } from '../SidePanel.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { SLOT } from '../TitleNote.js'
 import { Tag } from '../Tag.js'
-import { FadeText } from '../FadeText.js'
+import { Button } from '../Button.js'
 import './IdeaPanel.css'
 
 /** Whether `idea` is one the user wrote down on their own, from no chat and no agent: such an idea shows no source. */
@@ -67,8 +67,9 @@ export function SourceChatDeleted({ className }: { className?: string }) {
 }
 
 /**
- * The one detail panel of an idea, on the Ideas screen and on the project page: the title with the
- * host's `actions` and the close button, the kind and archived tags with the created date and,
+ * The one detail panel of an idea, on the Ideas screen and on the project page, inside the host's
+ * SidePanel: the head with the title, the host's `actions` and the close button, then in the body
+ * the kind and archived tags with the created date and,
  * when it differs, the updated date, the content, the host's own sections (`children`), then the
  * source, which an idea the user wrote down on their own does not have. `editor`, when given, takes
  * the content's place.
@@ -95,41 +96,39 @@ export function IdeaPanel({
   const chatId = idea.source.chatId
   return (
     <>
-      <SectionHeading
-        variant="rail" className="idea-panel-head node-document-head"
-        actions={<>{actions}<PanelClose onClose={onClose} /></>}
-      ><FadeText className="node-document-title" label={idea.title}>{idea.title}</FadeText>
-      </SectionHeading>
-      <div className="idea-panel-meta">
-        <Tag tone="accent">{m.project.idea.kind}</Tag>
-        {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
-        <span className="idea-panel-dates">
-          {m.common.createdOn(fmt.date(idea.created))}
-          {idea.updated === idea.created ? null : ` · ${m.common.updatedOn(fmt.date(idea.updated))}`}
-        </span>
-      </div>
-      {editor ?? (
-        <>
-          <SectionHeading variant="rail">{m.project.sections.content}</SectionHeading>
-          <p className="idea-panel-body">{idea.body}</p>
-        </>
-      )}
-      {children}
-      {ownIdea(idea) && sourceProject === undefined ? null : (
-        <>
-          <SectionHeading
-            variant="rail"
-            actions={onOpenSourceChat === undefined || chatId === undefined || sourceChatDeleted
-              ? undefined
-              : <button className="btn sm idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</button>}
-          >{m.project.sections.source}
-          </SectionHeading>
-          <p className="idea-panel-source">
-            <IdeaSource idea={idea} sourceProject={sourceProject} onOpenPaper={onOpenSourcePaper} />
-            {sourceChatDeleted ? <SourceChatDeleted className="idea-panel-source-gone" /> : null}
-          </p>
-        </>
-      )}
+      <PanelHead title={idea.title} actions={actions} onClose={onClose} />
+      <PanelBody>
+        <div className="idea-panel-meta">
+          <Tag>{m.project.idea.kind}</Tag>
+          {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
+          <span className="idea-panel-dates">
+            {m.common.createdOn(fmt.date(idea.created))}
+            {idea.updated === idea.created ? null : ` · ${m.common.updatedOn(fmt.date(idea.updated))}`}
+          </span>
+        </div>
+        {editor ?? (
+          <>
+            <SectionHeading level="group">{m.project.sections.content}</SectionHeading>
+            <p className="idea-panel-body">{idea.body}</p>
+          </>
+        )}
+        {children}
+        {ownIdea(idea) && sourceProject === undefined ? null : (
+          <>
+            <SectionHeading
+              level="group"
+              actions={onOpenSourceChat === undefined || chatId === undefined || sourceChatDeleted
+                ? undefined
+                : <Button size="compact" className="idea-panel-open-chat" onClick={() => onOpenSourceChat(chatId)}>{m.ideas.openSourceChat}</Button>}
+            >{m.project.sections.source}
+            </SectionHeading>
+            <p className="idea-panel-source">
+              <IdeaSource idea={idea} sourceProject={sourceProject} onOpenPaper={onOpenSourcePaper} />
+              {sourceChatDeleted ? <SourceChatDeleted className="idea-panel-source-gone" /> : null}
+            </p>
+          </>
+        )}
+      </PanelBody>
     </>
   )
 }

@@ -20,6 +20,11 @@ const shell = vi.hoisted(() => ({
   /** The change entries changelog.undo was asked to undo, in order. */
   undone: [] as string[],
   writes: [] as ReadingMutation[],
+  /** Whether the reader is the screen shown, and the handler of the commands Main hands it while it is. */
+  shown: true,
+  appCommand: null as ((command: string) => void) | null,
+  /** The paper's PDF bytes as `papers.source` answers them; by default they never arrive. */
+  source: (): Promise<Uint8Array> => new Promise(() => {}),
   /** The reading state after `mutation`, as Core applies the highlight commands and the deletions. */
   written(held: PaperReading, mutation: ReadingMutation): PaperReading {
     if (mutation.kind === 'highlight.add') {
@@ -44,11 +49,17 @@ const shell = vi.hoisted(() => ({
 }))
 
 vi.mock('../ipc.js', () => ({
+  appMenu: {
+    onAppCommand: (handler: (command: string) => void) => {
+      shell.appCommand = handler
+      return () => { shell.appCommand = null }
+    },
+  },
   papers: {
     get: () => Promise.resolve({ id: 'paper-1', title: 'Paper One' }),
     reading: () => Promise.resolve(structuredClone(shell.reading)),
-    // The PDF never arrives: these cases are about the reading state beside it.
-    source: () => new Promise(() => {}),
+    // The PDF never arrives unless a case says otherwise: most cases are about the reading state beside it.
+    source: () => shell.source(),
     // As in Core, a write answers the reading after it and the change it recorded; adding a highlight records none.
     mutateReading: (_id: string, mutation: ReadingMutation) => {
       shell.writes.push(mutation)
@@ -69,6 +80,7 @@ vi.mock('../shell/AppShell.js', () => ({
   }),
   useCrumbTail: () => {},
   useJump: () => ({ jump: shell.jump, open: vi.fn(), returnTo: shell.returnTo }),
+  useScreenShown: () => shell.shown,
   useVaultRevision: () => ({ revision: shell.revision, bump: vi.fn() }),
 }))
 
@@ -105,6 +117,7 @@ vi.mock('../components/reader/ReaderSidePanel.js', () => ({
 }))
 
 const { Reader } = await import('./Reader.js')
+const { CallError } = await import('../call-error.js')
 const { highlightLines, highlightOutline } = await import('./highlight-geometry.js')
 
 const note = (id: string, text: string) => ({ id, page: 1, text, created: '2026-10-18', updated: '2026-10-18' })
@@ -148,8 +161,8 @@ describe('Reader', () => {
 
   it('缩放到上限或下限时那一侧的按钮变淡，点百分比回到 100%', async () => {
     await render()
-    const button = (label: string) => host.querySelector<HTMLButtonElement>(`.zoomctl [aria-label="${label}"]`)!
-    const reset = () => host.querySelector<HTMLButtonElement>('.zoomctl .zoom-reset')!
+    const button = (label: string) => host.querySelector<HTMLButtonElement>(`.zoom-control [aria-label="${label}"]`)!
+    const reset = () => host.querySelector<HTMLButtonElement>('.zoom-control .zoom-control-reset')!
     const shown = () => reset().textContent
     const press = async (label: string, times: number) => {
       for (let n = 0; n < times; n += 1) await act(async () => { button(label).click() })
@@ -162,10 +175,32 @@ describe('Reader', () => {
     expect([shown(), button('Zoom in').disabled, button('Zoom out').disabled]).toEqual(['60%', false, true])
   })
 
+  it('阅读器显示着时,视图菜单的放大、缩小、实际大小(⌘+、⌘−、⌘0)缩放论文,和缩放控件走同样的步子', async () => {
+    await render()
+    const shown = () => host.querySelector('.zoom-control-reset')!.textContent
+    const command = async (name: string) => { await act(async () => { shell.appCommand!(name) }) }
+    await command('zoomIn')
+    await command('zoomIn')
+    expect(shown()).toBe('140%')
+    await command('zoomOut')
+    expect(shown()).toBe('120%')
+    await command('resetZoom')
+    expect(shown()).toBe('100%')
+    await command('find')
+    expect(shown()).toBe('100%')
+  })
+
+  it('阅读器不在前面时不接缩放命令', async () => {
+    shell.shown = false
+    await render()
+    expect(shell.appCommand).toBeNull()
+    shell.shown = true
+  })
+
   it('滚轮平常滚动页面;双指捏合或按住 Ctrl、⌘ 滚动才缩放,缩放不超出上下限', async () => {
     await render()
     const pages = host.querySelector<HTMLElement>('.pdfwrap')!
-    const shown = () => host.querySelector('.zoomctl .zoom-reset')!.textContent
+    const shown = () => host.querySelector('.zoom-control .zoom-control-reset')!.textContent
     /** Turns the wheel over the pages; returns whether the reader kept the event from scrolling them. */
     const wheel = async (init: WheelEventInit) => {
       const event = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true, ...init })
@@ -177,6 +212,15 @@ describe('Reader', () => {
     expect([await wheel({ metaKey: true }), shown()]).toEqual([true, '135%'])
     expect([await wheel({ ctrlKey: true, deltaY: -5000 }), shown()]).toEqual([true, '240%'])
     expect([await wheel({ ctrlKey: true, deltaY: 5000 }), shown()]).toEqual([true, '60%'])
+  })
+
+  it('PDF 读不到时,原因写在 PDF 的位置上,用和各屏一样的错误框', async () => {
+    shell.source = () => Promise.reject(new CallError('papers.source', 'not-found'))
+    localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    await render()
+    const error = host.querySelector('.pdfwrap .page-error--section.inline-message--box.inline-message--error[role="alert"]')
+    expect(error?.textContent).toBe('这一项已不存在')
+    shell.source = () => new Promise(() => {})
   })
 
   it('从别的屏点链接打开时,阅读器头上的返回回到来的那一屏', async () => {
@@ -658,7 +702,7 @@ describe('Reader', () => {
       await render()
       await select()
       expect(tools()).not.toBeNull()
-      await act(async () => { host.querySelector<HTMLButtonElement>('.zoomctl button:last-child')!.click() })
+      await act(async () => { host.querySelector<HTMLButtonElement>('.zoom-control button:last-child')!.click() })
       expect(tools()).toBeNull()
     })
   })

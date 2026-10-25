@@ -4,10 +4,10 @@ import { describe, expect, it } from 'vitest'
 
 const RENDERER = join(process.cwd(), 'apps/desktop/src/renderer')
 /**
- * A selector part that reaches a native field, a FormControls element, the plan's inline name input
- * or a text editor, which show focus with their frame.
+ * A selector part that reaches a native field, a FormControls element or a text editor, which show
+ * focus with their frame.
  */
-const FIELD = /(^|[\s>+~(])(input|textarea|select)\b|\.form-(input|textarea|select|control|button)\b|\.plan-name-input\b|contenteditable|\.md\.src\b|\.chat-composer\b/
+const FIELD = /(^|[\s>+~(])(input|textarea|select)\b|\.form-(input|textarea|select|control|button)\b|contenteditable|\.md\.src\b|\.chat-composer\b/
 /** The properties a focus rule may set: the ones that reveal a control, or lift a fold over what has focus. */
 const REVEAL = new Set(['opacity', 'pointer-events', 'display', 'visibility', 'max-height', 'mask-image'])
 /** The ring a host draws for a control inside it whose fade mask hides the control's own ring. */
@@ -20,8 +20,8 @@ const HOST_RING = ['outline:var(--ring-width) solid var(--ring)', 'outline-offse
 const NOT_A_RING = new Set([
   'components/ModalDialog.css .modal:focus-visible',
   'components/AboutDialog.css .about-pop:focus',
-  'routes/shell.css .ctxmenu:focus-visible',
-  'routes/shell.css .mi[data-highlighted]:focus-visible',
+  'components/ActionMenu.css .ctxmenu:focus-visible',
+  'components/ActionMenu.css .mi[data-highlighted]:focus-visible',
   'components/Grip.css .grip',
   'components/Grip.css .grip-edge',
   'components/Grip.css .grip:focus-visible::after',

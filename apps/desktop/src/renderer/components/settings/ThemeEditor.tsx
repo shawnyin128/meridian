@@ -11,14 +11,15 @@ import { colourThemeId } from '../../lib/slug.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { readColourThemePreference, setColourThemePreference } from '../../shell/appearance.js'
 import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { BackButton } from '../BackButton.js'
 import { Card } from '../Card.js'
 import { ChoicePicker } from '../FieldPickers.js'
-import { ColourField, FormInput } from '../FormControls.js'
+import { ColourField, FieldRow, FormInput } from '../FormControls.js'
 import { Icon } from '../icons.js'
 import { ModalTitle } from '../ModalDialog.js'
+import { SplitMain, SplitNav, SplitPage } from '../SplitPage.js'
 import { NavRow } from '../NavRow.js'
+import { NavSection } from '../NavSection.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { Swatches } from '../Swatches.js'
@@ -26,6 +27,8 @@ import { Switch } from '../Switch.js'
 import { Tag } from '../Tag.js'
 import { useColourThemeName } from './AppearanceSettings.js'
 import { ServiceActions, ServiceError, ServiceFoot } from './ServiceCard.js'
+import { Button } from '../Button.js'
+import { CommitActions } from '../CommitActions.js'
 import './ThemeEditor.css'
 
 /** The modules in the left column, in groups that sit apart: surfaces, text, accents, states. */
@@ -55,7 +58,7 @@ type Form = { id: string | null; draft: Draft; loaded: Draft; outside: boolean; 
 const formOf = (id: string | null, draft: Draft): Form => ({ id, draft, loaded: draft, outside: false, saved: false })
 
 /** A stroke glyph of the sidebar's, for a preview row. */
-const Glyph = ({ d }: { d: string }) => <span className="ic"><Icon><path d={d} /></Icon></span>
+const Glyph = ({ d }: { d: string }) => <Icon><path d={d} /></Icon>
 
 /**
  * A screen of the App drawn with one mode of a theme: the colour tokens derived from `modules` are set
@@ -70,22 +73,23 @@ function ThemePreview({ modules, mode }: { modules: ColourThemeModules; mode: Co
   return (
     <div className="theme-preview" style={style} inert aria-hidden="true">
       <div className="theme-preview-side">
-        <NavRow className="srow on" onActivate={ignore}><Glyph d="M22 12h-4l-3 8L9 4l-3 8H2" />{m.shell.nav.feed}</NavRow>
-        <div className="sb-h">{m.shell.nav.myLibrary}</div>
-        <NavRow className="srow" onActivate={ignore}><Glyph d="M12 2L2 7l10 5 10-5-10-5z" />{m.shell.nav.wiki}</NavRow>
-        <NavRow className="srow" onActivate={ignore}>
-          <Glyph d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />{m.shell.nav.papers}
-        </NavRow>
-        <NavRow className="srow" onActivate={ignore}><Glyph d="M4 6h8M9 12h11M6 18h9" />{m.shell.nav.overview}</NavRow>
+        <NavRow selected onActivate={ignore} icon={<Glyph d="M22 12h-4l-3 8L9 4l-3 8H2" />}>{m.shell.nav.feed}</NavRow>
+        <NavSection id="preview-lib" title={m.shell.nav.myLibrary}>
+          <NavRow onActivate={ignore} icon={<Glyph d="M12 2L2 7l10 5 10-5-10-5z" />}>{m.shell.nav.wiki}</NavRow>
+          <NavRow onActivate={ignore} icon={<Glyph d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />}>
+            {m.shell.nav.papers}
+          </NavRow>
+          <NavRow onActivate={ignore} icon={<Glyph d="M4 6h8M9 12h11M6 18h9" />}>{m.shell.nav.overview}</NavRow>
+        </NavSection>
       </div>
       <div className="theme-preview-canvas">
         <Card>
           <div className="theme-preview-title">{sample.title}</div>
           <div className="theme-preview-tags">
             <Tag shape="chip">{sample.topic}</Tag>
-            <Tag tone="bad">{legend.failed}</Tag>
-            <Tag tone="warn">{legend.needsRepair}</Tag>
-            <Tag tone="good">{legend.verified}</Tag>
+            <Tag state="error">{legend.failed}</Tag>
+            <Tag state="warning">{legend.needsRepair}</Tag>
+            <Tag state="done">{legend.verified}</Tag>
           </div>
           <p className="theme-preview-body">{sample.body} <span className="theme-preview-mark">{sample.highlight}</span></p>
           <p className="theme-preview-meta">{sample.meta}</p>
@@ -93,8 +97,8 @@ function ThemePreview({ modules, mode }: { modules: ColourThemeModules; mode: Co
         <div className="theme-preview-controls">
           <FormInput className="theme-preview-field" placeholder={m.shell.search.placeholder} readOnly />
           <Switch checked onChange={ignore} label={m.settings.categories.delivery} />
-          <button type="button" className="btn theme-preview-focus">{m.inbox.actions.readLater}</button>
-          <button type="button" className="btn pri">{m.inbox.actions.download}</button>
+          <Button size="regular" className="theme-preview-focus">{m.inbox.actions.readLater}</Button>
+          <Button size="regular" variant="primary">{m.inbox.actions.download}</Button>
         </div>
       </div>
     </div>
@@ -129,8 +133,6 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
   const [module, setModule] = useState<ColourModule>('ground')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
-  const sideFade = useScrollFade('y')
-  const bodyFade = useScrollFade('y')
   const { draft } = form
   const colours = draft[mode]
   const dirty = !same(draft, form.loaded)
@@ -191,81 +193,76 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
   }
 
   return (
-    <>
-      <div className="set-side theme-modules" ref={sideFade} data-fade-paint="">
-        <div className="theme-editor-title">
-          <BackButton onClick={onBack} />
-          <ModalTitle className="set-t">{m.settings.appearance.themeHeading}</ModalTitle>
-        </div>
+    <SplitPage columns="dialog">
+      <SplitNav head={<><BackButton onClick={onBack} /><ModalTitle>{m.settings.appearance.themeHeading}</ModalTitle></>}>
         {GROUPS.map((keys) => (
           <div className="theme-module-group" key={keys[0]}>
             {keys.map((key) => (
               <NavRow
-                key={key} className="srow theme-module" selected={key === module} data-module={key}
-                onActivate={() => setModule(key)}
+                key={key} selected={key === module} data-module={key} onActivate={() => setModule(key)}
+                icon={<span className="theme-module-swatch" style={{ backgroundColor: colours[key] }} />}
+                end={weak.has(key) ? <Tag state="warning">{t.lowContrast}</Tag> : undefined}
               >
-                <span className="ic"><span className="theme-module-swatch" style={{ backgroundColor: colours[key] }} /></span>
                 <span className="theme-module-name">{t.modules[key]}</span>
-                {weak.has(key) ? <Tag tone="warn" className="n">{t.lowContrast}</Tag> : null}
               </NavRow>
             ))}
           </div>
         ))}
-      </div>
+      </SplitNav>
 
-      <div className="set-main theme-editor">
-        <div className="set-head theme-editor-head">
-          <FormInput
-            className="theme-editor-name" value={draft.name} placeholder={t.name} aria-label={t.name} maxLength={80}
-            onChange={(event) => change({ name: event.target.value })}
-          />
-          <span className="theme-editor-base">
-            {t.basedOn}
-            <ChoicePicker
-              appearance="field" className="theme-editor-base-picker" aria-label={t.basedOn}
-              value={draft.basedOn ?? ''} options={bases.map((candidate) => candidate.id)}
-              label={(id) => name(bases.find((candidate) => candidate.id === id)!)}
-              onPick={(id) => {
-                const picked = bases.find((candidate) => candidate.id === id)!
-                change({ basedOn: id, light: picked.light, dark: picked.dark })
-              }}
+      <SplitMain
+        head={(
+          <div className="theme-editor-head">
+            <FormInput
+              className="theme-editor-name" value={draft.name} placeholder={t.name} aria-label={t.name} maxLength={80}
+              onChange={(event) => change({ name: event.target.value })}
             />
-          </span>
-        </div>
-        <div className="set-body" ref={bodyFade}>
-          <div className="theme-editor-modes">
-            <SegmentedControl
-              label={t.mode} value={mode} onChange={setMode}
-              options={[{ value: 'light', label: m.settings.appearance.light }, { value: 'dark', label: m.settings.appearance.dark }]}
-            />
-            <button
-              type="button" className="btn ghost sm"
-              onClick={() => { change({ dark: deriveDarkModules(draft.light, base) }); setMode('dark') }}
-            >{t.deriveDark}</button>
-          </div>
-          <ThemePreview modules={colours} mode={mode} />
-          <Card className="theme-module-card">
-            <SectionHeading variant="group">{t.modules[module]}</SectionHeading>
-            <div className="theme-module-colour">
-              <Swatches
-                label={t.swatches} value={colours[module].toLowerCase()} onPick={paint}
-                swatches={swatches.map(([value, builtIn]) => ({ value, colour: value, label: name(builtIn) }))}
+            <FieldRow label={t.basedOn}>
+              <ChoicePicker
+                appearance="field" className="theme-editor-base-picker" aria-label={t.basedOn}
+                value={draft.basedOn ?? ''} options={bases.map((candidate) => candidate.id)}
+                label={(id) => name(bases.find((candidate) => candidate.id === id)!)}
+                onPick={(id) => {
+                  const picked = bases.find((candidate) => candidate.id === id)!
+                  change({ basedOn: id, light: picked.light, dark: picked.dark })
+                }}
               />
-              <ColourField value={colours[module]} onChange={paint} pickLabel={t.pick} valueLabel={t.hex} />
-            </div>
-            {error === null ? null : <ServiceError>{error}</ServiceError>}
-            <ServiceFoot>
-              {form.outside ? <Tag tone="warn">{t.changedOutside}</Tag> : null}
-              <ServiceActions>
-                <button
-                  type="button" className="btn pri" disabled={saving || draft.name.trim() === '' || !(dirty || form.outside)}
-                  onClick={() => { void save() }}
-                >{form.saved ? m.common.saved : m.common.save}</button>
-              </ServiceActions>
-            </ServiceFoot>
-          </Card>
+            </FieldRow>
+          </div>
+        )}
+      >
+        <div className="theme-editor-modes">
+          <SegmentedControl
+            label={t.mode} value={mode} onChange={setMode}
+            options={[{ value: 'light', label: m.settings.appearance.light }, { value: 'dark', label: m.settings.appearance.dark }]}
+          />
+          <Button
+            size="compact" variant="ghost"
+            onClick={() => { change({ dark: deriveDarkModules(draft.light, base) }); setMode('dark') }}
+          >{t.deriveDark}</Button>
         </div>
-      </div>
-    </>
+        <ThemePreview modules={colours} mode={mode} />
+        <Card className="theme-module-card">
+          <SectionHeading level="group">{t.modules[module]}</SectionHeading>
+          <div className="theme-module-colour">
+            <Swatches
+              label={t.swatches} value={colours[module].toLowerCase()} onPick={paint}
+              swatches={swatches.map(([value, builtIn]) => ({ value, colour: value, label: name(builtIn) }))}
+            />
+            <ColourField value={colours[module]} onChange={paint} pickLabel={t.pick} valueLabel={t.hex} />
+          </div>
+          {error === null ? null : <ServiceError>{error}</ServiceError>}
+          <ServiceFoot>
+            {form.outside ? <Tag state="warning">{t.changedOutside}</Tag> : null}
+            <ServiceActions>
+              <CommitActions
+                place="foot" saving={saving} canSave={draft.name.trim() !== '' && (dirty || form.outside)} done={form.saved}
+                onSave={() => { void save() }}
+              />
+            </ServiceActions>
+          </ServiceFoot>
+        </Card>
+      </SplitMain>
+    </SplitPage>
   )
 }

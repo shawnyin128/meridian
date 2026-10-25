@@ -12,35 +12,40 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 const RULES = STYLESHEETS.flatMap((path) => [...source(path).replace(/\/\*[\s\S]*?\*\//g, '')
   .matchAll(/([^{}]+)\{([^{}]*)\}/g)].map(([, selector, body]) => ({ path, selector: selector!.trim().replace(/\s+/g, ' '), body: body! })))
 
+/** The last step of every area that ScrollArea draws: it hands its element to useScrollFade. */
+const SCROLL_AREA: [file: string, markup: RegExp][] = [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]]
+
 /**
  * Every scroll area of the audit, by the selector of its stylesheet rule: each component on the way to
  * useScrollFade with the markup that passes the area on; the last one calls the hook.
  */
 const FADED: Record<string, [file: string, markup: RegExp][]> = {
-  '.sb-top': [['shell/Sidebar.tsx', /className="sb-top" ref=\{navFade\}/]],
-  '.desk-body': [['components/PageShell.tsx', /ref=\{attach\} className=\{classes\('desk-body', className\)\}/]],
-  '.set-body': [['routes/Settings.tsx', /className="set-body" ref=\{paneFade\}/]],
-  '.set-side': [['routes/Settings.tsx', /className="set-side" ref=\{sideFade\}/]],
-  '.structured-list--scrollable': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
-  '.structured-list--fill': [['components/StructuredList.tsx', /list\.current = node\n\s*fade\(node\)/]],
-  '.list-column': [['components/StructuredList.tsx', /<div ref=\{fade\} className=\{`list-column/]],
+  '.scroll-area--y': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
+  '.scroll-area--x': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
+  '.scroll-area--both': [['components/ScrollArea.tsx', /const fade = useScrollFade<HTMLDivElement>\(axis\)/]],
+  '.nav-pane-rows': [['components/NavPane.tsx', /<ScrollArea axis="y" fill gutter className="nav-pane-rows">/], ...SCROLL_AREA],
+  '.desk-body': [['components/PageShell.tsx', /<ScrollArea axis="y" fill gutter paint ref=\{ref\} className=\{classes\(own, className\)\}/], ...SCROLL_AREA],
+  '.list--scrollable': [['components/List.tsx', /list\.current = node\n\s*fade\(node\)/]],
+  '.list--fill': [['components/List.tsx', /list\.current = node\n\s*fade\(node\)/]],
+  '.list-column': [['components/List.tsx', /<div ref=\{fade\} className=\{`list-column/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],
-  '.tblwrap': [['components/paper-table/PaperTable.tsx', /className="tblwrap" ref=\{tableFade\}/]],
-  '.pdetail': [['components/paper-table/PaperTable.tsx', /className="pdetail" ref=\{detailFade\}/]],
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
-  '.reading-list': [['components/reader/ReadingNotes.tsx', /className="reading-list" ref=\{listFade\}/]],
-  '.wiki-ingest': [['components/reader/PaperWikiIngest.tsx', /className="wiki-ingest" ref=\{ingestFade\}/]],
+  '.reading-list': [['components/reader/ReadingNotes.tsx', /<ScrollArea axis="y" fill>\s*<div className="reading-list">/], ...SCROLL_AREA],
+  '.wiki-ingest-body': [['components/reader/PaperWikiIngest.tsx', /<ScrollArea axis="y" fill>\s*<div className="wiki-ingest-body">/], ...SCROLL_AREA],
   // Only the paper chat's stream scrolls; on the Chat and Feed screens it grows inside the page body, which fades it.
-  '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /streamFade\(area\)[\s\S]*className="msgs" ref=\{stream\}/]],
-  '.idea-detail-panel': [['routes/Ideas.tsx', /className="idea-detail-panel node-document-pane" ref=\{panelFade\}/]],
-  '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
-  '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
-  '.gwrap': [['components/timeline/TimelineBoard.tsx', /className="gwrap" ref=\{wrapFade\}/]],
-  '.cmdk-list': [['shell/CommandPalette.tsx', /className="cmdk-list" ref=\{listFade\}/]],
+  '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /<ScrollArea axis="y" fill ref=\{followRef\}>\s*<div className="msgs"[^>]*>/], ...SCROLL_AREA],
+  '.panel-body': [['components/SidePanel.tsx', /<ScrollArea axis="y" ref=\{ref\} className=\{`panel-body/], ...SCROLL_AREA],
+  '.split-column': [['components/SplitPage.tsx', /<ScrollArea axis="y" ref=\{ref\} className=\{named\('split-column', className\)\}>/], ...SCROLL_AREA],
+  '.split-rail': [['components/SplitPage.tsx', /<ScrollArea axis="y" paint ref=\{ref\} className=\{named\('split-rail', className\)\}>/], ...SCROLL_AREA],
+  '.split-nav': [['components/SplitPage.tsx', /<ScrollArea axis="y" paint className="split-nav">/], ...SCROLL_AREA],
+  '.split-main-body': [['components/SplitPage.tsx', /<ScrollArea axis="y" fill className="split-main-body">/], ...SCROLL_AREA],
+  '.wkside': [['routes/ProjectDetail.tsx', /className="wkside" ref=\{railFade\}/]],
+  '.gwrap': [['components/timeline/TimelineBoard.tsx', /<ScrollArea axis="x" fill className="gwrap" ref=\{wrap\}>/], ...SCROLL_AREA],
+  '.cmdk-list': [['shell/CommandPalette.tsx', /<ScrollArea axis="y" className="cmdk-list" ref=\{list\}>/], ...SCROLL_AREA],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
-  '.pickhits.cres': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
+  '.pickhits--tall': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.ctxmenu.choice-picker-menu': [
-    ['components/FieldPickers.tsx', /contentClassName: 'ctxmenu choice-picker-menu', scrolls: true/],
+    ['components/FieldPickers.tsx', /contentClassName: 'choice-picker-menu', scrolls: true/],
     ['components/ActionMenu.tsx', /\{\.\.\.\(scrolls \? \{ ref: fade, 'data-fade-paint': '' \} : \{\}\)\}/],
   ],
   '.md pre': [['components/Markdown.tsx', /pre: \(\{ children \}\) => <Sideways as="pre">/]],
@@ -57,24 +62,31 @@ const EXEMPT: Record<string, string> = {
   '.extension-command-code': 'wraps',
 }
 
+const TABLE = 'components/Table.tsx'
 /**
- * Every sticky element that content slides under, by the selector of its sticky rule: the rule that
- * makes it a scroll-state container, and the pseudo-element that fades the content while it is stuck.
+ * Every sticky element that content slides under, by the selector of its sticky rule: the markup that
+ * names the edges it sticks to in data-stuck-fade, for the one stuck fade of ScrollArea.css.
  */
-const STUCK: Record<string, [container: string, fade: string]> = {
-  '.tblwrap .ptable thead th': ['.tblwrap .ptable thead th', '.tblwrap .ptable thead th:not(.column-drop-after)::after'],
-  '.ptable th:first-child,.ptable td:first-child': ['.ptable :is(th,td):first-child', '.ptable :is(th,td):first-child::before'],
-  '.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add': ['.ptable td.row-actions-cell', '.ptable :is(td.row-actions-cell,th.th-add)::before'],
-  '.collapsible-group-head': ['.collapsible-group-head', '.collapsible-group-head::after'],
-  '.node-document-pane .node-document-head': ['.node-document-pane .node-document-head', '.node-document-pane .node-document-head::after'],
-  '.cmp th': ['.cmp th', '.cmp th::after'],
+const STUCK: Record<string, [file: string, markup: RegExp][]> = {
+  '.table th': [
+    [TABLE, /data-stuck-fade=\{column === columns\[0\] \? 'top left' : 'top'\}/],
+    [TABLE, /className=\{classes\('table-draft', className\)\} data-stuck-fade="top"/],
+    [TABLE, /<th className="table-actions" data-stuck-fade="top right">/],
+  ],
+  '.table :is(th,td):first-child': [
+    [TABLE, /column === columns\[0\] \? 'top left'/], [TABLE, /kind === 'title' \? \{ 'data-stuck-fade': 'left' \}/],
+  ],
+  '.table .table-actions': [
+    [TABLE, /<td className="table-actions" data-stuck-fade="right">/], [TABLE, /<th className="table-actions" data-stuck-fade="top right">/],
+  ],
+  '.collapsible-group--sticky>.section-heading.collapsible-group-head': [['components/GroupedList.tsx', /\{\.\.\.\(sticky \? \{ 'data-stuck-fade': 'top' \} : \{\}\)\}/]],
 }
 
 /** Sticky elements nothing slides under, and why. */
 const UNDER_NOTHING: Record<string, string> = {
-  // Both rails stand beside the content they pin next to, not over it.
+  // The rail and the panels stand beside the content they pin next to, not over it.
   '.wkside': 'rail beside the page',
-  '.idea-detail-slot': 'rail beside the board',
+  '.project-detail-panel': 'panel beside the page',
   // The layer that paints a fade over the edge of a scroll area.
   '[data-fade~="top"][data-fade-paint]::before,[data-fade~="bottom"][data-fade-paint]::after': 'the fade itself',
 }
@@ -90,7 +102,7 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
 
   it('审计表里要淡出的每个滚动区都把元素交给 useScrollFade', () => {
     const missing = Object.entries(FADED).filter(([, places]) => places.some(([file, markup]) => !markup.test(source(file)))
-      || !/useScrollFade\(/.test(source(places.at(-1)![0])))
+      || !/useScrollFade(<\w+>)?\(/.test(source(places.at(-1)![0])))
     expect(missing.map(([selector]) => selector)).toEqual([])
   })
 
@@ -101,36 +113,45 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
       .map(({ path, selector }) => `${path}  ${selector}`)).toEqual([])
   })
 
-  it('Wiki 的侧栏和项目节点面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
+  it('分栏页、项目右栏和项目节点面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
     const body = (path: string, selector: string) => RULES.filter((rule) => rule.path === path && rule.selector === selector)
       .map((rule) => rule.body).join(';')
-    expect(body('routes/shell.css', '.wiki-body,.project-detail-body')).toMatch(/container-type:\s*size/)
-    expect(source('routes/Wiki.tsx')).toMatch(/<PageBody className="wiki-body"[\s>]/)
-    expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body">/)
+    // The split page takes its page body's height and lays both columns in one row of that height.
+    expect(body('components/SplitPage.css', '.split-page')).toMatch(/(^|;)\s*height:\s*100%;[\s\S]*grid-template-rows:\s*minmax\(0,\s*1fr\)/)
+    expect(body('components/SplitPage.css', '.split-page')).not.toMatch(/vh\b/)
+    expect(source('routes/Wiki.tsx').match(/<SplitPage columns="rail" className="wkpage">/g)).toHaveLength(2)
+    expect(body('routes/shell.css', '.project-detail-body')).toMatch(/container-type:\s*size/)
+    expect(source('routes/ProjectDetail.tsx')).toMatch(/<PageBody className="project-detail-body"[\s>]/)
     expect(body('routes/shell.css', '.wkside')).toMatch(/max-height:\s*100cqh/)
-    expect(body('routes/ProjectDetail.css', '.wkside.node-document-pane')).toMatch(/(^|;)\s*height:\s*100cqh/)
-    for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.wkside.node-document-pane']] as const) {
+    expect(body('routes/ProjectDetail.css', '.project-detail-panel')).toMatch(/(^|;)\s*height:\s*100cqh/)
+    for (const [path, selector] of [['routes/shell.css', '.wkside'], ['routes/ProjectDetail.css', '.project-detail-panel']] as const) {
       expect(body(path, selector), selector).not.toMatch(/vh\b/)
     }
   })
 
   it('想法详情面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
-    const body = (selector: string) => RULES.filter((rule) => rule.path === 'routes/Ideas.css' && rule.selector === selector)
+    // The list and the panel are a split page's columns; a side panel there is at most its column's height.
+    expect(source('routes/Ideas.tsx')).toMatch(/<PageBody className="ideas-body">\s*<SplitPage columns="rail">/)
+    const panel = RULES.filter((rule) => rule.path === 'components/SplitPage.css' && rule.selector === '.split-page>.side-panel')
       .map((rule) => rule.body).join(';')
-    expect(body('.ideas-body')).toMatch(/container-type:\s*size/)
-    for (const selector of ['.idea-detail-slot', '.idea-detail-panel']) {
-      expect(body(selector), selector).toMatch(/max-height:\s*100cqh/)
-      expect(body(selector), selector).not.toMatch(/vh\b/)
-    }
+    expect(panel).toMatch(/max-height:\s*100%/)
+    expect(panel).not.toMatch(/vh\b/)
   })
 
   it('内容会滑到下面的吸住元素,吸住时在自己的边上淡出内容', () => {
     const sticky = RULES.filter(({ body }) => /position:\s*sticky/.test(body)).map(({ selector }) => selector)
     expect(sticky.filter((selector) => !(selector in STUCK) && !(selector in UNDER_NOTHING))).toEqual([])
-    const css = STYLESHEETS.map((path) => source(path)).join('\n')
-    const fading = Object.entries(STUCK).filter(([, [container, fade]]) =>
-      RULES.some(({ selector, body }) => selector.split(/,(?![^(]*\))/).includes(container) && /container-type:\s*scroll-state/.test(body))
-      && css.includes(`{${fade}{opacity:1}}`) && /@container scroll-state\(stuck: (top|left|right)\)$/.test(css.slice(0, css.indexOf(`{${fade}{opacity:1}}`))))
-    expect(fading.map(([selector]) => selector)).toEqual(Object.keys(STUCK))
+    expect(Object.entries(STUCK).filter(([, places]) => places.some(([file, markup]) => !markup.test(source(file))))
+      .map(([selector]) => selector)).toEqual([])
+    const css = source('components/ScrollArea.css')
+    expect(css).toContain('[data-stuck-fade]{container-type:scroll-state}')
+    for (const [edge, pseudo] of [['top', 'after'], ['left', 'before'], ['right', 'before']]) {
+      expect(css, edge).toContain(`@container scroll-state(stuck: ${edge}){[data-stuck-fade~="${edge}"]::${pseudo}{opacity:1}}`)
+    }
+  })
+
+  it('吸住时的淡出只有一条规则，别的样式表不各自再写一份', () => {
+    expect([...new Set(RULES.filter(({ body }) => /container-type:\s*scroll-state/.test(body)).map(({ path }) => path))])
+      .toEqual(['components/ScrollArea.css'])
   })
 })

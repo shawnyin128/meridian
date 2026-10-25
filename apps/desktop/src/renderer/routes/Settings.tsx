@@ -3,20 +3,20 @@ import type { ReactNode } from 'react'
 import type {
   ChatSession, ColourTheme, ExtensionStatus, LibraryBackup, LibraryLocation, PluginVersion,
 } from '../../shared/contract.js'
-import { localDayOf } from '../../shared/dates.js'
 import { appMenu, chat, extensions, library } from '../ipc.js'
 import { errorLabel, reasonLabel } from '../lib/failure-label.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import {
-  useChatSession, useJump, useNotice, useSettingsOpen, useVaultRevision,
+  useChatSession, useJump, useSettingsOpen, useVaultRevision,
 } from '../shell/AppShell.js'
 import { SETTINGS_CATEGORIES, SETTINGS_CATEGORY_LABEL, type SettingsCategory } from '../shell/settings-categories.js'
 import { IconOpen, IconRestore, IconTrash } from '../components/icons.js'
 import { IconButton } from '../components/IconButton.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
-import { DirectoryField } from '../components/FormControls.js'
+import { DirectoryField, FieldRow } from '../components/FormControls.js'
+import { InlineMessage } from '../components/InlineMessage.js'
 import { AppearanceSettings, ColourThemeSettings } from '../components/settings/AppearanceSettings.js'
 import { ThemeEditor } from '../components/settings/ThemeEditor.js'
 import { LanguageSettings } from '../components/settings/LanguageSettings.js'
@@ -26,15 +26,17 @@ import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
-import { ActionButton } from '../components/ActionButton.js'
+import { AddAction } from '../components/AddAction.js'
+import { Button } from '../components/Button.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
+import { SplitMain, SplitNav, SplitPage } from '../components/SplitPage.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
-import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { WatchSettings } from './Watches.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -69,8 +71,6 @@ type CategoryKey = SettingsCategory
 export function Settings() {
   const m = useMessages()
   const { open, requestedCategory, setOpen } = useSettingsOpen()
-  const paneFade = useScrollFade('y')
-  const sideFade = useScrollFade('y')
   const [current, setCurrent] = useState<CategoryKey>(SETTINGS_CATEGORIES[0])
   const [chats, setChats] = useState<ChatSession[] | null>(null)
   const [location, setLocation] = useState<LibraryLocation | null>(null)
@@ -99,7 +99,6 @@ export function Settings() {
   const { open: jumpTo } = useJump()
   const { remove: deleteChat } = useChatSession()
   const { revision } = useVaultRevision()
-  const notice = useNotice()
   const format = useFormat()
   const setActionError = useCallback((pane: CategoryKey, message: string | null) => setActionErrors((held) => {
     const next = { ...held }
@@ -149,7 +148,7 @@ export function Settings() {
   }
 
   const unarchive = (session: ChatSession) => {
-    void write(chat.setArchived(session.id, false), { note: m.settings.archived.unarchived })
+    void write(chat.setArchived(session.id, false))
   }
 
   const openChat = (session: ChatSession) => {
@@ -165,7 +164,6 @@ export function Settings() {
       if (root === null) return
       const next = await library.configure(root)
       setLocation(next)
-      notice.success(next.restartRequired ? m.settings.storage.savedRestartRequired : m.settings.storage.saved)
     } catch (caught) {
       reportTo('storage')(caught)
     } finally {
@@ -203,7 +201,6 @@ export function Settings() {
     try {
       await library.deleteBackup(backup.id)
       setBackups((currentBackups) => currentBackups?.filter((item) => item.id !== backup.id) ?? [])
-      notice.success(m.settings.storage.backupDeleted)
     } catch (caught) {
       reportTo('storage')(caught)
     } finally {
@@ -211,19 +208,10 @@ export function Settings() {
     }
   }
 
-  const copyExtensionCommand = (name: string, command: string) => {
-    void navigator.clipboard.writeText(command).then(
-      () => notice.success(m.settings.extensions.copied(name)),
-      reportTo('extensions'),
-    )
-  }
-
-  const copyAgentPrompt = (prompt: string) => {
-    void navigator.clipboard.writeText(prompt).then(
-      () => notice.success(m.settings.extensions.tutorial.promptCopied),
-      reportTo('extensions'),
-    )
-  }
+  const copyText = (text: string) => navigator.clipboard.writeText(text).then(() => true, (caught: unknown) => {
+    reportTo('extensions')(caught)
+    return false
+  })
 
   const titles: Record<CategoryKey, string> = {
     appearance: m.settings.appearance.heading,
@@ -235,14 +223,21 @@ export function Settings() {
     delivery: m.settings.delivery.heading,
     'delivery-watch': m.settings.categories.deliveryWatch,
     'delivery-discovery': m.settings.discovery.heading,
-    archived: m.settings.archived.heading(archived.length),
+    archived: m.settings.archived.heading,
   }
 
   const panes: Record<CategoryKey, ReactNode> = {
     appearance: (
       <>
         <AppearanceSettings />
-        <SectionHeading>{m.settings.appearance.themeHeading}</SectionHeading>
+        <SectionHeading
+          actions={(
+            <AddAction size="compact" label={m.settings.appearance.editor.create} onClick={() => setEditingTheme({ theme: null })}>
+              {m.settings.appearance.editor.createShort}
+            </AddAction>
+          )}
+        >{m.settings.appearance.themeHeading}
+        </SectionHeading>
         <ColourThemeSettings onEdit={(theme) => setEditingTheme({ theme })} onError={reportTo('appearance')} />
         <SectionHeading>{m.settings.language.heading}</SectionHeading>
         <LanguageSettings />
@@ -251,12 +246,10 @@ export function Settings() {
     storage: (
       <>
         <Card className="storage-card">
-          <div className="storage-head">
-            <div>
-              <SectionHeading variant="group">{m.settings.storage.libraryTitle}</SectionHeading>
-            </div>
-            {location === null ? null : <Tag>{m.settings.storage.source[location.source]}</Tag>}
-          </div>
+          <SectionHeading
+            level="group" actions={location === null ? undefined : <Tag>{m.settings.storage.source[location.source]}</Tag>}
+          >{m.settings.storage.libraryTitle}
+          </SectionHeading>
           {location === null
             ? (storageFailure('location') === null
               ? <LoadingPlaceholder shape="lines" count={2} />
@@ -266,43 +259,42 @@ export function Settings() {
                 <PageError
                   variant="section" error={location.openError === null ? null : reasonLabel(m, location.openError)}
                 />
-                <label className="storage-root">
-                  <span>{m.settings.storage.rootLabel}</span>
-                  <DirectoryField
-                    value={location.root}
-                    readOnly
-                    chooseDisabled={location.locked}
-                    chooseLabel={choosing
-                      ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
-                    choosing={choosing}
-                    onChoose={() => { void chooseLibrary() }}
-                  />
-                </label>
+                <div className="storage-root">
+                  <FieldRow label={m.settings.storage.rootLabel}>
+                    <DirectoryField
+                      value={location.root}
+                      readOnly
+                      chooseDisabled={location.locked}
+                      chooseLabel={choosing
+                        ? m.settings.storage.checkingDirectory : m.settings.storage.chooseAction}
+                      choosing={choosing}
+                      onChoose={() => { void chooseLibrary() }}
+                    />
+                  </FieldRow>
+                </div>
               </>
             )}
-          {location?.locked
-            ? <Tag className="storage-state">{m.settings.storage.lockedNote}</Tag>
-            : location?.restartRequired
+          {location?.locked !== true && location?.restartRequired
               ? (
-                <div className="storage-pending" role="status">
-                  <Tag tone="warn">{m.settings.storage.pendingNote}</Tag>
-                  <button className="btn pri" onClick={() => appMenu.restartApp()}>
-                    {m.settings.storage.restartNow}
-                  </button>
-                </div>
+                <InlineMessage
+                  tone="warning" variant="box" className="storage-pending"
+                  action={<Button size="regular" variant="primary" onClick={() => appMenu.restartApp()}>{m.settings.storage.restartNow}</Button>}
+                >
+                  {m.settings.storage.pendingNote}
+                </InlineMessage>
               )
               : null}
           <div className="storage-reset">
             <span>{m.settings.storage.resetLabel}</span>
             <ConfirmDialog
               trigger={(
-                <ActionButton
-                  className="btn danger" disabled={location === null || location.source === 'fixture'
+                <Button
+                  size="regular" tone="danger" disabled={location === null || location.source === 'fixture'
                     || location.restartRequired}
                   busy={resetting} busyLabel={m.settings.storage.resetting}
-                >{m.settings.storage.resetAction}</ActionButton>
+                >{m.settings.storage.resetAction}</Button>
               )}
-              title={m.settings.storage.resetTitle} description={m.settings.storage.resetDescription}
+              title={m.settings.storage.resetTitle}
               confirmLabel={m.settings.storage.resetConfirm}
               onConfirm={() => { void resetLibrary() }}
             />
@@ -312,44 +304,42 @@ export function Settings() {
           ? null
           : (
             <>
-              <SectionHeading>{m.settings.storage.backupsHeading(backups.length)}</SectionHeading>
-              <StructuredList className="storage-backup-list">
+              <SectionHeading count={backups.length}>{m.settings.storage.backupsHeading}</SectionHeading>
+              <List className="storage-backup-list">
                 {backups.map((backup) => {
-                  const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
+                  const label = `${format.day(backup.createdAt)} ${format.clock(backup.createdAt)}`
                   const busy = switchingBackup !== null || deletingBackup !== null
                   return (
-                    <StructuredRow composite className="storage-backup-row" key={backup.id}>
-                      <div className="storage-backup-copy">
-                        <DateTimeDisplay at={backup.createdAt} />
-                        <FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>
-                      </div>
-                      <div className="storage-backup-actions">
-                        <button
-                          className="btn ghost sm" disabled={busy || location?.restartRequired === true}
-                          onClick={() => { void switchBackup(backup) }}
-                        >
-                          {switchingBackup === backup.id
-                            ? m.settings.storage.backupSwitching
-                            : m.settings.storage.backupSwitch}
-                        </button>
-                        <ConfirmDialog
-                          trigger={(
-                            <ActionButton
-                              className="btn danger sm"
-                              disabled={busy || location?.restartRequired === true}
-                              busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
-                            >{m.settings.storage.backupDelete}</ActionButton>
-                          )}
-                          title={m.settings.storage.backupDeleteTitle(label)}
-                          description={m.settings.storage.backupDeleteDescription}
-                          confirmLabel={m.settings.storage.backupDelete}
-                          onConfirm={() => { void deleteBackup(backup) }}
-                        />
-                      </div>
-                    </StructuredRow>
+                    <Item
+                      className="storage-backup-row" key={backup.id} lines={2}
+                      title={<DateTimeDisplay at={backup.createdAt} />}
+                      meta={<FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>}
+                      trailing={(
+                        <>
+                          <Button
+                            size="compact" variant="ghost" disabled={busy || location?.restartRequired === true}
+                            busy={switchingBackup === backup.id} busyLabel={m.settings.storage.backupSwitching}
+                            onClick={() => { void switchBackup(backup) }}
+                          >{m.settings.storage.backupSwitch}</Button>
+                          <ConfirmDialog
+                            trigger={(
+                              <Button
+                                size="compact" tone="danger"
+                                disabled={busy || location?.restartRequired === true}
+                                busy={deletingBackup === backup.id} busyLabel={m.settings.storage.backupDeleting}
+                              >{m.settings.storage.backupDelete}</Button>
+                            )}
+                            title={m.settings.storage.backupDeleteTitle(label)}
+                            description={m.settings.storage.backupDeleteLoss}
+                            confirmLabel={m.settings.storage.backupDelete}
+                            onConfirm={() => { void deleteBackup(backup) }}
+                          />
+                        </>
+                      )}
+                    />
                   )
                 })}
-              </StructuredList>
+              </List>
             </>
           )}
       </>
@@ -373,7 +363,7 @@ export function Settings() {
       <>
         <ExtensionSettings
           statuses={extensionStatus} failed={extensionsError !== null}
-          onCopy={copyExtensionCommand} onCopyPrompt={copyAgentPrompt}
+          onCopy={copyText}
           plugin={pluginVersion === null ? undefined : {
             plugin: pluginVersion,
             checking: checkingPlugin,
@@ -412,26 +402,29 @@ export function Settings() {
         {chats === null
           ? (archivedError === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
           : archived.length === 0
-          ? <EmptyState variant="section">{m.settings.archived.empty}</EmptyState>
+          ? <EmptyState variant="section" />
           : (
-            <StructuredList className="wlist">
+            <List className="wlist">
               {archived.map((s) => (
-                <StructuredRow className="wrow" data-chat={s.id} key={s.id}>
-                  <span className="nm"><PaperText text={s.title} /></span>
-                  <RowActions>
-                    <IconButton label={m.settings.archived.open} size="nested" onClick={() => openChat(s)}>
-                      <IconOpen />
-                    </IconButton>
-                    <IconButton label={m.settings.archived.unarchive} size="nested" onClick={() => unarchive(s)}>
-                      <IconRestore />
-                    </IconButton>
-                    <IconButton label={m.common.delete} size="nested" tone="danger" onClick={() => deleteChat(s.id)}>
-                      <IconTrash />
-                    </IconButton>
-                  </RowActions>
-                </StructuredRow>
+                <Item
+                  className="wrow" data-chat={s.id} key={s.id}
+                  title={<span className="nm"><PaperText text={s.title} /></span>}
+                  actions={(
+                    <>
+                      <IconButton label={m.settings.archived.open} size="nested" onClick={() => openChat(s)}>
+                        <IconOpen />
+                      </IconButton>
+                      <IconButton label={m.settings.archived.unarchive} size="nested" onClick={() => unarchive(s)}>
+                        <IconRestore />
+                      </IconButton>
+                      <IconButton label={m.common.delete} size="nested" tone="danger" onClick={() => deleteChat(s.id)}>
+                        <IconTrash />
+                      </IconButton>
+                    </>
+                  )}
+                />
               ))}
-            </StructuredList>
+            </List>
           )}
       </>
     ),
@@ -451,31 +444,32 @@ export function Settings() {
             <ThemeEditor theme={editingTheme.theme} onBack={() => requestLeave('back')} onDirtyChange={setThemeDirty} />
             <ConfirmDialog
               open={leaving !== null} onOpenChange={(next) => { if (!next) setLeaving(null) }}
-              title={m.settings.appearance.editor.leaveTitle} description={m.settings.appearance.editor.leaveDescription}
+              title={m.settings.appearance.editor.leaveTitle}
               confirmLabel={m.settings.appearance.editor.leave} onConfirm={() => { if (leaving !== null) leave(leaving) }}
             />
           </>
         )
         : (
-          <>
-            <div className="set-side" ref={sideFade} data-fade-paint="">
-              <ModalTitle className="set-t">{m.settings.title}</ModalTitle>
+          <SplitPage columns="dialog">
+            <SplitNav head={<ModalTitle>{m.settings.title}</ModalTitle>}>
               {visibleCategories.map((c) => (
                 <NavRow
-                  key={c} className={SUB_CATEGORIES.has(c) ? 'srow set-sub' : 'srow'} selected={c === current}
+                  key={c} indent={SUB_CATEGORIES.has(c) ? 1 : 0} sub={SUB_CATEGORIES.has(c)} selected={c === current}
                   data-setcat={c} onActivate={() => setCurrent(c)}
                 >{m.settings.categories[SETTINGS_CATEGORY_LABEL[c]]}</NavRow>
               ))}
-            </div>
+            </SplitNav>
 
-            <div className="set-main">
-              <div className="set-head">
-                <PageError error={actionErrors[current] ?? readErrors[current]} />
-                <SectionHeading>{titles[current]}</SectionHeading>
-              </div>
-              <div className="set-body" ref={paneFade}>{panes[current]}</div>
-            </div>
-          </>
+            <SplitMain
+              head={(
+                <>
+                  <PageError error={actionErrors[current] ?? readErrors[current]} />
+                  <SectionHeading count={current === 'archived' ? archived.length : undefined}>{titles[current]}</SectionHeading>
+                </>
+              )}
+            >{panes[current]}
+            </SplitMain>
+          </SplitPage>
         )}
     </ModalDialog>
   )

@@ -4,8 +4,11 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { EmptyState } from '../EmptyState.js'
+import { InlineMessage } from '../InlineMessage.js'
+import { SectionHeading } from '../PageShell.js'
 import { SourceAnchor } from '../SourceAnchor.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProposalRows, ProposalText } from '../wiki/ProposalChange.js'
@@ -51,7 +54,7 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
   // Core projects each kind's labelled rows in one fixed order (core/harness/paper-wiki.ts).
   const labels: readonly string[] = (m.wiki.reviewRows as Record<string, readonly string[]>)[kindOf(group.id).kind] ?? []
   return (
-    <StructuredRow className="paper-wiki-review-group">
+    <Item className="paper-wiki-review-group">
       <div className="paper-wiki-review-group-head">
         {title === undefined ? null : <strong>{title}</strong>}
         <Tag>{m.wiki.provenance[group.provenance]}</Tag>
@@ -66,7 +69,7 @@ function ReviewGroup({ group, onJump }: { group: HarnessPaperWikiReviewGroup; on
         }]),
         ...(records.length === 0 ? [] : [{ key: 'records', label: g.note, value: records.map((anchor) => anchorLabel(anchor, m)).join(' · ') }]),
       ]} />
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -88,32 +91,30 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
     ? m.wiki.quality.passedTitle
     : m.wiki.quality.findingsTitle(quality.findings.length)
   return (
-    <section className={`paper-wiki-quality ${quality.passed ? 'passed' : 'needs-review'}`}
-      aria-label={m.wiki.quality.heading}>
+    <InlineMessage
+      tone={quality.passed ? 'done' : 'warning'} variant="box" className="paper-wiki-quality" aria-label={m.wiki.quality.heading}
+    >
       <div className="paper-wiki-quality-head">
         <strong>{m.wiki.quality.heading}</strong>
         <span>{title}</span>
       </div>
       {quality.findings.length === 0 ? null : (
-        <StructuredList className="paper-wiki-quality-findings" variant="embedded"
-          aria-label={m.wiki.quality.findingsListLabel}>
+        <List className="paper-wiki-quality-findings" variant="embedded" nested aria-label={m.wiki.quality.findingsListLabel}>
           {quality.findings.map((finding, index) => {
             const findingCopy: Record<string, { title: string; detail: string }> = m.wiki.quality.findings
             const copy = findingCopy[finding.code]
             const place = placeLabel(finding.path, m)
             return (
-              <StructuredRow className="paper-wiki-quality-finding"
-                key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`}>
-                <Tooltip label={copy?.detail ?? finding.message}>
-                  <strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong>
-                </Tooltip>
-                {place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
-              </StructuredRow>
+              <Item
+                className="paper-wiki-quality-finding" key={`${finding.dimension}-${finding.code}-${finding.path}-${index}`} lines={2}
+                title={<Tooltip label={copy?.detail ?? finding.message}><strong>{copy?.title ?? m.wiki.quality.needsReviewFallback}</strong></Tooltip>}
+                meta={place === undefined ? null : <span className="paper-wiki-quality-place">{place}</span>}
+              />
             )
           })}
-        </StructuredList>
+        </List>
       )}
-    </section>
+    </InlineMessage>
   )
 }
 
@@ -128,27 +129,24 @@ export function PaperWikiProposalReview({ review, quality, onJump }: {
   onJump: (page: number) => void
 }) {
   const m = useMessages()
-  const named: Record<string, { title: string; empty: string }> = m.wiki.reviewSections
+  const named: Record<string, { title: string }> = m.wiki.reviewSections
   return (
     <div className="paper-wiki-structured-review">
       {quality === undefined ? null : <QualityReport quality={quality} />}
       {review.sections.map((section) => {
-        const words = named[section.id] ?? { title: section.title, empty: section.emptyLabel }
+        const words = named[section.id] ?? { title: section.title }
         return (
           <section className="paper-wiki-review-section" key={section.id}>
-            <div className="paper-wiki-review-section-head">
-              <h4>{words.title}</h4>
-              <span>{section.groups.length}</span>
-            </div>
+            <SectionHeading level="group" count={section.groups.length}>{words.title}</SectionHeading>
             {section.groups.length === 0 ? (
-              <EmptyState variant="section">{words.empty}</EmptyState>
+              <EmptyState variant="section" />
             ) : (
-              <StructuredList
+              <List
                 variant="embedded"
                 aria-label={words.title}
               >
                 {section.groups.map((group) => <ReviewGroup group={group} key={group.id} onJump={onJump} />)}
-              </StructuredList>
+              </List>
             )}
           </section>
         )

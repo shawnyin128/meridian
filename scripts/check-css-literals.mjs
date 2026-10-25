@@ -18,14 +18,14 @@ const NUMBER = /(?<![\w.#-])-?(?:\d+\.?\d*|\.\d+)([a-z%]*)/gi
 const SIZE_KEYWORD = /\b(xx-small|x-small|small|medium|large|x-large|xx-large|xxx-large|smaller|larger)\b/g
 const WEIGHT_KEYWORD = /\b(normal|bold|bolder|lighter)\b/g
 
-function lineNumber(text, offset) {
+export function lineNumber(text, offset) {
   let line = 1
   for (let index = 0; index < offset; index += 1) if (text[index] === '\n') line += 1
   return line
 }
 
 /** Splits a block's body at the semicolons that end its declarations, with each declaration's offset in the body. */
-function declarations(body) {
+export function declarations(body) {
   const found = []
   let depth = 0
   let quote = null
@@ -45,7 +45,7 @@ function declarations(body) {
   return found
 }
 
-const numbers = (text) => [...text.matchAll(NUMBER)]
+export const numbers = (text) => [...text.matchAll(NUMBER)]
   .map(([number, unit]) => ({ text: number, unit: unit.toLowerCase(), zero: Number.parseFloat(number) === 0 }))
 const words = (text, keywords) => [...text.matchAll(keywords)].map((match) => match[0])
 

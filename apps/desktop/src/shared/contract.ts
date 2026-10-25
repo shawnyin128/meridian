@@ -286,6 +286,30 @@ export const ProjectWorkspaceBindingSchema = z.discriminatedUnion('kind', [
 ])
 
 /**
+ * Lists one folder of an SSH host to choose a workspace in: the folder at `path`, or the remote home
+ * when there is none. Like a binding it holds no credentials; OpenSSH supplies them.
+ */
+export const SshFoldersParamsSchema = z.object({
+  host: z.string().trim().min(1),
+  port: z.number().int().min(1).max(65_535).optional(),
+  path: z.string().trim().min(1).optional(),
+}).strict()
+
+/**
+ * One folder of an SSH host: `ready` with its absolute path, its parent (null at `/`) and its
+ * subfolders that are not hidden, by name; or `failed` with the reason the connection or the folder gave.
+ */
+export const SshFoldersSchema = z.discriminatedUnion('state', [
+  z.object({
+    state: z.literal('ready'),
+    path: z.string(),
+    parent: z.string().nullable(),
+    folders: z.array(z.object({ name: z.string(), path: z.string() }).strict()),
+  }).strict(),
+  z.object({ state: z.literal('failed'), issue: z.string() }).strict(),
+])
+
+/**
  * Read-only research state produced in a project directory by code or an
  * external agent. The app projects only protocol-declared surfaces; source files
  * remain in the workspace and Core never edits them for an external writer.
@@ -2132,6 +2156,9 @@ export const ChatSendResultSchema = z.object({
 }).strict()
 
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
+
+/** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
+export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
 /**
@@ -2561,6 +2588,8 @@ export type ProjectNextAction = z.infer<typeof ProjectNextActionSchema>
 export type ProjectControl = z.infer<typeof ProjectControlSchema>
 export type ProjectWorkspaceBinding = z.infer<typeof ProjectWorkspaceBindingSchema>
 export type ProjectWorkspace = z.infer<typeof ProjectWorkspaceSchema>
+export type SshFoldersParams = z.infer<typeof SshFoldersParamsSchema>
+export type SshFolders = z.infer<typeof SshFoldersSchema>
 export type AgentSession = z.infer<typeof AgentSessionSchema>
 export type WikiKind = z.infer<typeof WikiKindSchema>
 export type WikiRef = z.infer<typeof WikiRefSchema>
@@ -2671,6 +2700,8 @@ export const CONTRACT_METHODS = [
   'project.create',
   'project.get',
   'project.bindWorkspace',
+  'ssh.hosts',
+  'ssh.folders',
   'project.update',
   'project.delete',
   'project.createTask',
@@ -2744,6 +2775,7 @@ export const CONTRACT_METHODS = [
   'chat.forPaper',
   'chat.append',
   'chat.send',
+  'chat.retry',
   'chat.cancel',
   'idea.list',
   'idea.create',

@@ -21,6 +21,8 @@ export const MAIN_COPY: Record<UiLocale, MainCopy> = {
     menu: {
       settings: '设置…', palette: '命令面板…', tools: '工具', help: '帮助', agentTutorial: 'Skill 与 MCP 使用教程',
       file: '文件', edit: '编辑', view: '视图', window: '窗口', substitutions: '替换', speech: '语音',
+      newProject: '新建项目', newIdea: '新建想法', newChat: '新对话', importPdf: '导入 PDF…', find: '查找…',
+      showSidebar: '展开侧栏', hideSidebar: '收起侧栏',
       roles: {
         ...ZH_EDIT,
         about: '关于 Meridian', services: '服务', hide: '隐藏 Meridian', hideOthers: '隐藏其他', unhide: '全部显示',
@@ -52,6 +54,8 @@ export const MAIN_COPY: Record<UiLocale, MainCopy> = {
       settings: 'Settings…', palette: 'Command Palette…', tools: 'Tools', help: 'Help',
       agentTutorial: 'Using Skills and MCP…',
       file: 'File', edit: 'Edit', view: 'View', window: 'Window', substitutions: 'Substitutions', speech: 'Speech',
+      newProject: 'New Project', newIdea: 'New Idea', newChat: 'New Chat', importPdf: 'Import PDF…', find: 'Find…',
+      showSidebar: 'Show Sidebar', hideSidebar: 'Hide Sidebar',
       roles: {
         ...EN_EDIT,
         about: 'About Meridian', services: 'Services', hide: 'Hide Meridian', hideOthers: 'Hide Others', unhide: 'Show All',

@@ -1,11 +1,17 @@
 .status-dot{display:inline-block;flex:none;border-radius:var(--r-full);background:var(--dot)}
 .status-dot--sm{width:var(--sp-6);height:var(--sp-6)}
 .status-dot--md{width:var(--sp-8);height:var(--sp-8)}
+.status-dot--nav{width:7px;height:7px}
 .status-dot--good{--dot:var(--good)}
 .status-dot--warn{--dot:var(--warn)}
 .status-dot--bad{--dot:var(--bad)}
 .status-dot--neutral{--dot:var(--ter)}
+/* Something new waiting reads a step stronger than the neutral ring it replaces. */
+.status-dot--new{--dot:var(--sec)}
 /* A half or ring dot outlines itself in its tone and fills only its left half, or nothing. */
 .status-dot--half{background:linear-gradient(to right,var(--dot) 50%,transparent 50%);box-shadow:inset 0 0 0 1px var(--dot)}
 .status-dot--ring{background:transparent;box-shadow:inset 0 0 0 1px var(--dot)}
+/* A cross dot draws two crossed bars in its tone, square-cornered, so its shape stands apart from a dot's. */
+.status-dot--cross{border-radius:0;background:linear-gradient(45deg,transparent 38%,var(--dot) 38%,var(--dot) 62%,transparent 62%),
+  linear-gradient(-45deg,transparent 38%,var(--dot) 38%,var(--dot) 62%,transparent 62%)}
 .status-dot-labelled{display:inline-flex;align-items:center;gap:var(--sp-6);min-width:0}

@@ -5,6 +5,7 @@ import { EmptyState } from '../EmptyState.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { SectionHeading } from '../PageShell.js'
 import { EntityLink } from '../EntityLink.js'
+import { Button } from '../Button.js'
 import './NodeAssignment.css'
 
 /**
@@ -25,7 +26,7 @@ export function NodeAssignment({ node, nodes, canUnlink, create, draft, onOpen, 
   const m = useMessages()
   const pick = (text: string) => (
     <ChoicePicker
-      value={node?.id ?? ''} options={nodes.map((candidate) => candidate.id)} className="btn sm"
+      value={node?.id ?? ''} options={nodes.map((candidate) => candidate.id)} appearance="button"
       label={(id) => nodes.find((candidate) => candidate.id === id)?.label ?? id} onPick={onSet}
     >{text}</ChoicePicker>
   )
@@ -34,14 +35,14 @@ export function NodeAssignment({ node, nodes, canUnlink, create, draft, onOpen, 
     : (
       <>
         {pick(m.project.plan.changeNode)}
-        {canUnlink ? <button className="btn sm" onClick={() => onSet(null)}>{m.project.plan.unlinkNode}</button> : null}
+        {canUnlink ? <Button size="compact" onClick={() => onSet(null)}>{m.project.plan.unlinkNode}</Button> : null}
       </>
     )
   return (
     <>
-      <SectionHeading variant="rail" actions={actions}>{m.project.plan.nodeHeading}</SectionHeading>
+      <SectionHeading level="group" actions={actions}>{m.project.plan.nodeHeading}</SectionHeading>
       {node === undefined
-        ? draft ?? <EmptyState variant="section">{m.project.plan.noNode}</EmptyState>
+        ? draft ?? <EmptyState variant="section" />
         : (
           <div className="node-assignment">
             <EntityLink kind="node" label={node.label} mode={node.mode} onOpen={() => onOpen(node.id)} />

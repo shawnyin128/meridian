@@ -1,5 +1,6 @@
 import type { ContractMethod } from '../shared/contract.js'
 import type { AppUpdateStatus } from '../shared/app-update.js'
+import type { AppCommand, MenuState } from '../shared/app-commands.js'
 
 declare global {
   interface Window {
@@ -8,6 +9,8 @@ declare global {
       onOpenSettings(handler: () => void): () => void
       onOpenAgentTutorial(handler: () => void): () => void
       onOpenPalette(handler: () => void): () => void
+      onAppCommand(handler: (command: AppCommand) => void): () => void
+      setMenuState(state: MenuState): void
       chooseLibraryRoot(): Promise<string | null>
       chooseWorkspaceRoot(): Promise<string | null>
       pathForFile(file: File): string

@@ -24,9 +24,9 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 
 /** The slot's stylesheet, the "More" button's, then the stylesheets of the rows that hold a slot. */
 const STYLES = [
-  'components/StructuredList.css', 'components/FieldPickers.css', 'components/IconButton.css', 'shell/AppShell.css',
-  'components/ResearchObjectCard.css', 'routes/Projects.css', 'routes/ProjectDetail.css', 'components/wiki/WikiClaims.css',
-  'components/paper-table/PaperTable.css', 'components/project/ProjectPlan.css', 'routes/shell.css',
+  'components/Item.css', 'components/List.css', 'components/FieldPickers.css', 'components/IconButton.css', 'components/NavRow.css',
+  'routes/Projects.css', 'routes/ProjectDetail.css', 'components/wiki/WikiClaims.css',
+  'components/paper-table/PaperTable.css', 'components/Table.css', 'components/project/ProjectPlan.css', 'routes/shell.css',
 ].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
 const SLOT = '<span class="row-actions"><button type="button" class="icbtn sm dots"></button></span>'
@@ -36,14 +36,14 @@ const SLOT = '<span class="row-actions"><button type="button" class="icbtn sm do
 // a column-menu row, each with the "More" button in its row-actions slot. `point` is a part of the row
 // away from the slot.
 const ROWS = {
-  chat: `<div class="srow chat-row" data-row-actions=""><span class="ct-t" data-point>对话</span>${SLOT}</div>`,
-  card: `<article class="research-object-card projpanel" data-actionable="" data-row-actions=""><div class="pp-h"><button type="button" data-focus>MoE 路由分析</button><span class="dd" data-point>没有里程碑</span>${SLOT}</div></article>`,
-  project: `<div class="structured-row prow" data-row-actions=""><span class="tp" data-point>投机解码</span>${SLOT}</div>`,
+  chat: `<div class="nav-row nav-row--actions chat-row" data-row-actions=""><span class="fade-text" data-point>对话</span>${SLOT}</div>`,
+  card: `<article class="item item--card item--slotted item--actionable projpanel" data-row-actions=""><div class="item-head"><span class="item-main"><span class="item-title"><button type="button" class="item-open" data-focus>MoE 路由分析</button></span></span><span class="item-trailing" data-point>没有里程碑</span>${SLOT}</div></article>`,
+  project: `<div class="item item--row item--slotted item--actionable prow" data-row-actions=""><span class="item-main"><span class="item-meta" data-point>投机解码</span></span>${SLOT}</div>`,
   workspace: `<div class="pv workspace-field" data-row-actions=""><button class="workspace-root" data-point data-focus>meridian</button>${SLOT}</div>`,
-  claim: `<div class="structured-row wkclaim" data-row-actions=""><div class="wkclaim-head"><span class="wkclaim-text">拐点在宽度 6</span>${SLOT}</div><div class="wkclaim-meta" data-point>v2</div><button class="wkclaim-history" data-focus>版本史</button></div>`,
-  plan: `<section class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions=""><span class="plan-name-cell"><button class="plan-cell plan-name plan-open" data-focus>校准批次</button>${SLOT}</span><span class="dleft" data-point>进行中</span></div></section>`,
+  claim: `<div class="item item--row wkclaim" data-row-actions=""><div class="wkclaim-head"><span class="wkclaim-text">拐点在宽度 6</span>${SLOT}</div><div class="wkclaim-meta" data-point>v2</div><button class="wkclaim-history" data-focus>版本史</button></div>`,
+  plan: `<section class="project-plan"><div class="item item--row item--actionable ddlrow task-row" data-row-actions=""><span class="plan-name-cell"><button class="plan-cell plan-name plan-open" data-focus>校准批次</button>${SLOT}</span><span class="dleft" data-point>进行中</span></div></section>`,
   header: `<table class="ptable"><thead><tr data-row-actions=""><th data-point>标题</th><th class="th-add">${SLOT}</th></tr></thead></table>`,
-  column: `<div class="mi colrow" data-row-actions=""><span class="ck"></span><span class="cl" data-point>读法</span><button type="button" class="icbtn sm cmx optx" data-focus></button>${SLOT}</div>`,
+  column: `<div class="mi colrow" data-row-actions=""><span class="ck"></span><span class="cl" data-point>读法</span><button type="button" class="icbtn xs fold-toggle" data-focus></button>${SLOT}</div>`,
 }
 
 /** The slot's opacity and pointer-events in each row, after `act` ran on that row. */
@@ -115,17 +115,17 @@ describe('行尾操作槽', () => {
     expect(shown('<button type="button" class="icbtn" aria-pressed="false"></button>')).toBe('0 none')
   })
 
-  it('论文行尾放操作槽的那一格贴在表格右边，表格横向滚动时也看得见', () => {
-    document.body.innerHTML = '<div class="tblwrap"><table class="ptable"><thead><tr><th>标题</th><th class="th-add"></th></tr></thead><tbody><tr data-row-actions=""><td class="pt-title">EAGLE</td><td class="row-actions-cell"><span class="row-actions"></span></td></tr></tbody></table></div>'
-    for (const cell of ['td.row-actions-cell', 'th.th-add']) {
+  it('表格行尾放操作槽的那一格贴在表格右边，表格横向滚动时也看得见', () => {
+    document.body.innerHTML = '<div class="table-scroll table-scroll--fill"><table class="table ptable"><thead><tr><th>标题</th><th class="table-actions"></th></tr></thead><tbody><tr class="table-row" data-row-actions=""><td class="table-cell--title">EAGLE</td><td class="table-actions"><span class="row-actions"></span></td></tr></tbody></table></div>'
+    for (const cell of ['td.table-actions', 'th.table-actions']) {
       const style = getComputedStyle(document.querySelector(cell))
       expect([style.position, style.right], cell).toEqual(['sticky', '0px'])
     }
   })
 
-  it('只有 StructuredList.css 写悬停才显出来的按钮：别处不用 opacity:0 加 pointer-events:none 藏起、再在悬停或聚焦时放出来', () => {
+  it('只有 Item.css 写悬停才显出来的按钮：别处不用 opacity:0 加 pointer-events:none 藏起、再在悬停或聚焦时放出来', () => {
     const rules = STYLESHEETS
-      .filter((path) => path !== join('components', 'StructuredList.css'))
+      .filter((path) => path !== join('components', 'Item.css'))
       .flatMap((path) => [...readFileSync(join(RENDERER, path), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -143,16 +143,12 @@ describe('行尾操作槽', () => {
       .filter(({ selector, body }) => /:(?:hover|focus-visible|focus-within)\b/.test(selector)
         && sets(body, 'pointer-events', 'auto') && subjects(selector).some((name) => hidden.has(name)))
       .map(({ path, selector }) => `${path}  ${selector.replace(/\s+/g, ' ')}`)
-    // The paper table's chip + and chip ×, which the shared chip list of #474 takes over.
-    expect(reveals).toEqual([
-      'components/paper-table/PaperTable.css  .ptable tr:hover .tagadd,.tagchip.tagadd:focus-visible',
-      'components/paper-table/PaperTable.css  .ptable tr:hover .tagchip .rx,.ptable .tagchip .rx:focus-visible',
-    ])
+    expect(reveals).toEqual([])
   })
 
-  it('只有 StructuredList.css 决定槽和「更多」按钮显不显、点不点得到，各行不另写一份', () => {
+  it('只有 Item.css 决定槽和「更多」按钮显不显、点不点得到，各行不另写一份', () => {
     const offenders = STYLESHEETS
-      .filter((path) => path !== join('components', 'StructuredList.css'))
+      .filter((path) => path !== join('components', 'Item.css'))
       .flatMap((path) => [...readFileSync(join(RENDERER, path), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .matchAll(/([^{}]+)\{([^{}]*)\}/g)]

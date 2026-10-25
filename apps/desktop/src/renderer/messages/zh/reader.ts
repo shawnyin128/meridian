@@ -13,12 +13,9 @@ export const reader = {
   page: {
     at: (n: number) => `第 ${n} 页`,
   },
-  emptyReading: '还没有高亮和笔记',
-  emptyHighlights: '还没有高亮',
-  emptyNotes: '还没有笔记',
   notes: {
     ariaLabel: '阅读笔记',
-    heading: (count: number) => `阅读笔记 · ${count}`,
+    heading: '阅读笔记',
     newAria: '新笔记',
     placeholder: (page: number) => `第 ${page} 页的笔记`,
     pageAria: (page: number) => `第 ${page} 页笔记`,
@@ -31,7 +28,7 @@ export const reader = {
   },
   remark: {
     heading: '随笔 · 本篇',
-    placeholder: '对整篇论文的随想',
+    placeholder: '随笔',
   },
   selection: {
     highlight: '高亮',

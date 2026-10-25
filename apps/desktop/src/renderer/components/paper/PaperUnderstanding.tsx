@@ -3,11 +3,13 @@ import type { JumpAnchor } from '../../shell/AppShell.js'
 import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { PageError, SectionHeading } from '../PageShell.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { EmptyState } from '../EmptyState.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { entryAnchor, readingEntries } from '../paper-table/reading-entries.js'
 import { FadeText } from '../FadeText.js'
+import { HeadingCount } from '../HeadingCount.js'
 import './PaperUnderstanding.css'
 
 /**
@@ -38,7 +40,7 @@ export function PaperUnderstanding({ reading, error, onRead }: {
     <section className="paper-understanding" aria-label={m.papers.understanding.ariaLabel}>
       <SectionHeading>{m.papers.understanding.heading}</SectionHeading>
       {empty ? (
-        <EmptyState variant="section">{m.papers.understanding.empty}</EmptyState>
+        <EmptyState variant="section" />
       ) : (
         <>
           {hasRemark ? (
@@ -49,10 +51,10 @@ export function PaperUnderstanding({ reading, error, onRead }: {
           ) : null}
           {entries.length > 0 ? (
             <div className="paper-understanding-notes">
-              <div className="paper-understanding-label">{m.papers.understanding.notesLabel(entries.length)}</div>
-              <StructuredList variant="embedded" aria-label={m.papers.understanding.notesAria}>
+              <div className="paper-understanding-label">{m.papers.understanding.notesLabel}<HeadingCount count={entries.length} /></div>
+              <List variant="embedded" aria-label={m.papers.understanding.notesAria}>
                 {entries.map((entry) => (
-                  <StructuredRow
+                  <Item
                     className="paper-understanding-row" key={entry.id} columns="74px minmax(0,1fr)"
                     onActivate={() => onRead(entryAnchor(entry))}
                   >
@@ -62,9 +64,9 @@ export function PaperUnderstanding({ reading, error, onRead }: {
                       <span>{entry.text}</span>
                       <span className="paper-understanding-date">{m.papers.understanding.updated(fmt.date(entry.updated))}</span>
                     </span>
-                  </StructuredRow>
+                  </Item>
                 ))}
-              </StructuredList>
+              </List>
             </div>
           ) : null}
         </>

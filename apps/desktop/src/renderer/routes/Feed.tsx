@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { FeedEntry, FeedSource } from '../../shared/contract.js'
 import { feed } from '../ipc.js'
@@ -7,11 +7,13 @@ import { useMessages } from '../messages/useMessages.js'
 import { useJump, useVaultRevision } from '../shell/AppShell.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { DateChip, DateTimeDisplay } from '../components/DateTimeDisplay.js'
-import { DayHeading, daySectionName } from '../components/DayHeading.js'
+import { daySectionName, Group, GroupedList } from '../components/GroupedList.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN, EntityLink, opensHere } from '../components/EntityLink.js'
 import { FirstRunChecklist } from '../components/FirstRunChecklist.js'
 import { Icon } from '../components/icons.js'
+import { Item } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar,
@@ -20,6 +22,7 @@ import { SegmentedControl } from '../components/SegmentedControl.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './Feed.css'
 
@@ -97,16 +100,15 @@ function Body({ body, onOpenConflict }: {
     return (
       <div className="brief">
         <div className="bh">{body.heading}</div>
-        {body.items.map((item) => (
-          <div className="bitem" key={item.id}>
-            <Tag tone="bad">{item.tag}</Tag>
-            <span className="t">{item.text}</span>
-            {/* The demo's briefConf: this button opens a chat about the conflicting conclusions. */}
-            <span className="go">
-              <button className="btn ghost sm" onClick={onOpenConflict}>{item.action}</button>
-            </span>
-          </div>
-        ))}
+        <List variant="embedded" rows="all" nested>
+          {body.items.map((item) => (
+            <Item
+              className="bitem" key={item.id} leading={<Tag state="warning">{item.tag}</Tag>} title={<span className="t">{item.text}</span>}
+              // The demo's briefConf: this button opens a chat about the conflicting conclusions.
+              trailing={<span className="go"><Button size="compact" variant="ghost" onClick={onOpenConflict}>{item.action}</Button></span>}
+            />
+          ))}
+        </List>
       </div>
     )
   }
@@ -114,38 +116,47 @@ function Body({ body, onOpenConflict }: {
 }
 
 /**
- * One feed entry: its source label with the source icon, the time at the top right, and the body. An
- * entry written before entries kept their timestamp shows the time it was stored with.
+ * One feed entry, a card Item: its source label with the source icon on its meta line, the time at
+ * the top right, and the body. An entry written before entries kept their timestamp shows the time it
+ * was stored with.
  */
-function Item({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConflict: () => void }) {
+function FeedEntryCard({ entry, onOpenConflict }: { entry: FeedEntry; onOpenConflict: () => void }) {
   const m = useMessages()
   const time = entry.createdAt === undefined ? <DateChip>{entry.time}</DateChip> : <DateTimeDisplay at={entry.createdAt} />
   return (
     <div className="mwrap">
       <div className="msg">
-        <div className="fitem" data-src={entry.source}>
-          <div className="fsrc">
-            <SourceLabel lead={<span className="fic">{FSRC[entry.source].icon}</span>}>{m.feed.sources[entry.source]}</SourceLabel>
-            <span className="ftime">{time}</span>
-          </div>
+        <Item
+          density="card" className="fitem" data-src={entry.source}
+          meta={<SourceLabel lead={<span className="fic">{FSRC[entry.source].icon}</span>}>{m.feed.sources[entry.source]}</SourceLabel>}
+          trailing={<span className="ftime">{time}</span>}
+        >
           <div className="fbody"><Body body={entry.body} onOpenConflict={onOpenConflict} /></div>
-        </div>
+        </Item>
       </div>
     </div>
   )
 }
 
-/** Feed rows under their day headings, each heading constrained to the same centered column as its cards. */
+/** Feed rows grouped under their days in the entries' centred column, each day's entries a stream of their own. */
 export function FeedRows({ rows, onOpenConflict }: { rows: FeedEntry[]; onOpenConflict: () => void }) {
   const m = useMessages()
-  return rows.map((entry, index) => (
-    <Fragment key={entry.id}>
-      {entry.day !== rows[index - 1]?.day ? (
-        <div className="mwrap feed-day"><DayHeading>{daySectionName(entry.day, m.common.daySections)}</DayHeading></div>
-      ) : null}
-      <Item entry={entry} onOpenConflict={onOpenConflict} />
-    </Fragment>
-  ))
+  const days = rows.reduce<FeedEntry[][]>((made, entry) => {
+    if (made.at(-1)?.[0]?.day === entry.day) made.at(-1)!.push(entry)
+    else made.push([entry])
+    return made
+  }, [])
+  return (
+    <div className="feed-days">
+      <GroupedList>
+        {days.map((day) => (
+          <Group key={day[0]!.id} title={daySectionName(day[0]!.day, m.common.daySections)}>
+            <div className="msgs">{day.map((entry) => <FeedEntryCard key={entry.id} entry={entry} onOpenConflict={onOpenConflict} />)}</div>
+          </Group>
+        ))}
+      </GroupedList>
+    </div>
+  )
 }
 
 /**
@@ -175,7 +186,7 @@ export function Feed() {
         <div className="msgs">
           <FirstRunChecklist className="mwrap" onError={report} onShown={setSetupShown} />
           {/* The switch sits in the stream, so it lines up with the entries' column. */}
-          <PageToolbar className="mwrap">
+          <PageToolbar align="center" className="mwrap">
             <SegmentedControl
               label={m.feed.sourceFieldLabel}
               value={source ?? 'all'}
@@ -188,9 +199,7 @@ export function Feed() {
             : rows.length === 0
               // The first-run checklist, while it shows, is this screen's empty state.
               ? (setupShown === false ? (
-                <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon>}>
-                  {m.feed.empty}
-                </EmptyState>
+                <EmptyState variant="page" icon={<Icon sw={1.4}><path d="M22 12h-4l-3 8L9 4l-3 8H2" /></Icon>} />
               ) : null)
               : <FeedRows rows={rows} onOpenConflict={() => open('chat', CONFLICT_THREAD)} />}
         </div>

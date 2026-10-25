@@ -55,7 +55,7 @@ describe('标签、计数徽标和状态点', () => {
   })
 
   it('标签、计数徽标和状态点的样子只由它们自己的样式表画,别的样式表同名的规则会在打包后盖掉它们', () => {
-    const OWN = new Set(['components/Tag.css', 'components/StatusDot.css'])
+    const OWN = new Set(['components/Tag.css', 'components/CountBadge.css', 'components/StatusDot.css'])
     const offenders = STYLESHEETS.filter((path) => !OWN.has(path)).flatMap((path) => {
       const css = readFileSync(join(RENDERER, path), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
       return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].flatMap(([, selectors, body]) => {

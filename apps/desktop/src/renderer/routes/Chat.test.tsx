@@ -19,6 +19,7 @@ const api = vi.hoisted(() => ({
   /** The chats Core is generating a reply in. */
   generating: new Set<string>(),
   send: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
+  retry: vi.fn((): Promise<ChatSendResult> => Promise.resolve({ id: 'chat-1', state: 'complete' })),
   cancel: vi.fn((id: string) => Promise.resolve({ id, cancelled: api.generating.delete(id) })),
   listProjects: vi.fn(() => Promise.resolve([{
     id: 'draft', name: '草稿树项目', status: '进行中', priority: 'p1', topic: '推理', focus: '验证',
@@ -31,6 +32,8 @@ const api = vi.hoisted(() => ({
   recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
   feedAppend: vi.fn(() => Promise.resolve()),
   createIdea: vi.fn(() => Promise.resolve({ id: 'idea-1' })),
+  /** Whether the model settings set up a model. */
+  configured: true,
 }))
 
 const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
@@ -43,8 +46,11 @@ const resized: (() => void)[] = []
 
 vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
-  chat: { send: api.send, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction },
+  chat: {
+    send: api.send, retry: api.retry, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction,
+  },
   feed: { append: api.feedAppend },
+  harness: { modelSettings: () => Promise.resolve({ configured: api.configured }) },
   idea: { create: api.createIdea },
   jobs: {
     status: (): Promise<JobsStatus> => Promise.resolve({
@@ -76,13 +82,18 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 
 const { Chat } = await import('./Chat.js')
 const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { ModelStatusContext, useCoreModelStatus } = await import('../hooks/useModelStatus.js')
 const { useJobsPoll } = await import('../shell/useJobs.js')
 
 const noBump = () => {}
-/** The shell around the screen: the jobs poll and the generations it reports. */
+/** The shell around the screen: the jobs poll and the generations it reports, and the model status. */
 function Shell({ children }: { children: ReactNode }) {
   const { status, refresh } = useJobsPoll(noBump)
-  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+  return (
+    <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>
+      <ModelStatusContext.Provider value={useCoreModelStatus(false)}>{children}</ModelStatusContext.Provider>
+    </GenerationsContext.Provider>
+  )
 }
 const screen = () => <MessagesProvider><Shell><Chat /></Shell></MessagesProvider>
 
@@ -108,6 +119,7 @@ describe('Chat composer', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     api.generating.clear()
+    api.configured = true
     session.id = 'chat-1'
     session.revision = 0
     const host = document.createElement('div')
@@ -223,6 +235,7 @@ describe('Chat composer', () => {
     api.send.mockResolvedValueOnce({ id: 'chat-1', state: 'failed', reason: 'no-model' })
     const state = () => document.querySelector('.cbox .tag')?.textContent ?? null
     expect(state()).toBeNull()
+    api.configured = false
     type('为什么')
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
@@ -231,6 +244,7 @@ describe('Chat composer', () => {
     expect(tag.tagName).toBe('BUTTON')
     act(() => tag.click())
     expect(settings.openCategory).toHaveBeenCalledWith('model')
+    api.configured = true
     type('再问一次')
     press('Enter')
     await act(async () => { await Promise.resolve(); await Promise.resolve() })
@@ -378,6 +392,36 @@ describe('Chat composer', () => {
   }
   const control = () => document.querySelector<HTMLButtonElement>('#sendBtn')!
 
+  /** A chat turn: a message of `role` saying `text`. */
+  const turnOf = (id: string, role: ChatMessage['role'], text: string): ChatMessage => ({ id, role, runs: [{ kind: 'text', text }], actions: [] })
+  const retry = () => document.querySelector<HTMLButtonElement>('.msgs .event .btn')
+
+  it('一轮没得到回答时,对话以那条状态行结束,行尾有重试;点它对这条对话的最后一问再要一次回答', async () => {
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了')])
+    session.revision = 1
+    await openChat('chat-1')
+    expect(retry()?.textContent).toBe('重试')
+    act(() => retry()!.click())
+    await settle()
+    expect(api.retry).toHaveBeenCalledExactlyOnceWith('chat-1')
+    expect(api.send).not.toHaveBeenCalled()
+  })
+
+  it('状态行后面已经有回答,或者还在生成时,不给重试;对话是一段读屏会念出新消息的记录', async () => {
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了'), turnOf('3', 'ai', '答')])
+    session.revision = 1
+    await openChat('chat-1')
+    expect(retry()).toBeNull()
+    expect(document.querySelector('.msgs')!.getAttribute('role')).toBe('log')
+
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了')])
+    session.revision = 2
+    await openChat('chat-1')
+    const finish = await sendPending('再问')
+    expect(retry()).toBeNull()
+    await finish()
+  })
+
   it('换到另一条对话后，前一条晚到的消息不会顶替这一条的', async () => {
     const said = (text: string): ChatMessage[] => [{ id: text, role: 'you', runs: [{ kind: 'text', text }], actions: [] }]
     let answerFirst: (messages: ChatMessage[]) => void = () => {}
@@ -395,7 +439,7 @@ describe('Chat composer', () => {
 
   it('一条对话还在生成时，换到另一条对话照常可以输入和发送', async () => {
     const finish = await sendPending('第一条的问题')
-    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
 
     await openChat('chat-2')
     expect(locked()).toBe(false)
@@ -413,7 +457,7 @@ describe('Chat composer', () => {
     expect(control().getAttribute('aria-label')).toBe('发送')
 
     await openChat('chat-1')
-    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
     act(() => control().click())
     await settle()
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-1')
@@ -429,19 +473,19 @@ describe('Chat composer', () => {
     expect(control().disabled).toBe(false)
 
     const finish = await sendPending('为什么')
-    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
     expect(control().disabled).toBe(false)
     await finish()
   })
 
-  it('快捷引用是一行的幽灵 chip，保存为想法是排在工具栏末尾的幽灵按钮，还没讨论时旁边写着尚无讨论', () => {
+  it('快捷引用是一行的幽灵 chip，保存为想法是排在工具栏末尾的幽灵按钮，还没讨论时只是按不了，旁边不写字', () => {
     const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
     expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
       .toEqual([['btn ghost sm qm', '@草稿树项目']])
     const save = document.querySelector<HTMLButtonElement>('#qaIdea')!
     expect(save.className).toBe('btn ghost sm save-idea')
     expect(save.parentElement!.lastElementChild).toBe(save)
-    expect([save.disabled, save.previousElementSibling?.textContent]).toEqual([true, '尚无讨论'])
+    expect([save.disabled, save.previousElementSibling?.id]).toEqual([true, 'qmChips'])
     expect(document.querySelector('.qsep')).toBeNull()
   })
 

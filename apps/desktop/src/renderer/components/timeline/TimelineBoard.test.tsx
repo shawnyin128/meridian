@@ -140,8 +140,8 @@ describe('TimelineBoard 的头部', () => {
 describe('TimelineBoard 标签列拖拽排序', () => {
   it('提供了 onReorderTasks 时,任务标签行可以拖拽,里程碑行不可以', () => {
     const output = renderBoard(vi.fn())
-    expect(output).toContain('data-task="t1" draggable="true"')
-    expect(output).toContain('data-task="t2" draggable="true"')
+    expect(output).toMatch(/data-task="t1"[^>]*draggable="true"/)
+    expect(output).toMatch(/data-task="t2"[^>]*draggable="true"/)
     expect(output).not.toMatch(/class="glrow msl timeline-label-row"[^>]*draggable/)
   })
 
@@ -418,7 +418,7 @@ describe('TimelineBoard 在总览上标出项目', () => {
     document.body.innerHTML = ''
   })
 
-  it('项目名只在它的里程碑那一行写一次，占满标签列，放不下才淡出；任务行不再重复项目标签', () => {
+  it('项目名只在它的里程碑那一行写一次，放不下才淡出；任务行不再重复项目标签', () => {
     const host = document.createElement('div')
     document.body.append(host)
     const projects: TimelineProject[] = [
@@ -440,6 +440,31 @@ describe('TimelineBoard 在总览上标出项目', () => {
     expect(lanes.map((label) => label.textContent)).toEqual(['推测解码和 KV 量化联合优化', '推测解码加速'])
     expect(lanes.every((label) => label.matches('.fade-text'))).toBe(true)
     expect(host.querySelectorAll('.glrow .project-label')).toHaveLength(0)
+  })
+
+  it('项目的折叠钮是共享的折叠钮，跟在项目名后面；收起时箭头转向、任务行收走，点它不打开项目', () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const onProjectLabelClick = vi.fn()
+    act(() => createRoot(host).render(
+      <MessagesProvider>
+        <TodayContext.Provider value="2026-09-16">
+          <Board
+            projects={[project]} showProjectNames foldable onProjectLabelClick={onProjectLabelClick} onTaskLabelClick={vi.fn()}
+            onTaskClick={vi.fn()} onMilestoneClick={vi.fn()} onMilestoneLaneClick={vi.fn()}
+            onMoveTask={vi.fn()} onMoveTaskWindow={vi.fn()} onMoveMilestone={vi.fn()}
+          />
+        </TodayContext.Provider>
+      </MessagesProvider>,
+    ))
+    const lane = host.querySelector('.glrow.msl')!
+    const fold = lane.querySelector<HTMLButtonElement>('.fold-toggle')!
+    expect(fold.compareDocumentPosition(lane.querySelector('.timeline-item-label')!) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy()
+    expect([fold.getAttribute('aria-expanded'), fold.querySelector('.fold-caret')!.classList.contains('is-closed')]).toEqual(['true', false])
+    act(() => fold.click())
+    expect([fold.getAttribute('aria-expanded'), fold.querySelector('.fold-caret')!.classList.contains('is-closed')]).toEqual(['false', true])
+    expect(host.querySelectorAll('.timeline-label-row[data-task]')).toHaveLength(0)
+    expect(onProjectLabelClick).not.toHaveBeenCalled()
   })
 })
 

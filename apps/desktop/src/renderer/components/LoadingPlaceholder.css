@@ -5,7 +5,7 @@
 .loading-placeholder--rows>span{height:var(--line-h);margin:calc((var(--row-list-h) - var(--line-h)) / 2) var(--row-list-pad);border-radius:var(--r-xs)}
 .loading-placeholder--rows>span:nth-child(3n+2){width:72%}
 .loading-placeholder--rows>span:nth-child(3n){width:84%}
-.loading-placeholder--cards{gap:var(--sp-12)}
+.loading-placeholder--cards{gap:var(--item-gap)}
 .loading-placeholder--cards>span{height:88px;border-radius:var(--r-card)}
 .loading-placeholder--lines{gap:var(--sp-8);padding:var(--sp-4) 0}
 .loading-placeholder--lines>span{height:var(--line-h);border-radius:var(--r-xs)}

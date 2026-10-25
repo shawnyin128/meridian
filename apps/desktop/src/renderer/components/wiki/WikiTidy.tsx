@@ -5,17 +5,18 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item, ItemOpen } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { ProjectSignalKind } from '../project/ProjectSignals.js'
 import './WikiTidy.css'
 
-/** The signal kinds the tidying list shows, in the order it lists them, with the tone of each kind's tag. */
+/** The signal kinds the tidying list shows, in the order it lists them, with the state each kind's tag names. */
 const SHOWN = {
-  'open-conflict': 'bad', 'broken-link': 'bad', 'thin-aggregation': 'warn', 'unfiled-paper': 'warn',
-} as const satisfies Partial<Record<WikiSignalKind, 'bad' | 'warn'>>
+  'open-conflict': 'warning', 'broken-link': 'error', 'thin-aggregation': 'warning', 'unfiled-paper': 'warning',
+} as const satisfies Partial<Record<WikiSignalKind, 'error' | 'warning'>>
 type ShownKind = keyof typeof SHOWN
 const ORDER = Object.keys(SHOWN) as ShownKind[]
 
@@ -74,23 +75,23 @@ export function TidyList({ rows, titles, failed, onOpen }: {
 }) {
   const m = useMessages()
   const t = m.wiki.tidy
-  if (rows.length === 0) return <EmptyState variant="section">{t.empty}</EmptyState>
+  if (rows.length === 0) return <EmptyState variant="section" />
   if (titles === null) return failed ? null : <LoadingPlaceholder shape="rows" />
   const name = (id: string): string => titles[id] ?? id
   /** A missing page's name as plain text, with the trash mark after it when it is in the trash. */
   const missingText = (page: MissingPage): string => (page.trashed ? `${plainTitle(page.name)} ${t.inTrash}` : plainTitle(page.name))
   return (
-    <StructuredList className="attn project-signal-columns tidy-list" variant="embedded" maxVisibleRows="all">
+    <List className="attn project-signal-columns tidy-list" variant="embedded" rows="all">
       {rows.map((row) => (
-        <StructuredRow
+        <Item
           composite className="attnrow tidy-row" key={`${row.kind} ${row.page}`} data-wk={row.page}
           onActivate={() => onOpen(row.page, row.claim)}
         >
-          <ProjectSignalKind tone={SHOWN[row.kind]}>{t.kinds[row.kind]}</ProjectSignalKind>
+          <ProjectSignalKind state={SHOWN[row.kind]}>{t.kinds[row.kind]}</ProjectSignalKind>
           <span className="tidy-what">
-            <button type="button" className="tidy-open">
+            <ItemOpen className="tidy-open">
               <FadeText className="attn-text" label={plainTitle(name(row.page))}><PaperText text={name(row.page)} /></FadeText>
-            </button>
+            </ItemOpen>
             {row.targets.length === 0 && row.missing.length === 0 ? null : (
               <FadeText
                 className="tidy-wrong"
@@ -125,8 +126,8 @@ export function TidyList({ rows, titles, failed, onOpen }: {
               </FadeText>
             )}
           </span>
-        </StructuredRow>
+        </Item>
       ))}
-    </StructuredList>
+    </List>
   )
 }

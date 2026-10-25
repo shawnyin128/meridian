@@ -1,9 +1,0 @@
-/*
- * Suggested candidates for the input of a draft row. They render through the Radix portal, so a
- * draft inside an overflow:auto container does not clip them; their width follows the input, as
- * Radix writes the anchor width to --radix-popover-trigger-width. The surface and rows are the shared
- * menu anatomy in shell.css.
- */
-
-.pickhits{width:var(--radix-popover-trigger-width);min-width:190px;max-height:240px;overflow:auto}
-.pickhits .meta{color:var(--ter);font-size:var(--fs-sm);margin-left:auto;white-space:nowrap}

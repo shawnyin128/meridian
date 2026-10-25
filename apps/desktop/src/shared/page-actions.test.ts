@@ -88,9 +88,8 @@ describe('屏头的按钮', () => {
       return elements(actions).flatMap((element) => {
         const name = nameOf(element)
         const classes = strings(attribute(element, 'className')).flatMap((value) => value.split(/\s+/))
-        const variant = strings(attribute(element, 'variant'))
-        const small = classes.includes('sm') || strings(attribute(element, 'size')).some((size) => ['sm', 'nested', 'inline'].includes(size))
-          || (name === 'AddAction' && !variant.includes('page'))
+        const small = classes.includes('sm')
+          || strings(attribute(element, 'size')).some((size) => ['sm', 'nested', 'inline', 'compact', 'chip'].includes(size))
         return small ? [`${path}:${line(element)} <${name}>`] : []
       })
     })
@@ -107,31 +106,39 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   PageHeader: { actions: 'page header' },
   SectionHeading: { actions: 'section heading' },
   TabbedSection: { actions: 'section heading' },
-  CollapsibleGroup: { actions: 'group heading' },
+  Group: { actions: 'group heading' },
+  PanelHead: { actions: 'panel head' },
   IdeaPanel: { actions: 'panel head' },
+  Item: { actions: 'row actions', menu: 'row actions' },
   PaperCard: { actions: 'row actions' },
   IdeaCard: { menu: 'row actions' },
   IdeaRow: { menu: 'row actions' },
   ProjectPanel: { menu: 'row actions' },
   ProjectRow: { menu: 'row actions' },
-  Table: { head: 'table header' },
+  Table: { actions: 'table header' },
+  TableRow: { actions: 'row actions' },
+  Comparison: { head: 'table header' },
   TimelineBoard: { headerAction: 'timeline toolbar' },
   ModalDialog: { actions: 'dialog actions' },
-  SectHead: { extra: 'sidebar heading' },
+  NavSection: { action: 'sidebar heading' },
+  NodeAssignment: { create: 'section heading' },
 }
 
 /** Elements whose children sit in one slot: components by name, plain elements by a class. */
 const SLOT_CHILDREN: Record<string, Slot> = {
-  PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip', 'pd-h': 'panel head',
-  'th-add': 'table header', ServiceFoot: 'card foot', 'selection-tools-row': 'selection toolbar',
+  PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip',
+  ServiceFoot: 'card foot', 'selection-tools-row': 'selection toolbar',
 }
 
 /** Components whose whole body is one slot wherever they are placed. */
 const SLOT_BODIES: Record<string, Slot> = { TimelineControls: 'timeline toolbar' }
 
+/** Components that are a slot and draw an operation's control in it themselves: PanelHead's close. */
+const OWN_SLOT: Record<string, Slot> = { PanelHead: 'panel head' }
+
 /** Files that define an operation's own control; their insides are not placements. */
 const CONTROL_FILES = new Set(['components/SortMenu.tsx', 'components/AddAction.tsx', 'components/EditActions.tsx',
-  'components/PanelClose.tsx', 'components/FieldPickers.tsx', 'components/IconButton.tsx', 'components/DraftForm.tsx'])
+  'components/SidePanel.tsx', 'components/FieldPickers.tsx', 'components/IconButton.tsx', 'components/DraftForm.tsx'])
 
 /**
  * Segmented controls that switch the views of a page, a section or a board, by their accessible name;
@@ -151,6 +158,8 @@ const OPTION_SWITCHES = new Set(['f.basisLabel', 'm.project.workspace.kindLabel'
 const LABELLED: [RegExp, string][] = [
   [/^m\.(common\.(delete|deletePermanently|remove)|project\.attachments\.delete|project\.plan\.delete\w+For|papers\.rowActions\.delete)\b/, 'delete'],
   [/^m\.(inbox\.actions\.dismiss|later\.actions\.removeFrom|wiki\.removeFromPage|common\.removeLink|papers\.tags\.remove)\b/, 'remove'],
+  // ChipList names the × of each chip it draws `chip.remove`.
+  [/^chip\.remove\.label$/, 'remove'],
   [/^m\.(papers\.rowActions\.openReader|settings\.archived\.open|project\.idea\.openIdea|papers\.understanding\.goRead|wiki\.viewInPaperList)\b/, 'open'],
   [/^m\.(common\.(restore|undo)|settings\.archived\.unarchive)\b/, 'restore'],
   [/^m\.(trash\.clear|changelog\.clearArchived)\b/, 'clear'],
@@ -159,6 +168,8 @@ const LABELLED: [RegExp, string][] = [
   [/^(r\.decline|m\.wiki\.ingest\.discardProposal)$/, 'decline a proposal'],
   [/^r\.apply$|\bm\.wiki\.ingest\.confirm\b/, 'apply a proposal'],
   [/^m\.wiki\.(queue|tidy)\.entry$/, 'open pending work'],
+  // A text button that creates or adds is an AddAction's job.
+  [/^m\.[\w.]+\.(add|create)([A-Z]\w*)?$/, 'add'],
 ]
 
 type Look = { operation: string; size: string; variant: string; label?: string }
@@ -173,11 +184,14 @@ type Place = { slot: Slot; size: string; variant: string; scope?: string }
  */
 const PLACES: Record<string, Place[]> = {
   sort: [{ slot: 'page header', size: 'md', variant: 'plain' }],
-  create: [{ slot: 'page header', size: 'md', variant: 'primary' }],
   add: [
-    { slot: 'section heading', size: 'sm', variant: 'plain' },
-    { slot: 'table header', size: 'nested', variant: 'icon', scope: 'a table adds a column to itself' },
-    { slot: 'inline', size: 'chip', variant: 'chip', scope: 'a field adds a value after its chips' },
+    { slot: 'section heading', size: 'compact', variant: 'labelled' },
+    { slot: 'page header', size: 'regular', variant: 'labelled', scope: 'a page creates an item of the list it shows' },
+    { slot: 'table header', size: 'compact', variant: 'icon', scope: 'a table adds a column to itself' },
+    { slot: 'inline', size: 'chip', variant: 'icon', scope: 'a field adds a value after its chips' },
+    { slot: 'sidebar heading', size: 'compact', variant: 'icon', scope: 'the sidebar starts a chat in its chats group' },
+    { slot: 'row actions', size: 'compact', variant: 'labelled', scope: 'a suggestion row adds its suggestion' },
+    { slot: 'group heading', size: 'compact', variant: 'labelled', scope: 'a group adds to itself: a watch of its type, or all of its suggestions' },
   ],
   'view switch': [
     { slot: 'page toolbar', size: 'md', variant: 'plain' },
@@ -194,11 +208,11 @@ const PLACES: Record<string, Place[]> = {
   ],
   open: [
     { slot: 'row actions', size: 'nested', variant: 'plain' },
-    { slot: 'panel head', size: 'default', variant: 'plain', scope: 'a detail panel opens what it shows elsewhere' },
+    { slot: 'panel head', size: 'nested', variant: 'plain', scope: 'a detail panel opens what it shows elsewhere' },
     { slot: 'page header', size: 'md', variant: 'plain', scope: 'a page leaves for the place that holds its subject' },
   ],
   restore: [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
-  close: [{ slot: 'panel head', size: 'default', variant: 'plain' }],
+  close: [{ slot: 'panel head', size: 'nested', variant: 'plain' }],
   edit: [
     { slot: 'section heading', size: 'sm', variant: 'plain' },
     { slot: 'panel head', size: 'sm', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
@@ -208,10 +222,10 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'page header', size: 'md', variant: 'danger' },
     { slot: 'section heading', size: 'sm', variant: 'danger', scope: 'a section clears its own entries' },
   ],
-  'decline a proposal': [{ slot: 'inline', size: 'md', variant: 'ghost danger' }],
+  'decline a proposal': [{ slot: 'inline', size: 'sm', variant: 'ghost danger' }],
   'apply a proposal': [
-    { slot: 'inline', size: 'md', variant: 'plain' },
-    { slot: 'inline', size: 'md', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
+    { slot: 'inline', size: 'sm', variant: 'plain' },
+    { slot: 'inline', size: 'sm', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
   ],
   'option switch': [{ slot: 'inline', size: 'md', variant: 'plain' }],
   'open pending work': [{ slot: 'page header', size: 'md', variant: 'plain' }],
@@ -232,6 +246,28 @@ const buttonLook = (classes: string[]) => ({
     .map((word) => (word === 'pri' ? 'primary' : word)).join(' ') || 'plain',
 })
 
+/**
+ * The look of a text button: a Button by its size, variant and tone, the buttons of a CommitActions or
+ * an EditActions by the size and Save of their place, a raw button by its btn classes, or null for any
+ * other element.
+ */
+function textButtonLook(element: Node) {
+  const name = nameOf(element)
+  if (name === 'CommitActions') {
+    const place = strings(attribute(element, 'place'))[0]
+    return { size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }
+  }
+  if (name === 'EditActions') return { size: 'sm', variant: 'plain' }
+  if (name === 'Button') {
+    const words = [...strings(attribute(element, 'variant')), ...strings(attribute(element, 'tone'))]
+    return {
+      size: strings(attribute(element, 'size')).includes('compact') ? 'sm' : 'md',
+      variant: ['primary', 'ghost', 'danger'].filter((word) => words.includes(word)).join(' ') || 'plain',
+    }
+  }
+  return (name === 'button' || name === 'ToolbarButton') && classesOf(element).includes('btn') ? buttonLook(classesOf(element)) : null
+}
+
 /** A Settings card's save, by its label. */
 const SETTINGS_SAVE = /\bm\.(common|settings\.model)\.save\b/
 
@@ -246,13 +282,14 @@ function lookOf(element: Node, source: string, path: string): Look | null {
     return { operation: 'sort', size: 'md', variant: 'plain', label: text(expression(attribute(element, 'label'))) }
   }
   if (name === 'AddAction') {
-    const variant = literal('variant') ?? 'section'
-    if (variant === 'page') return { operation: 'create', size: 'md', variant: 'primary' }
-    if (variant === 'section') return { operation: 'add', size: 'sm', variant: classesOf(element).includes('ghost') ? 'ghost' : 'plain' }
-    return { operation: 'add', size: variant === 'icon' ? 'nested' : variant, variant }
+    return { operation: 'add', size: literal('size') ?? 'unsized', variant: (element.children as Node[]).length === 0 ? 'icon' : 'labelled' }
   }
   if (name === 'EditActions') return { operation: 'edit', size: 'sm', variant: 'plain' }
-  if (name === 'PanelClose') return { operation: 'close', size: 'default', variant: 'plain' }
+  if (name === 'CommitActions' && path.startsWith('components/settings/')) {
+    const place = literal('place')
+    return { operation: 'settings save', size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }
+  }
+  if (name === 'PanelHead') return { operation: 'close', size: 'nested', variant: 'plain' }
   if (name === 'DotsMenu') return { operation: 'overflow menu', size: 'nested', variant: 'plain' }
   if (name === 'SegmentedControl') {
     const label = text(expression(attribute(element, 'label')))
@@ -266,12 +303,13 @@ function lookOf(element: Node, source: string, path: string): Look | null {
       operation, size: literal('size') ?? 'default', variant: literal('tone') === 'danger' ? 'danger' : 'plain',
     }
   }
-  if (name === 'button' || name === 'ToolbarButton') {
+  if (name === 'Button' || name === 'button' || name === 'ToolbarButton') {
     const children = (element.children as Node[]).filter((child) => child.type === 'JSXExpressionContainer')
       .map((child) => text(child.expression as Node))
     const operation = path.startsWith('components/settings/') && children.some((child) => SETTINGS_SAVE.test(child))
       ? 'settings save' : children.map(labelled).find(Boolean)
-    return operation === undefined ? null : { operation, ...buttonLook(classesOf(element)) }
+    const look = textButtonLook(element) ?? buttonLook([])
+    return operation === undefined ? null : { operation, ...look }
   }
   return null
 }
@@ -343,13 +381,12 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
     if (held.type === 'JSXElement') {
       const name = nameOf(held)
       const look = lookOf(held, source, path)
-      if (look !== null && !CONTROL_FILES.has(path)) found.push({ ...look, slot, at: `${path}:${line(held)}` })
+      if (look !== null && !CONTROL_FILES.has(path)) found.push({ ...look, slot: OWN_SLOT[name] ?? slot, at: `${path}:${line(held)}` })
       if (name === 'IconButton' && !CONTROL_FILES.has(path)) {
         icons.push({ slot, size: strings(attribute(held, 'size'))[0] ?? 'default', at: `${path}:${line(held)}` })
       }
-      if ((name === 'button' || name === 'ToolbarButton') && classesOf(held).includes('btn') && !CONTROL_FILES.has(path)) {
-        buttons.push({ slot, ...buttonLook(classesOf(held)), at: `${path}:${line(held)}` })
-      }
+      const textLook = textButtonLook(held)
+      if (textLook !== null && !CONTROL_FILES.has(path)) buttons.push({ slot, ...textLook, at: `${path}:${line(held)}` })
       const built = ((attribute(held, 'className')?.value as Node | undefined)?.expression as Node | undefined)
       const builder = built?.type === 'CallExpression' && (built.callee as Node).type === 'Identifier'
         ? functions.get((built.callee as Node).name as string) ?? [] : []
@@ -357,9 +394,7 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
       for (const attr of (held.openingElement as Node).attributes as Node[]) {
         if (attr.type !== 'JSXAttribute') { visit(attr, slot, inside); continue }
         const prop = (attr.name as Node).name as string
-        const own = name === 'SectionHeading' && prop === 'actions' && classes.includes('node-document-head')
-          ? 'panel head' : SLOT_PROPS[name]?.[prop]
-        visit(attr.value, slot === 'chip' ? slot : own ?? slot, inside)
+        visit(attr.value, slot === 'chip' ? slot : SLOT_PROPS[name]?.[prop] ?? slot, inside)
       }
       const holds = SLOT_CHILDREN[name] ?? classes.map((word) => SLOT_CHILDREN[word]).find(Boolean)
       // A table header cell reveals its buttons through a row-actions slot; they still act on the table.
@@ -377,8 +412,24 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
 const READ = SOURCES.map(placementsIn)
 const PLACEMENTS = READ.flatMap((file) => file.actions)
 
-/** The one icon button size of the slots that hold rows' and chips' own actions. */
-const ICON_SIZES: Partial<Record<Slot, string>> = { 'row actions': 'nested', chip: 'inline' }
+/**
+ * The one text button size of each slot: regular in the page header bar and at dialog, popover and form
+ * feet; compact in section, group and panel headings, inside rows and cards, and in toolbars.
+ */
+const BUTTON_SIZES: Partial<Record<Slot, string>> = {
+  'page header': 'md', 'dialog actions': 'md', 'card foot': 'md',
+  'section heading': 'sm', 'group heading': 'sm', 'panel head': 'sm', 'row actions': 'sm', 'timeline toolbar': 'sm',
+  'selection toolbar': 'sm',
+}
+
+/** AddAction's one size in the page header bar, in each kind of heading and among a row's actions. */
+const ADD_SIZES: Partial<Record<Slot, string>> = {
+  'page header': 'regular', 'section heading': 'compact', 'group heading': 'compact', 'panel head': 'compact',
+  'sidebar heading': 'compact', 'table header': 'compact', 'row actions': 'compact',
+}
+
+/** The one icon button size of the slots that hold panel heads', rows' and chips' own actions. */
+const ICON_SIZES: Partial<Record<Slot, string>> = { 'panel head': 'nested', 'row actions': 'nested', chip: 'inline' }
 
 const shown = (place: Pick<Place, 'slot' | 'size' | 'variant'>) => `${place.slot} · ${place.size} · ${place.variant}`
 
@@ -418,14 +469,29 @@ describe('一个操作一个位置', () => {
     expect([...new Set(menus.map((menu) => menu.at.split(':')[0]))].sort()).toEqual(['routes/Ideas.tsx', 'routes/Inbox.tsx', 'routes/Projects.tsx'])
   })
 
-  it('详情面板头部的文字按钮都是小号的普通按钮', () => {
+  it('详情面板头部的文字按钮都是普通按钮', () => {
     const offenders = READ.flatMap((file) => file.buttons)
-      .filter((button) => button.slot === 'panel head' && `${button.size} · ${button.variant}` !== 'sm · plain')
+      .filter((button) => button.slot === 'panel head' && button.variant !== 'plain')
       .map((button) => `${button.at} ${button.size} · ${button.variant}`)
     expect([...new Set(offenders)]).toEqual([])
   })
 
-  it('一行的图标操作一种尺寸：行里是嵌套尺寸，标签里是行内尺寸', () => {
+  it('一个槽里的文字按钮一种尺寸：屏头、对话框和表单脚上是常规尺寸，小标题、组标题、面板头、行里和工具栏里是紧凑尺寸', () => {
+    const offenders = READ.flatMap((file) => file.buttons)
+      .filter((button) => BUTTON_SIZES[button.slot] !== undefined && button.size !== BUTTON_SIZES[button.slot])
+      .map((button) => `${button.at} ${button.slot}: ${button.size}`)
+    expect([...new Set(offenders)]).toEqual([])
+  })
+
+  it('新建和添加按槽定尺寸:屏头里的 AddAction 是常规尺寸,小标题、组标题、面板头、侧栏小标题和表头里是紧凑尺寸', () => {
+    const adds = PLACEMENTS.filter((placement) => placement.operation === 'add')
+    expect(adds.filter((add) => add.slot === 'page header').length).toBeGreaterThan(0)
+    const offenders = adds.filter((add) => ADD_SIZES[add.slot] !== undefined && add.size !== ADD_SIZES[add.slot])
+      .map((add) => `${add.at} ${add.slot}: ${add.size}`)
+    expect([...new Set(offenders)]).toEqual([])
+  })
+
+  it('一个槽的图标操作一种尺寸：面板头和行里是嵌套尺寸，标签里是行内尺寸', () => {
     const offenders = READ.flatMap((file) => file.icons)
       .filter((icon) => ICON_SIZES[icon.slot] !== undefined && icon.size !== ICON_SIZES[icon.slot])
       .map((icon) => `${icon.at} ${icon.slot}: ${icon.size}`)

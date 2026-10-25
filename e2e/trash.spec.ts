@@ -16,7 +16,7 @@ async function restore(row: Locator): Promise<void> {
 const DAY_MS = 86_400_000
 
 /** What an entry deleted on the vault's today shows: the full retention period. */
-const FULL_RETENTION = `${TRASH_RETENTION_DAYS} 天后自动清除`
+const FULL_RETENTION = `${TRASH_RETENTION_DAYS} 天`
 
 /** Calls `trash.list` directly, bypassing the UI, for each entry's deletion time, newest first. */
 const deletedAt = (win: Page) => win.evaluate(async () => {
@@ -47,7 +47,7 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
   await gotoPapers(win)
   await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
   const total = await paperTotal(win)
-  const title = await win.locator('.ptable tbody tr').first().locator('.pt-title .ci').innerText()
+  const title = await win.locator('.ptable tbody tr').first().locator('.pt-title .table-text').innerText()
   // The fixture library has two papers sharing this exact title, so filtering by title alone cannot
   // later confirm which one came back; capture the deleted paper's own id (table's default sort is
   // addedAt desc, matching apps/desktop/src/renderer/components/paper-table/PaperTable.tsx).
@@ -57,8 +57,8 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
 
   await win.locator('.ptable tbody tr').first().locator('td').last().hover()
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
-  await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total - 1))
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('1')
+  await expect(win.locator('[data-desk="papers"] .nav-row-count')).toHaveText(String(total - 1))
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveText('1')
 
   await gotoTrash(win)
   await expect(win.locator('#crumb .cseg')).toHaveText(['垃圾桶'])
@@ -69,8 +69,8 @@ test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async (
 
   await restore(win.locator('.tgroup .trow'))
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
-  await expect(win.locator('[data-desk="papers"] .n')).toHaveText(String(total))
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveCount(0)
+  await expect(win.locator('[data-desk="papers"] .nav-row-count')).toHaveText(String(total))
   expect(await paperTotal(win)).toBe(total)
 
   // What is restored is the exact paper itself, not just some paper with the same title: check by id.
@@ -117,10 +117,10 @@ test('垃圾桶的倒数按库里的今天算,把这一屏的钟拨走也不动'
   await gotoPapers(win)
   await win.locator('.ptable tbody tr').first().locator('td').last().hover()
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('1')
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveText('1')
   await win.locator('.ptable tbody tr').first().locator('td').last().hover()
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveText('2')
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveText('2')
 
   // The deletion time is the vault's today, so two deletions on one day share a time and a countdown.
   const stamps = await deletedAt(win)
@@ -199,7 +199,7 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
   await expect(attachmentRow.locator('.row-actions [aria-label="恢复"]')).toBeEnabled()
   await restore(attachmentRow)
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
-  await expect(shown(win, '.ipcerror')).toHaveCount(0)
+  await expect(shown(win, '.page-error')).toHaveCount(0)
   await expect(win.locator('#notice[data-tone="refusal"]')).toHaveCount(0)
 
   await win.locator('[data-desk="resproj"]').click()
@@ -225,7 +225,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await shown(win, '.desk-head .page-actions .btn').filter({ hasText: '清空垃圾桶' }).click()
   const dialog = win.locator('[role="alertdialog"]')
   await expect(dialog.locator('.modal-title')).toHaveText('清空垃圾桶？')
-  await expect(dialog.locator('.modal-detail')).toHaveText('2 项将被彻底删除，不可恢复。')
+  await expect(dialog.locator('.modal-detail')).toHaveText('2 项不能恢复')
   await expect(dialog.locator('.modal-actions .btn')).toHaveText(['取消', '确认清空'])
 
   // Cancel leaves the contents unchanged.
@@ -237,7 +237,7 @@ test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async (
   await dialog.locator('.btn', { hasText: '确认清空' }).click()
   await expect(win.locator('.tgroup .trow')).toHaveCount(0)
   await expect(win.locator('.empty-state')).toHaveCount(1)
-  await expect(win.locator('[data-desk="trash"] .n')).toHaveCount(0)
+  await expect(win.locator('[data-desk="trash"] .nav-row-count')).toHaveCount(0)
 
   expect(ids).toHaveLength(2)
   for (const id of ids) expect(await restoreRefused(win, id)).toEqual({ reason: 'not-found' })

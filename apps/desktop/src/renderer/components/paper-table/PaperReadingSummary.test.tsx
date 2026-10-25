@@ -68,15 +68,52 @@ describe('PaperReadingSummary', () => {
       )
     })
 
-    const list = host.querySelector('.paper-reading-summary .structured-list')
-    expect(list?.classList.contains('structured-list--embedded')).toBe(true)
+    const list = host.querySelector('.paper-reading-summary .list')
+    expect(list?.classList.contains('list--embedded')).toBe(true)
     const rows = [...list!.children]
-    expect(rows.every((row) => row.classList.contains('structured-row'))).toBe(true)
+    expect(rows.every((row) => row.classList.contains('item'))).toBe(true)
     expect(rows.map((row) => row.textContent)).toEqual(['先看第三节的消融。', '“固定上下文”和自适应上下文对比', '第二条'])
-    expect(list!.nextElementSibling?.textContent).toBe('共 3 条 · 阅读器中查看全部')
+    expect([list!.nextElementSibling?.textContent, list!.nextElementSibling?.querySelector('svg') !== null]).toEqual(['全部 3 条', true])
     expect(list!.nextElementSibling?.className).toBe('btn ghost sm reading-summary-all')
 
     await act(async () => { (rows[1] as HTMLElement).click() })
     expect(read).toEqual([{ page: 2, highlight: 'h1', panel: 'highlights' }])
+  })
+
+  it('shows the note and conclusion counts as links in the property list\'s text, the notes opening the reader at its notes and the conclusions the paper\'s Wiki page', async () => {
+    const read: JumpAnchor[] = []
+    const conclusions = vi.fn()
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(
+        <MessagesProvider>
+          <PaperReadingSummary paper={{ ...PAPER, conclusionCount: 2 }} onRead={(anchor) => { read.push(anchor) }} onConclusions={conclusions} />
+        </MessagesProvider>,
+      )
+    })
+
+    const links = [...host.querySelectorAll('.property-list dd')].map((dd) => dd.querySelector<HTMLElement>(':scope > .entity-link'))
+    expect(links.map((link) => [link?.tagName, link?.textContent])).toEqual([['BUTTON', '3'], ['BUTTON', '2']])
+    await act(async () => { links[0]!.click() })
+    await act(async () => { links[1]!.click() })
+    expect([read, conclusions.mock.calls.length]).toEqual([[{ panel: 'notes' }], 1])
+  })
+
+  it('shows a zero count as plain text, like the other values of a property list', async () => {
+    const host = document.createElement('div')
+    document.body.appendChild(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(
+        <MessagesProvider>
+          <PaperReadingSummary paper={PAPER} onRead={() => {}} onConclusions={() => {}} />
+        </MessagesProvider>,
+      )
+    })
+
+    expect([...host.querySelectorAll('.property-list dd')].map((dd) => [dd.childElementCount, dd.textContent])[1])
+      .toEqual([0, '0'])
   })
 })

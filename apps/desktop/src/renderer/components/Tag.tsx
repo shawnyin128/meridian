@@ -1,14 +1,15 @@
 import { forwardRef, useImperativeHandle, useLayoutEffect, useRef, useState } from 'react'
 import type { ComponentPropsWithoutRef, ReactNode, RefObject } from 'react'
 import { FadeText } from './FadeText.js'
+import { isClipped } from '../hooks/useClipped.js'
 import './Tag.css'
 
 /**
- * A tag's text colour on the neutral chip: `good`, `warn` and `bad` write in their state's colour, and
- * every other tone in the neutral one. `ghost` is the dashed empty slot at the end of a row of tags
- * that adds one.
+ * The state a tag names, which alone colours its text on the neutral chip: an `error`, a `warning`,
+ * something `done`, and the priorities `p0`, in the error's colour, and `p1`, in the warning's. A tag
+ * without a state, a kind, a source, a name or any other word, is neutral.
  */
-export type TagTone = 'neutral' | 'accent' | 'good' | 'warn' | 'bad' | 'info' | 'paper' | 'wiki' | 'ghost'
+export type TagState = 'error' | 'warning' | 'done' | 'p0' | 'p1'
 
 /**
  * A tag's box. `label` is a short status, kind, priority or source word in caption type; `chip` is a
@@ -17,11 +18,11 @@ export type TagTone = 'neutral' | 'accent' | 'good' | 'warn' | 'bad' | 'info' | 
 export type TagShape = 'label' | 'chip'
 
 /**
- * The class list of a tag of `tone` and `shape`, followed by `extra` classes, for an element another
- * component renders, such as a menu trigger.
+ * The class list of a tag of `state` (none for a neutral one) and `shape`, followed by `extra`
+ * classes, for an element another component renders, such as a menu trigger.
  */
-export function tagClass(tone: TagTone = 'neutral', shape: TagShape = 'label', extra = ''): string {
-  return `tag tag--${shape} tag--${tone}${extra ? ` ${extra}` : ''}`
+export function tagClass(state?: TagState, shape: TagShape = 'label', extra = ''): string {
+  return `tag tag--${shape} tag--${state ?? 'neutral'}${extra ? ` ${extra}` : ''}`
 }
 
 /**
@@ -44,7 +45,7 @@ function useYielded(box: RefObject<HTMLElement | null>, capped: boolean): boolea
       const style = getComputedStyle(parent)
       const end = parent.getBoundingClientRect().right - parseFloat(style.borderRightWidth) - parseFloat(style.paddingRight)
       const past = parent.getClientRects().length > 0 && tag.getBoundingClientRect().right > end + 1
-      setYielded((text !== null && text.scrollWidth > text.clientWidth + 1) || past)
+      setYielded((text !== null && isClipped(text, 'x')) || past)
     }
     measure()
     const observer = new ResizeObserver(measure)
@@ -60,7 +61,7 @@ const placement = (capped: boolean, yielded: boolean, className: string) =>
   [capped ? 'tag--capped' : '', yielded ? 'tag--yielded' : '', className].filter(Boolean).join(' ')
 
 type TagOwnProps = {
-  tone?: TagTone | undefined
+  state?: TagState | undefined
   shape?: TagShape | undefined
   /** A mark before the text, such as a StatusDot or an icon; it never truncates. */
   lead?: ReactNode
@@ -76,17 +77,18 @@ type TagOwnProps = {
 }
 
 /**
- * The one tag: fully rounded, its box from `shape` and its colours from `tone`. It keeps the width of
+ * The one tag: fully rounded on the neutral chip, its box from `shape` and its text's colour from its
+ * `state`. It keeps the width of
  * its text: a `capped` tag fades its long text out at its cap, and text that is cut off shows whole in
  * the shared tooltip.
  */
 export const Tag = forwardRef<HTMLSpanElement, TagOwnProps & Omit<ComponentPropsWithoutRef<'span'>, keyof TagOwnProps>>(
-  function Tag({ tone, shape, lead, capped = false, className = '', children, ...rest }, ref) {
+  function Tag({ state, shape, lead, capped = false, className = '', children, ...rest }, ref) {
     const box = useRef<HTMLSpanElement>(null)
     useImperativeHandle(ref, () => box.current!, [])
     const yielded = useYielded(box, capped)
     return (
-      <span ref={box} className={tagClass(tone, shape, placement(capped, yielded, className))} {...rest}>
+      <span ref={box} className={tagClass(state, shape, placement(capped, yielded, className))} {...rest}>
         {lead}<FadeText className="tag-text" label={typeof children === 'string' ? children : undefined}>{children}</FadeText>
       </span>
     )
@@ -95,26 +97,14 @@ export const Tag = forwardRef<HTMLSpanElement, TagOwnProps & Omit<ComponentProps
 
 /** A tag that is a button, such as a link to a page; it darkens on hover and press. */
 export const TagButton = forwardRef<HTMLButtonElement, TagOwnProps & Omit<ComponentPropsWithoutRef<'button'>, keyof TagOwnProps | 'type'>>(
-  function TagButton({ tone, shape, lead, capped = false, className = '', children, ...rest }, ref) {
+  function TagButton({ state, shape, lead, capped = false, className = '', children, ...rest }, ref) {
     const box = useRef<HTMLButtonElement>(null)
     useImperativeHandle(ref, () => box.current!, [])
     const yielded = useYielded(box, capped)
     return (
-      <button ref={box} type="button" className={tagClass(tone, shape, placement(capped, yielded, className))} {...rest}>
+      <button ref={box} type="button" className={tagClass(state, shape, placement(capped, yielded, className))} {...rest}>
         {lead}<FadeText className="tag-text" label={typeof children === 'string' ? children : undefined}>{children}</FadeText>
       </button>
     )
   },
 )
-
-/** A number beside a label, in the one quiet count look. Zero is shown as 0. */
-export function CountBadge({ count, className = '' }: {
-  count: number
-  className?: string
-}) {
-  return (
-    <span className={`count-badge${className ? ` ${className}` : ''}`}>
-      {count}
-    </span>
-  )
-}

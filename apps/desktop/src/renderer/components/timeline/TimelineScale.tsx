@@ -1,14 +1,15 @@
-import { useCallback, useEffect, useLayoutEffect, useState, type RefObject } from 'react'
+import { useCallback, useEffect, useState, type RefObject } from 'react'
 import type { Task, TaskWindow as PlannedWindow } from '../../../shared/contract.js'
 import { D1, dnum, isoOf } from '../../../shared/dates.js'
 import { createFormat, useFormat, type Format } from '../../lib/format.js'
+import { useElementWidth } from '../../hooks/useElementWidth.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { IconButton } from '../IconButton.js'
 import { IconNext, IconPrevious } from '../icons.js'
 import { zh } from '../../messages/zh/index.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { ToolbarButton } from '../Toolbar.js'
+import { Button } from '../Button.js'
 
 export type TimelineScale = 'day' | 'week' | 'month'
 
@@ -40,17 +41,7 @@ export function fitTimelineWindow(
 export function useFittedTimelineWindow(
   viewport: RefObject<HTMLDivElement | null>, window: TimelineWindow, scale: TimelineScale,
 ): TimelineWindow {
-  const [viewportWidth, setViewportWidth] = useState(0)
-  useLayoutEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const sync = () => setViewportWidth(element.clientWidth)
-    sync()
-    const resize = new ResizeObserver(sync)
-    resize.observe(element)
-    return () => resize.disconnect()
-  }, [viewport])
-  return fitTimelineWindow(window, scale, viewportWidth)
+  return fitTimelineWindow(window, scale, useElementWidth(viewport))
 }
 
 /**
@@ -196,7 +187,7 @@ export function TimelineControls({ scale, onScaleChange, onStep, onToday }: {
         <IconButton label={m.timeline.nextPeriod} size="nested" onClick={() => onStep(1)}><IconNext /></IconButton>
       </div>
       <TimelineScalePicker value={scale} onChange={onScaleChange} />
-      <ToolbarButton className="btn ghost sm" onClick={onToday}>{m.timeline.today}</ToolbarButton>
+      <Button size="compact" variant="ghost" onClick={onToday}>{m.timeline.today}</Button>
     </>
   )
 }

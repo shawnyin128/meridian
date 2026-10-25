@@ -103,4 +103,60 @@ describe('ChatMessageView', () => {
     expect(line.querySelector('.event-icon svg')).not.toBeNull()
     expect(host.querySelector('.source-label')).toBeNull()
   })
+
+  /** The text status line `text` shows in `language`. */
+  const statusIn = (language: 'zh' | 'en', text: string) => {
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
+    // The language is read when the App mounts, so each language gets a fresh mount.
+    act(() => root!.unmount())
+    root = createRoot(host)
+    show({ id: 's1', role: 'status', runs: [{ kind: 'text', text }], actions: [] })
+    return host.querySelector('.msg .event')!.textContent
+  }
+
+  /** Every status line the App has written, as stored, with what an English UI shows for it. */
+  const WRITTEN: [stored: string, english: string][] = [
+    ['AI 尚未接入，请先在设置中配置模型与 API Key。', 'AI is not set up yet. Set up a model and an API key in settings first.'],
+    ['生成失败：已停止生成', 'Generation failed: Generation stopped'],
+    ['生成失败：AI 服务已停止，请重新发送', 'Generation failed: The AI service stopped. Send again'],
+    ['生成失败：对话上下文过大或请求格式不受支持', 'Generation failed: The chat context is too large, or the request format is not supported'],
+    ['生成失败：模型服务调用失败', 'Generation failed: The model call failed'],
+    ['生成失败：模型的回答读不出来', 'Generation failed: The model’s answer could not be read'],
+    ['生成失败：AI 服务停了', 'Generation failed: The AI service stopped'],
+    ['生成失败：对话太长，或这次请求模型不支持', 'Generation failed: The chat is too long, or the model does not support this request'],
+    ['生成失败：还没有连上模型', 'Generation failed: No model is connected yet'],
+    ['生成失败：AI 服务出了错', 'Generation failed: The AI service ran into an error'],
+    ['生成失败：模型服务请求过多（429），请稍后重新确认任务', 'Generation failed: Too many requests to the model service (429). Confirm the task again later'],
+    ['生成失败：模型服务拒绝认证（401），请检查设置', 'Generation failed: The model service refused authentication (401). Check settings'],
+    ['生成失败：模型服务拒绝认证（403），请检查设置', 'Generation failed: The model service refused authentication (403). Check settings'],
+    ['生成失败：模型服务返回 HTTP 502', 'Generation failed: The model service returned HTTP 502'],
+    ['生成失败：模型服务请求超时', 'Generation failed: The model service timed out'],
+    ['生成失败：操作系统安全凭据库不可用，API Key 未保存', 'Generation failed: The operating system credential vault is unavailable. The API key was not saved'],
+    ['生成失败：未检测到安全的系统密码库，API Key 未保存', 'Generation failed: No secure system credential vault was found. The API key was not saved'],
+    ['生成失败：保存的 API Key 密文无效', 'Generation failed: The saved API key is invalid'],
+    ['生成失败：系统凭据库操作失败', 'Generation failed: The system credential vault operation failed'],
+    ['生成失败：系统凭据库响应超时', 'Generation failed: The system credential vault did not respond in time'],
+  ]
+
+  it('英文界面里，App 存下的中文状态行(0.0.19.0 及以前存的也一样)显示成英文', () => {
+    expect(WRITTEN.map(([stored]) => statusIn('en', stored))).toEqual(WRITTEN.map(([, english]) => english))
+  })
+
+  it('中文界面里，App 存下的每一种状态行都照存下的原样显示', () => {
+    expect(WRITTEN.map(([stored]) => statusIn('zh', stored))).toEqual(WRITTEN.map(([stored]) => stored))
+  })
+
+  it('App 没写过的话照原样显示;生成失败的原因 App 没写过时,只把“生成失败”换成界面的语言', () => {
+    expect([
+      statusIn('en', 'agent 留下的一句话'),
+      statusIn('en', '生成失败：Unsupported Harness model provider'),
+      statusIn('zh', '生成失败：Unsupported Harness model provider'),
+      statusIn('en', '生成失败：模型服务返回 HTTP 五百'),
+    ]).toEqual([
+      'agent 留下的一句话',
+      'Generation failed: Unsupported Harness model provider',
+      '生成失败：Unsupported Harness model provider',
+      'Generation failed: 模型服务返回 HTTP 五百',
+    ])
+  })
 })

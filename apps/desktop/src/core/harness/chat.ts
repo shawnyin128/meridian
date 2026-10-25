@@ -1,4 +1,4 @@
-import { z } from 'zod'
+import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
@@ -148,15 +148,39 @@ export function packPaperReading(reading: StoredPaperReading) {
   return { highlights, notes, remark }
 }
 
-/** Convert Harness failures into stable UI copy without exposing provider response bodies. */
-function chatHarnessError(cause: unknown): Error {
+/**
+ * The messages of a chat that come before the question `currentText` being answered: all of them but
+ * the last one said, when that one asks `currentText`. A status line after it, which a turn retried
+ * after a failure has, does not count as said.
+ */
+export function messagesBefore(messages: readonly StoredChatMessage[], currentText: string): StoredChatMessage[] {
+  const at = messages.findLastIndex((message) => message.role !== 'status')
+  const last = messages[at]
+  return last?.role === 'you' && messageText(last) === currentText
+    ? messages.filter((_, index) => index !== at)
+    : [...messages]
+}
+
+/** A chat turn that got no answer, its message what happened in plain words, as the chat's status line says it. */
+export class ChatFailure extends Error {}
+
+/**
+ * What went wrong with a chat turn, as a ChatFailure in plain words: the text of a provider's response
+ * or of a parser never reaches it. An error from outside the Harness call, such as an unreadable key,
+ * is returned as it is.
+ */
+export function chatHarnessError(cause: unknown): Error {
+  if (cause instanceof ZodError) return new ChatFailure('模型的回答读不出来')
   if (!(cause instanceof HarnessRpcError)) {
     return cause instanceof Error ? cause : new Error(String(cause))
   }
-  if (cause.kind === 'cancelled') return new Error('已停止生成')
-  if (cause.kind === 'harness_gone') return new Error('AI 服务已停止，请重新发送')
-  if (cause.kind === 'bad_request') return new Error('对话上下文过大或请求格式不受支持')
-  return cause
+  if (cause.kind === 'cancelled') return new ChatFailure('已停止生成')
+  if (cause.kind === 'harness_gone') return new ChatFailure('AI 服务停了')
+  if (cause.kind === 'bad_request') return new ChatFailure('对话太长，或这次请求模型不支持')
+  if (cause.kind === 'no_model') return new ChatFailure('还没有连上模型')
+  // The Harness words a model's own failure plainly and safely (ModelInvocationError).
+  if (cause.kind === 'model_error') return new ChatFailure(cause.message)
+  return new ChatFailure('AI 服务出了错')
 }
 
 /** A single-purpose chat client with a least-privilege callback surface. */
@@ -192,12 +216,7 @@ export function createChatHarnessRunner(options: {
       'chat.context': async (params) => {
         const { id, currentText } = ChatContextParamsSchema.parse(params)
         const session = options.store.chatSession(id)
-        const storedMessages = options.store.chatMessages(id)
-        const last = storedMessages.at(-1)
-        const priorMessages = last?.role === 'you' && messageText(last) === currentText
-          ? storedMessages.slice(0, -1)
-          : storedMessages
-        const history = packChatHistory(priorMessages)
+        const history = packChatHistory(messagesBefore(options.store.chatMessages(id), currentText))
         if (session.paperId === undefined) return { title: session.title, history }
         const paper = options.store.getPaper(session.paperId)
         const reading = options.store.paperReading(session.paperId)

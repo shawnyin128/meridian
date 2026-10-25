@@ -1,36 +1,17 @@
 .card-tray{margin-top:var(--sp-12);overflow:hidden;border-radius:var(--r-md);background:var(--field);color:var(--sec)}
+/* Under a heading the tray takes the heading's space below it instead of its own. */
+.section-heading+.card-tray{margin-top:0}
 .card-tray-head{display:flex;min-height:34px;align-items:center;gap:var(--sp-6);padding:0 var(--sp-8) 0 var(--sp-12)}
-.card-tray-toggle{display:flex;min-width:0;flex:1;align-items:center;gap:var(--sp-8);padding:0;border:0;background:transparent;
-  color:inherit;font:inherit;text-align:left;cursor:pointer}
-.card-tray-summary{flex:1}
-.card-tray-chevron{display:grid;width:18px;height:18px;flex:0 0 auto;place-items:center;color:var(--ter);
-  transition:transform var(--t) var(--e-out)}
-.card-tray-chevron svg{width:12px;height:12px}
-.card-tray.is-open .card-tray-chevron{transform:rotate(180deg)}
+.card-tray-toggle{flex:1}
 .card-tray-action{display:flex;flex:0 0 auto;align-items:center}
 .card-tray-reveal{display:grid;grid-template-rows:0fr;transition:grid-template-rows var(--t-slow) var(--e-out)}
 .card-tray.is-open .card-tray-reveal{grid-template-rows:1fr}
 .card-tray-content{min-height:0;overflow:hidden;border-top:1px solid transparent;opacity:0;
   transition:opacity var(--t) var(--e-out),border-color var(--t-fast) var(--e-out)}
 .card-tray.is-open .card-tray-content{border-top-color:var(--sep2);opacity:1;transition-delay:var(--t-delay),0ms}
-/*
- * A row tray has no surface: the list row is the surface, its summary wraps like the row's text, and a
- * leading caret points right while closed and down while open; the details line up with the summary.
- */
+/* A row tray has no surface: the list row is the surface, and its summary wraps like the row's text. */
 .card-tray--row{margin-top:0;overflow:visible;border-radius:0;background:none;color:inherit}
 .card-tray--row .card-tray-head{min-height:0;padding:0;gap:var(--sp-10)}
 .card-tray--row .card-tray-summary{white-space:normal}
-.card-tray--row .card-tray-chevron{width:16px;height:16px;transform:rotate(-90deg)}
-.card-tray--row.is-open .card-tray-chevron{transform:none}
-.card-tray--row .card-tray-toggle:hover,.card-tray--row.is-open .card-tray-toggle,
-.card-tray--row .card-tray-toggle:hover .card-tray-chevron{color:var(--ink)}
-.card-tray--row .card-tray-content{padding-left:var(--sp-24)}
-/*
- * A composite row's toggle lies over its caret and summary, so a click on either toggles and its ring
- * encloses both; a control in the summary comes later and is positioned, so it paints above the toggle.
- */
-.card-tray-press{position:relative;display:flex;min-width:0;flex:1;align-items:center;gap:var(--sp-8)}
-.card-tray-press .card-tray-toggle{position:absolute;inset:0}
-.card-tray-press .card-tray-summary :is(a,button){position:relative}
-.card-tray-press:hover,.card-tray--row.is-open .card-tray-press,.card-tray-press:hover .card-tray-chevron{color:var(--ink)}
+.card-tray--row .card-tray-toggle:hover,.card-tray--row.is-open .card-tray-toggle{color:var(--ink)}
 .card-tray--row.is-open .card-tray-content{border-top-color:transparent}

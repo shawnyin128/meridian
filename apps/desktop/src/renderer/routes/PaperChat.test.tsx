@@ -44,6 +44,8 @@ const api = vi.hoisted(() => ({
   collapsed: false,
   revision: 0,
   openCategory: vi.fn(),
+  /** Whether the model settings set up a model. */
+  configured: true,
 }))
 
 vi.mock('../ipc.js', () => ({
@@ -52,6 +54,7 @@ vi.mock('../ipc.js', () => ({
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
     recordAction: api.recordAction,
   },
+  harness: { modelSettings: () => Promise.resolve({ configured: api.configured }) },
   idea: { create: api.createIdea },
   feed: { append: api.feedAppend },
   jobs: {
@@ -82,13 +85,18 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 
 const { PaperChat } = await import('../components/chat/PaperChat.js')
 const { GenerationsContext, useCoreGenerations } = await import('../hooks/useGenerations.js')
+const { ModelStatusContext, useCoreModelStatus } = await import('../hooks/useModelStatus.js')
 const { useJobsPoll } = await import('../shell/useJobs.js')
 
 const noBump = () => {}
-/** The shell around the paper chat: the jobs poll and the generations it reports. */
+/** The shell around the paper chat: the jobs poll and the generations it reports, and the model status. */
 function Shell({ children }: { children: ReactNode }) {
   const { status, refresh } = useJobsPoll(noBump)
-  return <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>{children}</GenerationsContext.Provider>
+  return (
+    <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>
+      <ModelStatusContext.Provider value={useCoreModelStatus(false)}>{children}</ModelStatusContext.Provider>
+    </GenerationsContext.Provider>
+  )
 }
 
 /** Lets every pending call to Core answer and the chat render what it answered. */
@@ -150,6 +158,7 @@ describe('PaperChat', () => {
     document.body.innerHTML = ''
     vi.clearAllMocks()
     api.generating.clear()
+    api.configured = true
     api.writes.length = 0
     api.collapsed = false
     api.revision = 0
@@ -208,6 +217,7 @@ describe('PaperChat', () => {
 
   it('没配置模型时发送失败，输入框里的「AI 未连接」是一个按钮，打开设置的模型一栏', async () => {
     api.send.mockResolvedValueOnce({ id: 'chat-paper-1', state: 'failed', reason: 'no-model' } as never)
+    api.configured = false
     const host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
@@ -247,7 +257,16 @@ describe('PaperChat', () => {
     document.body.append(host)
     root = createRoot(host)
     await act(async () => { root!.render(withMessages(<PaperChat paper={{ ...PAPER, title }} />)) })
-    expect(host.querySelector('.paper-chat-head .fade-text')?.textContent).toBe(`${title} · 阅读中`)
+    expect(host.querySelector('.paper-chat .desk-head .t')?.textContent).toBe(title)
+  })
+
+  it('论文还没读到时对话栏头部不写正在载入，对话区是载入占位', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => { root!.render(withMessages(<PaperChat paper={null} />)) })
+    const head = host.querySelector('.paper-chat .desk-head')!
+    expect([head.textContent, host.querySelector('.paper-chat .msgs .loading-placeholder') !== null]).toEqual(['', true])
   })
 
   it('提交未完成时发送箭头变为可停止的旋转控件', async () => {
@@ -265,7 +284,7 @@ describe('PaperChat', () => {
     act(() => host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click())
     await settle()
     const control = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
-    expect(control.getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control.getAttribute('aria-label')).toBe('停止生成')
     expect(control.querySelector('.ring.spin')).not.toBeNull()
     expect(control.querySelector('.generation-stop')).not.toBeNull()
 
@@ -361,7 +380,7 @@ describe('PaperChat', () => {
     type('这篇的关键假设是什么？')
     act(() => control().click())
     await settle()
-    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
 
     await showPaper(null)
     await showPaper(PAPER_TWO)
@@ -370,7 +389,7 @@ describe('PaperChat', () => {
 
     await showPaper(null)
     await showPaper(PAPER)
-    expect(control().getAttribute('aria-label')).toBe('正在生成，点击停止')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
     act(() => control().click())
     expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-paper-1')
     await finish()
@@ -389,7 +408,7 @@ describe('PaperChat', () => {
       if (held[id] === undefined) throw new CallError('chat.messages', 'not-found')
       return held[id]
     }) as () => Promise<ChatMessage[]>)
-    const shown = (host: HTMLElement) => [host.querySelector('.paper-chat .ipcerror'), host.querySelector('.paper-chat .msgs')!.textContent]
+    const shown = (host: HTMLElement) => [host.querySelector('.paper-chat .page-error'), host.querySelector('.paper-chat .msgs')!.textContent]
     try {
       const host = await mountChat()
       expect(shown(host)).toEqual([null, '删之前问的'])
@@ -397,7 +416,7 @@ describe('PaperChat', () => {
       held = { 'chat-paper-2': [] }
       api.revision = 1
       await showPaper(PAPER)
-      expect(shown(host)).toEqual([null, '还没有对话'])
+      expect([shown(host), host.querySelector('.paper-chat .msgs .empty-state--page svg') !== null]).toEqual([[null, ''], true])
 
       held = { 'chat-paper-1': asked }
       api.revision = 2
@@ -437,13 +456,13 @@ describe('PaperChat', () => {
 
     const save = host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!
     expect([save.className, save.disabled]).toEqual(['btn ghost sm save-idea', true])
-    expect(save.previousElementSibling?.textContent).toBe('尚无讨论')
+    expect(save.previousElementSibling).toBeNull()
   })
 
-  it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
+  it('空对话的空态只有对话的图标，和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()
     const hint = host.querySelector('.msgs .empty-state')!
-    expect(hint.textContent).toBe('还没有对话')
+    expect([hint.textContent, hint.querySelector('svg') !== null]).toEqual(['', true])
     expect(hint.parentElement!.className).toBe(host.querySelector('.composer > div')!.className)
   })
 
@@ -498,8 +517,11 @@ describe('PaperChat', () => {
   })
 
   it('消息列表停在末尾时新消息滚进视野,往上翻着读时不抢,自己发出的消息总会滚进视野', async () => {
+    // The browser reports the stream's content growing through the ResizeObserver its scroll area watches it with.
+    const observers: (() => void)[] = []
+    vi.stubGlobal('ResizeObserver', class { constructor(changed: () => void) { observers.push(changed) } observe() {} disconnect() {} })
     const host = await mountChat()
-    const stream = host.querySelector<HTMLElement>('.msgs')!
+    const stream = host.querySelector<HTMLElement>('.paper-chat > .scroll-area')!
     let top = 0
     let length = 600
     Object.defineProperty(stream, 'clientHeight', { configurable: true, get: () => 300 })
@@ -515,6 +537,7 @@ describe('PaperChat', () => {
       api.revision += 1
       length += 200
       await showPaper(PAPER)
+      act(() => { for (const changed of observers) changed() })
     }
 
     await arrive()

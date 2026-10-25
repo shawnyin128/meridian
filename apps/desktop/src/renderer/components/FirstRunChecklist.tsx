@@ -1,9 +1,11 @@
 import { useEffect, useState } from 'react'
-import { extensions, harness, library } from '../ipc.js'
+import { useModelStatus } from '../hooks/useModelStatus.js'
+import { extensions, library } from '../ipc.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useJump, usePaperCount, useSettingsOpen, useVaultRevision } from '../shell/AppShell.js'
 import { Card } from './Card.js'
 import { IconCheck } from './icons.js'
+import { Button } from './Button.js'
 import './FirstRunChecklist.css'
 
 /** The renderer localStorage key of the checklist's state for the library at `root`: `open` or `closed`. */
@@ -19,16 +21,16 @@ export function firstRunShown(stored: string | null, papers: number, done: boole
 }
 
 /**
- * What the checklist read: the library's root, its stored state there, and whether each of the first
- * three steps is done, or null for the steps when the checklist cannot show and they were not read.
+ * What the checklist read: the library's root, its stored state there, and whether the library and
+ * plugin steps are done, or null for the steps when the checklist cannot show and they were not read.
  */
-type Setup = { root: string; stored: string | null; steps: { library: boolean; model: boolean; plugin: boolean } | null }
+type Setup = { root: string; stored: string | null; steps: { library: boolean; plugin: boolean } | null }
 
 /**
  * The first-run checklist of an empty or new library, one line: choose a library, set up a model,
  * install the agent plugin, import a first paper. Each step is done or not as the library and Settings
- * stand, read again on every vault write and whenever Settings closes, and a step not done opens where
- * it is done. The checklist closes for good on this machine, per library, once every step is done or
+ * stand, read again on every vault write and whenever Settings closes, the model step as the shell's
+ * model status says (see useModelStatus), and a step not done opens where it is done. The checklist closes for good on this machine, per library, once every step is done or
  * the user hides it. `className` places it; `onError` receives a read that failed; `onShown` hears
  * whether it shows, each time that is known anew.
  */
@@ -44,6 +46,7 @@ export function FirstRunChecklist({ className, onError, onShown }: {
   const { open: settingsOpen, openCategory } = useSettingsOpen()
   const { open } = useJump()
   const [setup, setSetup] = useState<Setup | null>(null)
+  const { connected } = useModelStatus()
 
   useEffect(() => {
     if (settingsOpen || papers === null) return
@@ -54,12 +57,11 @@ export function FirstRunChecklist({ className, onError, onShown }: {
         if (live) setSetup({ root: where.root, stored, steps: null })
         return
       }
-      const [model, plugins] = await Promise.all([harness.modelSettings(), extensions.status()])
+      const plugins = await extensions.status()
       if (live) {
         setSetup({
           root: where.root, stored, steps: {
             library: where.openError === null,
-            model: model.configured,
             plugin: plugins.some((plugin) => plugin.state !== 'not-installed'),
           },
         })
@@ -68,9 +70,9 @@ export function FirstRunChecklist({ className, onError, onShown }: {
     return () => { live = false }
   }, [revision, settingsOpen, papers, onError])
 
-  const steps = setup === null || setup.steps === null || papers === null ? null : [
+  const steps = setup === null || setup.steps === null || papers === null || connected === null ? null : [
     { key: 'library', done: setup.steps.library, go: () => openCategory('storage') },
-    { key: 'model', done: setup.steps.model, go: () => openCategory('model') },
+    { key: 'model', done: connected, go: () => openCategory('model') },
     { key: 'plugin', done: setup.steps.plugin, go: () => openCategory('extensions') },
     { key: 'paper', done: papers > 0, go: () => open('papers', '', { importPdf: true }) },
   ] as const
@@ -89,7 +91,7 @@ export function FirstRunChecklist({ className, onError, onShown }: {
     if (next !== null) keep(setup!.root, next)
   }, [next, setup])
 
-  const shown = setup === null || papers === null ? null
+  const shown = setup === null || papers === null || (setup.steps !== null && steps === null) ? null
     : steps !== null && firstRunShown(setup.stored, papers, steps.map((step) => step.done))
   useEffect(() => {
     if (shown !== null) onShown(shown)
@@ -105,11 +107,11 @@ export function FirstRunChecklist({ className, onError, onShown }: {
             <li key={step.key} data-step={step.key} data-done={step.done}>
               {step.done
                 ? <span className="firstrun-done"><IconCheck />{f.steps[step.key]}</span>
-                : <button type="button" className="btn sm" onClick={step.go}>{f.steps[step.key]}</button>}
+                : <Button size="compact" onClick={step.go}>{f.steps[step.key]}</Button>}
             </li>
           ))}
         </ul>
-        <button type="button" className="btn ghost sm firstrun-hide" onClick={() => keep(setup.root, 'closed')}>{f.dismiss}</button>
+        <Button size="compact" variant="ghost" className="firstrun-hide" onClick={() => keep(setup.root, 'closed')}>{f.dismiss}</Button>
       </div>
     </Card>
   )

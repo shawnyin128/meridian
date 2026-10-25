@@ -18,13 +18,12 @@ import {
 } from '../../shell/appearance.js'
 import { useColourThemeFiles, useColourThemes } from '../../shell/useColourThemes.js'
 import { MenuItem } from '../ActionMenu.js'
-import { AddAction } from '../AddAction.js'
 import { Card } from '../Card.js'
 import { ConfirmDialog } from '../ConfirmDialog.js'
 import { FadeText } from '../FadeText.js'
 import { DotsMenu } from '../FieldPickers.js'
-import { RowActions } from '../StructuredList.js'
-import { Tag } from '../Tag.js'
+import { RowActions } from '../Item.js'
+import { InlineMessage } from '../InlineMessage.js'
 
 const OPTIONS: readonly AppearancePreference[] = ['light', 'dark', 'system']
 const OPTION_LABEL: Record<AppearancePreference, 'light' | 'dark' | 'system'> = {
@@ -146,12 +145,12 @@ function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () 
           setConfirming(true)
         }}
       >
-        <MenuItem onSelect={onEdit}>{m.common.edit}</MenuItem>
+        <MenuItem onSelect={onEdit}>{m.settings.appearance.editor.edit}</MenuItem>
         <MenuItem className="mi danger" onSelect={() => { deleting.current = true }}>{m.common.delete}</MenuItem>
       </DotsMenu>
       <ConfirmDialog
         open={confirming} onOpenChange={setConfirming}
-        title={t.deleteTitle(name)} description={t.deleteDescription} confirmLabel={m.common.delete} onConfirm={onDelete}
+        title={t.deleteTitle(name)} description={t.deleteLoss} confirmLabel={m.common.delete} onConfirm={onDelete}
       />
     </>
   )
@@ -161,11 +160,11 @@ function ColourThemeMenu({ name, onEdit, onDelete }: { name: string; onEdit: () 
  * Device-local colour theme selector: the built-in themes, then the custom theme files, each
  * previewed in light and dark; a file that cannot be used shows its reason. A custom theme's card
  * has a … menu to edit or delete it; deleting the theme in use returns the App to today's palette.
- * The card that creates a theme comes last. `onEdit` opens the theme editor on a theme, or on a new
- * one with null; `onError` receives a failed deletion. It changes only renderer tokens.
+ * `onEdit` opens the theme editor on a custom theme; `onError` receives a failed deletion. It changes
+ * only renderer tokens.
  */
 export function ColourThemeSettings({ onEdit, onError }: {
-  onEdit: (theme: ColourTheme | null) => void
+  onEdit: (theme: ColourTheme) => void
   onError: (error: unknown) => void
 }) {
   const m = useMessages()
@@ -214,19 +213,16 @@ export function ColourThemeSettings({ onEdit, onError }: {
           {unusable.map((file) => (
             <span className="appearance-problem" data-colour-theme-file={file.file} key={file.file}>
               <span className="appearance-preview problem">
-                <Tag tone="bad">
+                <InlineMessage tone="error" variant="line">
                   {file.path === undefined
                     ? m.settings.appearance.themeProblems[file.reason]
                     : m.settings.appearance.themeProblemAt(m.settings.appearance.themeProblems[file.reason], file.path)}
-                </Tag>
+                </InlineMessage>
               </span>
               <FadeText className="appearance-label" label={file.file}>{file.file}</FadeText>
             </span>
           ))}
         </div>
-        <AddAction
-          variant="chip" label={m.settings.appearance.editor.create} className="appearance-add" onClick={() => onEdit(null)}
-        />
       </div>
     </Card>
   )

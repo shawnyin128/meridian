@@ -6,7 +6,7 @@ import { ActionPopover } from './ActionPopover.js'
 import { AddAction } from './AddAction.js'
 import { ChoicePicker } from './FieldPickers.js'
 import { IconButton } from './IconButton.js'
-import { RowActions } from './StructuredList.js'
+import { RowActions } from './Item.js'
 import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from './Toolbar.js'
 
 declare global {
@@ -130,7 +130,7 @@ describe('Toolbar', () => {
     act(() => root.render(
       <div>
         <IconButton label="删除"><span /></IconButton>
-        <AddAction variant="chip" label="添加主题" />
+        <AddAction size="chip" label="添加主题" />
         <ChoicePicker value="未读" options={['未读', '在读']} onPick={() => undefined} aria-label="状态" />
       </div>,
     ))

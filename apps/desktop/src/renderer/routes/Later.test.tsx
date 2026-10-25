@@ -75,7 +75,7 @@ describe('Later', () => {
     delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
   })
 
-  it('从别处跳到一条时,把那一条移到眼前', async () => {
+  it('从别处跳到一条时,把那一条移到眼前并闪一下', async () => {
     const shown: (string | null)[] = []
     // jsdom lays nothing out and has no scrollIntoView.
     HTMLElement.prototype.scrollIntoView = function (this: HTMLElement) { shown.push(this.getAttribute('data-pid')) }
@@ -83,6 +83,7 @@ describe('Later', () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
     expect(shown).toEqual(['later-1'])
+    expect([...host.querySelectorAll('[data-arrived]')].map((entry) => entry.getAttribute('data-pid'))).toEqual(['later-1'])
     await act(async () => { root.unmount() })
     delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView
   })
@@ -99,7 +100,7 @@ describe('Later', () => {
     await act(async () => {
       [...host.querySelectorAll<HTMLButtonElement>('.segmented-control button')].find((button) => button.textContent === '按来源')!.click()
     })
-    expect([...host.querySelectorAll('.day-heading')].map((heading) => heading.textContent)).toEqual(['关键词 · MoE serving · 2'])
+    expect([...host.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent)).toEqual(['关键词 · MoE serving · 2'])
     expect(api.entries.map((entry) => entry.source)).toEqual(['主题 · MoE serving', '关键词 · MoE serving'])
     await act(async () => { root.unmount() })
   })
@@ -125,7 +126,7 @@ describe('Later', () => {
   it('按时间排时，论文从哪来写成中性的来源标签，不是醒目的强调徽标', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Later /></MessagesProvider>) })
-    const metadata = host.querySelector('.paper-card-metadata')!
+    const metadata = host.querySelector('.paper-card .item-meta')!
     expect(metadata.querySelector('.source-label')!.textContent).toBe('arXiv')
     expect(metadata.querySelector('.paper-card-badge')).toBeNull()
     await act(async () => { root.unmount() })

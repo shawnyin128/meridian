@@ -113,10 +113,10 @@ describe('CommandPalette', () => {
     expect(ran).toEqual(['新建项目'])
   })
 
-  it('没有命令对得上时写没有找到;Esc 收起面板', async () => {
+  it('没有命令对得上时只写无结果;Esc 收起面板', async () => {
     await type('无此词')
     expect(rows()).toHaveLength(0)
-    expect(document.querySelector('.cmdk .empty-state')?.textContent).toBe('没有找到匹配的内容')
+    expect(document.querySelector('.cmdk .empty-state')?.textContent).toBe('无结果')
     await press('Escape')
     expect(open).toEqual([false])
   })

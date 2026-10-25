@@ -6,7 +6,7 @@ import type {
   PaperHighlight, PaperHighlightRect, PaperReading, PaperRow, ReadingMutation,
 } from '../../shared/contract.js'
 import { sharesText } from '../../shared/highlight-overlap.js'
-import { papers } from '../ipc.js'
+import { appMenu, papers } from '../ipc.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useWheelZoom } from '../hooks/useWheelZoom.js'
@@ -16,18 +16,19 @@ import { typesText } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useDrafts } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
+import { land } from '../hooks/useArrival.js'
 import {
-  useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg, type ScreenKey, type JumpAnchor,
+  useCrumbTail, useJump, useNotice, useScreenShown, useVaultRevision, type ScreenKey, type JumpAnchor,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import type { AnchorBox } from '../components/floating-layer.js'
 import { FormTextarea } from '../components/FormControls.js'
 import { IconButton } from '../components/IconButton.js'
-import { IconAskAi, IconMinus, IconPlus, IconTrash } from '../components/icons.js'
+import { IconAskAi, IconTrash } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { Swatches } from '../components/Swatches.js'
-import { Toolbar, ToolbarButton } from '../components/Toolbar.js'
-import { Tooltip } from '../components/Tooltip.js'
+import { Toolbar } from '../components/Toolbar.js'
 import {
   drawnLines, highlightAt, highlightLines, highlightOutline, highlightShape, selectedLinesByPage, selectionBox,
 } from './highlight-geometry.js'
@@ -36,14 +37,14 @@ import {
 } from './reader-zoom.js'
 import { PaperChat, type PaperChatPrompt } from '../components/chat/PaperChat.js'
 import { ReaderSidePanel, type ReaderSideTab } from '../components/reader/ReaderSidePanel.js'
-import { PageShell } from '../components/PageShell.js'
+import { PageError, PageShell } from '../components/PageShell.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { ZoomControl, zoomStep } from '../components/ZoomControl.js'
 import './shell.css'
 import './Reader.css'
 
 const MAX_DPR = 2
-const ZOOM_STEP = 0.2
 /** How long zooming and scrolling pause before the pages are laid out and drawn at the zoom shown. */
 const SETTLE_MS = 150
 const PROGRESS_MS = 800
@@ -576,11 +577,13 @@ export function Reader() {
       : view.querySelector(`.paper-highlight[data-highlight="${arrival.highlight}"]`)
     const note = arrival.page === undefined && arrival.highlight === undefined && opened !== null
       ? selectionNotes.get(opened) : undefined
-    if (mark !== null) mark.scrollIntoView({ block: 'center' })
+    if (mark !== null) land(mark, 'center')
     else {
       const page = note?.page ?? arrival.page ?? reading.lastPage ?? 1
-      view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
-        ?.scrollIntoView({ block: note === undefined ? 'start' : 'center' })
+      const pagebox = view.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
+      // Opening a paper resumes at its last page, and a note being written shows again: neither names an anchor.
+      if (pagebox !== null && arrival.page !== undefined) land(pagebox, 'start', 'over')
+      else pagebox?.scrollIntoView({ block: note === undefined ? 'start' : 'center' })
     }
     // The toolbar opens once the landing's scroll has been handled, as a scroll closes it.
     if (note !== undefined) {
@@ -670,14 +673,26 @@ export function Reader() {
     settleLater()
   }, [settleLater])
 
-  const zoomBy = (delta: number) => {
+  /** Zooms to `target` about the middle of the pages' view. */
+  const zoomAtCentre = (target: number) => {
     const frame = scroller.current!.getBoundingClientRect()
-    zoomTo(Math.round((shownZoom.current + delta) * 10) / 10, {
-      x: frame.left + frame.width / 2, y: frame.top + frame.height / 2,
-    })
+    zoomTo(target, { x: frame.left + frame.width / 2, y: frame.top + frame.height / 2 })
   }
 
   useWheelZoom(scroller, (factor, point) => zoomTo(shownZoom.current * factor, point))
+
+  // While the reader is shown, the View menu's zoom items, and their ⌘+, ⌘− and ⌘0, zoom the paper as its zoom control does.
+  const shown = useScreenShown()
+  const zoomHere = useRef(zoomAtCentre)
+  zoomHere.current = zoomAtCentre
+  useEffect(() => {
+    if (!shown) return
+    return appMenu.onAppCommand((command) => {
+      if (command === 'zoomIn') zoomHere.current(zoomStep(shownZoom.current, 1))
+      if (command === 'zoomOut') zoomHere.current(zoomStep(shownZoom.current, -1))
+      if (command === 'resetZoom') zoomHere.current(1)
+    })
+  }, [shown])
 
   useEffect(() => {
     const view = scroller.current
@@ -859,11 +874,7 @@ export function Reader() {
       ? removeFromReading(mutation)
       : await mutateReading(mutation) !== null, [mutateReading, removeFromReading])
 
-  const saveRemark = async (text: string): Promise<boolean> => {
-    const ok = await mutate({ kind: 'remark.set', text })
-    if (ok) notice.success(m.papers.notices.remarkSaved)
-    return ok
-  }
+  const saveRemark = (text: string): Promise<boolean> => mutate({ kind: 'remark.set', text })
 
   /** Writes the toolbar's `selection` as a new highlight in `color`; returns it, or null when Core refused. */
   const highlightSelection = async (selection: PendingHighlight, color: PaperHighlight['color']) => {
@@ -946,8 +957,8 @@ export function Reader() {
   }
 
   const jumpToPage = (page: number) => {
-    scroller.current?.querySelector<HTMLElement>(`.pdfpagebox[data-page="${page}"]`)
-      ?.scrollIntoView({ block: 'start' })
+    const pagebox = scroller.current?.querySelector(`.pdfpagebox[data-page="${page}"]`)
+    if (pagebox) land(pagebox, 'start', 'over')
   }
 
   const tail = useMemo<CrumbSeg[]>(
@@ -967,14 +978,14 @@ export function Reader() {
         <div className="reader">
           <div className="pdfwrap" ref={scroller} onMouseUp={captureSelection}>
             <div ref={sheet} className="pdfsheet" />
-            {error === null ? null : <div className="pdfload">{error}</div>}
+            <PageError variant="section" error={error} />
             {loading ? <LoadingPlaceholder shape="sheet" /> : null}
           </div>
 
           <ActionPopover
             open={pending !== null} anchorBox={selectionAnchor}
             onOpenChange={(open) => { if (!open) setPending(null) }}
-            contentClassName="ctxmenu selection-tools" side="bottom" align="center" sideOffset={10}
+            surface="toolbar" contentClassName="selection-tools" side="bottom" align="center" sideOffset={10}
             contentProps={{
               // Opening leaves focus where it is, so the selection can still be copied.
               onOpenAutoFocus: (event) => event.preventDefault(),
@@ -1032,21 +1043,11 @@ export function Reader() {
             onJump={jumpToPage} focusHighlightId={focusHighlightId} selectedHighlightId={selected?.id ?? null}
           />
 
-          <Toolbar>
-            <div className="zoomctl">
-              <IconButton label={m.reader.zoom.out} size="nested" disabled={zoom <= ZOOM_MIN} onClick={() => zoomBy(-ZOOM_STEP)}>
-                <IconMinus />
-              </IconButton>
-              <Tooltip label={m.reader.zoom.reset}>
-                <ToolbarButton className="btn ghost sm zoom-reset" onClick={() => zoomBy(1 - shownZoom.current)}>
-                  {Math.round(zoom * 100)}%
-                </ToolbarButton>
-              </Tooltip>
-              <IconButton label={m.reader.zoom.in} size="nested" disabled={zoom >= ZOOM_MAX} onClick={() => zoomBy(ZOOM_STEP)}>
-                <IconPlus />
-              </IconButton>
-            </div>
-          </Toolbar>
+          <ZoomControl
+            place="bottom" zoom={zoom} min={ZOOM_MIN} max={ZOOM_MAX}
+            onZoom={(direction) => zoomAtCentre(zoomStep(shownZoom.current, direction))} onReset={() => zoomAtCentre(1)}
+            labels={{ out: m.reader.zoom.out, in: m.reader.zoom.in, reset: m.reader.zoom.reset }}
+          />
         </div>
       </PageShell>
     </>

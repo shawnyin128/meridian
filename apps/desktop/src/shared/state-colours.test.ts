@@ -39,7 +39,7 @@ describe('红色只标逾期、错误和危险', () => {
       ['components/timeline/TimelineBoard.css', '.gnow::after'],
       ['components/timeline/TimelineBoard.css', '.gbar.priority-p0'],
       ['components/FieldPickers.css', '.cd.today'],
-      ['components/Tag.css', '.tag--warn'],
+      ['components/Tag.css', '.tag--warning'],
     ] as const
     expect(marks.map(([path, selector]) => [selector, tokens(bodyOf(path, selector)).filter((t) => RED.test(t))]))
       .toEqual(marks.map(([, selector]) => [selector, []]))
@@ -105,6 +105,44 @@ describe('错误', () => {
   })
 })
 
+describe('状态色', () => {
+  /** The stylesheets that own a state colour, each with what it marks there. */
+  const OWNERS: Record<string, string> = {
+    'components/InlineMessage.css': 'errors, warnings and notes shown in place, as a line or on their tint',
+    'components/Notice.css': "a notice's success or refusal icon",
+    'components/IconButton.css': 'a danger icon action under the pointer',
+    'components/Button.css': "a danger button's soft fill",
+    'components/ActionMenu.css': 'a danger menu item',
+    'components/FirstRunChecklist.css': "a finished first-run step's check",
+    'components/StatTile.css': "a stat tile's figure that needs attention",
+    'components/arrival.css': 'the flash of a row or anchor a jump has landed on',
+  }
+
+  /**
+   * The state colours outside an owner that another open issue moves, as `<path>  <selector>  <property>`,
+   * each with that issue. The list only shrinks.
+   */
+  const PENDING: Record<string, string> = {
+  }
+
+  /** Every declaration that writes text in --bad, --warn or --good, or lays a --tint-* fill, as `<path>  <selector>  <property>`. */
+  const stateColours = () => STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => body.split(';')
+    .map((declaration) => /^\s*(color|background(?:-color|-image)?)\s*:(.*)$/s.exec(declaration))
+    .filter((match) => match !== null && (match[1] === 'color'
+      ? /var\(--(?:bad|warn|good)\s*[,)]/.test(match[2]!)
+      : /var\(--tint-[\w-]+/.test(match[2]!)))
+    .flatMap((match) => selectors.map((selector) => `${path}  ${selector}  ${match![1]}`))))
+
+  it('错误、警告和完成的颜色只在它们的共享组件里:别的样式表不把字写成 --bad、--warn、--good,也不铺 --tint-* 的底', () => {
+    expect(stateColours().filter((found) => !(found.split('  ')[0]! in OWNERS) && !(found in PENDING))).toEqual([])
+  })
+
+  it('留给别的议题的状态色都还在:挪走的从清单里删掉', () => {
+    const found = new Set(stateColours())
+    expect(Object.keys(PENDING).filter((entry) => !found.has(entry))).toEqual([])
+  })
+})
+
 describe('结论冲突', () => {
   it('冲突的结论不画红条、红底块,也不因此缩进', () => {
     const drawn = STYLESHEETS.flatMap((path) => rules(path).flatMap(({ selectors, body }) => (
@@ -135,18 +173,24 @@ describe('计数', () => {
 
 describe('强调色', () => {
   /**
-   * The only rules that may read an accent token, by what the accent says there: what to act on (the
-   * primary and the send), where you are (the current sidebar row), what is on or running (an on switch,
-   * the running ring) and today on the timeline. The focus ring reads --ring.
+   * The only rules that may read an accent token, by what the accent marks there: what to act on (the
+   * primary and the send), what is selected (the current sidebar row, the picked segment, a checked
+   * menu item, an on chip toggle, a list's selected row or card and the selected highlight card),
+   * what is on or running (an on switch, the running ring, a progress fill) and today on the
+   * timeline. The focus ring reads --ring.
    */
   const ACCENT = [
+    'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri',
+    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
+    'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
     'components/Switch.css  .switch[data-state="checked"]',
+    'components/Table.css  .table-row--selected', 'components/Table.css  .table-row--selected>.table-cell--title',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
-    'components/timeline/TimelineBoard.css  .gtoday', 'routes/shell.css  .btn.pri', 'shell/AppShell.css  .srow.on',
+    'components/timeline/TimelineBoard.css  .gtoday',
   ]
 
-  it('强调色只在键盘焦点环、主操作、侧栏的当前行、开着的开关、运行中的圈和时间线的今天;标签、计数、列表的选中项和别的规则都不读', () => {
+  it('强调色只标选中的和正在执行的:主操作、侧栏的当前行、选中的分段、勾上的菜单项、开着的标签开关、列表里选中的行和卡片、选中的高亮卡片、开着的开关、运行中的圈、进度和时间线的今天;链接、标签、计数和别的规则都不读', () => {
     const readers = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
       .filter((path) => /\.(css|tsx?)$/.test(path) && !/\.test\.tsx?$/.test(path))
       .flatMap((path) => (path.endsWith('.css')
@@ -155,6 +199,35 @@ describe('强调色', () => {
         : /var\(--accent[\w-]*\)/.test(readFileSync(join(RENDERER, path), 'utf8')) ? [`${path}  (script)`] : []))
     expect(readers.sort()).toEqual(ACCENT)
     expect(readFileSync(join(RENDERER, 'shell/tokens.css'), 'utf8')).toMatch(/--ring:var\(--accent\);/)
+  })
+
+  it('选中的东西用强调色:列表里选中的行和卡片、选中的高亮卡片和开着的标签开关都是侧栏当前行的浅强调底配强调色的字,选中的分段字用强调色,勾和运行中的圈用强调色的记号色', () => {
+    const current = tokens(bodyOf('components/NavRow.css', '.nav-row.on'))
+    expect(current).toEqual(['--accent-soft', '--accent-text'])
+    for (const [path, selector] of [
+      ['components/Item.css', '.item--selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
+    ] as const) expect(tokens(bodyOf(path, selector)), selector).toEqual(current)
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected'))).toEqual(['--accent-soft'])
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected>.table-cell--title'))).toEqual(['--accent-text'])
+    expect(tokens(bodyOf('components/SegmentedControl.css', '.segmented-control>button[data-state="on"]'))).toEqual(['--accent-text'])
+    for (const [path, selector] of [['components/ActionMenu.css', '.mi .ck'], ['components/icons.css', '.ring']] as const) {
+      expect(tokens(bodyOf(path, selector)), selector).toEqual(['--accent-mark'])
+    }
+  })
+
+  it('链接、侧栏的图标、关注行的未读点和研究地图的阅读点都是中性的', () => {
+    expect(bodyOf('components/EntityLink.css', '.entity-link')).toMatch(/(?:^|;)color:inherit(?:;|$)/)
+    expect(tokens(bodyOf('components/EntityLink.css', '.entity-link:hover'))).toEqual(['--ink'])
+    expect(tokens(bodyOf('components/NavRow.css', '.nav-row-icon'))).toEqual(['--sec'])
+    expect(readFileSync(join(RENDERER, 'components/ReadDots.tsx'), 'utf8')).toMatch(/<StatusDot key=\{index\} tone="neutral"/)
+    expect(tokens(bodyOf('components/StatusDot.css', '.status-dot--neutral'))).toEqual(['--ter'])
+  })
+
+  it('侧栏一行有新论文时，它的点用次要灰填满、7px，和没有新论文时的空心圈一样大，一眼分得出', () => {
+    expect(readFileSync(join(RENDERER, 'shell/Sidebar.tsx'), 'utf8'))
+      .toMatch(/<StatusDot size="nav" tone=\{fresh \? 'new' : 'neutral'\} fill=\{fresh \? 'full' : 'ring'\} \/>/)
+    expect([tokens(bodyOf('components/StatusDot.css', '.status-dot--new')), bodyOf('components/StatusDot.css', '.status-dot--nav')])
+      .toEqual([['--sec'], 'width:7px;height:7px'])
   })
 })
 

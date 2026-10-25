@@ -1,5 +1,5 @@
 .clearable-input{position:relative;min-width:0}
-.clearable-input>.form-input{padding-right:var(--sp-32)}
+.clearable-input>.form-input{width:100%;padding-right:var(--sp-32)}
 .clearable-input-leading{position:absolute;left:var(--sp-10);top:50%;transform:translateY(-50%);display:flex;color:var(--ter);pointer-events:none}
 .clearable-input-leading svg{width:13px;height:13px}
 .clearable-input-leading~.form-input{padding-left:var(--sp-32)}

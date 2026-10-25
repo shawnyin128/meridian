@@ -43,6 +43,3 @@
 .send:enabled:hover{box-shadow:inset 0 0 0 100vmax var(--hover-solid)}
 .send:disabled{opacity:.45;cursor:default}
 .send svg{width:15px;height:15px}
-
-/* Compounded with .pickhits so this taller, horizontally-clipped shape wins over the shared shell's, regardless of CSS load order. */
-.pickhits.cres{max-height:min(440px,55vh);overflow:hidden;overflow-y:auto}

@@ -2,6 +2,7 @@ import type { AppUpdateStatus } from '../../../shared/app-update.js'
 import { reasonLabel } from '../../lib/failure-label.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { Button } from '../Button.js'
 
 export interface UpdateActionProps {
   status: AppUpdateStatus
@@ -10,13 +11,13 @@ export interface UpdateActionProps {
   onDownload: (url: string) => void
 }
 
-/** The short state label of where the app's self-update stands. */
-export function updateLine(status: AppUpdateStatus, m: Catalog): string {
+/** The short state label of where the app's self-update stands, or null while a check runs, which shows as loading. */
+export function updateLine(status: AppUpdateStatus, m: Catalog): string | null {
   const phase = m.settings.extensions.app.phase
   switch (status.phase) {
     case 'unsupported': return phase.unsupported
     case 'idle': return phase.idle
-    case 'checking': return phase.checking
+    case 'checking': return null
     case 'latest': return phase.latest
     case 'downloading': return phase.downloading(status.version, status.percent)
     case 'ready': return phase.ready(status.version)
@@ -28,16 +29,15 @@ export function updateLine(status: AppUpdateStatus, m: Catalog): string {
 /** The single update action the status allows: relaunch into a downloaded version, open its download page, or check. */
 export function UpdateAction({ status, onCheck, onInstall, onDownload }: UpdateActionProps) {
   const copy = useMessages().settings.extensions.app
-  if (status.phase === 'ready') return <button className="btn pri" onClick={onInstall}>{copy.restart}</button>
+  if (status.phase === 'ready') return <Button size="regular" variant="primary" onClick={onInstall}>{copy.restart}</Button>
   if (status.phase === 'available') {
-    return <button className="btn pri" onClick={() => onDownload(status.url)}>{copy.download}</button>
+    return <Button size="regular" variant="primary" onClick={() => onDownload(status.url)}>{copy.download}</Button>
   }
-  const label = status.phase === 'checking' ? copy.checking
-    : status.phase === 'downloading' ? copy.downloading : copy.check
   return (
-    <button
-      className="btn" onClick={onCheck}
-      disabled={status.phase === 'unsupported' || status.phase === 'checking' || status.phase === 'downloading'}
-    >{label}</button>
+    <Button
+      size="regular" onClick={onCheck} disabled={status.phase === 'unsupported'}
+      busy={status.phase === 'checking' || status.phase === 'downloading'}
+      busyLabel={status.phase === 'downloading' ? copy.downloading : copy.checking}
+    >{copy.check}</Button>
   )
 }

@@ -51,6 +51,14 @@ describe('EntityLink', () => {
     expect(out).not.toContain('title=')
   })
 
+  it('科研节点的状态点除了颜色还用形状区分:待修复是半圆,失败是叉,候选是空心圈', () => {
+    const dot = (mode: 'repairable' | 'dead' | 'unresolved') => /class="(status-dot[^"]*)"/.exec(html({ kind: 'node', label: '节点', mode }))![1]
+    expect([dot('repairable'), dot('dead'), dot('unresolved')]).toEqual([
+      'status-dot status-dot--sm status-dot--warn status-dot--half', 'status-dot status-dot--sm status-dot--bad status-dot--cross',
+      'status-dot status-dot--sm status-dot--neutral status-dot--ring',
+    ])
+  })
+
   it('名字被截断时共享 tooltip 显示节点全名,放得下时不弹;给了 title 的链接悬停显示它', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })

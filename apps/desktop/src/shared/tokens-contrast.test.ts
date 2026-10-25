@@ -1,6 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { describe, expect, it } from 'vitest'
-import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens } from './colour-theme.js'
+import { BUILT_IN_COLOUR_THEMES, DEFAULT_COLOUR_THEME, deriveColourTokens, increasedContrastTokens } from './colour-theme.js'
 
 const tokens = readFileSync(new URL('../renderer/shell/tokens.css', import.meta.url), 'utf8')
 
@@ -275,7 +275,7 @@ const lookOf = (path: string, selector: string): string => {
 
 describe('主操作', () => {
   /** The primary button and the composer's send: their fill and text tokens. */
-  const PRIMARY = [['routes/shell.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
+  const PRIMARY = [['components/Button.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
 
   it('主按钮和输入框的发送都是实心强调色配白字,两种主题一样', () => {
     expect(PRIMARY.map(([path, selector]) => lookOf(path, selector))).toEqual(['--accent-solid --on-accent', '--accent-solid --on-accent'])
@@ -330,34 +330,61 @@ describe('暗色的三级文字', () => {
   }
 })
 
-describe('出错的提示框', () => {
+/** The tones of the shared InlineMessage. */
+const MESSAGE_TONES = ['error', 'warning', 'info', 'done'] as const
+
+/** The text token of an InlineMessage tone, and the fill of its box, which every tone shares. */
+const messageLook = (tone: typeof MESSAGE_TONES[number]): [string, string] => [
+  lookOf('components/InlineMessage.css', `.inline-message--${tone}`).split(' ')[1]!,
+  lookOf('components/InlineMessage.css', '.inline-message--box').split(' ')[0]!,
+]
+
+describe('就地的错误、警告、提示和完成', () => {
+  it('每种语气只给字上它的文字色,框都铺同一个中性底', () => {
+    expect(Object.fromEntries(MESSAGE_TONES.map((tone) => [tone, lookOf('components/InlineMessage.css', `.inline-message--${tone}`)])))
+      .toEqual({ error: '无 --bad-text', warning: '无 --warn-text', info: '无 --sec', done: '无 --good-text' })
+    expect(lookOf('components/InlineMessage.css', '.inline-message--box')).toBe('--tint-mut 无')
+    const css = readFileSync(new URL('../renderer/components/InlineMessage.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect([...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((rule) => /(?:^|;)\s*background/.test(rule[2]!)).map((rule) => rule[1]!.trim()))
+      .toEqual(['.inline-message--box'])
+  })
+
   for (const theme of THEMES) {
-    it(`${named(theme)}的错误提示框里的红字压在它自己的浅红底上,铺在画布和卡片上都不低于 4.5:1`, () => {
-      const [fill, text] = lookOf('components/PageShell.css', '.ipcerror').split(' ') as [string, string]
-      for (const ground of ['--content', '--card']) {
-        const got = contrast(colour(theme, text), flatten(theme, [ground, fill]))
-        expect(got, `${text} 压在 ${ground} + ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+    it(`${named(theme)}的每种语气,写成一行或放进框里,铺在画布、卡片、浮层和窗口底上,字都不低于 4.5:1`, () => {
+      for (const tone of MESSAGE_TONES) {
+        const [text, fill] = messageLook(tone)
+        for (const [where, ground] of SURFACES.slice(0, 4)) {
+          for (const stack of [ground, [...ground, fill]]) {
+            const got = contrast(colour(theme, text), flatten(theme, stack))
+            expect(got, `${tone}: ${text} 压在${where} ${stack.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+          }
+        }
       }
     })
   }
 })
 
-/** Every tone of the shared Tag but the dashed ghost slot, and the text colour each one writes in. */
+/** The text colour of a neutral tag and of the tag of each state, all on the one neutral chip. */
 const TAG_TEXT = {
-  neutral: '--sec', accent: '--sec', info: '--sec', paper: '--sec', wiki: '--sec',
-  good: '--good-text', warn: '--warn-text', bad: '--bad-text',
+  neutral: '--sec', error: '--bad-text', warning: '--warn-text', done: '--good-text', p0: '--bad-text', p1: '--warn-text',
 } as const
 
+/** The fill and text tokens of a tag of `state`: the fill is `.tag`'s, the text `.tag`'s or its state's. */
+const tagLook = (state: keyof typeof TAG_TEXT): string => {
+  const [fill, text] = lookOf('components/Tag.css', '.tag').split(' ') as [string, string]
+  return `${fill} ${state === 'neutral' ? text : lookOf('components/Tag.css', `.tag--${state}`).split(' ')[1]}`
+}
+
 describe('标签', () => {
-  it('每种标签都是中性的标签底,只有 good、warn、bad 三种需要注意的状态给字上自己的颜色', () => {
-    expect(Object.fromEntries(Object.keys(TAG_TEXT).map((tone) => [tone, lookOf('components/Tag.css', `.tag--${tone}`)])))
-      .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([tone, text]) => [tone, `--chip ${text}`])))
+  it('每种标签都是中性的标签底,只有错误、警告、完成和 P0、P1 给字上自己的颜色', () => {
+    expect(Object.fromEntries(Object.keys(TAG_TEXT).map((state) => [state, tagLook(state as keyof typeof TAG_TEXT)])))
+      .toEqual(Object.fromEntries(Object.entries(TAG_TEXT).map(([state, text]) => [state, `--chip ${text}`])))
   })
 
   for (const theme of THEMES) {
-    for (const tone of Object.keys(TAG_TEXT)) {
-      it(`${named(theme)}的 ${tone} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
-        const [fill, text] = lookOf('components/Tag.css', `.tag--${tone}`).split(' ') as [string, string]
+    for (const state of Object.keys(TAG_TEXT) as (keyof typeof TAG_TEXT)[]) {
+      it(`${named(theme)}的 ${state} 标签的字压在它自己的底上,铺在每种底面上都不低于 4.5:1`, () => {
+        const [fill, text] = tagLook(state).split(' ') as [string, string]
         for (const [where, ground] of SURFACES) {
           const got = contrast(colour(theme, text), flatten(theme, [...ground, fill]))
           expect(got, `${text} 压在${where}的 ${fill} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
@@ -370,7 +397,7 @@ describe('标签', () => {
 describe('强调色的字', () => {
   for (const theme of THEMES) {
     it(`${named(theme)}侧栏当前行的字,静止和悬停时都不低于 4.5:1`, () => {
-      const [fill, text] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string, string]
+      const [fill, text] = lookOf('components/NavRow.css', '.nav-row.on').split(' ') as [string, string]
       for (const ground of [['--window', '--sidebar', fill], ['--window', '--sidebar', fill, '--hover']]) {
         const got = contrast(colour(theme, text), flatten(theme, ground))
         expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
@@ -380,8 +407,8 @@ describe('强调色的字', () => {
 
   for (const theme of LIGHT_THEMES) {
     it(`${named(theme)}侧栏当前行上的计数,字压在它的标签底上不低于 4.5:1`, () => {
-      const [row] = lookOf('shell/AppShell.css', '.srow.on').split(' ') as [string]
-      const [fill, text] = lookOf('components/Tag.css', '.count-badge').split(' ') as [string, string]
+      const [row] = lookOf('components/NavRow.css', '.nav-row.on').split(' ') as [string]
+      const [fill, text] = lookOf('components/CountBadge.css', '.count-badge').split(' ') as [string, string]
       const ground = ['--window', '--sidebar', row, fill]
       const got = contrast(colour(theme, text), flatten(theme, ground))
       expect(got, `${text} 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
@@ -390,25 +417,50 @@ describe('强调色的字', () => {
 })
 
 describe('选中、当前、已应用和按下的状态', () => {
-  const STATES = [
-    ['components/StructuredList.css', '.structured-row--selected'],
-    ['components/ResearchObjectCard.css', '.research-object-card.selected'],
-    ['components/FieldPickers.css', '.cd.sel'],
-    ['routes/Reader.css', '.reader-rail button.on'],
+  /** The selected states that take the sidebar current row's look: a list's selected row or card, the selected highlight card and an on chip toggle. */
+  const SELECTED = [
+    ['components/NavRow.css', '.nav-row.on'], ['components/Item.css', '.item--selected'],
     ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
-    ['routes/shell.css', '.btn:not(.danger)[aria-pressed="true"]'],
-    ['components/IconButton.css', '.icbtn[aria-pressed="true"]'],
   ] as const
 
-  it('只有侧栏的当前行用浅强调色配强调色的字;选中的行、当前页、选中的日期、已应用的筛选和按下的开关都是中性的 --selected 配 --on-selected', () => {
-    expect(Object.fromEntries([['shell/AppShell.css', '.srow.on'] as const, ...STATES].map(([path, selector]) => [selector, lookOf(path, selector)])))
-      .toEqual(Object.fromEntries([['.srow.on', '--accent-soft --accent-text'], ...STATES.map(([, selector]) => [selector, '--selected --on-selected'])]))
+  it('选中的东西只有一个样子:侧栏的当前行、列表里选中的行和卡片、选中的高亮卡片和开着的标签开关都是浅强调底配强调色的字;选中的分段只把字换成强调色,滑块仍是浮层底;勾和运行中的圈用强调色的记号色', () => {
+    expect(Object.fromEntries(SELECTED.map(([path, selector]) => [selector, lookOf(path, selector)])))
+      .toEqual(Object.fromEntries(SELECTED.map(([, selector]) => [selector, '--accent-soft --accent-text'])))
     expect(lookOf('components/SegmentedControl.css', '.segmented-thumb')).toBe('--raised 无')
+    expect(lookOf('components/SegmentedControl.css', '.segmented-control>button[data-state="on"]')).toBe('无 --accent-text')
+    expect(lookOf('components/ActionMenu.css', '.mi .ck')).toBe('无 --accent-mark')
+    expect(lookOf('components/icons.css', '.ring')).toBe('无 --accent-mark')
   })
+
+  /** A selected row or card, the selected highlight card and an on chip toggle: the accent soft fill on each surface a list lies on, at rest and hovered. */
+  const SELECTED_GROUNDS = ['--content', '--card', '--raised']
+    .flatMap((surface) => [[surface, '--accent-soft'], [surface, '--accent-soft', '--hover']])
+  /** Where a check mark or the running ring sits: every surface, hovered, and on a selected or current row. */
+  const MARK_GROUNDS = [
+    ['--content'], ['--card'], ['--raised'], ['--window', '--sidebar'], ['--card', '--hover'], ['--raised', '--hover'],
+    ['--window', '--sidebar', '--hover'], ...SELECTED_GROUNDS, ['--window', '--sidebar', '--accent-soft'],
+    ['--window', '--sidebar', '--accent-soft', '--hover'],
+  ]
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}强调色的字在选中的行、卡片和标签开关上,静止和悬停时都不低于 4.5:1,在选中的分段上也是`, () => {
+      for (const ground of [...SELECTED_GROUNDS, ['--raised']]) {
+        const got = contrast(colour(theme, '--accent-text'), flatten(theme, ground))
+        expect(got, `--accent-text 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+
+    it(`${named(theme)}勾和运行中的圈在每种底面、悬停的行、选中的行和侧栏的当前行上都不低于 3:1`, () => {
+      for (const ground of MARK_GROUNDS) {
+        const got = contrast(colour(theme, '--accent-mark'), flatten(theme, ground))
+        expect(got, `--accent-mark 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(MARK)
+      }
+    })
+  }
 
   /** The on states of controls that already have a fill at rest: the current page, the applied filter, the picked column type. */
   const FILLED_ON = [
-    ['components/Pager.css', '.pgbtn.on'], ['routes/shell.css', '.filter-menu.on'],
+    ['components/Pager.css', '.pgbtn.on'], ['components/FilterMenu.css', '.filter-menu.on'],
     ['components/paper-table/PaperTable.css', '.ctbtn.on'],
   ] as const
 
@@ -427,6 +479,34 @@ describe('选中、当前、已应用和按下的状态', () => {
         expect(contrast(on, off), `${where} 开对关`).toBeGreaterThanOrEqual(1.2)
         expect(contrast(on, hover), `${where} 开对悬停`).toBeGreaterThanOrEqual(1.15)
         expect(contrast(colour(theme, '--on-selected'), on), `${where} 字`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+  }
+})
+
+describe('进度', () => {
+  /** The surfaces a progress line runs along: the parse card, and an in-place message box on the canvas, a card, a floating layer and the window. */
+  const HOSTS = [['--raised'], ['--card'], ...[['--content'], ['--card'], ['--raised'], ['--window', '--sidebar']].map((ground) => [...ground, '--tint-mut'])]
+  const rule = (selector: string) => {
+    const css = readFileSync(new URL('../renderer/components/ProgressFill.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    return [...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].find((match) => match[1]!.trim() === selector)?.[2] ?? ''
+  }
+
+  it('进度是宿主下边缘的一条细线:强调色的记号色在轨道色上从左填到进度,不再铺选中行那种浅强调底', () => {
+    expect(lookOf('components/ProgressFill.css', '.progress-fill')).toBe('--track 无')
+    expect(lookOf('components/ProgressFill.css', '.progress-fill>span')).toBe('--accent-mark 无')
+    expect(rule('.progress-fill')).toMatch(/(?:^|;)bottom:0(?:;|$)/)
+    expect(rule('.progress-fill')).toMatch(/(?:^|;)height:2px(?:;|$)/)
+    expect(rule('.progress-fill')).not.toMatch(/(?:^|;)(?:inset|top):/)
+  })
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}进度线填上的部分对它的轨道和所在的面都不低于 3:1`, () => {
+      for (const host of HOSTS) {
+        for (const ground of [[...host, '--track'], host]) {
+          const got = contrast(colour(theme, '--accent-mark'), flatten(theme, ground))
+          expect(got, `--accent-mark 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(MARK)
+        }
       }
     })
   }
@@ -541,4 +621,73 @@ describe('tokens.css 的决定值', () => {
       }
     }
   })
+})
+
+describe('菜单里标红的项', () => {
+  it('删除这类标红的菜单项用危险文字色,不用标记用的红色', () => {
+    expect(lookOf('components/ActionMenu.css', '.mi.danger')).toBe('无 --bad-text')
+  })
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}标红的菜单项静止和悬停时,字在浮层面上都不低于 4.5:1`, () => {
+      for (const ground of [['--raised'], ['--raised', '--hover']]) {
+        const got = contrast(colour(theme, '--bad-text'), flatten(theme, ground))
+        expect(got, `--bad-text 压在 ${ground.join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+    })
+  }
+})
+
+/**
+ * The custom properties of the Increase Contrast block for `selector` in tokens.css.
+ * @throws When tokens.css has no Increase Contrast block, or the block has no rule for `selector`.
+ */
+const increasedBlock = (selector: string): Record<string, string> => {
+  const css = tokens.replace(/\/\*[\s\S]*?\*\//g, '')
+  const media = css.indexOf('@media (prefers-contrast:more){')
+  if (media < 0) throw new Error('tokens.css 里没有提高对比度的块')
+  const open = css.indexOf(`${selector}{`, media)
+  if (open < 0) throw new Error(`提高对比度的块里没有 ${selector}`)
+  const body = css.slice(open + selector.length + 1, css.indexOf('}', open))
+  return Object.fromEntries(body.split(';').map((declaration) => declaration.split(':').map((part) => part.trim())))
+}
+
+describe('系统提高对比度', () => {
+  for (const mode of ['light', 'dark'] as const) {
+    it(`默认主题${mode === 'dark' ? '暗色' : '亮色'}提高对比度时改的 token 和 colour-theme 推导的一个不差`, () => {
+      expect(increasedBlock(mode === 'dark' ? '[data-theme="dark"]' : ':root:not([data-theme="dark"])'))
+        .toEqual(increasedContrastTokens(DEFAULT_COLOUR_THEME[mode], mode))
+    })
+  }
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}提高对比度时,分隔线在画布、卡片和窗口底上不低于 3:1,聚焦输入框的边不低于 4.5:1,三级文字是次级文字`, () => {
+      const { light, dark } = BUILT_IN_COLOUR_THEMES.find(({ id }) => id === theme.id)!
+      const more = increasedContrastTokens(theme.mode === 'light' ? light : dark, theme.mode)
+      for (const ground of ['--content', '--card', '--window']) {
+        for (const [token, min] of [['--sep', MARK], ['--sep2', MARK], ['--sep-strong', TEXT]] as const) {
+          const got = contrast(parse(theme, token, more[token]), flatten(theme, [ground]))
+          expect(got, `${token} 压在 ${ground} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(min)
+        }
+      }
+      expect(parse(theme, '--ter', more['--ter'])).toEqual(colour(theme, '--sec'))
+    })
+  }
+})
+
+describe('暗色主题里反相的论文页', () => {
+  it('阅读器画出的论文页取 --paper-filter:亮色不动,暗色反相,色相转回原样', () => {
+    const css = readFileSync(new URL('../renderer/routes/Reader.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect(/\.pdfpagebox canvas\{[^}]*filter:var\(--paper-filter\)/.test(css)).toBe(true)
+    expect([ROOT.get('--paper-filter'), DARK.get('--paper-filter')]).toEqual(['none', 'invert(.88) hue-rotate(180deg)'])
+  })
+
+  for (const theme of THEMES) {
+    it(`${named(theme)}的论文页${theme.mode === 'dark' ? '是深底' : '是白底'},选中高亮的轮廓和批注底线压在页上不低于 3:1`, () => {
+      const page = colour(theme, '--paper')
+      expect(luminance(page) < 0.05).toBe(theme.mode === 'dark')
+      const got = contrast(flatten(theme, ['--paper', '--hl-note']), page)
+      expect(got, `--hl-note 压在 --paper 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(MARK)
+    })
+  }
 })

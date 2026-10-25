@@ -1,10 +1,14 @@
 import {
   type ButtonHTMLAttributes,
+  createContext,
   forwardRef,
   type InputHTMLAttributes,
+  type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  useContext,
   useEffect,
+  useId,
   useRef,
   useState,
 } from 'react'
@@ -31,19 +35,48 @@ const classes = (
   appearance: FormControlAppearance,
 ) => `form-control ${kind} form-control-${appearance}${className ? ` ${className}` : ''}`
 
+/** The id the label of the FieldRow around a text field names it by. */
+const FieldRowId = createContext<string | undefined>(undefined)
+
 /**
  * The one single-line field, boxed by default. Components keep their own layout classes; the
  * appearance sets the box, font and focus, so entering edit mode never makes the field taller,
- * shifts it down, or shows the browser's own blue frame.
+ * shifts it down, or shows the browser's own blue frame. Inside a FieldRow it takes the id the
+ * row's label names, unless it has an id of its own.
  */
 export const FormInput = forwardRef<
   HTMLInputElement,
   InputHTMLAttributes<HTMLInputElement> & ControlAppearanceProps
 >(
-  function FormInput({ appearance = 'field', className, ...props }, ref) {
-    return <input ref={ref} className={classes('form-input', className, appearance)} {...props} />
+  function FormInput({ appearance = 'field', className, id, ...props }, ref) {
+    const rowId = useContext(FieldRowId)
+    return <input ref={ref} id={id ?? rowId} className={classes('form-input', className, appearance)} {...props} />
   },
 )
+
+/**
+ * One labelled field: `label`, in the label column, then the field, or the controls that set one
+ * value, which start where the fields of every other row of the same FieldRows start. A text field
+ * inside is named by the label, and a press on the label focuses it. A row without a label spans the
+ * label column too. Inside a FieldRows or a DraftForm the label column is as wide as their longest
+ * label; on its own, as wide as its label.
+ */
+export function FieldRow({ label, className, children }: { label?: string; className?: string; children: ReactNode }) {
+  const id = useId()
+  return (
+    <div className={`field-row${className === undefined ? '' : ` ${className}`}`}>
+      {label === undefined ? null : <label className="field-row-label" htmlFor={id}>{label}</label>}
+      <div className="field-row-field">
+        <FieldRowId.Provider value={label === undefined ? undefined : id}>{children}</FieldRowId.Provider>
+      </div>
+    </div>
+  )
+}
+
+/** Field rows that share one label column; anything else placed among them spans both columns. */
+export function FieldRows({ className, children }: { className?: string; children: ReactNode }) {
+  return <div className={`field-rows${className === undefined ? '' : ` ${className}`}`}>{children}</div>
+}
 
 type DirectoryFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'type'> & {
   chooseDisabled?: boolean
@@ -93,13 +126,23 @@ export const FormButton = forwardRef<
   },
 )
 
-/** Multi-line text on the same focus and size base as single-line input; its component sets the height. */
+/**
+ * Multi-line text on the same focus and size base as single-line input; its component sets the
+ * height. `code` shows text that is source, such as a page's Markdown, in the code font. Inside a
+ * FieldRow it takes the id the row's label names, as FormInput does.
+ */
 export const FormTextarea = forwardRef<
   HTMLTextAreaElement,
-  TextareaHTMLAttributes<HTMLTextAreaElement> & ControlAppearanceProps
+  TextareaHTMLAttributes<HTMLTextAreaElement> & ControlAppearanceProps & { code?: boolean }
 >(
-  function FormTextarea({ appearance = 'field', className, ...props }, ref) {
-    return <textarea ref={ref} className={classes('form-textarea', className, appearance)} {...props} />
+  function FormTextarea({ appearance = 'field', code = false, className, id, ...props }, ref) {
+    const rowId = useContext(FieldRowId)
+    return (
+      <textarea
+        ref={ref} id={id ?? rowId} {...props}
+        className={classes('form-textarea', code ? `form-control-code${className ? ` ${className}` : ''}` : className, appearance)}
+      />
+    )
   },
 )
 
@@ -108,8 +151,9 @@ export const FormSelect = forwardRef<
   HTMLSelectElement,
   SelectHTMLAttributes<HTMLSelectElement> & ControlAppearanceProps
 >(
-  function FormSelect({ appearance = 'field', className, ...props }, ref) {
-    return <select ref={ref} className={classes('form-select', className, appearance)} {...props} />
+  function FormSelect({ appearance = 'field', className, id, ...props }, ref) {
+    const rowId = useContext(FieldRowId)
+    return <select ref={ref} id={id ?? rowId} className={classes('form-select', className, appearance)} {...props} />
   },
 )
 

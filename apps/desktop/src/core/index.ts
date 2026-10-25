@@ -6,6 +6,7 @@ import {
   AuthorSearchParamsSchema,
   ChatAppendParamsSchema,
   ChatCancelParamsSchema,
+  ChatRetryParamsSchema,
   ChatCreateParamsSchema,
   ChatDeleteParamsSchema,
   ChatForPaperParamsSchema,
@@ -89,6 +90,7 @@ import {
   ProjectUpdateRelationParamsSchema,
   ProjectUpdateTaskParamsSchema,
   SearchParamsSchema,
+  SshFoldersParamsSchema,
   TrashPurgeParamsSchema,
   TrashRestoreParamsSchema,
   WatchCreateParamsSchema,
@@ -114,6 +116,8 @@ import { createBackground } from './background.js'
 import cannedNet from './fixtures/net.json' with { type: 'json' }
 import { configureLibrary, currentLibrary } from './library-config.js'
 import { probePdf } from './paper-library/index.js'
+import { sshConfigHosts, sshFolders } from './project-management/index.js'
+import { FIXTURE_SSH_HOSTS, fixtureSsh } from './fixtures/ssh.js'
 import { ARXIV_INTERVAL_MS } from './net/arxiv.js'
 import { createCannedGet, type CannedTable } from './net/canned-http.js'
 import { electronGet } from './net/electron-http.js'
@@ -558,6 +562,16 @@ registerHandler('project.bindWorkspace', (params) => {
   const { id, binding } = ProjectBindWorkspaceParamsSchema.parse(params)
   return store.bindProjectWorkspace(id, binding)
 })
+// The fixture library, which binds SSH workspaces without connecting, also browses canned hosts
+// instead of reading ~/.ssh/config or starting ssh.
+registerHandler('ssh.hosts', (params) => {
+  EmptyParamsSchema.parse(params)
+  return vaultRoot === undefined ? FIXTURE_SSH_HOSTS : sshConfigHosts(homedir())
+})
+registerHandler('ssh.folders', (params) => {
+  const { path, ...target } = SshFoldersParamsSchema.parse(params)
+  return vaultRoot === undefined ? sshFolders(target, path, fixtureSsh) : sshFolders(target, path)
+})
 registerHandler('project.update', (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.updateProject(id, definedFields(patch)))
@@ -844,6 +858,7 @@ registerHandler('chat.send', (params) => {
   const { id, runs } = ChatSendParamsSchema.parse(params)
   return chatService.send(id, runs)
 })
+registerHandler('chat.retry', (params) => chatService.retry(ChatRetryParamsSchema.parse(params).id))
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
 registerHandler('idea.list', (params) => {

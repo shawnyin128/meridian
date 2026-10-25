@@ -1,6 +1,7 @@
 import * as Popover from '@radix-ui/react-popover'
 import type { ReactElement, ReactNode, RefObject } from 'react'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
+import { menuSurfaceClass, type MenuSurface } from './ActionMenu.js'
 import { COLLISION_PADDING, type AnchorBox } from './floating-layer.js'
 import { OutsideToolbar } from './Toolbar.js'
 
@@ -17,12 +18,14 @@ export type ActionPopoverAlign = Popover.PopoverContentProps['align']
  * column settings and multi-control forms; callers only provide the trigger, the content and the
  * controlled open/close policy. It keeps the shared gap from the window edge. An Escape pressed while an input method is composing neither closes
  * the popover nor reaches `contentProps.onEscapeKeyDown`. It opens from `trigger`, or is placed
- * against `anchor`, which it renders, or against `anchorBox`, which the caller measures itself.
+ * against `anchor`, which it renders, or against `anchorBox`, which the caller measures itself. It lies
+ * on the menu surface of `surface`, and `contentClassName` adds classes that name or place it.
  */
 type ActionPopoverBaseProps = {
   children: ReactNode
   open?: boolean
   onOpenChange?: (open: boolean) => void
+  surface?: MenuSurface
   contentClassName?: string
   side?: ActionPopoverSide
   align?: ActionPopoverAlign
@@ -40,7 +43,7 @@ export type ActionPopoverProps = ActionPopoverBaseProps & (
 export function ActionPopover(props: ActionPopoverProps) {
   const {
     children, open, onOpenChange,
-    contentClassName = 'ctxmenu', side = 'bottom', align = 'end', sideOffset = 4,
+    surface = 'menu', contentClassName = '', side = 'bottom', align = 'end', sideOffset = 4,
     sticky, contentProps,
   } = props
   const rootProps = {
@@ -57,7 +60,7 @@ export function ActionPopover(props: ActionPopoverProps) {
       <Popover.Portal>
         <Popover.Content
           collisionPadding={COLLISION_PADDING} {...contentProps} onEscapeKeyDown={ignoreComposingEscape(contentProps?.onEscapeKeyDown)}
-          className={contentClassName} side={side} align={align}
+          className={menuSurfaceClass(surface, contentClassName)} side={side} align={align}
           sideOffset={sideOffset} {...(sticky === undefined ? {} : { sticky })}
         >
           <OutsideToolbar>{children}</OutsideToolbar>

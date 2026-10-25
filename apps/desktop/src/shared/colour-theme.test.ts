@@ -50,6 +50,13 @@ describe('推导色跟着模块走', () => {
 describe('对比度不足', () => {
   const pale = { ...DEFAULT_COLOUR_THEME.light, ink: '#8a8a8a' }
 
+  it('就地提示的四种语气的字都按中性框底检查:窗口底和画布一明一暗、哪种亮度都不够时,框底上的不足照样报出来', () => {
+    const split = { ...DEFAULT_COLOUR_THEME.light, sidebar: '#000000' }
+    const onBox = contrastShortfalls(split, 'light')
+      .filter(({ ground }) => ground.join(' + ') === '--window + --sidebar + --tint-mut').map(({ fg }) => fg)
+    expect(onBox.sort()).toEqual(['--bad-text', '--good-text', '--sec', '--warn-text'])
+  })
+
   it('正文色太浅时,对比度不足只记在正文这个模块上', () => {
     expect([...new Set(contrastShortfalls(pale, 'light').map((shortfall) => shortfall.module))]).toEqual(['ink'])
   })
@@ -99,4 +106,51 @@ describe('由浅色生成深色', () => {
       expect(contrastShortfalls(deriveDarkModules(theme.light, DEFAULT_COLOUR_THEME), 'dark')).toEqual([])
     })
   }
+})
+
+describe('自定义主题的强调色', () => {
+  /** An opaque or translucent sRGB colour of a derived token: `#rrggbb`, `rgba()` or `color-mix(in srgb,#x p%,#y)`. */
+  const parse = (value: string): { r: number; g: number; b: number; a: number } => {
+    const mix = /^color-mix\(in srgb,(#[0-9a-f]{6}) (\d+)%,(#[0-9a-f]{6})\)$/.exec(value)
+    if (mix) {
+      const [x, y, p] = [parse(mix[1]!), parse(mix[3]!), Number(mix[2]) / 100]
+      return { r: x.r * p + y.r * (1 - p), g: x.g * p + y.g * (1 - p), b: x.b * p + y.b * (1 - p), a: 1 }
+    }
+    const rgba = /^rgba\((\d+),(\d+),(\d+),([\d.]+)\)$/.exec(value)
+    if (rgba) return { r: Number(rgba[1]), g: Number(rgba[2]), b: Number(rgba[3]), a: Number(rgba[4]) }
+    return { r: parseInt(value.slice(1, 3), 16), g: parseInt(value.slice(3, 5), 16), b: parseInt(value.slice(5, 7), 16), a: 1 }
+  }
+  const linear = (c: number) => (c / 255 <= 0.04045 ? c / 255 / 12.92 : ((c / 255 + 0.055) / 1.055) ** 2.4)
+  const luminance = ({ r, g, b }: { r: number; g: number; b: number }) => 0.2126 * linear(r) + 0.7152 * linear(g) + 0.0722 * linear(b)
+  /** The WCAG ratio of token `fg` over the bottom-to-top stack `ground` of `tokens`. */
+  const ratio = (tokens: Record<string, string>, fg: string, ground: string[]) => {
+    const flat = ground.map((name) => parse(tokens[name]!)).reduce((below, above) => ({
+      r: above.r * above.a + below.r * (1 - above.a), g: above.g * above.a + below.g * (1 - above.a),
+      b: above.b * above.a + below.b * (1 - above.a), a: 1,
+    }))
+    const [high, low] = [luminance(parse(tokens[fg]!)), luminance(flat)].sort((x, y) => y - x) as [number, number]
+    return (high + 0.05) / (low + 0.05)
+  }
+  /** A dark custom theme whose accent, the cinnabar theme's dark one on today's dark surfaces, is too dim for marks on hovered rows. */
+  const dim = { ...DEFAULT_COLOUR_THEME.dark, accent: '#b35041' }
+
+  it('自定义主题也在运行时推导出勾和运行中的圈的记号色:强调色在悬停的行上不到 3:1 时提亮到 3:1,色相不变;够亮时就是强调色本身', () => {
+    const tokens = deriveColourTokens(dim, 'dark')
+    expect(ratio({ ...tokens, '--mark': dim.accent }, '--mark', ['--card', '--hover'])).toBeLessThan(3)
+    for (const ground of [['--card', '--hover'], ['--raised', '--hover'], ['--card', '--accent-soft', '--hover'], ['--window', '--sidebar', '--accent-soft', '--hover']]) {
+      expect(ratio(tokens, '--accent-mark', ground), ground.join(' + ')).toBeGreaterThanOrEqual(3)
+    }
+    expect(Math.abs(hue(tokens['--accent-mark']!) - hue(dim.accent)), tokens['--accent-mark']).toBeLessThan(5)
+    expect(deriveColourTokens(DEFAULT_COLOUR_THEME.light, 'light')['--accent-mark']).toBe(DEFAULT_COLOUR_THEME.light.accent)
+  })
+
+  it('自定义主题的强调色的字在选中的行、卡片和标签开关上,静止和悬停时都不低于 4.5:1', () => {
+    const tokens = deriveColourTokens(dim, 'dark')
+    for (const surface of ['--content', '--card', '--raised']) {
+      for (const ground of [[surface, '--accent-soft'], [surface, '--accent-soft', '--hover']]) {
+        expect(ratio(tokens, '--accent-text', ground), ground.join(' + ')).toBeGreaterThanOrEqual(4.5)
+      }
+    }
+    expect(contrastShortfalls(dim, 'dark').filter(({ fg }) => fg === '--accent-text' || fg === '--accent-mark')).toEqual([])
+  })
 })

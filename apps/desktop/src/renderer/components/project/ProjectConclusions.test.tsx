@@ -15,9 +15,13 @@ const api = vi.hoisted(() => ({
   aggregation: vi.fn(() => Promise.resolve({ claims: [{ id: 'wide-b8' }] })),
 }))
 
-vi.mock('../../ipc.js', () => ({ wiki: { cards: api.cards, aggregation: api.aggregation } }))
+vi.mock('../../ipc.js', () => ({
+  wiki: { cards: api.cards, aggregation: api.aggregation },
+  library: { location: async () => ({ root: '/vaults/conclusions' }) },
+}))
 
 const { ProjectConclusionPanel, ProjectConclusionRow } = await import('./ProjectConclusions.js')
+const { DraftsProvider, keptDraftsKey } = await import('../../hooks/useDrafts.js')
 
 const PENDING: ProjectConclusion = {
   id: 't.wide', node: 't.wide', text: 'Wide trees win at B8', date: '2026-09-20', state: 'pending', fingerprint: '0123456789abcdef',
@@ -84,14 +88,14 @@ describe('project conclusions', () => {
     expect([...pending!.children].map((cell) => cell.className)).toEqual([
       'project-signal-kind', 'project-signal-date', 'attn-text record-text', 'record-node', 'record-who',
     ])
-    expect(pending!.querySelector('.tag--warn')!.textContent).toBe('待验证')
+    expect(pending!.querySelector('.tag--warning')!.textContent).toBe('待验证')
     expect(pending!.querySelector('.entity-link--node')!.textContent).toBe('宽树')
     expect(pending!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · 未写入 Wiki')
     expect(pending!.querySelector('.record-who .source-label')!.textContent).toBe('agent')
-    expect(verified!.querySelector('.tag--good')!.textContent).toBe('已验证')
+    expect(verified!.querySelector('.tag--done')!.textContent).toBe('已验证')
     expect(verified!.querySelector('.record-line')!.textContent).toBe('Wide trees win at B8 · Speculative decoding v2')
-    expect(verified!.classList.contains('structured-row--selected')).toBe(true)
-    expect(pending!.classList.contains('structured-row--selected')).toBe(false)
+    expect(verified!.classList.contains('item--selected')).toBe(true)
+    expect(pending!.classList.contains('item--selected')).toBe(false)
     act(() => pending!.click())
     expect(onOpen).toHaveBeenCalled()
   })
@@ -113,7 +117,7 @@ describe('project conclusions', () => {
 
   it('验证和写入 Wiki 是面板的操作,和关闭按钮一起放在面板头部;写不了时按钮旁写着未验证', async () => {
     await panel(PENDING)
-    const head = () => host.querySelector('.node-document-head > .section-heading-actions')!
+    const head = () => host.querySelector('.panel-head > .panel-head-actions')!
     expect([...head().children].map((child) => child.textContent || child.getAttribute('aria-label')))
       .toEqual(['验证', '未验证', '写入 Wiki', '收起详情'])
     expect(head().querySelector('.tag')!.nextElementSibling!.textContent).toBe('写入 Wiki')
@@ -122,7 +126,7 @@ describe('project conclusions', () => {
   })
 
   it('面板头部的验证、取消验证和写入 Wiki 与其他面板头部一样是小号的普通按钮', async () => {
-    const looks = () => [...host.querySelectorAll<HTMLButtonElement>('.node-document-head > .section-heading-actions > .btn')]
+    const looks = () => [...host.querySelectorAll<HTMLButtonElement>('.panel-head > .panel-head-actions > .btn')]
       .map((button) => `${button.textContent} ${button.className}`)
     await panel(PENDING)
     expect(looks()).toEqual(['验证 btn sm', '写入 Wiki btn sm'])
@@ -138,7 +142,7 @@ describe('project conclusions', () => {
     await act(async () => { button('写入 Wiki').click(); await flush() })
     expect(document.querySelector('[role="dialog"]')).toBeNull()
     expect(host.querySelector('.conclusion-detail-meta')!.nextElementSibling!.contains(draft())).toBe(true)
-    expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→选择要写入的聚合页· 结论')
+    expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→聚合页· 结论')
     expect(document.activeElement).toBe(draft()!.querySelector('.choice-picker'))
     expect(draft()!.querySelector('input')!.value).toBe('Wide trees win at B8')
     expect(draft()!.querySelector('.conclusion-draft-evidence')!.textContent).toBe('实验draft 效率宽树')
@@ -176,6 +180,27 @@ describe('project conclusions', () => {
     press(draft()!.querySelector('input')!, 'Escape')
     expect(draft()).toBeNull()
     expect(handlers.onWrite).toHaveBeenCalledOnce()
+  })
+
+  it('退出前打到一半、选好了页的结论草稿,重开后原样回来:页选框显示那一页,回车写到那一页', async () => {
+    window.localStorage.setItem(keptDraftsKey('/vaults/conclusions'), JSON.stringify({
+      format: 1, drafts: [[['project', 'draft', 'conclusion', 't.wide'], 'claim', { page: 'topics/sd', text: 'Wide trees win at B8' }]],
+    }))
+    try {
+      await act(async () => {
+        root!.render(
+          <DraftsProvider><MessagesProvider>
+            <ProjectConclusionPanel projectId="draft" projectName="draft 效率" conclusion={VERIFIED} node={NODE} {...handlers} />
+          </MessagesProvider></DraftsProvider>,
+        )
+        await flush()
+      })
+      expect(draft()!.querySelector('.draft-form-destination')!.textContent).toBe('→Speculative decoding· 结论')
+      await act(async () => { press(draft()!.querySelector('input')!, 'Enter'); await flush() })
+      expect(handlers.onWrite).toHaveBeenCalledWith('topics/sd', '实验结论写成「Speculative decoding」的结论', expect.any(Array))
+    } finally {
+      window.localStorage.removeItem(keptDraftsKey('/vaults/conclusions'))
+    }
   })
 
   it('旧版结论写入 Wiki:证据是那条结论本身', async () => {

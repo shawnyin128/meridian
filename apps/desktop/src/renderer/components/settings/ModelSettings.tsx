@@ -8,14 +8,15 @@ import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { errorLabel, reasonLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
-import { FormInput } from '../FormControls.js'
+import { FieldRow, FieldRows, FormInput } from '../FormControls.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
-import { Tag } from '../Tag.js'
 import {
-  ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
+  ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
+import { Button } from '../Button.js'
+import { CommitActions } from '../CommitActions.js'
 
 /** Structural, language-neutral data for each provider. Copy comes from the catalog by provider id. */
 const PROVIDERS: Record<HarnessModelProvider, {
@@ -134,6 +135,8 @@ export function ModelSettings() {
   const [editingApiKey, setEditingApiKey] = useState(false)
   const [clearApiKey, setClearApiKey] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Whether the last save succeeded; Save shows its check as it turns true.
+  const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const { error, load } = useScreenLoad()
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
@@ -221,6 +224,7 @@ export function ModelSettings() {
 
   const save = async () => {
     setSaving(true)
+    setSaved(false)
     setSaveError(null)
     try {
       const next = await harness.updateModelSettings({
@@ -228,6 +232,7 @@ export function ModelSettings() {
         ...(apiKey.trim() === '' ? {} : { apiKey }),
         ...(clearApiKey ? { clearApiKey: true } : {}),
       })
+      setSaved(true)
       setSettings(next)
       showProfile(next)
       setConnectionCheck({ state: 'idle' })
@@ -260,7 +265,6 @@ export function ModelSettings() {
     ? { ...COMPATIBLE_TEMPLATES[compatibleTemplate], ...m.settings.model.templates[compatibleTemplate] }
     : null
   const compatibleTemplatePending = provider === 'openai-compatible' && compatibleTemplate === 'choose'
-  const modelPlaceholder = selectedCompatibleTemplate?.modelPlaceholder ?? selected.modelPlaceholder
   const savedProfile = profileFor(settings, provider, baseUrl)
   const savedKeyAvailable = savedProfile?.apiKeyConfigured === true
   const savedSelection = savedProfile !== undefined
@@ -289,88 +293,90 @@ export function ModelSettings() {
         configuredLabel={m.settings.model.configured}
         notConfiguredLabel={m.settings.model.notConfigured}
       />
-      <ServiceField label={m.settings.model.fields.providerLabel}>
-        <ChoicePicker
-          appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
-          options={PROVIDER_CHOICES} onPick={selectProvider}
-          label={(option) => (option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
-        />
-      </ServiceField>
-      {provider === 'openai-compatible' ? (
-        <>
-          <ServiceField label={m.settings.model.templates.chooseLabel}>
-            <ChoicePicker
-              appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
-              options={TEMPLATE_CHOICES} onPick={selectCompatibleTemplate}
-              label={(option) => (option === 'choose' ? m.settings.model.templates.choosePlaceholder
-                : option === 'custom' ? m.settings.model.templates.custom : m.settings.model.templates[option].label)}
-            />
-          </ServiceField>
-          {compatibleTemplate === 'custom' ? (
-            <>
-              <ServiceField label={m.settings.model.fields.protocolLabel}>
-                <ChoicePicker
-                  appearance="field" aria-label={m.settings.model.fields.protocolAria} value={protocol}
-                  options={COMPATIBLE_PROTOCOLS} onPick={setProtocol}
-                  label={(option) => (option === 'responses' ? 'Responses API' : 'Chat Completions API')}
-                />
-              </ServiceField>
-              <ServiceField label={m.settings.model.fields.baseUrlLabel}>
-                <FormInput appearance="field" aria-label={m.settings.model.fields.baseUrlAria} value={baseUrl}
-                  placeholder={m.settings.model.providers['openai-compatible'].baseUrlPlaceholder}
-                  onChange={(event) => setBaseUrl(event.target.value)} />
-              </ServiceField>
-              <ServiceField label={m.settings.model.fields.authLabel}>
-                <ChoicePicker
-                  appearance="field" aria-label={m.settings.model.fields.authAria} value={authentication}
-                  options={AUTHENTICATIONS} onPick={setAuthentication}
-                  label={(option) => (option === 'api-key'
-                    ? m.settings.model.fields.apiKeyLabel : m.settings.model.fields.authNoneOption)}
-                />
-              </ServiceField>
-            </>
-          ) : selectedCompatibleTemplate === null ? null : (
-            <div className="model-template-summary" aria-label={m.settings.model.templates.summaryAria}>
-              <span>{selectedCompatibleTemplate.protocolLabel} · {selectedCompatibleTemplate.authenticationLabel}</span>
-              <code>{selectedCompatibleTemplate.baseUrl}</code>
-            </div>
-          )}
-        </>
-      ) : (
-        <div className="model-protocol" aria-label={m.settings.model.fields.protocolAria}>
-          <span>{m.settings.model.fields.protocolLabel}</span><strong>{selected.protocolLabel}</strong>
-        </div>
-      )}
-      {compatibleTemplatePending ? null : (
-        <>
-          <ServiceField label={m.settings.model.fields.modelIdLabel}>
-            <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
-              placeholder={modelPlaceholder} onChange={(event) => setModel(event.target.value)} />
-          </ServiceField>
-          {authentication === 'api-key' ? (
-            <ServiceField label={m.settings.model.fields.apiKeyLabel}>
-              {showingSavedApiKey ? (
-                <ServiceSavedKey
-                  ariaLabel={m.settings.model.keyStored(savedProfile?.apiKeyLastFour ?? '')}
-                  lastFour={savedProfile?.apiKeyLastFour}
-                  onClick={() => setEditingApiKey(true)}
-                />
-              ) : (
-                <FormInput appearance="field" aria-label={m.settings.model.fields.apiKeyAria} type="password"
-                  value={apiKey} autoFocus={editingApiKey}
-                  autoComplete="new-password" spellCheck={false}
-                  placeholder={m.settings.model.apiKeyPlaceholder}
-                  onBlur={() => { if (apiKey === '') setEditingApiKey(false) }}
-                  onChange={(event) => {
-                    setApiKey(event.target.value)
-                    setEditingApiKey(true)
-                    setClearApiKey(false)
-                  }} />
-              )}
-            </ServiceField>
-          ) : null}
-        </>
-      )}
+      <FieldRows>
+        <FieldRow label={m.settings.model.fields.providerLabel}>
+          <ChoicePicker
+            appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
+            options={PROVIDER_CHOICES} onPick={selectProvider}
+            label={(option) => (option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
+          />
+        </FieldRow>
+        {provider === 'openai-compatible' ? (
+          <>
+            <FieldRow label={m.settings.model.templates.chooseLabel}>
+              <ChoicePicker
+                appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
+                options={TEMPLATE_CHOICES} onPick={selectCompatibleTemplate}
+                label={(option) => (option === 'choose' ? m.settings.model.templates.choosePlaceholder
+                  : option === 'custom' ? m.settings.model.templates.custom : m.settings.model.templates[option].label)}
+              />
+            </FieldRow>
+            {compatibleTemplate === 'custom' ? (
+              <>
+                <FieldRow label={m.settings.model.fields.protocolLabel}>
+                  <ChoicePicker
+                    appearance="field" aria-label={m.settings.model.fields.protocolAria} value={protocol}
+                    options={COMPATIBLE_PROTOCOLS} onPick={setProtocol}
+                    label={(option) => (option === 'responses' ? 'Responses API' : 'Chat Completions API')}
+                  />
+                </FieldRow>
+                <FieldRow label={m.settings.model.fields.baseUrlLabel}>
+                  <FormInput appearance="field" aria-label={m.settings.model.fields.baseUrlAria} value={baseUrl}
+                    placeholder={m.settings.model.providers['openai-compatible'].baseUrlPlaceholder}
+                    onChange={(event) => setBaseUrl(event.target.value)} />
+                </FieldRow>
+                <FieldRow label={m.settings.model.fields.authLabel}>
+                  <ChoicePicker
+                    appearance="field" aria-label={m.settings.model.fields.authAria} value={authentication}
+                    options={AUTHENTICATIONS} onPick={setAuthentication}
+                    label={(option) => (option === 'api-key'
+                      ? m.settings.model.fields.apiKeyLabel : m.settings.model.fields.authNoneOption)}
+                  />
+                </FieldRow>
+              </>
+            ) : selectedCompatibleTemplate === null ? null : (
+              <div className="model-template-summary" aria-label={m.settings.model.templates.summaryAria}>
+                <span>{selectedCompatibleTemplate.protocolLabel} · {selectedCompatibleTemplate.authenticationLabel}</span>
+                <code>{selectedCompatibleTemplate.baseUrl}</code>
+              </div>
+            )}
+          </>
+        ) : (
+          <FieldRow label={m.settings.model.fields.protocolLabel}>
+            <span aria-label={m.settings.model.fields.protocolAria}>{selected.protocolLabel}</span>
+          </FieldRow>
+        )}
+        {compatibleTemplatePending ? null : (
+          <>
+            <FieldRow label={m.settings.model.fields.modelIdLabel}>
+              <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
+                placeholder={m.settings.model.fields.modelIdLabel} onChange={(event) => setModel(event.target.value)} />
+            </FieldRow>
+            {authentication === 'api-key' ? (
+              <FieldRow label={m.settings.model.fields.apiKeyLabel}>
+                {showingSavedApiKey ? (
+                  <ServiceSavedKey
+                    ariaLabel={m.settings.model.keyStored(savedProfile?.apiKeyLastFour ?? '')}
+                    lastFour={savedProfile?.apiKeyLastFour}
+                    onClick={() => setEditingApiKey(true)}
+                  />
+                ) : (
+                  <FormInput appearance="field" aria-label={m.settings.model.fields.apiKeyAria} type="password"
+                    value={apiKey} autoFocus={editingApiKey}
+                    autoComplete="new-password" spellCheck={false}
+                    placeholder={m.settings.model.fields.apiKeyLabel}
+                    onBlur={() => { if (apiKey === '') setEditingApiKey(false) }}
+                    onChange={(event) => {
+                      setApiKey(event.target.value)
+                      setEditingApiKey(true)
+                      setClearApiKey(false)
+                    }} />
+                )}
+              </FieldRow>
+            ) : null}
+          </>
+        )}
+      </FieldRows>
       <ServiceFoot>
         {connectionStatus === null ? null : (
           <ServiceConnectionStatus
@@ -393,23 +399,20 @@ export function ModelSettings() {
               }}
             />
           ) : null}
-          {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
-          <button
-            className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
+          <Button
+            size="regular" disabled={!canTestConnection || saving}
+            busy={connectionCheck.state === 'testing'} busyLabel={m.settings.model.connection.testing}
             onClick={() => { void testConnection() }}
-          >
-            {connectionCheck.state === 'testing'
-              ? m.settings.model.connection.testing
-              : m.settings.model.connection.action}
-          </button>
-          <button className="btn pri" disabled={saving || compatibleTemplatePending}
-            onClick={() => { void save() }}>
-            {saving ? m.settings.model.saving : m.settings.model.save}
-          </button>
+          >{m.settings.model.connection.action}</Button>
+          <CommitActions
+            place="foot" saving={saving} canSave={!compatibleTemplatePending} done={saved}
+            saveLabel={m.settings.model.save} busyLabel={m.settings.model.saving}
+            onSave={() => { void save() }}
+          />
         </ServiceActions>
       </ServiceFoot>
       {settings.error === undefined ? null : (
-        <ServiceError>{m.settings.model.errorHint(reasonLabel(m, settings.error))}</ServiceError>
+        <ServiceError>{reasonLabel(m, settings.error)}</ServiceError>
       )}
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>

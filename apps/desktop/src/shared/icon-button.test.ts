@@ -45,13 +45,12 @@ const openingTag = (source: string, from: number): string => {
 
 /**
  * The classes components put on an icon button besides its own, to place it or reveal it: from
- * `className` on an IconButton, a PanelClose or an icon AddAction.
+ * `className` on an IconButton.
  */
 const HOOKS = new Set(FILES.filter((path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx')).flatMap((path) => {
   const source = read(path)
-  return [...source.matchAll(/<(?:IconButton|PanelClose|AddAction)\b/g)]
+  return [...source.matchAll(/<IconButton\b/g)]
     .map(({ index }) => openingTag(source, index))
-    .filter((tag) => !tag.startsWith('<AddAction') || tag.includes('variant="icon"'))
     .flatMap((tag) => [.../className="([^"]+)"/.exec(tag)?.[1]?.split(/\s+/) ?? []])
 }).filter((name) => !['sm', 'xs', 'danger'].includes(name)))
 
@@ -136,8 +135,8 @@ describe('图标按钮', () => {
 
   it('别的样式表不改图标按钮的尺寸、颜色、边框或光标，只管放在哪里和显不显', () => {
     expect([...HOOKS]).toEqual(expect.arrayContaining([
-      'back', 'rowx', 'busy', 'dots', 'rx', 'tagchip-edit', 'cmx', 'ax', 'row-delete', 'plan-rename',
-      'timeline-fold', 'tbtn', 'appbtn', 'sb-add', 'upclose',
+      'back', 'rowx', 'busy', 'dots', 'rx', 'tagchip-edit', 'cmx', 'ax',
+      'tbtn', 'appbtn', 'upclose',
     ]))
     const names = new RegExp(`\\.(?:${['icbtn', ...HOOKS].join('|')})(?![\\w-])`)
     const offenders = STYLESHEETS.filter((path) => path !== ICON_BUTTON).flatMap((path) => rulesOf(read(path))
@@ -148,7 +147,7 @@ describe('图标按钮', () => {
 
   it('表头末格的加号和齿轮只在一处定义', () => {
     const defining = (name: string) => STYLESHEETS.filter((path) => rulesOf(read(path))
-      .some(([selector]) => selector.split(',').some((part) => part.trim() === `.${name}`)))
-    expect(defining('th-add')).toEqual([join('routes', 'shell.css')])
+      .some(([selector]) => new RegExp(`\\.${name}(?![\\w-])`).test(selector)))
+    expect(defining('table-actions')).toEqual([join('components', 'Table.css')])
   })
 })

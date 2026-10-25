@@ -2,25 +2,31 @@ import { useEffect, useRef } from 'react'
 import type { PaperHighlight, PaperNote, PaperReading, ReadingMutation } from '../../../shared/contract.js'
 import { editField, type Drafts, type EditDraft } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { useScrollFade } from '../../hooks/useScrollFade.js'
 import { FormTextarea } from '../FormControls.js'
 import { EmptyState } from '../EmptyState.js'
 import { IconButton } from '../IconButton.js'
 import { IconTrash } from '../icons.js'
-import { RowActions } from '../StructuredList.js'
+import { Item } from '../Item.js'
 import { SourceAnchor } from '../SourceAnchor.js'
-import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { PageHeader, PageNote, PageTitle } from '../PageShell.js'
+import { ScrollArea } from '../ScrollArea.js'
+import { SidePanel } from '../SidePanel.js'
 import { useClipped } from '../../hooks/useClipped.js'
+import { CommitActions } from '../CommitActions.js'
+import { commitKeys } from '../../lib/keyboard.js'
 
-/** A note or highlight card's delete, in the row-actions slot at the end of the card's top line. */
+/** The colour each highlight colour marks its card's leading edge with. */
+const HIGHLIGHT_MARK: Record<PaperHighlight['color'], string> = {
+  yellow: 'var(--hl-yellow)', green: 'var(--hl-green)', blue: 'var(--hl-blue)', pink: 'var(--hl-pink)',
+}
+
+/** A note or highlight card's delete, for the row-actions slot at the end of the card's top line. */
 function ReadingDelete({ onDelete }: { onDelete: () => Promise<boolean> }) {
   const m = useMessages()
   return (
-    <RowActions>
-      <IconButton
-        label={m.common.delete} size="nested" tone="danger" className="reading-delete" onClick={() => { void onDelete() }}
-      ><IconTrash /></IconButton>
-    </RowActions>
+    <IconButton
+      label={m.common.delete} size="nested" tone="danger" className="reading-delete" onClick={() => { void onDelete() }}
+    ><IconTrash /></IconButton>
   )
 }
 
@@ -35,20 +41,20 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
   const edit = editField(edits, `note:${note.id}`, note.text)
   const text = edit.text
   const changed = text.trim() !== note.text
+  const save = () => {
+    if (!changed || text.trim() === '' || edit.stale) return
+    void onSave(text.trim()).then((saved) => { if (saved) edit.drop() })
+  }
   return (
-    <article className="reading-card" data-row-actions="">
-      <div className="reading-card-head">
-        <span className="reading-page"><SourceAnchor page={note.page} onOpen={onJump} /></span>
-        <ReadingDelete onDelete={onDelete} />
-      </div>
-      <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps} />
+    <Item
+      density="card" className="reading-card" meta={<SourceAnchor page={note.page} onOpen={onJump} />}
+      actions={<ReadingDelete onDelete={onDelete} />}
+    >
+      <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps(save)} />
       <div className="reading-actions">
-        <button
-          className="btn ghost sm" disabled={!changed || text.trim() === ''}
-          onClick={() => { if (!edit.stale) void onSave(text.trim()).then((saved) => { if (saved) edit.drop() }) }}
-        >{m.common.save}</button>
+        <CommitActions place="item" canSave={changed && text.trim() !== ''} onSave={save} />
       </div>
-    </article>
+    </Item>
   )
 }
 
@@ -65,6 +71,10 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus, sele
   const m = useMessages()
   const edit = editField(edits, `highlight:${highlight.id}`, highlight.note)
   const note = edit.text
+  const save = () => {
+    if (note === highlight.note || edit.stale) return
+    void onSave(note).then((saved) => { if (saved) edit.drop() })
+  }
   const input = useRef<HTMLTextAreaElement>(null)
   const quote = useRef<HTMLQuoteElement>(null)
   const quoteCut = useClipped(quote, highlight.quote, true)
@@ -72,27 +82,22 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus, sele
   useEffect(() => { if (focus) input.current?.focus() }, [focus])
   useEffect(() => { if (selected) card.current?.scrollIntoView({ block: 'nearest' }) }, [selected])
   return (
-    <article
-      ref={card} className={`reading-card highlight-card ${highlight.color}${selected ? ' selected' : ''}`} data-row-actions=""
-      aria-current={selected || undefined}
+    <Item
+      density="card" elementRef={card} className={`reading-card highlight-card ${highlight.color}`} selected={selected}
+      mark={HIGHLIGHT_MARK[highlight.color]} aria-current={selected || undefined}
+      meta={<SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} />}
+      actions={<ReadingDelete onDelete={onDelete} />}
     >
-      <div className="reading-card-head">
-        <span className="reading-page"><SourceAnchor page={highlight.page} quote={highlight.quote} onOpen={onJump} /></span>
-        <ReadingDelete onDelete={onDelete} />
-      </div>
       <blockquote ref={quote} className={`fade-lines${quoteCut ? ' clipped' : ''}`}>{highlight.quote}</blockquote>
       <FormTextarea
         ref={input}
         aria-label={m.reader.highlights.noteAria(highlight.page)} placeholder={m.reader.highlights.annotate}
-        {...edit.fieldProps}
+        {...edit.fieldProps(save)}
       />
       <div className="reading-actions">
-        <button
-          className="btn ghost sm" disabled={note === highlight.note}
-          onClick={() => { if (!edit.stale) void onSave(note).then((saved) => { if (saved) edit.drop() }) }}
-        >{m.common.save}</button>
+        <CommitActions place="item" canSave={note !== highlight.note} onSave={save} />
       </div>
-    </article>
+    </Item>
   )
 }
 
@@ -115,7 +120,6 @@ export function ReadingNotes({
   edits: Drafts<EditDraft>
 }) {
   const m = useMessages()
-  const listFade = useScrollFade('y')
   const compose = `new-note:${reading.paperId}`
   const draft = drafts.get(compose) ?? ''
   const addNote = async () => {
@@ -124,44 +128,45 @@ export function ReadingNotes({
     if (await onMutate({ kind: 'note.add', page: currentPage, text })) drafts.drop(compose)
   }
   return (
-    <aside className="reading-notes" aria-label={m.reader.notes.ariaLabel}>
-      <ReaderPanelHeader
-        title={mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading(reading.notes.length)}
-        note={m.reader.page.at(currentPage)}
-      />
+    <SidePanel surface="edge" label={m.reader.notes.ariaLabel} className="reading-notes">
+      <PageHeader size="pane" actions={<PageNote>{m.reader.page.at(currentPage)}</PageNote>}>
+        <PageTitle count={mode === 'highlights' ? undefined : reading.notes.length}>
+          {mode === 'highlights' ? m.reader.rail.tabs.highlights : m.reader.notes.heading}
+        </PageTitle>
+      </PageHeader>
       {mode === 'highlights' ? null : <div className="note-compose">
         <FormTextarea
           aria-label={m.reader.notes.newAria} placeholder={m.reader.notes.placeholder(currentPage)}
           value={draft} onChange={(event) => drafts.set(compose, event.target.value)}
+          onKeyDown={commitKeys({ multiline: true, onSave: () => { if (!saving) void addNote() } })}
         />
-        <button
-          className="btn sm" disabled={draft.trim() === '' || saving}
-          onClick={() => { void addNote() }}
-        >{m.common.save}</button>
+        <CommitActions place="item" saving={saving} canSave={draft.trim() !== ''} onSave={() => { void addNote() }} />
       </div>}
-      <div className="reading-list" ref={listFade}>
-        {mode === 'notes' ? null : reading.highlights.map((highlight) => (
-          <HighlightCard
-            key={highlight.id} highlight={highlight} edits={edits} onJump={() => onJump(highlight.page)}
-            focus={focusHighlightId === highlight.id} selected={selectedHighlightId === highlight.id}
-            onSave={(note) => onMutate({ kind: 'highlight.update', id: highlight.id, note })}
-            onDelete={() => onMutate({ kind: 'highlight.delete', id: highlight.id })}
-          />
-        ))}
-        {mode === 'highlights' ? null : reading.notes.map((note) => (
-          <NoteCard
-            key={note.id} note={note} edits={edits} onJump={() => onJump(note.page)}
-            onSave={(text) => onMutate({ kind: 'note.update', id: note.id, text })}
-            onDelete={() => onMutate({ kind: 'note.delete', id: note.id })}
-          />
-        ))}
-        {mode === 'notes'
-          ? (reading.notes.length === 0 ? <EmptyState variant="section">{m.reader.emptyNotes}</EmptyState> : null)
-          : mode === 'highlights'
-            ? (reading.highlights.length === 0 ? <EmptyState variant="section">{m.reader.emptyHighlights}</EmptyState> : null)
-            : (reading.highlights.length === 0 && reading.notes.length === 0
-              ? <EmptyState variant="section">{m.reader.emptyReading}</EmptyState> : null)}
-      </div>
-    </aside>
+      <ScrollArea axis="y" fill>
+        <div className="reading-list">
+          {mode === 'notes' ? null : reading.highlights.map((highlight) => (
+            <HighlightCard
+              key={highlight.id} highlight={highlight} edits={edits} onJump={() => onJump(highlight.page)}
+              focus={focusHighlightId === highlight.id} selected={selectedHighlightId === highlight.id}
+              onSave={(note) => onMutate({ kind: 'highlight.update', id: highlight.id, note })}
+              onDelete={() => onMutate({ kind: 'highlight.delete', id: highlight.id })}
+            />
+          ))}
+          {mode === 'highlights' ? null : reading.notes.map((note) => (
+            <NoteCard
+              key={note.id} note={note} edits={edits} onJump={() => onJump(note.page)}
+              onSave={(text) => onMutate({ kind: 'note.update', id: note.id, text })}
+              onDelete={() => onMutate({ kind: 'note.delete', id: note.id })}
+            />
+          ))}
+          {mode === 'notes'
+            ? (reading.notes.length === 0 ? <EmptyState variant="section" /> : null)
+            : mode === 'highlights'
+              ? (reading.highlights.length === 0 ? <EmptyState variant="section" /> : null)
+              : (reading.highlights.length === 0 && reading.notes.length === 0
+                ? <EmptyState variant="section" /> : null)}
+        </div>
+      </ScrollArea>
+    </SidePanel>
   )
 }

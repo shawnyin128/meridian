@@ -1,0 +1,12 @@
+/*
+ * A value edited in place. At rest its hover fill reaches past the text by the inline field's padding,
+ * so a click puts the field's text exactly where the value's was; a picker's value wears the same look.
+ */
+/* The field holds the reach of its value and of its editor, so the box around it keeps one height. */
+.metadata-field{display:flow-root;width:100%;max-width:100%;min-width:0}
+.metadata-editable{display:block;box-sizing:border-box;width:calc(100% + 2 * var(--sp-6));min-width:0;
+  margin:calc(-1 * var(--sp-2)) calc(-1 * var(--sp-6));padding:var(--sp-2) var(--sp-6);border:0;border-radius:var(--r-xs);
+  background:transparent;color:inherit;font:inherit;line-height:inherit;text-align:left;overflow-wrap:anywhere;cursor:text}
+.metadata-editable:hover{background:var(--field);color:var(--ink)}
+.pv.metadata-editable{cursor:pointer}
+.form-control.metadata-input.multiline{display:block;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}

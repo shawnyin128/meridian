@@ -1,7 +1,7 @@
 import { forwardRef, useRef, type InputHTMLAttributes, type ReactNode, type Ref } from 'react'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput, type FormControlAppearance } from './FormControls.js'
-import { IconCross } from './icons.js'
+import { IconCross, IconSearch } from './icons.js'
 import { Tooltip } from './Tooltip.js'
 import './ClearableInput.css'
 
@@ -58,5 +58,15 @@ export const ClearableInput = forwardRef<HTMLInputElement, ClearableInputProps>(
         )}
       </div>
     )
+  },
+)
+
+/**
+ * The one search field: a clearable boxed field with the search glyph at its start. Hosts pass the
+ * value, its handlers, its names and its keycap as to ClearableInput.
+ */
+export const SearchField = forwardRef<HTMLInputElement, Omit<ClearableInputProps, 'appearance' | 'leading'>>(
+  function SearchField(props, ref) {
+    return <ClearableInput ref={ref} {...props} leading={<IconSearch />} />
   },
 )

@@ -37,10 +37,10 @@ describe('PaperWikiProposalReview', () => {
     document.body.replaceChildren(host)
     const root = createRoot(host)
     act(() => root.render(<MessagesProvider><PaperWikiProposalReview review={review} onJump={jump} /></MessagesProvider>))
-    const group = host.querySelector('.structured-list--embedded .paper-wiki-review-group')!
+    const group = host.querySelector('.list--embedded .paper-wiki-review-group')!
     expect(group.querySelector('.tag')!.textContent).toBe('论文原文')
     expect([...group.querySelectorAll('.proposal-text')].map((text) => text.textContent)).toEqual(['一句话'])
-    expect([...group.querySelectorAll('.proposal-row')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]))
+    expect([...group.querySelectorAll('.proposal-rows .property')].map((row) => [row.querySelector('dt')!.textContent, row.querySelector('dd')!.textContent]))
       .toEqual([['输入', '原始分数'], ['输出', '校准分数'], ['原文', 'p.2'], ['你的笔记', '高亮批注']])
     expect(group.querySelectorAll('.proposal-rows')).toHaveLength(1)
     const anchor = group.querySelector<HTMLButtonElement>('.source-anchor')!
@@ -49,7 +49,7 @@ describe('PaperWikiProposalReview', () => {
     act(() => root.unmount())
   })
 
-  it('shows an explicit empty statement instead of inventing missing content', () => {
+  it('shows an empty section as the shared empty value instead of inventing missing content or a sentence', () => {
     const review: HarnessPaperWikiReview = {
       schemaVersion: 'meridian.paper-wiki-review.v1',
       sections: [{ id: 'limitations', title: '局限', emptyLabel: '没有原文依据的局限。', groups: [] }],
@@ -57,11 +57,11 @@ describe('PaperWikiProposalReview', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
-    expect(html).toContain('本提案没有提取到有原文依据的局限。')
-    expect(html).not.toContain('structured-list')
+    expect(html).toContain('<div class="empty-state empty-state--section">—</div>')
+    expect(html).not.toMatch(/class="list[ "]/)
   })
 
-  /** The heading and empty statement of each section a review of `ids`, as Core stores it, shows in `language`. */
+  /** The heading and empty state of each section a review of `ids`, as Core stores it, shows in `language`. */
   const sectionTexts = (language: 'zh' | 'en', ids: string[]) => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
     const review: HarnessPaperWikiReview = {
@@ -73,7 +73,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
     )
     return [...host.querySelectorAll('.paper-wiki-review-section')].map((section) => [
-      section.querySelector('h4')!.textContent, section.querySelector('.empty-state')?.textContent,
+      section.querySelector('.section-heading > span')!.firstChild!.textContent, section.querySelector('.empty-state')?.textContent,
     ])
   }
 
@@ -139,7 +139,7 @@ describe('PaperWikiProposalReview', () => {
       host.innerHTML = renderToStaticMarkup(
         <MessagesProvider><PaperWikiProposalReview review={review} onJump={() => {}} /></MessagesProvider>,
       )
-      return [...host.querySelectorAll('.paper-wiki-review-group')].map((group) => [...group.querySelectorAll('.proposal-row dt')].map((dt) => dt.textContent))
+      return [...host.querySelectorAll('.paper-wiki-review-group')].map((group) => [...group.querySelectorAll('.proposal-rows .property dt')].map((dt) => dt.textContent))
     }
     expect(labels('zh')).toEqual(groups.map(([, stored]) => [...stored]))
     expect(labels('en')).toEqual([
@@ -149,8 +149,8 @@ describe('PaperWikiProposalReview', () => {
     ])
   })
 
-  it('keeps the words Core stored for a section this version does not know', () => {
-    expect(sectionTexts('en', ['later-section'])).toEqual([['Core 存下的「later-section」', 'Core 存下的「later-section」空白']])
+  it('keeps the title Core stored for a section this version does not know, empty as every other section', () => {
+    expect(sectionTexts('en', ['later-section'])).toEqual([['Core 存下的「later-section」', '—']])
   })
 
   it('states a passing deterministic report by its title alone, with no note about what it means', () => {
@@ -168,7 +168,8 @@ describe('PaperWikiProposalReview', () => {
     expect(html).toContain('7 项规则检查未发现问题')
     const host = document.createElement('div')
     host.innerHTML = html
-    expect(host.querySelector('.paper-wiki-quality > p')).toBeNull()
+    expect(host.querySelector('.paper-wiki-quality')?.matches('.inline-message--box.inline-message--done[role="status"]')).toBe(true)
+    expect(host.querySelector('.paper-wiki-quality p')).toBeNull()
     expect(host.querySelector('.paper-wiki-review-legend')).toBeNull()
   })
 
@@ -190,7 +191,10 @@ describe('PaperWikiProposalReview', () => {
     )
     expect(html).toContain('发现 1 项需要核对')
     expect(html).toContain('机制描述过于空泛')
-    expect(html).toContain('structured-list--embedded')
+    expect(html).toContain('list--embedded')
+    const host = document.createElement('div')
+    host.innerHTML = html
+    expect(host.querySelector('.paper-wiki-quality')?.matches('.inline-message--box.inline-message--warning[role="status"]')).toBe(true)
   })
 
   /** A report in which every path of `paths` has a finding of `code`. */
@@ -212,7 +216,7 @@ describe('PaperWikiProposalReview', () => {
       <MessagesProvider><PaperWikiProposalReview review={emptyReview} quality={report(paths, code)} onJump={() => {}} /></MessagesProvider>,
     )
     return [...host.querySelectorAll('.paper-wiki-quality-finding')].map((row) => ({
-      lines: [...row.children].map((line) => line.textContent!),
+      lines: [...row.querySelector('.item-main')!.children].map((line) => line.textContent!),
       place: row.querySelector('.paper-wiki-quality-place')?.textContent ?? '',
     }))
   }

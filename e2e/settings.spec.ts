@@ -54,7 +54,7 @@ const press = (app: ElectronApplication, cdp: CDPSession, key: keyof typeof MAC_
 
 test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', async ({ app, win }) => {
   // The menu is set in whenReady, so it is fully installed once the first window is up.
-  await win.locator('.sidebar').waitFor()
+  await win.locator('#sidebar').waitFor()
   const menu = await app.evaluate(({ Menu }) => {
     const built = Menu.getApplicationMenu()
     if (!built) throw new Error('主进程没有装应用菜单')
@@ -69,10 +69,10 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   console.log(`菜单 ${JSON.stringify(menu)}`)
 
   const mac = process.platform === 'darwin'
-  // Only "Settings…", the File menu and the Help menu are built by hand; the rest are still roles, so
-  // copy and paste, zoom and the developer tools remain. On macOS "Settings…" sits in the app-name menu
-  // and File is still a role; Windows and Linux add a Tools menu without a role, between View and
-  // Window. Every platform ends with the Help menu, which has no role.
+  // The top-level menus keep their roles, so copy and paste, full screen and, in this unpackaged run,
+  // the developer tools remain. On macOS "Settings…" sits in the app-name menu and File is still a
+  // role; Windows and Linux add a Tools menu without a role, between View and Window. Every platform
+  // ends with the Help menu, which has no role.
   expect(menu.map((top) => top.role)).toEqual(mac
     ? ['appmenu', 'filemenu', 'editmenu', 'viewmenu', 'windowmenu', null]
     : [null, 'editmenu', 'viewmenu', null, 'windowmenu', null])
@@ -80,7 +80,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
   expect(menu.slice(mac ? 1 : 0).map((top) => top.label))
     .toEqual(mac ? ['文件', '编辑', '视图', '窗口', '帮助'] : ['文件', '编辑', '视图', '工具', '窗口', '帮助'])
   expect(menu.flatMap((top) => top.items).map((item) => item.label)
-    .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP/g, '')))).toEqual([])
+    .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP|PDF/g, '')))).toEqual([])
 
   const settings = menu.flatMap((top) => top.items).filter((item) => item.id === 'settings')
   expect(settings).toHaveLength(1)
@@ -97,7 +97,7 @@ test.describe(() => {
   test.use({ showWindow: true })
 
   test('应用菜单里的「设置…」与快捷键都打开设置,别的键不打开', async ({ app, win }) => {
-    await win.locator('.sidebar').waitFor()
+    await win.locator('#sidebar').waitFor()
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
     await openSettings(app, win)
@@ -118,7 +118,7 @@ test.describe(() => {
 })
 
 test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口子', async ({ app, win }) => {
-  await win.locator('.sidebar').waitFor()
+  await win.locator('#sidebar').waitFor()
 
   const surface = await win.evaluate(() => {
     const page = window as unknown as Record<string, unknown>
@@ -132,10 +132,10 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
   })
   console.log(`preload 面 ${JSON.stringify(surface)}`)
   expect(surface.meridian).toEqual([
-    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onFullScreen:function',
-    'onOpenAgentTutorial:function', 'onOpenPalette:function', 'onOpenSettings:function', 'pathForFile:function',
-    'platform:string', 'restartApp:function', 'revealFile:function', 'setLocale:function', 'setTitleBarTheme:function',
-    'toggleMaximize:function', 'updates:object',
+    'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onAppCommand:function',
+    'onFullScreen:function', 'onOpenAgentTutorial:function', 'onOpenPalette:function', 'onOpenSettings:function',
+    'pathForFile:function', 'platform:string', 'restartApp:function', 'revealFile:function', 'setLocale:function',
+    'setMenuState:function', 'setTitleBarTheme:function', 'toggleMaximize:function', 'updates:object',
   ])
   expect(surface.escapes).toEqual([
     'require:undefined', 'process:undefined', 'ipcRenderer:undefined',
@@ -194,7 +194,7 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
 
 test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', async ({ app, win }) => {
   await openSettings(app, win)
-  const cats = win.locator('.setdlg .set-side .srow')
+  const cats = win.locator('.setdlg .split-nav .nav-row')
   const archived = (await core<Session[]>(win, 'chat.list', {})).filter((s) => s.archived)
   expect(archived.length).toBeGreaterThan(0)
 
@@ -202,7 +202,7 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   const labels = await cats.allInnerTexts()
   console.log(`左栏分类 ${JSON.stringify(labels)}`)
   expect(labels).toEqual(['外观', '存储', 'API', '扩展', '论文推送', '归档的对话'])
-  await expect(win.locator('.setdlg .set-side .srow.on')).toHaveCount(1)
+  await expect(win.locator('.setdlg .split-nav .nav-row.on')).toHaveCount(1)
   await expect(win.getByRole('radiogroup', { name: '外观', exact: true }).locator('.appearance-choice')).toHaveText(['浅色', '深色', '跟随系统'])
   await expect(win.getByRole('radiogroup', { name: '外观主题', exact: true }).locator('.appearance-choice'))
     .toHaveText(['默认', '朱漆', '螺钿', '秋叶', '流霞'])
@@ -211,7 +211,7 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   await expect(win.locator('.setdlg .storage-reset')).toContainText('重置论文库')
   const directory = win.locator('.setdlg .storage-root .directory-field')
   await expect(directory.locator('input')).toHaveValue(/meridian/i)
-  await expect(directory.locator('[aria-label="选择论文库根目录"]')).toHaveCount(1)
+  await expect(directory.locator('[aria-label="选择论文库根目录…"]')).toHaveCount(1)
   await expect(win.getByRole('button', { name: '选择根目录…' })).toHaveCount(0)
   // Reset is enabled in normal use; the shared fixture must not be cleared by a UI test.
   await expect(win.locator('.setdlg .storage-reset .btn')).toBeDisabled()
@@ -220,13 +220,13 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   // itself spans several sections.
   for (const label of labels) {
     await cats.filter({ hasText: label }).click()
-    await expect(win.locator('.setdlg .set-side .srow.on')).toHaveText([label])
-    await expect(win.locator('.setdlg .set-main')).toContainText(label)
+    await expect(win.locator('.setdlg .split-nav .nav-row.on')).toHaveText([label])
+    await expect(win.locator('.setdlg .split-main')).toContainText(label)
   }
 
-  await expect(win.locator('.setdlg .set-main .section-heading')).toHaveText(`归档的对话 · ${archived.length}`)
-  await expect(win.locator('.setdlg .set-main .wrow')).toHaveCount(archived.length)
-  await expect(win.locator('.setdlg .set-main .wrow .nm')).toHaveText(archived.map((s) => s.title))
+  await expect(win.locator('.setdlg .split-main .section-heading')).toHaveText(`归档的对话 · ${archived.length}`)
+  await expect(win.locator('.setdlg .split-main .wrow')).toHaveCount(archived.length)
+  await expect(win.locator('.setdlg .split-main .wrow .nm')).toHaveText(archived.map((s) => s.title))
 })
 
 test('扩展设置展示 Core 检查到的状态与对应安装或更新命令', async ({ app, win }) => {
@@ -234,7 +234,7 @@ test('扩展设置展示 Core 检查到的状态与对应安装或更新命令',
   expect(statuses.map((status) => status.id)).toEqual(['codex', 'claude-code'])
 
   await openSettings(app, win)
-  await win.locator('.setdlg .srow[data-setcat="extensions"]').click()
+  await win.locator('.setdlg .nav-row[data-setcat="extensions"]').click()
 
   for (const status of statuses) {
     const entry = win.locator(`.setdlg [data-extension="${status.id}"]`)
@@ -249,26 +249,26 @@ test('扩展设置展示 Core 检查到的状态与对应安装或更新命令',
 })
 
 test('一条归档都没有时,右栏给空态而不是只剩一个标题', async ({ app, win }) => {
-  await win.locator('.sidebar').waitFor()
+  await win.locator('#sidebar').waitFor()
   for (const s of (await core<Session[]>(win, 'chat.list', {})).filter((x) => x.archived)) {
     await core(win, 'chat.setArchived', { id: s.id, archived: false })
   }
 
   await openSettings(app, win)
-  await win.locator('.setdlg .srow[data-setcat="archived"]').click()
-  await expect(win.locator('.setdlg .set-main .section-heading')).toHaveText('归档的对话 · 0')
-  await expect(win.locator('.setdlg .set-main .wrow')).toHaveCount(0)
-  await expect(win.locator('.setdlg .set-main .empty-state')).toHaveCount(1)
+  await win.locator('.setdlg .nav-row[data-setcat="archived"]').click()
+  await expect(win.locator('.setdlg .split-main .section-heading')).toHaveText('归档的对话 · 0')
+  await expect(win.locator('.setdlg .split-main .wrow')).toHaveCount(0)
+  await expect(win.locator('.setdlg .split-main .empty-state')).toHaveCount(1)
 })
 
 test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止于圆角之上,右上角的关闭按钮照样点得到', async ({ app, win }) => {
   await openSettings(app, win)
-  await win.locator('.setdlg .srow[data-setcat="extensions"]').click()
+  await win.locator('.setdlg .nav-row[data-setcat="extensions"]').click()
   await win.locator('.setdlg [data-extension]').first().waitFor()
 
   const layout = await win.evaluate(() => {
     const dialog = document.querySelector('.setdlg')!
-    const column = dialog.querySelector('.set-main')!
+    const column = dialog.querySelector('.split-main')!
     const area = [column, ...column.querySelectorAll('*')].find((box) => getComputedStyle(box).overflowY === 'auto') as HTMLElement
     area.scrollTop = (area.scrollHeight - area.clientHeight) / 2
     // A scroll event fires only in the next rendering update, after the reads below, so the case sends
@@ -297,16 +297,19 @@ test('设置右栏滚动时,标题留在上面,滚动条从标题下面起、止
   await expect(win.locator('.setdlg')).toHaveCount(0)
 })
 
-test('取消归档弹出的提示盖在设置模态之上', async ({ app, win }) => {
-  await win.locator('.sidebar').waitFor()
+test('在设置里删掉已归档的对话,弹出的撤销提示盖在设置模态之上', async ({ app, win }) => {
+  await win.locator('#sidebar').waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
   await core(win, 'chat.setArchived', { id: target.id, archived: true })
 
   await openSettings(app, win)
-  await win.locator('.setdlg .srow[data-setcat="archived"]').click()
+  await win.locator('.setdlg .nav-row[data-setcat="archived"]').click()
   await win.locator(`.setdlg .wrow[data-chat="${target.id}"]`).hover()
-  await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .row-actions [aria-label="取消归档"]`).click()
+  await win.locator(`.setdlg .wrow[data-chat="${target.id}"] .row-actions [aria-label="删除"]`).click()
   await win.locator('#notice.show').waitFor()
+  await expect(win.locator('#notice.show button', { hasText: '撤销' })).toHaveCount(1)
+  // By role, as a screen reader finds it: the modal hides the rest of the page, but not the notice.
+  await expect(win.getByRole('button', { name: '撤销' })).toHaveCount(1)
 
   const zIndex = await win.evaluate(() => ({
     notice: Number(getComputedStyle(document.querySelector('.notice-host')!).zIndex),
@@ -317,14 +320,19 @@ test('取消归档弹出的提示盖在设置模态之上', async ({ app, win })
   expect(zIndex.notice).toBeGreaterThan(zIndex.scrim)
 })
 
+/** For each selector, whether its element is out of the accessibility tree: it or an ancestor is aria-hidden. */
+const hiddenFromReaders = (win: Page, selectors: string[]) => win.evaluate((all) => all.map((selector) =>
+  document.querySelector(selector)!.closest('[aria-hidden="true"]') !== null), selectors)
+
 test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦点回到打开之前那一处', async ({ app, win }) => {
   await win.locator('#sbBtn').focus()
   expect(await win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
 
   await openSettings(app, win)
-  // The modal part: the scrim blocks the pointer, and the rest of the screen is hidden from screen readers.
+  // The modal part: the scrim blocks the pointer, and the rest of the screen but the notice is hidden from screen readers.
   await expect(win.locator('.scrim')).toHaveCount(1)
-  await expect(win.locator('#root')).toHaveAttribute('aria-hidden', 'true')
+  await expect.poll(() => hiddenFromReaders(win, ['.titlebar', '#sidebar', '.screenslot:not([hidden])', '.notice-host']))
+    .toEqual([true, true, true, false])
 
   const walk: string[] = []
   for (let i = 0; i < TAB_STEPS; i++) {
@@ -340,7 +348,8 @@ test('设置模态:屏上其余部分隐掉,Tab 不跑到模态外,Esc 之后焦
 
   await win.keyboard.press('Escape')
   await expect(win.locator('.setdlg')).toHaveCount(0)
-  await expect(win.locator('#root')).not.toHaveAttribute('aria-hidden', 'true')
+  await expect.poll(() => hiddenFromReaders(win, ['.titlebar', '#sidebar', '.screenslot:not([hidden])']))
+    .toEqual([false, false, false])
   // Focus returns in a timeout after the modal unmounts; the element being gone does not mean it is back.
   await expect.poll(() => win.evaluate(() => document.activeElement?.id ?? '')).toBe('sbBtn')
 })
@@ -354,14 +363,14 @@ const forgetColourTheme = (win: Page) => win.evaluate(() => {
 test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;编辑时在 App 外改了文件,没改过就重读,改过就留着修改并标出', async ({ app, win, configHome }) => {
   try {
     await openSettings(app, win)
-    await win.locator('.setdlg .appearance-add').click()
+    await win.locator('.setdlg .section-heading .add-action[aria-label="新建外观主题"]').click()
     await win.locator('.setdlg input[aria-label="名称"]').fill('E2E Theme')
     await win.locator('.setdlg [data-module="accent"]').click()
     const hex = win.locator('.setdlg input[aria-label="色值"]')
     await hex.fill('#2f6fbf')
     const save = win.locator('.setdlg .theme-module-card .btn.pri')
     await save.click()
-    await expect(save).toHaveText('已保存')
+    await expect(save).toHaveAccessibleName('已保存')
 
     const file = join(configHome, 'themes', 'e2e-theme.json')
     const written = JSON.parse(readFileSync(file, 'utf8'))
@@ -388,13 +397,13 @@ test('新建外观主题:保存写进配置目录的 themes/<id>.json 并套用;
 test('外观主题从新建、保存、套用,到重新加载后还在、在卡片的 … 菜单里重新编辑和删除', async ({ app, win, configHome }) => {
   try {
     await openSettings(app, win)
-    await win.locator('.setdlg .appearance-add').click()
+    await win.locator('.setdlg .section-heading .add-action[aria-label="新建外观主题"]').click()
     await win.locator('.setdlg input[aria-label="名称"]').fill('晨雾')
     await win.locator('.setdlg [data-module="accent"]').click()
     await win.locator('.setdlg input[aria-label="色值"]').fill('#2f6fbf')
     const save = win.locator('.setdlg .theme-module-card .btn.pri')
     await save.click()
-    await expect(save).toHaveText('已保存')
+    await expect(save).toHaveAccessibleName('已保存')
     const file = join(configHome, 'themes', 'theme.json')
     expect(JSON.parse(readFileSync(file, 'utf8')).name).toBe('晨雾')
 
@@ -416,7 +425,7 @@ test('外观主题从新建、保存、套用,到重新加载后还在、在卡�
       await win.locator('.setdlg button[aria-label="管理「晨雾」"]').click()
     }
     await menu()
-    await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['编辑', '删除'])
+    await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['编辑…', '删除'])
     await win.locator('[role="menu"] [role="menuitem"]', { hasText: '编辑' }).click()
     await expect(win.locator('.setdlg input[aria-label="名称"]')).toHaveValue('晨雾')
     await win.locator('.setdlg [data-module="ground"]').click()

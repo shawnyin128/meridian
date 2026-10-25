@@ -1,4 +1,4 @@
-import { Fragment, useEffect, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChangeEntry } from '../../shared/contract.js'
 import { HUMAN_PRODUCER, NOTES_PROPOSAL } from '../../shared/vocabulary.js'
 import { changelog } from '../ipc.js'
@@ -11,7 +11,7 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CardTray } from '../components/CardTray.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
-import { DayHeading } from '../components/DayHeading.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
 import { DiffLines } from '../components/DiffLines.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
@@ -21,11 +21,12 @@ import { AgentLabel } from '../components/SourceLabel.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, ItemMeta, ItemTitle, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
-import './Changelog.css'
 
 /** The separator between the parts of the grey line; the same string splits `meta` and joins the parts. */
 const SEP = ' · '
@@ -87,7 +88,7 @@ function DeleteChangeButton({ entry, onDelete }: {
           <IconTrash />
         </IconButton>
       )}
-      title={m.changelog.confirmDelete} description={m.changelog.confirmDeleteDescription}
+      title={m.changelog.confirmDelete} description={m.changelog.confirmDeleteLoss}
       confirmLabel={m.changelog.confirmDeleteLabel} onConfirm={() => onDelete(entry.id)}
     />
   )
@@ -97,8 +98,8 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn danger sm">{m.changelog.clearArchived}</button>}
-      title={m.changelog.confirmClearArchived(count)} description={m.changelog.confirmClearArchivedDescription}
+      trigger={<Button size="compact" tone="danger">{m.changelog.clearArchived}</Button>}
+      title={m.changelog.confirmClearArchived(count)} description={m.changelog.confirmClearArchivedLoss}
       confirmLabel={m.changelog.confirmClearArchivedLabel} onConfirm={onClear}
     />
   )
@@ -131,7 +132,6 @@ export function Changelog() {
   const undo = (id: string) => {
     void changelog.undo(id).then(() => {
       bump()
-      notice.success(m.changelog.undoneNote)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
 
@@ -140,16 +140,16 @@ export function Changelog() {
     void write(changelog.archive(id))
   }
 
-  const archiveAll = (count: number) => {
-    void write(changelog.archiveAll(), { note: m.changelog.archivedNote(count) })
+  const archiveAll = () => {
+    void write(changelog.archiveAll())
   }
 
   const deleteChange = (id: string) => {
-    void write(changelog.delete(id), { note: m.changelog.deletedNote })
+    void write(changelog.delete(id))
   }
 
-  const clearArchived = (count: number) => {
-    void write(changelog.clearArchived(), { note: m.changelog.clearedArchivedNote(count) })
+  const clearArchived = () => {
+    void write(changelog.clearArchived())
   }
 
   const fresh = (entries ?? []).filter((c) => !c.archived)
@@ -158,13 +158,13 @@ export function Changelog() {
   const unread = fresh.length
 
   const row = (c: ChangeEntry) => (
-    <StructuredRow className="crow" key={c.id}>
+    <Item className="crow" lines={2} key={c.id}>
       <CardTray
         variant="row" composite
         summary={(
           <>
-            <span className="ct"><ChangeTitle entry={c} /><ChangeSource source={c.source} /></span>
-            <span className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</span>
+            <ItemTitle flow className="ct"><span><ChangeTitle entry={c} /></span><ChangeSource source={c.source} /></ItemTitle>
+            <ItemMeta flow className="cm">{[metaBelowHeading(c.meta), hint(c, m.changelog.state)].filter((s) => s !== '').join(SEP)}</ItemMeta>
           </>
         )}
         action={(
@@ -187,7 +187,7 @@ export function Changelog() {
       >
         <DiffLines lines={c.lines} />
       </CardTray>
-    </StructuredRow>
+    </Item>
   )
 
   /**
@@ -202,18 +202,21 @@ export function Changelog() {
       if (current !== undefined && current.date === c.date) current.entries.push(c)
       else days.push({ date: c.date, entries: [c] })
     }
-    return days.map((day, at) => (
-      <Fragment key={`${day.date}-${at}`}>
-        <DayHeading>{fmt.dayHead(day.date, today)}</DayHeading>
-        <StructuredList variant="embedded" maxVisibleRows="all">{day.entries.map(row)}</StructuredList>
-      </Fragment>
-    ))
+    return (
+      <GroupedList>
+        {days.map((day, at) => (
+          <Group key={`${day.date}-${at}`} title={fmt.dayHead(day.date, today)}>
+            <List variant="embedded" rows="all">{day.entries.map(row)}</List>
+          </Group>
+        ))}
+      </GroupedList>
+    )
   }
 
   return (
     <PageShell>
       <PageHeader>
-        <PageTitle>{m.changelog.title(unread)}</PageTitle>
+        <PageTitle count={unread}>{m.changelog.title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -221,21 +224,21 @@ export function Changelog() {
       <PageBody>
         <SectionHeading
           actions={(
-            <button
-              className="btn sm archall" disabled={unread === 0}
-              onClick={() => archiveAll(unread)}
-            >{m.changelog.archiveAll}</button>
+            <Button
+              size="compact" className="archall" disabled={unread === 0}
+              onClick={archiveAll}
+            >{m.changelog.archiveAll}</Button>
           )}
         >{m.changelog.unarchivedHeading}
         </SectionHeading>
         {entries === null
           ? (error === null ? <LoadingPlaceholder shape="rows" /> : null)
-          : fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
+          : fresh.length === 0 ? <EmptyState variant="section" /> : section(fresh)}
 
         {filed.length === 0 ? null : (
           <>
             <SectionHeading
-              actions={<ClearArchivedButton count={filed.length} onClear={() => clearArchived(filed.length)} />}
+              actions={<ClearArchivedButton count={filed.length} onClear={clearArchived} />}
             >{m.changelog.archivedHeading}
             </SectionHeading>
             {section(filed)}

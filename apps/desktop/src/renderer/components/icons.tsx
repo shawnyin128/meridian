@@ -76,7 +76,7 @@ export const IconGear = () => (
   </svg>
 )
 
-/** The chevron of a fold toggle, such as the one that expands a column's options in its row. */
+/** The chevron after a picker's value, pointing to the menu it opens; a fold draws FoldCaret instead. */
 export const IconChevron = () => (
   <svg
     viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2"
@@ -126,6 +126,9 @@ export const IconFolder = () => (
   </Icon>
 )
 
+/** Opens the folder that holds the one a folder browser shows. */
+export const IconEnclosingFolder = () => <Icon sw={2.2}><path d="M6 15l6-6 6 6" /></Icon>
+
 /** Discovery's North Star: four long arms fill the viewBox; small bevels keep it a star at sidebar size. */
 export const IconNorthStar = () => (
   <Icon sw={2}>
@@ -136,6 +139,14 @@ export const IconNorthStar = () => (
 
 /** A chat's speech bubble, the glyph of the sidebar's chat rows and of the mark that asks the paper chat. */
 export const CHAT_BUBBLE_PATH = 'M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z'
+
+/** A closed book, the glyph of the sidebar's papers row and of an empty paper view. */
+export const IconPapers = ({ sw = 1.8 }: { sw?: number }) => (
+  <Icon sw={sw}>
+    <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" />
+    <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" />
+  </Icon>
+)
 
 /** Asks the paper chat about the text selected in the reader: the chat bubble with a small sparkle in it. */
 export const IconAskAi = () => (

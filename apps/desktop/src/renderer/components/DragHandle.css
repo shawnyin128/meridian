@@ -2,10 +2,20 @@
 .drag-handle:active{cursor:var(--cursor-dragging)}
 /* The grip is drawn on a 12×16 box, narrower than the square glyphs IconButton sizes. */
 .icbtn.drag-handle>svg{width:9px;height:12px}
+/* An inline grip sits on the line before its item's label and shows while its item is hovered or holds focus. */
+.icbtn.xs.drag-handle{margin-inline:calc(-1 * var(--sp-6)) var(--sp-2);vertical-align:middle;opacity:0}
+[data-reorder-item]:is(:hover,:focus-within) .icbtn.xs.drag-handle{opacity:1}
 /*
- * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a
- * line shows where it would land. :where() keeps these weaker than an item's own look, such as a card's.
+ * The reorderable items no shared component draws: a relation chip, a timeline label row. Item draws
+ * its own rows and cards, and Table its columns through its `move`. One that is its own handle shows
+ * the drag cursors the grip shows. The item held dims, and a 2px line shows the side it would land on,
+ * above or below in a column, left or right in a run, from useDragReorder's classes and
+ * data-reorder-axis.
  */
-:where([data-reorder-item]).dragging{opacity:.4}
-:where([data-reorder-item]).drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
-:where([data-reorder-item]).drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
+[data-reorder-item][draggable="true"]:not(.item){cursor:var(--cursor-draggable)}
+[data-reorder-item][draggable="true"]:not(.item):active,[data-reorder-item][draggable="true"]:not(.item).dragging{cursor:var(--cursor-dragging)}
+:where([data-reorder-item]:not(.item,th)).dragging{opacity:.4}
+:where([data-reorder-axis="y"]:not(.item,th)).drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
+:where([data-reorder-axis="y"]:not(.item,th)).drag-over-after{box-shadow:0 2px 0 0 var(--ink)}
+:where([data-reorder-axis="x"]:not(.item,th)).drag-over-before{box-shadow:-2px 0 0 0 var(--ink)}
+:where([data-reorder-axis="x"]:not(.item,th)).drag-over-after{box-shadow:2px 0 0 0 var(--ink)}

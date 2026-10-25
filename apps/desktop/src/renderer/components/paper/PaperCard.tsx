@@ -1,14 +1,16 @@
 import type { ReactNode } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
-import { RowActions } from '../StructuredList.js'
+import { InlineMessage } from '../InlineMessage.js'
+import { Item } from '../Item.js'
 import { Tag } from '../Tag.js'
 import { PaperAbstract } from './PaperAbstract.js'
 import { PaperText } from './PaperText.js'
 import './PaperCard.css'
 
 /**
- * The paper card shared by Inbox and Read Later; pages only pass actions, notices and optional
- * details. `actions` are icon buttons; they go in the card's row-actions slot at the end of the title.
+ * The paper card shared by Inbox and Read Later, a card Item; pages only pass actions, notices and
+ * optional details. `actions` are icon buttons; they go in the card's row-actions slot at the end of
+ * the title, and `metadata` is the card's meta line under it.
  */
 export function PaperCard({
   paperId, watchId, title, actions, notices, metadata, abstract, recommendation, leaving = false,
@@ -25,16 +27,12 @@ export function PaperCard({
 }) {
   const m = useMessages()
   return (
-    <article
-      className={`paper-card pcard${leaving ? ' is-leaving gone' : ''}`} data-row-actions=""
+    <Item
+      density="card" className={`paper-card pcard${leaving ? ' is-leaving gone' : ''}`} leaving={leaving}
       data-pid={paperId} {...(watchId === undefined ? {} : { 'data-w': watchId })}
+      title={<h3><PaperText text={title} /></h3>} meta={metadata} actions={actions}
     >
-      <div className="paper-card-heading ph">
-        <h3><PaperText text={title} /></h3>
-        <RowActions className="paper-card-actions">{actions}</RowActions>
-      </div>
       {notices}
-      <div className="paper-card-metadata pm">{metadata}</div>
       {abstract ? (
         <section className="paper-card-section">
           <div className="paper-card-label plabel">{m.papers.card.abstractLabel}</div>
@@ -47,7 +45,7 @@ export function PaperCard({
           <div className="paper-card-recommendation prec">{recommendation}</div>
         </section>
       ) : null}
-    </article>
+    </Item>
   )
 }
 
@@ -56,18 +54,9 @@ export function PaperCardBadge({ children }: { children: ReactNode }) {
   return <Tag className="paper-card-badge venue">{children}</Tag>
 }
 
-/** Inline hints in paper cards; `action` can hold open or retry buttons. */
-export function PaperCardNotice({ children, action, tone = 'default' }: {
-  children: ReactNode
-  action?: ReactNode
-  tone?: 'default' | 'error'
-}) {
-  return (
-    <div className={`paper-card-notice pdup${tone === 'error' ? ' is-error pfail' : ''}`}>
-      <span>{children}</span>
-      {action}
-    </div>
-  )
+/** A failure on a paper card, the error box of InlineMessage; `action` is the button that retries it. */
+export function PaperCardNotice({ children, action }: { children: ReactNode; action: ReactNode }) {
+  return <InlineMessage tone="error" variant="box" className="paper-card-notice" action={action}>{children}</InlineMessage>
 }
 
 /** The citation count, kept as dimmed fixed-width digits. */

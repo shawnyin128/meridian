@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest'
 import type { MenuItemConstructorOptions } from 'electron'
-import { editMenuTemplate, menuTemplate } from './menu.js'
+import type { AppCommand } from '../shared/app-commands.js'
+import { editMenuTemplate, menuTemplate, nextZoomLevel, type MenuApp, type MenuCopy } from './menu.js'
 import { MAIN_COPY } from './messages.js'
 
 /** Flatten every menu level in a template into one list. */
@@ -84,13 +85,13 @@ describe('menuTemplate', () => {
     }
   })
 
-  it('中文菜单每一层的每一项都有中文名，只留 Meridian、Skill 与 MCP 这几个专名', () => {
+  it('中文菜单每一层的每一项都有中文名，只留 Meridian、Skill、MCP 与 PDF 这几个专名', () => {
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const english = flatten(menuTemplate(platform, () => {}, MAIN_COPY.zh.menu))
         // macOS titles the application menu with the app's name whatever its label.
         .filter((item) => item.type !== 'separator' && item.role !== 'appMenu')
         .map((item) => item.label ?? `(${item.role ?? item.id} 没有名字)`)
-        .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP/g, '')))
+        .filter((label) => /[A-Za-z]/.test(label.replace(/Meridian|Skill|MCP|PDF/g, '')))
       expect([platform, english]).toEqual([platform, []])
     }
   })
@@ -102,13 +103,17 @@ describe('menuTemplate', () => {
       : Array.isArray(item.submenu) ? { [item.role ?? item.label!]: shape(item.submenu) } : item.role ?? item.id))
     const zh = MAIN_COPY.zh.menu
     const roles = (platform: NodeJS.Platform) => shape(menuTemplate(platform, () => {}, zh))
-    const view = { viewMenu: ['reload', 'forceReload', 'toggleDevTools', '—', 'resetZoom', 'zoomIn', 'zoomOut', '—', 'togglefullscreen'] }
+    const view = { viewMenu: [
+      'toggleSidebar', '—', 'reload', 'forceReload', 'toggleDevTools', '—',
+      'resetZoom', 'zoomIn', 'zoomIn-equals', 'zoomOut', '—', 'togglefullscreen',
+    ] }
     const help = { [zh.help]: ['agent-tutorial'] }
+    const creates = ['newProject', 'newIdea', 'newChat', '—', 'importPdf', '—']
     expect(roles('darwin')).toEqual([
       { appMenu: ['about', '—', 'settings', 'palette', '—', 'services', '—', 'hide', 'hideOthers', 'unhide', '—', 'quit'] },
-      { fileMenu: ['close'] },
+      { fileMenu: [...creates, 'close'] },
       { editMenu: [
-        'undo', 'redo', '—', 'cut', 'copy', 'paste', 'pasteAndMatchStyle', 'delete', 'selectAll', '—',
+        'undo', 'redo', '—', 'cut', 'copy', 'paste', 'pasteAndMatchStyle', 'delete', 'selectAll', '—', 'find', '—',
         { [zh.substitutions]: ['showSubstitutions', '—', 'toggleSmartQuotes', 'toggleSmartDashes', 'toggleTextReplacement'] },
         { [zh.speech]: ['startSpeaking', 'stopSpeaking'] },
       ] },
@@ -118,8 +123,8 @@ describe('menuTemplate', () => {
     ])
     for (const platform of ['win32', 'linux'] as const) {
       expect(roles(platform)).toEqual([
-        { [zh.file]: ['quit'] },
-        { editMenu: ['undo', 'redo', '—', 'cut', 'copy', 'paste', 'delete', '—', 'selectAll'] },
+        { [zh.file]: [...creates, 'quit'] },
+        { editMenu: ['undo', 'redo', '—', 'cut', 'copy', 'paste', 'delete', '—', 'selectAll', '—', 'find'] },
         view,
         { [zh.tools]: ['settings', 'palette'] },
         { windowMenu: ['minimize', 'zoom', 'close'] },
@@ -168,10 +173,92 @@ describe('menuTemplate', () => {
     expect(template[1]?.role).toBe('fileMenu')
   })
 
-  it('Windows 与 Linux 的文件菜单里只剩退出,仍是 Electron 的角色', () => {
+  it('Windows 与 Linux 的文件菜单以退出结尾,仍是 Electron 的角色', () => {
     const file = menuTemplate('win32', () => {}, MAIN_COPY.zh.menu)[0]
-    expect(Array.isArray(file?.submenu) ? file.submenu.map((i) => i.role) : [])
-      .toEqual(['quit'])
+    expect(Array.isArray(file?.submenu) ? file.submenu.at(-1)?.role : undefined).toBe('quit')
+  })
+
+  /** The app of a menu: `packaged` and `sidebarHidden` as given, every command recorded in `commands`. */
+  const appOf = (over: Partial<Pick<MenuApp, 'packaged' | 'sidebarHidden'>> = {}) => {
+    const commands: AppCommand[] = []
+    return { commands, app: { packaged: false, sidebarHidden: false, ...over, onCommand: (c: AppCommand) => { commands.push(c) } } }
+  }
+  const itemsOf = (platform: NodeJS.Platform, copy: MenuCopy, app: MenuApp) =>
+    flatten(menuTemplate(platform, () => {}, copy, () => {}, () => {}, app))
+  const click = (item: MenuItemConstructorOptions | undefined) => item?.click?.(null as never, undefined, null as never)
+
+  it('三个平台的文件菜单先列新建项目、新建想法、新对话,再列导入 PDF…,各自交给页面去做', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const { commands, app } = appOf()
+      const template = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu, () => {}, () => {}, app)
+      const file = template.find((top) => top.label === '文件')!.submenu as MenuItemConstructorOptions[]
+      expect(file.slice(0, 6).map((item) => (item.type === 'separator' ? '—' : item.label)))
+        .toEqual(['新建项目', '新建想法', '新对话', '—', '导入 PDF…', '—'])
+      file.slice(0, 6).forEach(click)
+      expect(commands).toEqual(['newProject', 'newIdea', 'newChat', 'importPdf'])
+    }
+    expect(itemsOf('darwin', MAIN_COPY.en.menu, appOf().app).filter((item) => ['newProject', 'newIdea', 'newChat', 'importPdf']
+      .includes(item.id ?? '')).map((item) => item.label)).toEqual(['New Project', 'New Idea', 'New Chat', 'Import PDF…'])
+  })
+
+  it('编辑菜单最后有「查找…」,快捷键 CmdOrCtrl+F,交给页面去做', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const { commands, app } = appOf()
+      const find = itemsOf(platform, MAIN_COPY.zh.menu, app).find((item) => item.id === 'find')
+      expect([find?.label, find?.accelerator]).toEqual(['查找…', 'CmdOrCtrl+F'])
+      click(find)
+      expect(commands).toEqual(['find'])
+    }
+  })
+
+  it('视图菜单第一项按侧栏的状态叫「收起侧栏」或「展开侧栏」,快捷键 CmdOrCtrl+B', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const toggle = (sidebarHidden: boolean, copy = MAIN_COPY.zh.menu) => {
+        const { commands, app } = appOf({ sidebarHidden })
+        const view = menuTemplate(platform, () => {}, copy, () => {}, () => {}, app).find((top) => top.role === 'viewMenu')!
+        const first = (view.submenu as MenuItemConstructorOptions[])[0]
+        click(first)
+        return [first?.label, first?.accelerator, commands]
+      }
+      expect(toggle(false)).toEqual(['收起侧栏', 'CmdOrCtrl+B', ['toggleSidebar']])
+      expect(toggle(true)).toEqual(['展开侧栏', 'CmdOrCtrl+B', ['toggleSidebar']])
+      expect(toggle(false, MAIN_COPY.en.menu)[0]).toBe('Hide Sidebar')
+      expect(toggle(true, MAIN_COPY.en.menu)[0]).toBe('Show Sidebar')
+    }
+  })
+
+  it('打包后的 App 视图菜单里没有重新载入和开发者工具,开发时仍有', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const roles = (packaged: boolean) => itemsOf(platform, MAIN_COPY.zh.menu, appOf({ packaged }).app)
+        .map((item) => item.role).filter((role) => role !== undefined)
+      expect(roles(true)).not.toEqual(expect.arrayContaining(['reload']))
+      expect(roles(true).filter((role) => ['reload', 'forceReload', 'toggleDevTools'].includes(role))).toEqual([])
+      expect(roles(false)).toEqual(expect.arrayContaining(['reload', 'forceReload', 'toggleDevTools']))
+    }
+  })
+
+  it('视图菜单的实际大小、放大、缩小沿用缩放角色的快捷键,交给页面;⌘= 是隐藏的放大', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      const { commands, app } = appOf()
+      const zooms = itemsOf(platform, MAIN_COPY.zh.menu, app).filter((item) => item.id?.startsWith('zoom') || item.id === 'resetZoom')
+      expect(zooms.map((item) => [item.label, item.accelerator, item.visible ?? true])).toEqual([
+        ['实际大小', 'CommandOrControl+0', true],
+        ['放大', 'CommandOrControl+Plus', true],
+        ['放大', 'CommandOrControl+=', false],
+        ['缩小', 'CommandOrControl+-', true],
+      ])
+      zooms.forEach(click)
+      expect(commands).toEqual(['resetZoom', 'zoomIn', 'zoomIn', 'zoomOut'])
+    }
+  })
+})
+
+describe('nextZoomLevel', () => {
+  it('放大和缩小各走半级,实际大小回到 0,和 Electron 的缩放角色一样', () => {
+    expect(nextZoomLevel('zoomIn', 0)).toBe(0.5)
+    expect(nextZoomLevel('zoomOut', 0.5)).toBe(0)
+    expect(nextZoomLevel('zoomOut', 0)).toBe(-0.5)
+    expect(nextZoomLevel('resetZoom', 1.5)).toBe(0)
   })
 })
 

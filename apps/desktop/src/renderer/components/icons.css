@@ -3,7 +3,7 @@
  * accent; on a solid accent fill it turns in the fill's ink over a faint track of it, since the accent
  * arc and the light --sep track would vanish into the fill and into each other.
  */
-.ring{color:var(--accent)}
+.ring{color:var(--accent-mark)}
 .btn.pri .ring,.send .ring{color:var(--on-accent)}
 .btn.pri .ring circle:not(.arc),.send .ring circle:not(.arc){stroke:currentColor;stroke-opacity:.35}
 .ring.spin{animation:ringspin var(--t-spin) linear infinite}

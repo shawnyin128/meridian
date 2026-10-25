@@ -205,7 +205,7 @@ function colours(modules: ColourThemeModules, mode: ColourMode) {
     '--sep': own('separator'), '--sep2': alpha(own('separator'), 0.6),
     '--sep-strong': rounded(mix(own('separator'), light ? 85 : 82, own('inkSecondary'))),
     '--accent': accent, '--accent-soft': alpha(accent, 0.12), '--on-accent': WHITE,
-    '--accent-solid': moved('accent', '#3568ff'), '--accent-text': mix(accent, 70, ink), '--ring': accent,
+    '--accent-solid': moved('accent', '#3568ff'), '--accent-text': mix(accent, 70, ink), '--accent-mark': accent, '--ring': accent,
     '--card': own('card'), '--raised': own('card'), '--field': own('field'),
     '--hover': alpha(shade, 0.05), '--press': alpha(shade, light ? 0.06 : 0.09),
     '--chip': alpha(shade, light ? 0.07 : 0.08), '--track': light ? alpha(shade, 0.07) : alpha(BLACK, 0.45),
@@ -224,9 +224,12 @@ function colours(modules: ColourThemeModules, mode: ColourMode) {
     '--diff-add': light ? alpha(moved('done', '#28a745'), 0.12) : alpha(done, 0.14),
     '--diff-del': alpha(error, light ? 0.1 : 0.12),
     '--hl': alpha(moved('highlight', '#ffd60a'), light ? 0.45 : 0.35),
-    '--paper': WHITE, '--scrim': light ? alpha(shadowOf(modules), 0.42) : alpha(desktop, 0.55),
+    '--paper': light ? WHITE : parse('#1f1f1f'), '--scrim': light ? alpha(shadowOf(modules), 0.42) : alpha(desktop, 0.55),
     '--hl-yellow': own('highlight'), '--hl-green': parse('#87d99a'), '--hl-blue': parse('#82c7f2'),
-    '--hl-pink': parse('#f0a0be'), '--hl-note': parse('#111111', 0.55), '--hl-sel': parse('#111111', 0.14),
+    '--hl-pink': parse('#f0a0be'),
+    // Dark themes invert the page (tokens.css --paper-filter), so the ink drawn on it turns light.
+    '--hl-note': light ? parse('#111111', 0.55) : parse('#e0e0e0', 0.55),
+    '--hl-sel': light ? parse('#111111', 0.14) : parse('#e0e0e0', 0.2),
   } satisfies Record<string, Colour>
 }
 
@@ -277,6 +280,9 @@ const SURFACES: readonly (readonly ColourToken[])[] = [
 ]
 const CHIPS = SURFACES.map((ground) => [...ground, '--chip'] as const)
 
+/** The neutral box of an in-place message on the canvas, a card and the window. */
+const MESSAGE_BOX = [['--content', '--tint-mut'], ['--card', '--tint-mut'], ['--window', '--sidebar', '--tint-mut']] as const
+
 const over = (module: ColourModule, fg: ColourToken, grounds: readonly (readonly Layer[])[], min = TEXT): ContrastCheck[] =>
   grounds.map((ground) => ({ module, fg, ground, min }))
 
@@ -287,10 +293,21 @@ const HIGHLIGHTED: Layer = ['--hl-yellow', 0.3]
 function contrastChecks(mode: ColourMode): ContrastCheck[] {
   const solid = (fill: ColourToken): (readonly ColourToken[])[] => [[fill], [fill, '--hover-solid'], [fill, '--press-solid']]
   const current = [['--window', '--sidebar', '--accent-soft'], ['--window', '--sidebar', '--accent-soft', '--hover']] as const
+  /** A list's selected row or card, on the canvas, a card or a floating layer, at rest and hovered. */
+  const selectedRow = (['--content', '--card', '--raised'] as const)
+    .flatMap((surface) => [[surface, '--accent-soft'], [surface, '--accent-soft', '--hover']] as const)
+  /**
+   * Where an accent mark (a check mark, the running ring, a progress line) sits: every surface, hovered,
+   * a selected or current row, and a progress line's track on a card, a floating layer or a message box.
+   */
+  const boxes: readonly (readonly ColourToken[])[] = [...MESSAGE_BOX, ['--raised', '--tint-mut']]
+  const marked: readonly (readonly ColourToken[])[] = [...SURFACES.slice(0, 4), ['--card', '--hover'], ['--raised', '--hover'],
+    ['--window', '--sidebar', '--hover'], ...selectedRow, ...current, ['--card', '--track'], ['--raised', '--track'],
+    ...boxes.map((box): readonly ColourToken[] => [...box, '--track'])]
   return [
     ...over('ink', '--ink', [...SURFACES, ...CHIPS, ['--field'], ['--content', '--sel'], ['--card', '--selected', '--hover']]),
     ...over('ink', '--window', [['--ink']]),
-    ...over('inkSecondary', '--sec', [...SURFACES, ...CHIPS, ['--field'], ['--content', '--tint-mut']]),
+    ...over('inkSecondary', '--sec', [...SURFACES, ...CHIPS, ['--field'], ...MESSAGE_BOX]),
     ...over('inkSecondary', '--sec', mode === 'light' ? [[...current[0], '--chip']] : []),
     ...over('inkTertiary', '--ter', mode === 'light' ? [...SURFACES, ...CHIPS] : [...SURFACES, ...CHIPS.slice(0, 4)]),
     ...over('accent', '--ring', [['--content'], ['--window'], ['--field'], ['--card']], MARK),
@@ -298,12 +315,15 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
     ...over('accent', '--on-accent', [['--accent']], MARK),
     ...over('accent', '--on-accent', solid('--accent-solid')),
     ...over('accent', '--accent-solid', [['--content'], ['--card'], ['--window']], MARK),
-    ...over('accent', '--accent-text', current),
+    ...over('accent', '--accent-text', [...current, ...selectedRow]),
+    ...over('accent', '--accent-mark', marked, MARK),
     ...over('error', '--bad', [['--content'], ['--card']], MARK),
     ...over('error', '--on-accent', solid('--bad-solid')),
-    ...over('error', '--bad-text', [...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised']]),
-    ...over('warning', '--warn-text', CHIPS),
-    ...over('done', '--good-text', CHIPS),
+    ...over('error', '--bad-text', [
+      ...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised'], ['--raised', '--hover'], ...MESSAGE_BOX,
+    ]),
+    ...over('warning', '--warn-text', [...CHIPS, ...MESSAGE_BOX]),
+    ...over('done', '--good-text', [...CHIPS, ...MESSAGE_BOX]),
     ...over('highlight', '--ink', [['--card', HIGHLIGHTED], ['--content', HIGHLIGHTED]]),
   ]
 }
@@ -338,7 +358,7 @@ const ratioOf = (values: ColourValues, check: ContrastCheck): number => contrast
  * chroma and hue it keeps when only its lightness moves to meet it.
  */
 const REPAIRED: readonly [ColourToken, ColourModule | null][] = [
-  ['--accent-solid', null], ['--bad-solid', null], ['--accent-text', 'accent'],
+  ['--accent-solid', null], ['--bad-solid', null], ['--accent-text', 'accent'], ['--accent-mark', 'accent'],
   ['--good-text', 'done'], ['--warn-text', 'warning'], ['--bad-text', 'error'],
 ]
 
@@ -383,6 +403,30 @@ function repaired(modules: ColourThemeModules, mode: ColourMode): ColourValues {
 export function deriveColourTokens(modules: ColourThemeModules, mode: ColourMode): Record<ColourToken | ShadowToken, string> {
   const values = Object.entries(repaired(modules, mode)).map(([token, colour]) => [token, cssOf(colour)])
   return { ...Object.fromEntries(values) as Record<ColourToken, string>, ...shadows(modules, mode) }
+}
+
+/** The colour tokens the system's Increase Contrast changes. */
+export type IncreasedContrastToken = '--sep' | '--sep2' | '--sep-strong' | '--ter'
+
+/**
+ * The colour tokens that change while the system's Increase Contrast is on, from the module colours of
+ * one mode: the separator steps toward the secondary ink until it reaches 3:1 on the canvas, a card and
+ * the window, the focused field's border until it reaches 4.5:1 there, the translucent separator
+ * becomes that separator, and tertiary text becomes the secondary.
+ * @returns Each of those tokens mapped to its CSS value.
+ */
+export function increasedContrastTokens(modules: ColourThemeModules, mode: ColourMode): Record<IncreasedContrastToken, string> {
+  const values = repaired(modules, mode)
+  const grounds = [values['--content'], values['--card'], values['--window']]
+  const toward = (min: number): Colour => {
+    for (let p = 100; p >= 0; p -= 1) {
+      const candidate = rounded(mix(parse(modules.separator), p, parse(modules.inkSecondary)))
+      if (grounds.every((ground) => contrastRatio(candidate, ground) >= min)) return candidate
+    }
+    return parse(modules.inkSecondary)
+  }
+  const separator = cssOf(toward(MARK))
+  return { '--sep': separator, '--sep2': separator, '--sep-strong': cssOf(toward(TEXT)), '--ter': cssOf(values['--sec']) }
 }
 
 /** A contrast target the derived tokens miss, with the ratio they reach. */

@@ -2,9 +2,10 @@ import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { KeptText } from '../hooks/useDrafts.js'
 import { useOnLeave } from '../hooks/useOnLeave.js'
-import { composing } from '../lib/keyboard.js'
+import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { FormInput } from './FormControls.js'
+import { CommitActions } from './CommitActions.js'
 import './ShortTextEditor.css'
 
 /**
@@ -97,7 +98,7 @@ export function ShortTextEditor({
       className="short-text-editor" data-busy={busy ? 'true' : undefined} ref={row}
       onClick={(event) => event.stopPropagation()}
     >
-      <div className="short-text-title rh">{title}</div>
+      <div className="rh">{title}</div>
       <form
         className="short-text-form mi-in"
         onSubmit={(event) => { event.preventDefault(); void commit() }}
@@ -113,24 +114,19 @@ export function ShortTextEditor({
           }}
           onKeyDown={(event) => {
             if (event.key !== 'Tab') event.stopPropagation()
-            if (composing(event.nativeEvent)) return
-            if (event.key === 'Enter') { event.preventDefault(); void commit() }
-            if (event.key === 'Escape') {
-              event.preventDefault()
-              if (!busyRef.current) close()
-            }
+            commitKeys({ onSave: () => { void commit() }, onCancel: () => { if (!busyRef.current) close() } })(event)
           }}
         />
         {submitLabel === undefined
           ? null
-          : <button className="btn pri" disabled={busy || value.trim() === ''}>{busy ? savingLabel : submitLabel}</button>}
+          : <CommitActions place="foot" saving={busy} canSave={value.trim() !== ''} saveLabel={submitLabel} busyLabel={savingLabel} />}
       </form>
       {field === undefined ? null : <div className="short-text-field mi-in">{field}</div>}
       {onDelete === undefined
         ? null
         : (
           <>
-            <div className="short-text-separator" />
+            <div className="msep" />
             <button
               type="button" className="short-text-delete mi danger" disabled={busy}
               onClick={() => { onDelete(); onClose() }}

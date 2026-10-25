@@ -95,7 +95,7 @@ describe('WatchSettings', () => {
     const root = createRoot(host)
     api.listError = new CallError('watch.list', 'newer-version')
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
-    expect([host.querySelector('.ipcerror')?.textContent, host.querySelectorAll('.loading-placeholder').length])
+    expect([host.querySelector('.page-error')?.textContent, host.querySelectorAll('.loading-placeholder').length])
       .toEqual(['需要更新 App', 0])
     await act(async () => { root.unmount() })
   })
@@ -107,7 +107,7 @@ describe('WatchSettings', () => {
     await render()
     api.revision = 1
     await render()
-    expect([host.querySelector('.ipcerror'), host.querySelectorAll('[data-w]').length]).toEqual([null, 3])
+    expect([host.querySelector('.page-error'), host.querySelectorAll('[data-w]').length]).toEqual([null, 3])
     await act(async () => { root.unmount() })
   })
 
@@ -129,7 +129,7 @@ describe('WatchSettings', () => {
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
 
     const alert = host.querySelector('.watch-settings [role="alert"]')
-    expect([alert?.className, alert?.textContent]).toEqual(['ipcerror ipcerror--section', '需要更新 App'])
+    expect([alert?.className, alert?.textContent]).toEqual(['inline-message inline-message--box inline-message--error page-error page-error--section', '需要更新 App'])
 
     await act(async () => { root.unmount() })
   })
@@ -171,7 +171,7 @@ describe('WatchSettings', () => {
 
     const label = (id: string) => host.querySelector<HTMLElement>(`[data-w="${id}"] .tag.tag--label`)
     expect([label('topic-1')?.textContent, label('topic-1')?.classList.contains('tag--neutral')]).toEqual(['已暂停', true])
-    expect([label('author-2')?.textContent, label('author-2')?.classList.contains('tag--warn')]).toEqual(['未确认', true])
+    expect([label('author-2')?.textContent, label('author-2')?.classList.contains('tag--warning')]).toEqual(['未确认', true])
     expect(label('author-1')).toBeNull()
 
     await act(async () => { root.unmount() })
@@ -309,6 +309,34 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('每条建议的「＋ 添加」在那一行共享的行操作槽里,悬停或键盘落到那一行才露出,Tab 照样走得到;「添加全部关键词」一直露着', async () => {
+    api.suggest.mockResolvedValueOnce({
+      topics: [{ name: 'batch aware verification', relatedPapers: 3 }, { name: 'draft trees', relatedPapers: 2 }],
+      authors: [{ name: 'Ada Expert', relatedPapers: 2 }],
+      paperCount: 8,
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    await act(async () => { enter(host.querySelector<HTMLInputElement>('input[placeholder="研究方向"]')!, '批量推理的动态验证') })
+    const section = host.querySelector('.watch-suggestions')!
+    await act(async () => { button(section, '查找建议').click() })
+
+    const rows = [...section.querySelectorAll('.watch-suggestion-row')]
+    expect(rows.map((row) => {
+      const add = row.querySelector<HTMLButtonElement>('.add-action')!
+      const slot = add.parentElement!
+      return [row.hasAttribute('data-row-actions'), slot.classList.contains('row-actions'), slot.tabIndex, add.textContent]
+    })).toEqual(rows.map(() => [true, true, 0, '添加']))
+    for (const row of rows) {
+      await act(async () => { row.querySelector<HTMLElement>('.row-actions')!.focus() })
+      expect(document.activeElement).toBe(row.querySelector('.add-action'))
+    }
+    const addAll = button(section.querySelector('.section-heading--group .section-heading-actions')!, '添加全部关键词')
+    expect([addAll.classList.contains('add-action'), addAll.closest('.row-actions')]).toEqual([true, null])
+
+    await act(async () => { root.unmount() })
+  })
+
   it('描述关注方向时输入法组字的回车不查找，组完字后的回车才查找', async () => {
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
@@ -328,6 +356,19 @@ describe('WatchSettings', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('作者搜索进行中时候选的位置是载入占位，不写一句正在查找', async () => {
+    api.search.mockReturnValueOnce(new Promise(() => {}))
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><WatchSettings /></MessagesProvider>) })
+    const authorList = host.querySelector('[data-w="author-1"]')!.closest('.wlist')!
+    await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
+    await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
+    await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
+    expect([host.querySelector('.newrow .loading-placeholder--rows') !== null, host.querySelector('.author-search-note')])
+      .toEqual([true, null])
+    await act(async () => { root.unmount() })
+  })
+
   it('作者搜索与关注建议失败时只显示失败原因', async () => {
     api.search.mockResolvedValueOnce({ kind: 'failed', reason: 'unavailable' })
     api.suggest.mockResolvedValueOnce({ kind: 'failed', reason: 'unknown' })
@@ -338,12 +379,15 @@ describe('WatchSettings', () => {
     await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
     await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
     expect(api.search).toHaveBeenCalledWith('Ada Lovelace')
-    expect(host.querySelector('.author-search-note.error span')?.textContent).toBe('搜索作者失败 · 网络不可用')
+    const searchError = host.querySelector('.author-search-note .inline-message--line.inline-message--error')!
+    expect([searchError.getAttribute('role'), searchError.querySelector('.inline-message-text')?.textContent,
+      searchError.querySelector('.inline-message-action')?.textContent]).toEqual(['alert', '搜索作者失败 · 网络不可用', '重试'])
 
     const section = host.querySelector('.watch-suggestions')!
     await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
-    expect(section.querySelector('.watch-suggestion-error')?.textContent).toBe('生成关注建议失败')
+    expect(section.querySelector('.watch-suggestion-error.inline-message--line.inline-message--error[role="alert"]')?.textContent)
+      .toBe('生成关注建议失败')
     await act(async () => { root.unmount() })
   })
 
@@ -356,13 +400,13 @@ describe('WatchSettings', () => {
     await act(async () => { authorList.previousElementSibling!.querySelector<HTMLButtonElement>('button')!.click() })
     await act(async () => { enter(authorList.querySelector<HTMLInputElement>('.newrow input')!, 'Ada Lovelace') })
     await act(async () => { await new Promise((done) => { setTimeout(done, 750) }) })
-    expect(host.querySelector('.author-search-note.error span')?.textContent)
+    expect(host.querySelector('.author-search-note .inline-message--error .inline-message-text')?.textContent)
       .toBe('搜索作者失败 · 没有 Semantic Scholar key')
 
     const section = host.querySelector('.watch-suggestions')!
     await act(async () => { enter(section.querySelector<HTMLInputElement>('input')!, '我想关注批量推理中的动态验证策略') })
     await act(async () => { button(section, '查找建议').click() })
-    expect(section.querySelector('.watch-suggestion-error')?.textContent).toBe('生成关注建议失败 · 正在限流')
+    expect(section.querySelector('.watch-suggestion-error.inline-message--error')?.textContent).toBe('生成关注建议失败 · 被限流')
     await act(async () => { root.unmount() })
   })
 
@@ -407,7 +451,7 @@ describe('WatchSettings', () => {
     await act(async () => { button(section, '查找建议').click() })
     expect(api.suggest).toHaveBeenLastCalledWith({ source: 'project', projectId: 'project-1' })
     expect(section.textContent).toContain('tree attention kernels')
-    const basis = section.querySelector('.watch-suggestion-results > .ph2')!
+    const basis = section.querySelector('.watch-suggestion-results > .grouped-list > .ph2')!
     expect([basis.firstChild?.textContent, basis.querySelector('.tag')?.textContent]).toEqual(['基于 4 篇相关论文', '离线 · 上次的建议'])
 
     await act(async () => { root.unmount() })

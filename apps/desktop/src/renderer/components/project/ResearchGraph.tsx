@@ -9,25 +9,26 @@ import type {
   Task,
 } from '../../../shared/contract.js'
 import { useWheelZoom } from '../../hooks/useWheelZoom.js'
+import { useElementWidth } from '../../hooks/useElementWidth.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { activeRoutes } from '../../../shared/research-path.js'
 import { recordKind, recordOrigin, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
 import { Markdown } from '../Markdown.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { EmptyState } from '../EmptyState.js'
-import { EntityLink } from '../EntityLink.js'
+import { EntityLink, NODE_MODE_LOOK } from '../EntityLink.js'
 import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
 import { ownIdea, SourceChatDeleted } from '../ideas/IdeaPanel.js'
-import { IconMinus, IconPlus } from '../icons.js'
-import { PanelClose } from '../PanelClose.js'
+import { PanelBody, PanelHead } from '../SidePanel.js'
 import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { ToggleGroup, ToggleItem, Toolbar, ToolbarButton } from '../Toolbar.js'
+import { ToggleGroup, ToggleItem } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
 import { ProjectEventList, ProjectEventRow } from './ProjectSignals.js'
+import { ZoomControl, zoomStep } from '../ZoomControl.js'
 import './ResearchGraph.css'
 
 type GraphNode = Graph['nodes'][number]
@@ -85,6 +86,37 @@ export function fittedView(content: { width: number; height: number }, width: nu
 /** A node's research state, the one the graph colours its dot by. */
 export const nodeMode = (node: GraphNode): NonNullable<GraphNode['mode']> =>
   node.mode ?? (node.state === 'done' ? 'supported' : 'unresolved')
+
+/** Where a node's state mark sits in the node, and its radius. */
+const MARK = { x: 18, y: GRAPH_NODE_HEIGHT / 2, r: 4 }
+/** A circle of radius `r` round the mark's centre as a path; `back` runs it the other way, which cuts it out of the one before. */
+const circle = (r: number, back = false) =>
+  `M${MARK.x - r} ${MARK.y}a${r} ${r} 0 1 ${back ? 1 : 0} ${2 * r} 0a${r} ${r} 0 1 ${back ? 1 : 0} ${-2 * r} 0Z`
+/** The hollow of a ring: the mark less its rim. */
+const HOLE = 2.5
+/** The half of a cross's arm width along each axis, and how far the cross reaches from the centre. */
+const ARM = 1.13
+const REACH = 3.2
+
+/**
+ * A node's state mark, whose shape says the state as its colour does (NODE_MODE_LOOK): a dot for a
+ * verified node, a ring for a candidate, a ring half filled for one that needs repair, and a cross for
+ * a failed one. Every part takes the dot's class, which colours it by the state.
+ */
+function StateMark({ mode }: { mode: NonNullable<GraphNode['mode']> }) {
+  const { fill } = NODE_MODE_LOOK[mode]
+  if (fill === 'full') return <circle cx={MARK.x} cy={MARK.y} r={MARK.r} className="nd" />
+  if (fill === 'cross') {
+    const [x, y, a, d] = [MARK.x, MARK.y, REACH, ARM]
+    const corners = [[-a, -a + d], [-a + d, -a], [0, -d], [a - d, -a], [a, -a + d], [d, 0], [a, a - d], [a - d, a], [0, d],
+      [-a + d, a], [-a, a - d], [-d, 0]]
+    return <path className="nd" d={`M${corners.map(([dx, dy]) => `${x + dx!} ${y + dy!}`).join('L')}Z`} />
+  }
+  const ring = `${circle(MARK.r)}${circle(HOLE, true)}`
+  // The left half of the hollow, drawn from its top to its bottom round the left.
+  const half = `M${MARK.x} ${MARK.y - HOLE}a${HOLE} ${HOLE} 0 0 0 0 ${2 * HOLE}Z`
+  return <path className="nd" d={fill === 'half' ? `${ring}${half}` : ring} />
+}
 
 /**
  * Lay out the read-only graph from topology instead of persisted display coordinates.
@@ -184,12 +216,13 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   onSelect: (nodeId: string) => void
 }) {
   const m = useMessages()
+  const legend = m.project.graph.legend
   const ideaPatternId = `idea-node-hatch-${useId().replaceAll(':', '')}`
   const viewport = useRef<HTMLDivElement>(null)
   const panStart = useRef<{
     pointerId: number; clientX: number; clientY: number; x: number; y: number
   } | null>(null)
-  const [viewportWidth, setViewportWidth] = useState(780)
+  const viewportWidth = useElementWidth(viewport)
   const [view, setView] = useState(UNMOVED)
   const [panning, setPanning] = useState(false)
   // Until the user zooms or pans, the view follows the fitted one as the viewport's width settles.
@@ -200,15 +233,6 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
   const contentHeight = Math.max(0, ...layout.nodes.map((node) => node.y + GRAPH_NODE_HEIGHT))
   const fitted = fittedView({ width: contentWidth, height: contentHeight }, viewportWidth)
 
-  useEffect(() => {
-    const element = viewport.current
-    if (element === null) return
-    const sync = () => setViewportWidth(element.clientWidth)
-    sync()
-    const resize = new ResizeObserver(sync)
-    resize.observe(element)
-    return () => resize.disconnect()
-  }, [graph.nodes.length])
   useEffect(() => {
     moved.current = false
     setView(fitted)
@@ -267,7 +291,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
     zoomAt(view.zoom * factor, point.x - rect.left, point.y - rect.top)
   })
   const startPan = (event: ReactPointerEvent<HTMLDivElement>) => {
-    if ((event.target as Element).closest('.rgn,.graph-view-controls')) return
+    if ((event.target as Element).closest('.rgn,.zoom-control')) return
     panStart.current = {
       pointerId: event.pointerId,
       clientX: event.clientX,
@@ -333,9 +357,15 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
               {readingOrder.map((node) => {
                 const ideaRelated = ideaNodes.has(node.id)
                 const onRoute = routes.nodes.has(node.id) && !activeNodeIds.has(node.id)
+                const states = [
+                  legend[NODE_MODE_LOOK[nodeMode(node)].legend],
+                  ...(activeNodeIds.has(node.id) ? [legend.inProgress] : []),
+                  ...(onRoute ? [legend.activePath] : []),
+                  ...(ideaRelated ? [legend.ideaLinked] : []),
+                ]
                 return (
                   <Tooltip key={node.id} label={node.label} whenClipped>
-                    <ToggleItem asChild value={node.id} aria-label={node.label}>
+                    <ToggleItem asChild value={node.id} aria-label={m.project.graph.nodeName(node.label, states.join(m.project.graph.stateSeparator))}>
                       <g
                         className={`rgn ${node.state} ${nodeMode(node)}${onRoute ? ' active-path-node-graph' : ''}${activeNodeIds.has(node.id) ? ' active-leaf' : ''}${ideaRelated ? ' idea-related' : ''}${node.id === selected ? ' sel' : ''}`}
                         data-node={node.id} transform={`translate(${node.x},${node.y})`}
@@ -353,7 +383,7 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
                           style={ideaRelated ? { fill: `url(#${ideaPatternId})` } : undefined}
                         />
                         <rect className="rgn-hover" width={node.width} height={GRAPH_NODE_HEIGHT} />
-                        <circle cx="18" cy={GRAPH_NODE_HEIGHT / 2} r="4" className="nd" />
+                        <StateMark mode={nodeMode(node)} />
                         <foreignObject
                           x={GRAPH_LABEL_LEFT} width={node.width - GRAPH_LABEL_LEFT - GRAPH_LABEL_RIGHT}
                           height={GRAPH_NODE_HEIGHT}
@@ -368,37 +398,23 @@ export function ResearchGraph({ graph, selected, ideaNodeIds = [], onSelect }: {
             </g>
           </ToggleGroup>
         </svg>
-        <Toolbar>
-          <div className="graph-view-controls">
-            <IconButton
-              label={m.project.graph.zoomOut} size="nested" disabled={view.zoom <= GRAPH_MIN_ZOOM}
-              onClick={() => zoomAt(view.zoom / 1.2)}
-            >
-              <IconMinus />
-            </IconButton>
-            <Tooltip label={m.project.graph.resetView}>
-              <ToolbarButton
-                className="btn ghost sm graph-zoom-reset"
-                onClick={() => {
-                  moved.current = false
-                  setView(fitted)
-                }}
-              >{Math.round(view.zoom * 100)}%</ToolbarButton>
-            </Tooltip>
-            <IconButton
-              label={m.project.graph.zoomIn} size="nested" disabled={view.zoom >= GRAPH_MAX_ZOOM}
-              onClick={() => zoomAt(view.zoom * 1.2)}
-            >
-              <IconPlus />
-            </IconButton>
-          </div>
-        </Toolbar>
+        <ZoomControl
+          place="corner" zoom={view.zoom} min={GRAPH_MIN_ZOOM} max={GRAPH_MAX_ZOOM}
+          onZoom={(direction) => zoomAt(zoomStep(view.zoom, direction))}
+          onReset={() => {
+            moved.current = false
+            setView(fitted)
+          }}
+          labels={{ out: m.project.graph.zoomOut, in: m.project.graph.zoomIn, reset: m.project.graph.resetView }}
+        />
       </div>
       <div className="glegend">
-        <span className="legend-item"><StatusDot tone="warn" size="md" />{m.project.graph.legend.needsRepair}</span>
-        <span className="legend-item"><StatusDot tone="good" size="md" />{m.project.graph.legend.verified}</span>
-        <span className="legend-item"><StatusDot tone="bad" size="md" />{m.project.graph.legend.failed}</span>
-        <span className="legend-item"><StatusDot tone="neutral" size="md" />{m.project.graph.legend.candidate}</span>
+        {(['repairable', 'supported', 'dead', 'unresolved'] as const).map((mode) => (
+          <span className="legend-item" key={mode}>
+            <StatusDot tone={NODE_MODE_LOOK[mode].tone} fill={NODE_MODE_LOOK[mode].fill} size="md" />
+            {legend[NODE_MODE_LOOK[mode].legend]}
+          </span>
+        ))}
         {routes.nodes.size === 0 ? null : (
           <>
             <span className="legend-divider" aria-hidden="true" />
@@ -488,99 +504,96 @@ export function ResearchNodePanel({
 
   return (
     <>
-      <SectionHeading
-        variant="rail" className="node-document-head"
-        actions={<PanelClose onClose={onClose} />}
-      ><FadeText className="node-document-title" label={node.label}>{node.label}</FadeText>
-      </SectionHeading>
-      {children.length === 0 ? null : (
-        <>
-          <SectionHeading variant="rail">{m.project.graph.branchSummary(children.length)}</SectionHeading>
-          <div className="node-branch-groups">
-            {branches.map((group) => (
-              <div className={`node-branch-group ${group.key}`} key={group.key}>
-                <span className="node-branch-label">{group.label}</span>
-                <div className="node-branch-list">
-                  {group.nodes.map((child) => (
-                    <EntityLink
-                      kind="node" key={child.id} label={child.label} mode={nodeMode(child)} onOpen={() => onSelect(child.id)}
-                    />
-                  ))}
+      <PanelHead title={node.label} onClose={onClose} />
+      <PanelBody>
+        {children.length === 0 ? null : (
+          <>
+            <SectionHeading level="group" count={children.length}>{m.project.graph.branchSummary}</SectionHeading>
+            <div className="node-branch-groups">
+              {branches.map((group) => (
+                <div className={`node-branch-group ${group.key}`} key={group.key}>
+                  <span className="node-branch-label">{group.label}</span>
+                  <div className="node-branch-list">
+                    {group.nodes.map((child) => (
+                      <EntityLink
+                        kind="node" key={child.id} label={child.label} mode={nodeMode(child)} onOpen={() => onSelect(child.id)}
+                      />
+                    ))}
+                  </div>
                 </div>
-              </div>
-            ))}
-          </div>
-        </>
-      )}
-
-      <SectionHeading variant="rail">{m.project.graph.tasks(tasks.length)}</SectionHeading>
-      {tasks.length === 0
-        ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
-        : (
-          <StructuredList className="node-tasks" variant="embedded">
-            {tasks.map((task) => (
-              <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
-                <FadeText>{task.title}</FadeText>
-                {task.origin === 'agent' ? <AgentLabel /> : null}
-              </StructuredRow>
-            ))}
-          </StructuredList>
+              ))}
+            </div>
+          </>
         )}
 
-      <SectionHeading variant="rail">{m.project.linkedIdeas(ideas.length)}</SectionHeading>
-      {ideas.length === 0
-        ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
-        : (
-          <StructuredList className="node-ideas" variant="embedded">
-            {ideas.map((idea) => {
-              const source = idea.source.paperTitle === undefined
-                ? plainTitle(idea.source.chatTitle)
-                : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
-              return (
-                <StructuredRow
-                  className="node-idea-row" data-idea={idea.id} key={idea.id}
-                  onActivate={() => onSelectIdea(idea.id)}
-                >
-                  <FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>
-                  {ownIdea(idea) ? null : (
-                    <span className="node-idea-source-line">
-                      <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
-                        {m.project.idea.sourceTag(source)}
-                      </FadeText>
-                      {chatDeleted(idea) ? <SourceChatDeleted /> : null}
-                    </span>
-                  )}
-                </StructuredRow>
-              )
-            })}
-          </StructuredList>
+        <SectionHeading level="group" count={tasks.length}>{m.project.graph.tasks}</SectionHeading>
+        {tasks.length === 0
+          ? <EmptyState variant="section" />
+          : (
+            <List className="node-tasks" variant="embedded">
+              {tasks.map((task) => (
+                <Item
+                  className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}
+                  title={<FadeText>{task.title}</FadeText>} tags={task.origin === 'agent' ? <AgentLabel /> : null}
+                />
+              ))}
+            </List>
+          )}
+
+        <SectionHeading level="group" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
+        {ideas.length === 0
+          ? <EmptyState variant="section" />
+          : (
+            <List className="node-ideas" variant="embedded">
+              {ideas.map((idea) => {
+                const source = idea.source.paperTitle === undefined
+                  ? plainTitle(idea.source.chatTitle)
+                  : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
+                return (
+                  <Item
+                    className="node-idea-row" data-idea={idea.id} key={idea.id} lines={2}
+                    onActivate={() => onSelectIdea(idea.id)}
+                    title={<FadeText className="node-idea-title" label={idea.title}>{idea.title}</FadeText>}
+                    meta={ownIdea(idea) ? null : (
+                      <>
+                        <FadeText className="node-idea-source" label={m.project.idea.sourceTag(source)}>
+                          {m.project.idea.sourceTag(source)}
+                        </FadeText>
+                        {chatDeleted(idea) ? <SourceChatDeleted /> : null}
+                      </>
+                    )}
+                  />
+                )
+              })}
+            </List>
+          )}
+
+        {nodeEvents.length === 0 ? null : (
+          <>
+            <SectionHeading level="group" count={nodeEvents.length}>{m.project.graph.records}</SectionHeading>
+            <ProjectEventList className="node-event-list">
+              {nodeEvents.map((event, index) => (
+                <ProjectEventRow
+                  key={`${event.date} ${index}`}
+                  kind={recordKind(event)} date={event.date} title={event.text} detail={event.detail} origin={recordOrigin(event)}
+                />
+              ))}
+            </ProjectEventList>
+          </>
         )}
 
-      {nodeEvents.length === 0 ? null : (
-        <>
-          <SectionHeading variant="rail">{m.project.graph.records(nodeEvents.length)}</SectionHeading>
-          <ProjectEventList className="node-event-list">
-            {nodeEvents.map((event, index) => (
-              <ProjectEventRow
-                key={`${event.date} ${index}`}
-                kind={recordKind(event)} date={event.date} title={event.text} detail={event.detail} origin={recordOrigin(event)}
-              />
-            ))}
-          </ProjectEventList>
-        </>
-      )}
-
-      {document.body === '' ? null : (
-        <div className="node-markdown"><div className="md"><Markdown src={document.body} titles={{}} /></div></div>
-      )}
-
-      {node.markdownPath === undefined
-        ? null
-        : (
-          <FadeText className="node-document-source" label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`}>
-            {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
-          </FadeText>
+        {document.body === '' ? null : (
+          <div className="node-markdown"><div className="md"><Markdown src={document.body} titles={{}} /></div></div>
         )}
+
+        {node.markdownPath === undefined
+          ? null
+          : (
+            <FadeText className="node-document-source" label={`${node.markdownPath}${node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}`}>
+              {node.markdownPath}{node.markdownAnchor === undefined ? '' : `#${node.markdownAnchor}`}
+            </FadeText>
+          )}
+      </PanelBody>
     </>
   )
 }

@@ -112,7 +112,7 @@ test('论文详情开着时再点侧栏「论文」,详情收起回到表格', a
 
 test('coding agent 在项目工作区记下的想法出现在想法页,标着 agent,来源写那个项目,不算放进那个项目,没有「打开来源对话」', async ({ win }) => {
   const repo = mkdtempSync(join(tmpdir(), 'meridian-agent-ideas-'))
-  const ideaCount = win.locator('[data-desk="ideas"] .n')
+  const ideaCount = win.locator('[data-desk="ideas"] .nav-row-count')
   const before = Number(await ideaCount.textContent())
   try {
     await win.evaluate((root) => (window as unknown as MeridianWindow).meridian.call('project.bindWorkspace', {
@@ -234,11 +234,11 @@ test('项目名很长、行又放不下时,标题留够十二个字,放不下的
     await app.evaluate(({ BrowserWindow }, size) => BrowserWindow.getAllWindows()[0]!.setContentSize(size.width, size.height), { width, height })
     await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(width)
     expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height}`).toEqual([])
-    expect(await narrowTitles(shown(win).locator('.idea-row-open')), `${width}×${height}`).toEqual([])
+    expect(await narrowTitles(shown(win).locator('.idea-row > .item-main')), `${width}×${height}`).toEqual([])
     await row.click()
     await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(1)
     expect(await unfitTags(shown(win).locator('.ideas-list')), `${width}×${height} 详情开着`).toEqual([])
-    expect(await narrowTitles(shown(win).locator('.idea-row-open')), `${width}×${height} 详情开着`).toEqual([])
+    expect(await narrowTitles(shown(win).locator('.idea-row > .item-main')), `${width}×${height} 详情开着`).toEqual([])
     await shown(win).locator('.idea-detail-panel .panel-close').click()
     await expect(shown(win).locator('.idea-detail-panel')).toHaveCount(0)
   }

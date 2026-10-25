@@ -10,7 +10,7 @@ async function openReader(win: Page): Promise<void> {
   await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await shown(win, '.paper-detail-slot [aria-label="开始阅读"]').click()
   await shown(win, '[aria-label="阅读笔记"]').click()
 }
 
@@ -21,7 +21,8 @@ test('关掉 App 再打开,没存的阅读笔记和论文对话里没发出的�
 
   const reopened = await relaunch(app, configHome, profile)
   try {
-    await openReader(reopened.win)
+    // The App reopens the reader on the paper it showed; its side panel opens on its first tab.
+    await shown(reopened.win, '[aria-label="阅读笔记"]').click()
     const note = shown(reopened.win, 'textarea[aria-label="新笔记"]')
     await expect(note).toHaveValue('没存的笔记')
     await expect(reopened.win.locator('.paper-chat [contenteditable="true"]')).toHaveText('没发出的问题')
@@ -98,7 +99,7 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
   const first = await relaunch(app, configHome, profile)
   let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
-    await first.win.locator('[data-desk="resproj"]').click()
+    // The App reopens on Projects, where the name was typed; a click outside the open row would create it.
     await expect(shown(first.win, '.projpanel .inedit')).toHaveValue('打了一半的项目名')
     const projects = await first.win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.list', {}))
     expect(JSON.stringify(projects)).not.toContain('打了一半的项目名')
@@ -107,14 +108,15 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
     await gotoProject(first.win)
     const plan = shown(first.win, '.project-plan')
     await plan.locator('[aria-label="添加任务"]').first().click()
-    await plan.locator('.task-create-row .tag').click()
-    await plan.locator('.task-create-row .min').fill('打了一半的任务')
+    await plan.locator('.task-create-row .plan-priority').click()
+    await first.win.locator('[role="menuitemradio"]', { hasText: 'P2' }).click()
+    await plan.locator('.task-create-row input').fill('打了一半的任务')
 
     second = await relaunch(first.app, configHome, profile)
     await gotoProject(second.win)
     const row = shown(second.win, '.project-plan .task-create-row')
-    await expect(row.locator('.min')).toHaveValue('打了一半的任务')
-    await expect(row.locator('.tag')).toHaveText('P2')
+    await expect(row.locator('input')).toHaveValue('打了一半的任务')
+    await expect(row.locator('.plan-priority')).toHaveText('P2')
     const kept = await second.win.evaluate(() => Object.keys(window.localStorage)
       .filter((key) => key.startsWith('meridian.drafts:'))
       .map((key) => window.localStorage.getItem(key)!).join(''))
@@ -142,7 +144,7 @@ test('关掉 App 再打开,选中文字后工具条里没存的批注和论文�
   const first = await relaunch(app, configHome, profile)
   let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
-    await openReader(first.win)
+    // The App reopens the reader on the paper it showed, with the toolbar's kept note.
     await expect(first.win.locator('.selection-tools textarea[aria-label="批注"]')).toHaveValue('没存的批注')
     expect(await highlights(first.win)).toBe(before)
     await first.win.keyboard.press('Escape')

@@ -2,7 +2,8 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ProjectSummary, ResearchIdea } from '../../shared/contract.js'
+import type { CallFailure, ProjectSummary, ResearchIdea } from '../../shared/contract.js'
+import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import type { ScreenJump } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -55,6 +56,8 @@ const api = vi.hoisted(() => ({
   place: vi.fn(async () => ({ idea: {}, project: null, nodeId: null })),
   /** The project details `project.get` answers with, by id. */
   details: {} as Record<string, unknown>,
+  /** The reason `project.get` fails with, by id, for a project that cannot be read. */
+  unreadable: {} as Record<string, CallFailure>,
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
   remove: vi.fn(async () => ({ trash: 'trash-idea' })),
   restored: [] as string[],
@@ -80,10 +83,18 @@ vi.mock('../ipc.js', () => ({
     reorder: api.reorder,
     create: api.create,
   },
-  project: { list: async () => structuredClone(api.projects), get: async (id: string) => structuredClone(api.details[id]) },
+  project: {
+    list: async () => structuredClone(api.projects),
+    get: async (id: string) => {
+      const reason = api.unreadable[id]
+      if (reason !== undefined) throw new CallError('project.get', reason)
+      return structuredClone(api.details[id])
+    },
+  },
   wiki: { cards: async () => [{ id: 'topics/sd', title: '推测解码' }, { id: 'topics/kv', title: 'KV 量化' }] },
   chat: { list: async () => structuredClone(api.chats) },
   trash: { restore: async (id: string) => { api.restored.push(id) } },
+  library: { location: async () => ({ root: '/vaults/ideas-test' }) },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
@@ -97,6 +108,7 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 const { Ideas } = await import('./Ideas.js')
+const { DraftsProvider } = await import('../hooks/useDrafts.js')
 
 describe('Ideas', () => {
   let host: HTMLDivElement
@@ -138,19 +150,19 @@ describe('Ideas', () => {
   it('想法按做到哪一步分组：未开始是卡片，进行中和已完成是行，放下的收进已归档；搁置项目里的想法算进行中，带搁置标签', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const groups = [...host.querySelectorAll<HTMLElement>('.ideas-list .section-heading')].map((heading) => heading.textContent)
-    expect(groups).toEqual(['未开始 · 1', '进行中 · 2', '已完成 · 1', '各项目的想法'])
+    expect(groups).toEqual(['未开始 · 1', '进行中 · 2', '已完成 · 1', '已归档 · 1', '各项目的想法'])
     const row = (id: string) => host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!
-    expect(row('idea-independent').classList.contains('research-object-card')).toBe(true)
+    expect(row('idea-independent').classList.contains('item--card')).toBe(true)
     expect(row('idea-independent').textContent).not.toContain('还没有关联项目。')
     expect([...row('idea-independent').querySelectorAll('.idea-relation-tag')].map((tag) => tag.textContent))
       .toEqual(['项目 · 推测解码', 'Wiki · KV 量化'])
     expect(row('idea-independent').textContent).toContain('来源 · 已完成实验 · 推测解码的可学习性 · 新方向')
-    for (const id of ['idea-linked', 'idea-paused', 'idea-completed']) expect(row(id).classList.contains('structured-row')).toBe(true)
+    for (const id of ['idea-linked', 'idea-paused', 'idea-completed']) expect(row(id).classList.contains('item')).toBe(true)
     expect([...row('idea-linked').querySelectorAll('.idea-row-work .tag')].map((tag) => tag.textContent)).toEqual(['推测解码'])
     expect([...row('idea-paused').querySelectorAll('.idea-row-work .tag')].map((tag) => tag.textContent)).toEqual(['搁置项目', '搁置'])
-    expect(row('idea-completed').closest('.structured-list')!.previousElementSibling!.textContent).toBe('已完成 · 1')
-    const archived = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
-    expect(archived.querySelector('.collapsible-group-count')!.textContent).toBe(' · 1')
+    expect(row('idea-completed').closest('.list')!.previousElementSibling!.textContent).toBe('已完成 · 1')
+    const archived = host.querySelector<HTMLElement>('.ideas-list .collapsible-group')!
+    expect(archived.querySelector('.heading-count')!.textContent).toBe(' · 1')
   })
 
   it('放在项目里一个已经收尾的科研节点上的想法算已完成，项目还在进行', async () => {
@@ -160,7 +172,7 @@ describe('Ideas', () => {
     api.ideas.push({ ...OWN, id: 'idea-node', title: '节点上的想法', project: 'project-active', node: 'n-done' })
     try {
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-      expect(host.querySelector('[data-idea="idea-node"]')!.closest('.structured-list')!.previousElementSibling!.textContent).toBe('已完成 · 2')
+      expect(host.querySelector('[data-idea="idea-node"]')!.closest('.list')!.previousElementSibling!.textContent).toBe('已完成 · 2')
     } finally {
       api.ideas.pop()
     }
@@ -168,11 +180,11 @@ describe('Ideas', () => {
 
   it('各项目的想法按想法冒出来的项目数：每个项目一行，想法、进行中和已完成三栏，多的在前；点一行打开那个项目', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    const rows = [...host.querySelectorAll<HTMLElement>('.idea-stats .idea-stats-row')]
-    expect(host.querySelector('.idea-stats-head')!.textContent).toBe('想法进行中已完成')
+    const rows = [...host.querySelectorAll<HTMLElement>('table.idea-stats tbody tr')]
+    expect(host.querySelector('table.idea-stats thead')!.textContent).toBe('想法进行中已完成')
     expect(rows.map((row) => [...row.children].map((cell) => cell.textContent)))
       .toEqual([['推测解码', '2', '1', '1'], ['已完成实验', '1', '0', '0'], ['搁置项目', '0', '0', '0']])
-    expect(host.querySelector('.idea-stats')!.classList.contains('structured-list--embedded')).toBe(true)
+    expect(host.querySelector('table.idea-stats')!.parentElement!.classList.contains('table-scroll--capped')).toBe(true)
     await act(async () => { rows[0]!.click() })
     expect(api.open).toHaveBeenCalledWith('project', 'project-active')
   })
@@ -181,7 +193,7 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const actions = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')]
     expect(actions.map((b) => [b.textContent, b.className.split(' ').slice(0, 2).join(' ')]))
-      .toEqual([['排序', 'btn sort-menu'], ['新建想法', 'btn pri']])
+      .toEqual([['排序', 'btn sort-menu'], ['新建想法', 'btn add-action']])
     expect(host.querySelector('.ideas-list .section-heading .section-heading-actions')).toBeNull()
   })
 
@@ -194,7 +206,7 @@ describe('Ideas', () => {
   const press = (field: Element, key: string, metaKey = false) => act(() => {
     field.dispatchEvent(new KeyboardEvent('keydown', { key, metaKey, bubbles: true, cancelable: true }))
   })
-  const draft = () => host.querySelector<HTMLElement>('.ideas-list > .idea-draft-card')
+  const draft = () => host.querySelector<HTMLElement>('.ideas-list > .grouped-list > .idea-draft-card')
   const openDraft = () => act(async () => {
     [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')].at(-1)!.click()
   })
@@ -215,11 +227,26 @@ describe('Ideas', () => {
     expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
   })
 
+  it('新建想法打到一半离开这一屏，回来时草稿卡还在原处，打到的字也在，按新建只把光标送回去', async () => {
+    const screen = (shown: boolean) => <DraftsProvider><MessagesProvider>{shown ? <Ideas /> : null}</MessagesProvider></DraftsProvider>
+    await act(async () => { root.render(screen(true)) })
+    await openDraft()
+    act(() => { type(draft()!.querySelector('input')!, '按层分配位宽') })
+    await act(async () => { root.render(screen(false)) })
+    expect(draft()).toBeNull()
+    await act(async () => { root.render(screen(true)) })
+    expect(draft()!.querySelector('input')!.value).toBe('按层分配位宽')
+    await openDraft()
+    expect(host.querySelectorAll('.idea-draft-card')).toHaveLength(1)
+    expect(document.activeElement).toBe(draft()!.querySelector('input'))
+    window.localStorage.clear()
+  })
+
   it('新建想法的草稿卡里是对话存为想法用的同一个草稿表单，取消和保存在它的底部', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await openDraft()
-    const card = host.querySelector('.ideas-list > .section-heading')!.nextElementSibling!
-    expect([card.classList.contains('research-object-card'), card.firstElementChild?.className])
+    const card = host.querySelector('.ideas-list > .grouped-list > .section-heading')!.nextElementSibling!
+    expect([card.classList.contains('item--card'), card.firstElementChild?.className])
       .toEqual([true, 'draft-form idea-draft'])
     expect([...card.querySelectorAll('.draft-form-foot button')].map((button) => button.textContent)).toEqual(['取消', '保存'])
   })
@@ -238,14 +265,14 @@ describe('Ideas', () => {
       expect(api.update).not.toHaveBeenCalled()
       expect(draft()).toBeNull()
       expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
-      const first = () => host.querySelector('.ideas-list > .section-heading')!.nextElementSibling
+      const first = () => host.querySelector('.ideas-list > .grouped-list > .section-heading')!.nextElementSibling
       expect(first()?.getAttribute('data-idea')).toBe('idea-own')
-      expect(first()?.classList.contains('selected')).toBe(true)
-      expect(host.querySelector('.idea-detail-slot .node-document-title')?.textContent).toBe('按 batch 校准阈值')
+      expect(first()?.classList.contains('item--selected')).toBe(true)
+      expect(host.querySelector('.idea-detail-panel .panel-head-title')?.textContent).toBe('按 batch 校准阈值')
       api.revision += 1
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
       expect(first()?.getAttribute('data-idea')).toBe('idea-own')
-      expect(first()?.classList.contains('selected')).toBe(true)
+      expect(first()?.classList.contains('item--selected')).toBe(true)
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
       api.revision = 0
@@ -265,7 +292,7 @@ describe('Ideas', () => {
       await act(async () => { save.click() })
       expect(api.create).toHaveBeenCalledWith(undefined, '按 batch 校准阈值', '先在两个 batch 上试。')
       expect(draft()).toBeNull()
-      expect(host.querySelector('.ideas-list > .section-heading')!.nextElementSibling?.getAttribute('data-idea')).toBe('idea-own')
+      expect(host.querySelector('.ideas-list > .grouped-list > .section-heading')!.nextElementSibling?.getAttribute('data-idea')).toBe('idea-own')
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
     }
@@ -346,13 +373,13 @@ describe('Ideas', () => {
     api.ideas.push(OWN)
     try {
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-      expect([...host.querySelector('[data-idea="idea-own"] .idea-card-meta')!.children].map((child) => child.className))
+      expect([...host.querySelector('[data-idea="idea-own"] .item-meta')!.children].map((child) => child.className))
         .toEqual(['trailing-date'])
       expect(host.querySelector('[data-idea="idea-own"]')!.textContent).not.toContain('手动添加')
       await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-own"]')!.click() })
-      expect([...host.querySelectorAll('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((h) => h.firstChild!.textContent))
+      expect([...host.querySelectorAll('.idea-detail-panel .panel-body > .section-heading')].map((h) => h.firstChild!.textContent))
         .toEqual(['内容', '关联', '所在项目'])
-      expect(host.querySelector('.idea-detail-slot')!.textContent).not.toContain('手动添加')
+      expect(host.querySelector('.idea-detail-panel')!.textContent).not.toContain('手动添加')
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
     }
@@ -401,8 +428,8 @@ describe('Ideas', () => {
       const meta = (id: string, part: string) => [...host.querySelector(`[data-idea="${id}"] ${part}`)!.children]
         .map((child) => (child.classList.contains('source-label') ? `[${child.textContent}]` : child.className))
       expect(meta('idea-linked', '.idea-row-meta')).toEqual(['fade-text idea-card-source', '[对话]'])
-      expect(meta('idea-independent', '.idea-card-meta')).toEqual(['fade-text idea-card-source', '[论文阅读]', 'trailing-date'])
-      expect(meta('idea-agent', '.idea-card-meta')).toEqual(['fade-text idea-card-source', '[agent]', 'trailing-date'])
+      expect(meta('idea-independent', '.item-meta')).toEqual(['fade-text idea-card-source', '[论文阅读]', 'trailing-date'])
+      expect(meta('idea-agent', '.item-meta')).toEqual(['fade-text idea-card-source', '[agent]', 'trailing-date'])
     } finally {
       api.ideas.pop()
     }
@@ -410,10 +437,10 @@ describe('Ideas', () => {
 
   it('卡片和行展示判断所需的标题、关联或所在项目、来源和时间，正文留在详情里；点击后在右侧编辑', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
+    expect(host.querySelector('.idea-detail-panel')).toBeNull()
 
     const linked = host.querySelector('[data-idea="idea-linked"]')!
-    expect(linked.classList.contains('structured-row')).toBe(true)
+    expect(linked.classList.contains('item')).toBe(true)
     // The project tag names the project inside a row that opens the idea, so it is a label, not a link.
     expect(linked.querySelector('.idea-row-work .tag')!.className).toContain('tag--neutral')
     expect(linked.textContent).not.toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
@@ -426,24 +453,28 @@ describe('Ideas', () => {
 
     const independent = host.querySelector('[data-idea="idea-independent"]')!
     expect(independent.getAttribute('role')).toBeNull()
-    expect(independent.querySelector('.research-object-card-open')!.textContent).toBe('独立想法')
+    expect(independent.querySelector('.item-open')!.textContent).toBe('独立想法')
     expect(independent.textContent).toContain('论文阅读')
     expect(independent.textContent).toContain('9月17日 更新')
 
     await act(async () => { (linked as HTMLElement).click() })
-    expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('open')
+    // The same card panel as the project page's, with the same head: the title, then the edit and the close, both compact.
     const detail = host.querySelector('.idea-detail-panel')!
-    expect(detail.querySelector('.idea-panel-head .node-document-title')!.textContent)
+    expect([detail.tagName, detail.className, detail.getAttribute('aria-label')])
+      .toEqual(['ASIDE', 'side-panel side-panel--card idea-detail-panel', '想法详情'])
+    expect(detail.querySelector('.panel-head .panel-head-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
-    expect([...detail.querySelectorAll('.section-heading--rail')].map((heading) => heading.textContent))
-      .toEqual(['用可学习性信号动态分配 draft model 的蒸馏预算编辑', '内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
+    expect([...detail.querySelectorAll('.panel-head button')].map((item) => [item.textContent || item.getAttribute('aria-label'), item.className]))
+      .toEqual([['编辑', 'btn sm'], ['收起详情', 'icbtn sm panel-close']])
+    expect([...detail.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
+      .toEqual(['内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
       .find((item) => item.textContent === '编辑')!
     await act(async () => { edit.click() })
     expect(detail.querySelector('.idea-detail-editor')).not.toBeNull()
     expect(document.querySelector('.idea-dialog')).toBeNull()
-    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')]
+    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')]
       .map((item) => item.textContent)
     expect(headButtons()).toEqual(['取消', '保存'])
     expect(detail.querySelector('.idea-detail-editor button')).toBeNull()
@@ -454,7 +485,7 @@ describe('Ideas', () => {
     expect(detail.querySelector('.idea-detail-editor')).toBeNull()
     expect(api.update).not.toHaveBeenCalled()
     await act(async () => {
-      [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')].find((item) => item.textContent === '编辑')!.click()
+      [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')].find((item) => item.textContent === '编辑')!.click()
     })
     await act(async () => {
       detail.querySelector('.idea-detail-editor input')!
@@ -496,18 +527,27 @@ describe('Ideas', () => {
     await act(async () => {
       host.querySelector<HTMLButtonElement>('.idea-detail-panel .panel-close')!.click()
     })
-    expect(host.querySelector('.idea-detail-slot')?.getAttribute('data-panel-state')).toBe('closed')
     expect(host.querySelector('.idea-detail-panel')).toBeNull()
+  })
+
+  it('想法列表和开着的详情面板是同一个分栏页的两栏:列表在自己那一栏里滚动,不随整页滚,面板从同一个顶端排起', async () => {
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    const split = () => host.querySelector('.ideas-body > .split-page')
+    expect([...split()!.children].map((column) => column.className)).toEqual(['scroll-area scroll-area--y split-column'])
+    expect(split()!.querySelector(':scope > .split-column > .ideas-list')).not.toBeNull()
+    await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
+    expect([split()!.className, ...[...split()!.children].map((column) => column.className)])
+      .toEqual(['split-page split-page--rail', 'scroll-area scroll-area--y split-column', 'side-panel side-panel--card idea-detail-panel'])
   })
 
   it('已归档的想法收进一个带条数的折叠分组,和项目计划里的已归档一样默认收起', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    const group = host.querySelector<HTMLElement>('.collapsible-group.collapsible-group--quiet')!
-    expect(group.querySelector('.collapsible-group-title')!.textContent).toBe('已归档')
-    expect(group.querySelector('.collapsible-group-count')!.textContent).toBe(' · 1')
+    const group = host.querySelector<HTMLElement>('.ideas-list .collapsible-group')!
+    expect(group.querySelector('.collapsible-group-head.section-heading--group .fold-toggle')!.textContent).toBe('已归档 · 1')
+    expect(group.querySelector('.heading-count')!.textContent).toBe(' · 1')
     expect(host.querySelector('[data-idea="idea-aside"]')).toBeNull()
-    await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-toggle')!.click() })
-    expect(group.querySelector('[data-idea="idea-aside"]')!.classList.contains('research-object-card')).toBe(true)
+    await act(async () => { group.querySelector<HTMLButtonElement>('.collapsible-group-head .fold-toggle')!.click() })
+    expect(group.querySelector('[data-idea="idea-aside"]')!.classList.contains('item--card')).toBe(true)
   })
 
   it('删掉想法后提示只说已移入垃圾桶，撤销把垃圾桶里那一条放回', async () => {
@@ -525,7 +565,7 @@ describe('Ideas', () => {
     expect(api.restored).toEqual(['trash-idea'])
   })
 
-  it('在已完成项目里做完的想法，取消归档按不了，菜单项后面写着项目已完成', async () => {
+  it('在已完成项目里做完的想法，取消归档按不了，菜单项后面不写原因', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await act(async () => {
       host.querySelector('[data-idea="idea-completed"] .dots')!
@@ -533,15 +573,58 @@ describe('Ideas', () => {
     })
     const unarchive = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
       .find((item) => item.textContent?.startsWith('取消归档'))!
-    expect([unarchive.hasAttribute('data-disabled'), unarchive.querySelector('.mi-key')?.textContent])
-      .toEqual([true, '项目已完成'])
+    expect([unarchive.hasAttribute('data-disabled'), unarchive.textContent]).toEqual([true, '取消归档'])
+  })
+
+  it('所在项目已不在时,详情里所在项目下面写一行警告', async () => {
+    api.ideas.push({ ...OWN, id: 'idea-orphan', title: '项目没了的想法', project: 'project-gone' })
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-orphan"]')!.click() })
+      const warning = host.querySelector('.idea-missing-project')
+      expect([warning?.matches('.inline-message--line.inline-message--warning[role="status"]'), warning?.textContent])
+        .toEqual([true, '原关联项目当前不可用'])
+    } finally {
+      api.ideas.pop()
+    }
+  })
+
+  /** The ids of every idea the screen shows, sorted: all but the set-aside one, which sits in the closed archive group. */
+  const listedIds = () => api.ideas.map((idea) => idea.id).filter((id) => id !== 'idea-aside').sort()
+
+  it('想法放在一个已删除项目的节点上时，其余想法照常列出，没有整页报错；它的详情里是项目不在的那行警告', async () => {
+    api.ideas.push({ ...OWN, id: 'idea-orphan-node', title: '项目删了的节点上的想法', project: 'project-gone', node: 'n-gone' })
+    api.unreadable['project-gone'] = 'not-found'
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect([[...host.querySelectorAll('[data-idea]')].map((card) => card.getAttribute('data-idea')).sort(), host.querySelector('.page-error')])
+        .toEqual([listedIds(), null])
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-orphan-node"]')!.click() })
+      expect(host.querySelector('.idea-missing-project')?.textContent).toBe('原关联项目当前不可用')
+    } finally {
+      api.ideas.pop()
+      delete api.unreadable['project-gone']
+    }
+  })
+
+  it('想法所在节点的项目读不出来时，想法照常列出，屏头报出读不出来的原因', async () => {
+    api.ideas.push({ ...OWN, id: 'idea-unread-node', title: '项目读不出来的节点上的想法', project: 'project-active', node: 'n-1' })
+    api.unreadable['project-active'] = 'server'
+    try {
+      await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+      expect([[...host.querySelectorAll('[data-idea]')].map((card) => card.getAttribute('data-idea')).sort(), host.querySelector('.page-error')?.textContent])
+        .toEqual([listedIds(), '服务器出错'])
+    } finally {
+      api.ideas.pop()
+      delete api.unreadable['project-active']
+    }
   })
 
   it('想法详情里每一节的操作放在那一节小标题的右端', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     const headings = async (id: string) => {
       await act(async () => { host.querySelector<HTMLElement>(`[data-idea="${id}"]`)!.click() })
-      return [...host.querySelectorAll<HTMLElement>('.idea-detail-panel > .section-heading:not(.idea-panel-head)')].map((heading) => [
+      return [...host.querySelectorAll<HTMLElement>('.idea-detail-panel .panel-body > .section-heading')].map((heading) => [
         heading.firstChild!.textContent,
         [...heading.querySelectorAll(':scope > .section-heading-actions > .btn')].map((button) => button.textContent),
       ])
@@ -609,7 +692,7 @@ describe('Ideas', () => {
     await act(async () => { await new Promise((settle) => setTimeout(settle, 0)) })
     const hits = [...document.querySelectorAll<HTMLElement>('.pickhits .mi')]
     expect(hits.map((hit) => hit.textContent)).toEqual(['推测解码来源'])
-    await act(async () => { hits[0]!.dispatchEvent(new MouseEvent('mousedown', { bubbles: true, cancelable: true })) })
+    await act(async () => { hits[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true })) })
     expect(api.update).toHaveBeenCalledWith('idea-sparked', {
       relations: { projects: ['project-completed', 'project-active'], pages: ['topics/sd'] },
     })
@@ -640,6 +723,27 @@ describe('Ideas', () => {
     expect([...host.querySelectorAll('.idea-detail-panel .section-heading')].map((item) => item.firstChild!.textContent)).not.toContain('科研节点')
   })
 
+  it('候选节点的来源项目已删除时想法照常打开，不报整页错误；科研节点一节是项目不在的那行警告，只能忽略', async () => {
+    api.unreadable['project-gone'] = 'not-found'
+    try {
+      const detail = await openWith({
+        ...OWN, id: 'idea-orphan-candidate', title: '来源项目删了的候选', sourceProject: 'project-gone', candidateNode: 'node-1',
+        source: { chatTitle: '树宽讨论', agent: true },
+      })
+      const heading = [...detail.querySelectorAll<HTMLElement>('.section-heading')].find((item) => item.firstChild!.textContent === '科研节点')
+      const warning = heading?.nextElementSibling
+      expect([
+        host.querySelector('.page-error'),
+        [...(heading?.querySelectorAll('.section-heading-actions .btn') ?? [])].map((button) => button.textContent),
+        warning?.matches('.idea-missing-project.inline-message--line.inline-message--warning'), warning?.textContent,
+      ]).toEqual([null, ['忽略'], true, '原关联项目当前不可用'])
+      await act(async () => { heading!.querySelector<HTMLButtonElement>('.section-heading-actions .btn')!.click() })
+      expect(api.place).toHaveBeenLastCalledWith('idea-orphan-candidate', { kind: 'dismiss' })
+    } finally {
+      delete api.unreadable['project-gone']
+    }
+  })
+
   it('论文对话的标题就是论文名时，来源只写一次', async () => {
     const detail = await openWith({
       ...OWN, id: 'idea-paper', source: { chatId: 'chat-9', chatTitle: 'EAGLE', paperId: 'paper-9', paperTitle: 'EAGLE' },
@@ -651,7 +755,7 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
     const detail = host.querySelector('.idea-detail-panel')!
-    const head = (label: string) => [...detail.querySelectorAll<HTMLButtonElement>('.idea-panel-head .btn')].find((item) => item.textContent === label)!
+    const head = (label: string) => [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')].find((item) => item.textContent === label)!
     await act(async () => { head('编辑').click() })
     const held = api.ideas
     try {

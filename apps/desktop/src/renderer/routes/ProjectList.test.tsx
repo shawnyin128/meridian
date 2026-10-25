@@ -3,6 +3,7 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { ProjectSummary } from '../../shared/contract.js'
+import { DraftsProvider } from '../hooks/useDrafts.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -18,9 +19,11 @@ const api = vi.hoisted(() => ({
 
 vi.mock('../ipc.js', () => ({
   feed: { append: vi.fn() },
+  library: { location: () => Promise.resolve({ root: '/vaults/projects' }) },
   project: {
     list: () => (api.loading ? new Promise(() => {}) : Promise.resolve(structuredClone(api.projects))),
     reorder: vi.fn(),
+    update: vi.fn((id: string, patch: { name?: string }) => Promise.resolve({ id, ...patch })),
     delete: () => Promise.resolve({ change: 'change-delete' }),
   },
   changelog: { undo: (id: string) => { api.undone.push(id); return Promise.resolve() } },
@@ -73,7 +76,7 @@ describe('项目列表空着时', () => {
     api.projects = []
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     expect(host.querySelector('.section-heading')?.textContent).toContain('进行中')
-    expect(host.querySelector('.empty-state--section')?.textContent).toBe('还没有进行中的项目')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('—')
     expect(host.querySelector('.section-heading .sort-menu')).toBeNull()
     expect(host.querySelector('#projNew')).not.toBeNull()
   })
@@ -120,8 +123,8 @@ describe('项目列表的卡片', () => {
     expect(recent.lastElementChild!.lastElementChild!.classList.contains('source-label')).toBe(true)
   })
 
-  it('还没有推进时写还没有记录', async () => {
-    expect(await recentProgress(summary({}))).toBe('最近推进还没有记录')
+  it('还没有推进时最近推进一格写 —', async () => {
+    expect(await recentProgress(summary({}))).toBe('最近推进—')
   })
 
   it('停滞超过 7 天的项目在卡片头里、名字那一行的后面挂一个警示标签写着几天无推进,卡片底下不再多一行', async () => {
@@ -130,9 +133,9 @@ describe('项目列表的卡片', () => {
       summary({ id: 'kv', name: 'KV cache 量化', priority: 'p2', lastProgress: '2026-10-09' }),
     ]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .pp-h > .research-object-card-open`)!.nextElementSibling!
-    expect([afterName('spec').className, afterName('spec').textContent]).toEqual(['tag tag--label tag--warn', '已 10 天无推进'])
-    expect(afterName('kv').className).toBe('dd')
+    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .item-head .item-title > .project-name:has(> .item-open)`)!.nextElementSibling
+    expect([afterName('spec')!.className, afterName('spec')!.textContent]).toEqual(['tag tag--label tag--warning', '已 10 天无推进'])
+    expect(afterName('kv')).toBeNull()
     expect(host.querySelectorAll('.project-card-alert')).toHaveLength(0)
   })
 })
@@ -141,9 +144,9 @@ describe('Project list', () => {
   it('opens an ongoing project from the button that holds its name; the card itself is no button', async () => {
     api.projects = [summary({ id: 'moe', name: 'MoE 路由分析', status: '进行中', priority: 'p2', topic: '混合专家' })]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const card = host.querySelector<HTMLElement>('.research-object-card[data-proj="moe"]')!
+    const card = host.querySelector<HTMLElement>('.item--card[data-proj="moe"]')!
     expect(card.getAttribute('role')).toBeNull()
-    const open = card.querySelector<HTMLElement>('.research-object-card-open')!
+    const open = card.querySelector<HTMLElement>('.item-open')!
     expect(open.tagName).toBe('BUTTON')
     expect(open.textContent).toContain('MoE 路由分析')
     act(() => open.click())
@@ -157,8 +160,8 @@ describe('Project list', () => {
     ]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     const row = host.querySelector<HTMLElement>('[data-proj="draft"]')!
-    expect(row.classList.contains('structured-row')).toBe(true)
-    expect(row.parentElement!.className).toBe('structured-list structured-list--embedded')
+    expect(row.classList.contains('item')).toBe(true)
+    expect(row.parentElement!.className).toBe('list list--embedded')
     const identity = [...row.querySelector('.project-identity')!.children].map((part) => part.textContent)
     expect(identity).toEqual(['draft 效率', '搁置', '推理'])
     expect(row.querySelector('.tp')).toBeNull()
@@ -169,7 +172,7 @@ describe('Project list', () => {
       id: 'draft', name: 'draft 效率', status: '搁置', priority: 'p1', topic: '推理', focus: '等算力',
     })]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const open = host.querySelector<HTMLElement>('.prow[data-proj="draft"]')!.firstElementChild as HTMLElement
+    const open = host.querySelector<HTMLElement>('.prow[data-proj="draft"] .item-title > .project-name > .item-open')!
     expect(open.tagName).toBe('BUTTON')
     expect(open.textContent).toContain('draft 效率')
     act(() => open.click())
@@ -195,7 +198,7 @@ describe('Project list', () => {
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     const actions = [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')]
     expect(actions.map((b) => [b.textContent, b.className.split(' ').slice(0, 2).join(' ')]))
-      .toEqual([['排序', 'btn sort-menu'], ['新建项目', 'btn pri']])
+      .toEqual([['排序', 'btn sort-menu'], ['新建项目', 'btn add-action']])
     expect(host.querySelector('.section-heading .section-heading-actions')).toBeNull()
     act(() => actions[1]!.click())
     expect(host.querySelector('.desk-body input')).not.toBeNull()
@@ -258,6 +261,46 @@ describe('项目的排序', () => {
     ;(await reorder()).mockClear()
     await act(async () => { open('b').dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true, bubbles: true })) })
     expect(await reorder()).not.toHaveBeenCalled()
+  })
+})
+
+describe('项目改名', () => {
+  const type = (input: HTMLInputElement, value: string) => act(() => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const rename = async (id: string) => {
+    const dots = host.querySelector<HTMLElement>(`[data-proj="${id}"] .dots`)!
+    await act(async () => { dots.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((held) => held.textContent === '重命名')!
+    await act(async () => { item.click() })
+    // The menu hands focus over a timer after it closes; the field opens then.
+    await vi.waitFor(() => expect(host.querySelector(`[data-proj="${id}"] .metadata-input`)).not.toBeNull())
+  }
+
+  it('「更多」菜单的重命名合上菜单,把卡片和行上的名字就地变成同一种就地输入框;回车写回,Esc 收起不写', async () => {
+    api.projects = [summary({ id: 'a', name: '甲', status: '进行中' }), summary({ id: 'c', name: '丙', status: '搁置' })]
+    await act(async () => root.render(<MessagesProvider><DraftsProvider><Projects /></DraftsProvider></MessagesProvider>))
+    const update = vi.mocked((await import('../ipc.js')).project.update)
+    update.mockClear()
+    for (const [id, name] of [['a', '甲'], ['c', '丙']] as const) {
+      await rename(id)
+      const input = host.querySelector<HTMLInputElement>(`[data-proj="${id}"] .metadata-input`)!
+      expect([document.querySelector('[role="menu"]'), document.querySelector('.short-text-editor')]).toEqual([null, null])
+      expect([input.value, input.classList.contains('form-control-inline'), document.activeElement]).toEqual([name, true, input])
+      type(input, `${name}二`)
+      await act(async () => {
+        input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+        await Promise.resolve()
+      })
+      expect(update).toHaveBeenLastCalledWith(id, { name: `${name}二` })
+      expect(host.querySelector(`[data-proj="${id}"] .metadata-input`)).toBeNull()
+    }
+    await rename('a')
+    const input = host.querySelector<HTMLInputElement>('[data-proj="a"] .metadata-input')!
+    type(input, '不要的名字')
+    act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    expect([update.mock.calls.length, host.querySelector('[data-proj="a"] .metadata-input')]).toEqual([2, null])
   })
 })
 

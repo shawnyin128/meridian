@@ -1,5 +1,32 @@
-/* The button draws nothing of its own: :where() keeps every rule of the row's own class winning. */
-:where(.nav-row){box-sizing:border-box;width:100%;margin:0;padding:0;border:0;background:transparent;color:inherit;
-  font:inherit;letter-spacing:inherit;text-transform:inherit;text-align:left;cursor:pointer}
-/* A composite row's button holds only its label and lays it out with the row's own gap. */
-:where(.nav-row-label){display:flex;align-items:center;gap:inherit;width:auto;min-width:0;cursor:inherit}
+/*
+ * The one navigation row. Its height is fixed, so a count appearing or going never moves a row. The
+ * hover lies over the selected look as an image, so a selected row shows it too, and a row keeps it
+ * while a menu of its own actions is open, even once the pointer has left the row for a menu item.
+ */
+.nav-row{display:flex;align-items:center;gap:var(--sp-8);box-sizing:border-box;width:100%;height:var(--row-nav-h);margin:0;
+  padding:0 var(--row-nav-pad);border:0;border-radius:var(--r-sm);background-color:transparent;color:var(--ink);font:inherit;
+  font-size:var(--fs-base);letter-spacing:inherit;text-transform:inherit;text-align:left;cursor:pointer;
+  transition:background-color var(--t-fast) var(--e-out)}
+.nav-row:hover,.nav-row:has(.row-actions [data-state="open"]){background-image:linear-gradient(var(--hover),var(--hover))}
+.nav-row.on{background-color:var(--accent-soft);color:var(--accent-text)}
+/* A content state, such as a paused watch, not a disabled row. */
+.nav-row.dim{color:var(--ter)}
+/* A row under a top row sits a step in; one item of a group a second step in, under its group's text, in smaller text. */
+.nav-row--indent-1{padding-left:var(--sp-20)}
+.nav-row--indent-2{padding-left:calc(var(--sp-20) + var(--sp-16))}
+.nav-row--sub{font-size:var(--fs-sm)}
+.nav-row-icon{display:flex;flex-shrink:0;align-items:center;justify-content:center;width:16px;color:var(--sec)}
+.nav-row.on .nav-row-icon{color:inherit}
+.nav-row-icon svg{width:13.5px;height:13.5px}
+/* A text that fades takes the room the count leaves; the count and an end state sit at the row's end. */
+.nav-row .fade-text{flex:1}
+.nav-row-count,.nav-row-end{margin-left:auto}
+/* A composite row's button holds only its glyph and text and lays them out with the row's own gap. */
+.nav-row-label{display:flex;align-items:center;gap:inherit;min-width:0;margin:0;padding:0;border:0;background:transparent;color:inherit;
+  font:inherit;text-align:left;cursor:inherit}
+.nav-row--actions>.nav-row-label{flex:1}
+/*
+ * While Meridian is not the active app (AppShell marks the document), a row's accent turns to the
+ * neutral selected look, as macOS greys an unemphasized selection.
+ */
+:root[data-window-inactive] .nav-row{--accent-soft:var(--selected);--accent-text:var(--on-selected)}

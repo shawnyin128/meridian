@@ -4,17 +4,22 @@ import { useMessages } from '../messages/useMessages.js'
 import type { ScreenKey } from '../shell/AppShell.js'
 import { FadeText } from './FadeText.js'
 import { IconExternal } from './icons.js'
-import { StatusDot } from './StatusDot.js'
+import { StatusDot, type StatusDotFill, type StatusDotTone } from './StatusDot.js'
 import { Tooltip } from './Tooltip.js'
 import './EntityLink.css'
 
 type NodeMode = NonNullable<GraphNode['mode']>
 
-const MODE_TONE = { unresolved: 'neutral', repairable: 'warn', supported: 'good', dead: 'bad' } as const satisfies Record<NodeMode, string>
-
-const MODE_LEGEND = {
-  unresolved: 'candidate', repairable: 'needsRepair', supported: 'verified', dead: 'failed',
-} as const satisfies Record<NodeMode, string>
+/**
+ * How a research node's state shows wherever it does (a node link, the research graph, its legend): the
+ * tone of its dot, a shape that tells the states apart without their colour, and the legend's name for it.
+ */
+export const NODE_MODE_LOOK = {
+  unresolved: { tone: 'neutral', fill: 'ring', legend: 'candidate' },
+  repairable: { tone: 'warn', fill: 'half', legend: 'needsRepair' },
+  supported: { tone: 'good', fill: 'full', legend: 'verified' },
+  dead: { tone: 'bad', fill: 'cross', legend: 'failed' },
+} as const satisfies Record<NodeMode, { tone: StatusDotTone; fill: StatusDotFill; legend: string }>
 
 export type EntityLinkProps = {
   label: ReactNode
@@ -64,7 +69,10 @@ export function EntityLink(props: EntityLinkProps) {
   const body = kind === 'node'
     ? (
       <>
-        <StatusDot tone={MODE_TONE[props.mode]} label={m.project.graph.legend[MODE_LEGEND[props.mode]]} labelHidden />
+        <StatusDot
+          tone={NODE_MODE_LOOK[props.mode].tone} fill={NODE_MODE_LOOK[props.mode].fill}
+          label={m.project.graph.legend[NODE_MODE_LOOK[props.mode].legend]} labelHidden
+        />
         <Tooltip label={typeof label === 'string' ? label : undefined} whenClipped><FadeText>{label}</FadeText></Tooltip>
       </>
     )
