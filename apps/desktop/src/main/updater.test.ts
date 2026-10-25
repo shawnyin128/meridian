@@ -36,8 +36,14 @@ describe('updateFailure', () => {
     expect(updateFailure(Object.assign(new Error('503 Service Unavailable'), { statusCode: 503 }))).toBe('server')
     expect(updateFailure(Object.assign(new Error("EACCES: permission denied, mkdir '/Applications/.Meridian.app-update'"), {
       code: 'EACCES', syscall: 'mkdir',
-    }))).toBe('write')
+    }))).toBe('update-files')
     expect(updateFailure(new Error('codesign failed'))).toBe('unknown')
+  })
+
+  it('names a missing update file as a failure of the update files, never of the library', () => {
+    expect(updateFailure(Object.assign(new Error("ENOENT: no such file or directory, open '/Applications/Meridian.app/Contents/Resources/app-update.yml'"), {
+      code: 'ENOENT', syscall: 'open',
+    }))).toBe('update-files')
   })
 })
 
