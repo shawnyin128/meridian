@@ -36,6 +36,7 @@ import {
   ProjectBlockerView, ProjectNextActionView,
 } from '../components/project/ProjectControl.js'
 import { ProjectIdentityFields, ProjectPriorityTag } from '../components/project/ProjectIdentity.js'
+import { Property, PropertyList } from '../components/PropertyList.js'
 import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
   ProjectAreasField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
@@ -1079,9 +1080,8 @@ export function ProjectDetail({
               ? (
                 <>
                   <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
-                  <div className="wkprops">
-                    <div className="pk">{m.project.identity.typeLabel}</div>
-                    <div className="pv">{m.project.identity.typeValue}</div>
+                  <PropertyList>
+                    <Property label={m.project.identity.typeLabel}>{m.project.identity.typeValue}</Property>
                     <ProjectIdentityFields
                       project={project}
                       fields={{
@@ -1124,93 +1124,94 @@ export function ProjectDetail({
                         ),
                       }}
                     />
-                    <div className="pk">{m.project.identity.focusLabel[FOCUS_KEY[project.status]]}</div>
-                    <InlineMetadataField
-                      label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]} value={project.focus}
-                      keep={{ scope: ['project', projectId], target: 'focus' }}
-                      onSave={(focus) => {
-                        const next = focus.trim()
-                        const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-                        if (next === '') { notice.refusal(m.project.identity.focusRequired(label)); return false }
-                        // On submit, close any editor open elsewhere without waiting for this write; whether
-                        // this field closes is left to InlineMetadataField, which follows the write's result
-                        discardOpenEdits()
-                        return writeProject(
-                          updateProject({ focus: next }), m.project.identity.focusUpdated(label),
+                    <Property label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]}>
+                      <InlineMetadataField
+                        label={m.project.identity.focusLabel[FOCUS_KEY[project.status]]} value={project.focus}
+                        keep={{ scope: ['project', projectId], target: 'focus' }}
+                        onSave={(focus) => {
+                          const next = focus.trim()
+                          const label = m.project.identity.focusLabel[FOCUS_KEY[project.status]]
+                          if (next === '') { notice.refusal(m.project.identity.focusRequired(label)); return false }
+                          // On submit, close any editor open elsewhere without waiting for this write; whether
+                          // this field closes is left to InlineMetadataField, which follows the write's result
+                          discardOpenEdits()
+                          return writeProject(
+                            updateProject({ focus: next }), m.project.identity.focusUpdated(label),
+                          )
+                        }}
+                      />
+                    </Property>
+                    <Property label={m.project.control.nextAction}><ProjectNextActionView action={controlState.next} /></Property>
+                    <Property label={m.project.control.blocker}>
+                      <InlineMetadataField
+                        label={m.project.control.blocker} value={project.block ?? ''} keep={{ scope: ['project', projectId], target: 'block' }}
+                        display={<ProjectBlockerView blocker={controlState.blocker} />}
+                        onSave={(value) => {
+                          const next = value.trim()
+                          return writeProject(
+                            updateProject({ block: next === '' ? null : next }),
+                            next === '' ? m.project.control.blockerCleared : m.project.control.blockerUpdated,
+                          )
+                        }}
+                      />
+                    </Property>
+                    <Property label={m.project.identity.startLabel}>
+                      <DateButton
+                        iso={project.start} className="pv metadata-editable"
+                        onPick={(start) => {
+                          if (dnum(start) > dnum(project.due)) {
+                            notice.refusal(m.project.identity.startAfterDue)
+                            return
+                          }
+                          applyWrite(updateProject({ start }), m.project.identity.dateUpdated)
+                        }}
+                      />
+                    </Property>
+                    <Property label={m.project.identity.dueLabel}>
+                      <DateButton
+                        iso={project.due} className="pv metadata-editable"
+                        onPick={(due) => {
+                          if (dnum(due) < dnum(project.start)) {
+                            notice.refusal(m.project.identity.dueBeforeStart)
+                            return
+                          }
+                          applyWrite(updateProject({ due }), m.project.identity.dateUpdated)
+                        }}
+                      />
+                    </Property>
+                    <Property label={m.project.sections.papers}>{m.project.identity.paperCount(project.paperCount)}</Property>
+                    <Property label={m.project.identity.workspaceLabel}>
+                      {project.workspace === undefined
+                        ? (
+                          <button className="pv metadata-editable" onClick={openWorkspace}>
+                            {m.project.workspace.connect}
+                          </button>
                         )
-                      }}
-                    />
-                    <div className="pk">{m.project.control.nextAction}</div>
-                    <ProjectNextActionView action={controlState.next} />
-                    <div className="pk">{m.project.control.blocker}</div>
-                    <InlineMetadataField
-                      label={m.project.control.blocker} value={project.block ?? ''} keep={{ scope: ['project', projectId], target: 'block' }}
-                      display={<ProjectBlockerView blocker={controlState.blocker} />}
-                      onSave={(value) => {
-                        const next = value.trim()
-                        return writeProject(
-                          updateProject({ block: next === '' ? null : next }),
-                          next === '' ? m.project.control.blockerCleared : m.project.control.blockerUpdated,
-                        )
-                      }}
-                    />
-                    <div className="pk">{m.project.identity.startLabel}</div>
-                    <DateButton
-                      iso={project.start} className="pv metadata-editable"
-                      onPick={(start) => {
-                        if (dnum(start) > dnum(project.due)) {
-                          notice.refusal(m.project.identity.startAfterDue)
-                          return
-                        }
-                        applyWrite(updateProject({ start }), m.project.identity.dateUpdated)
-                      }}
-                    />
-                    <div className="pk">{m.project.identity.dueLabel}</div>
-                    <DateButton
-                      iso={project.due} className="pv metadata-editable"
-                      onPick={(due) => {
-                        if (dnum(due) < dnum(project.start)) {
-                          notice.refusal(m.project.identity.dueBeforeStart)
-                          return
-                        }
-                        applyWrite(updateProject({ due }), m.project.identity.dateUpdated)
-                      }}
-                    />
-                    <div className="pk">{m.project.sections.papers}</div>
-                    <div className="pv">
-                      {m.project.identity.paperCount(project.paperCount)}
-                    </div>
-                    <div className="pk">{m.project.identity.workspaceLabel}</div>
-                    {project.workspace === undefined
-                      ? (
-                        <button className="pv metadata-editable" onClick={openWorkspace}>
-                          {m.project.workspace.connect}
-                        </button>
-                      )
-                      : (
-                        <div className="pv workspace-field" data-row-actions="">
-                          <WorkspaceRoot
-                            state={project.workspace.state} name={workspaceName ?? project.workspace.root}
-                            root={project.workspace.root} onOpen={openWorkspace}
-                          />
-                          <RowActions>
-                            <DotsMenu>
-                              <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
-                              <MenuItem onSelect={openWorkspace}>
-                                {m.project.identity.changeWorkspace}
-                              </MenuItem>
-                              <MenuItem
-                                className="mi danger"
-                                onSelect={() => applyWrite(
-                                  projectApi.bindWorkspace(projectId, null),
-                                  m.project.identity.workspaceDisconnected,
-                                )}
-                              >{m.project.identity.disconnectWorkspace}</MenuItem>
-                            </DotsMenu>
-                          </RowActions>
-                        </div>
-                      )}
-                  </div>
+                        : (
+                          <div className="workspace-field" data-row-actions="">
+                            <WorkspaceRoot
+                              state={project.workspace.state} name={workspaceName ?? project.workspace.root}
+                              root={project.workspace.root} onOpen={openWorkspace}
+                            />
+                            <RowActions>
+                              <DotsMenu>
+                                <MenuItem onSelect={refreshWorkspace}>{m.project.identity.refreshWorkspace}</MenuItem>
+                                <MenuItem onSelect={openWorkspace}>
+                                  {m.project.identity.changeWorkspace}
+                                </MenuItem>
+                                <MenuItem
+                                  className="mi danger"
+                                  onSelect={() => applyWrite(
+                                    projectApi.bindWorkspace(projectId, null),
+                                    m.project.identity.workspaceDisconnected,
+                                  )}
+                                >{m.project.identity.disconnectWorkspace}</MenuItem>
+                              </DotsMenu>
+                            </RowActions>
+                          </div>
+                        )}
+                    </Property>
+                  </PropertyList>
 
                   <SectionHeading
                     variant="rail"

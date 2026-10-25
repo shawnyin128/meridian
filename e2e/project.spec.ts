@@ -1360,8 +1360,8 @@ test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里',
 test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const props = side.locator('.wkprops')
-  const field = props.locator('.pk:text-is("名称") + .metadata-field')
+  const props = side.locator('.property-list')
+  const field = props.locator('.property-label:text-is("名称") + .property-value > .metadata-field')
   const name = field.locator('.metadata-editable')
   const boxes = () => Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox()])
   const before = await boxes()
@@ -1377,7 +1377,7 @@ test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', a
 test('属性栏多行的值(当前目标)进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const field = side.locator('.pk:text-is("当前目标") + .metadata-field')
+  const field = side.locator('.property-label:text-is("当前目标") + .property-value > .metadata-field')
   const value = field.locator('.metadata-editable')
   const before = await textBox(value)
 
@@ -1390,7 +1390,7 @@ test('属性栏多行的值(当前目标)进入编辑时,编辑框整个露在�
 test('属性栏点一个领域就地改它:编辑框里是它的字,整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const field = side.locator('.pk:text-is("领域") + .project-areas')
+  const field = side.locator('.property-label:text-is("领域") + .property-value > .project-areas')
   const chip = field.locator('.tagchip-open').first()
   const text = await chip.innerText()
   const before = await textBox(chip.locator('.tagchip-text'))
@@ -1426,7 +1426,7 @@ test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc
   await gotoProject(win)
   const focusNow = () => call<{ focus: string }>(win, 'project.get', { id: 'draft' }).then((p) => p.focus)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const edit = side.locator('.pk:text-is("当前目标") + .metadata-field button.metadata-editable')
+  const edit = side.locator('.property-label:text-is("当前目标") + .property-value > .metadata-field button.metadata-editable')
   const pin = side.locator('.metadata-input')
 
   // Moving focus out with the keyboard writes the typed text.
@@ -1669,7 +1669,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   await win.keyboard.press('Escape')
 
   // Status: three radio options, ACTIVE_PROJECT checked; clicking SHELVED_PROJECT writes it back.
-  await side.locator('.wkprops .pk:text-is("状态") + .pv').click()
+  await side.locator('.property-label:text-is("状态") + .property-value > .pv').click()
   await expect(radios).toHaveText([...PROJECT_STATUSES])
   await expect(radios.filter({ hasText: ACTIVE_PROJECT })).toHaveAttribute('aria-checked', 'true')
   await radios.filter({ hasText: SHELVED_PROJECT }).click()
@@ -1677,7 +1677,7 @@ test('任务四列各自编辑,点击行或任务名只打开任务详情,不改
   expect((await call<{ status: string }>(win, 'project.get', { id: 'draft' })).status).toBe(SHELVED_PROJECT)
 
   // Priority: the current P0 is checked; ArrowDown twice reaches P1 and Enter writes it back.
-  await side.locator('.wkprops .pk:text-is("优先级") + .pv').click()
+  await side.locator('.property-label:text-is("优先级") + .property-value > .pv').click()
   await expect(radios).toHaveText(['P0 · 紧急', 'P1 · 常规', 'P2 · 较低'])
   await expect(radios.nth(0)).toHaveAttribute('aria-checked', 'true')
   await win.keyboard.press('ArrowDown')

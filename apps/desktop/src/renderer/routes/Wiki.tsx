@@ -25,6 +25,7 @@ import { IconCross, IconGear, IconTrash } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
+import { Property, PropertyList } from '../components/PropertyList.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
@@ -932,34 +933,33 @@ export function Wiki() {
               </div>
               <div className="wkside" ref={railFade} data-fade-paint="">
                 <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
-                <div className="wkprops">
-                  <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{shownAgg.kindLabel}</div>
-                  <div className="pk">{m.project.identity.nameLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
-                    onSave={(title) => {
-                      const next = title.trim()
-                      if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
-                      return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
-                        op: 'setAggregationMetadata', page: shownAgg.id, title: next,
-                        splitOn: shownAgg.splitOn ?? null,
-                      }])
-                    }}
-                  />
-                  <div className="pk">{m.wiki.scaleLabel}</div>
-                  <div className="pv">
-                    {m.wiki.scaleSummary(shownAgg.memberCount, shownAgg.childCount)}
-                  </div>
-                  <div className="pk">{m.wiki.splitOnLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''} keep={{ scope: ['wiki', shownAgg.id], target: 'splitOn' }}
-                    onSave={(splitOn) => propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
-                      op: 'setAggregationMetadata', page: shownAgg.id, title: shownAgg.title,
-                      splitOn: splitOn.trim() || null,
-                    }])}
-                  />
-                  <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownAgg.updated)}</div>
-                </div>
+                <PropertyList>
+                  <Property label={m.project.identity.typeLabel}>{shownAgg.kindLabel}</Property>
+                  <Property label={m.project.identity.nameLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
+                      onSave={(title) => {
+                        const next = title.trim()
+                        if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
+                        return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
+                          op: 'setAggregationMetadata', page: shownAgg.id, title: next,
+                          splitOn: shownAgg.splitOn ?? null,
+                        }])
+                      }}
+                    />
+                  </Property>
+                  <Property label={m.wiki.scaleLabel}>{m.wiki.scaleSummary(shownAgg.memberCount, shownAgg.childCount)}</Property>
+                  <Property label={m.wiki.splitOnLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.splitOnLabel} value={shownAgg.splitOn ?? ''} keep={{ scope: ['wiki', shownAgg.id], target: 'splitOn' }}
+                      onSave={(splitOn) => propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
+                        op: 'setAggregationMetadata', page: shownAgg.id, title: shownAgg.title,
+                        splitOn: splitOn.trim() || null,
+                      }])}
+                    />
+                  </Property>
+                  <Property label={m.wiki.updatedLabel}>{fmt.date(shownAgg.updated)}</Property>
+                </PropertyList>
                 <RailLinks
                   heading={m.project.sections.links}
                   rows={[
@@ -994,61 +994,61 @@ export function Wiki() {
               </div>
               <div className="wkside" ref={paperRailFade} data-fade-paint="">
                 <SectionHeading variant="rail">{m.project.identity.heading}</SectionHeading>
-                <div className="wkprops">
-                  <div className="pk">{m.project.identity.typeLabel}</div><div className="pv">{m.wiki.paperKind}</div>
-                  <div className="pk">{m.wiki.titleLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
-                    onSave={(title) => {
-                      const next = title.trim()
-                      if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
-                      return updateWikiPaper({ title: next }, m.wiki.titleLabel)
-                    }}
-                  />
-                  <div className="pk">{m.wiki.shortTitleLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
-                    onSave={(shortTitle) => updateWikiPaper(
-                      { shortTitle: shortTitle.trim() || null }, m.wiki.shortTitleLabel,
-                    )}
-                  />
-                  <div className="pk">{m.wiki.authorsLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
-                    onSave={(authors) => updateWikiPaper({
-                      authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
-                    }, m.wiki.authorsLabel)}
-                  />
-                  <div className="pk">{m.wiki.yearLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.yearLabel} value={shownPaper.year?.toString() ?? ''} inputMode="numeric"
-                    keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
-                    onSave={(year) => {
-                      const text = year.trim()
-                      if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
-                      const next = Number(text)
-                      if (!Number.isInteger(next) || next < 1000 || next > 3000) {
-                        notice.refusal(m.wiki.yearRange)
-                        return false
-                      }
-                      return updateWikiPaper({ year: next }, m.wiki.yearLabel)
-                    }}
-                  />
-                  <div className="pk">{m.wiki.venueLabel}</div>
-                  <InlineMetadataField
-                    label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
-                    onSave={(venue) => updateWikiPaper({ venue: venue.trim() }, m.wiki.venueLabel)}
-                  />
+                <PropertyList>
+                  <Property label={m.project.identity.typeLabel}>{m.wiki.paperKind}</Property>
+                  <Property label={m.wiki.titleLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
+                      onSave={(title) => {
+                        const next = title.trim()
+                        if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
+                        return updateWikiPaper({ title: next }, m.wiki.titleLabel)
+                      }}
+                    />
+                  </Property>
+                  <Property label={m.wiki.shortTitleLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
+                      onSave={(shortTitle) => updateWikiPaper(
+                        { shortTitle: shortTitle.trim() || null }, m.wiki.shortTitleLabel,
+                      )}
+                    />
+                  </Property>
+                  <Property label={m.wiki.authorsLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.authorsLabel} value={shownPaper.authors.join(', ')} keep={{ scope: ['wiki', shownPaper.id], target: 'authors' }}
+                      onSave={(authors) => updateWikiPaper({
+                        authors: authors.split(/[,，;；\n]/).map((item) => item.trim()).filter(Boolean),
+                      }, m.wiki.authorsLabel)}
+                    />
+                  </Property>
+                  <Property label={m.wiki.yearLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.yearLabel} value={shownPaper.year?.toString() ?? ''} inputMode="numeric"
+                      keep={{ scope: ['wiki', shownPaper.id], target: 'year' }}
+                      onSave={(year) => {
+                        const text = year.trim()
+                        if (text === '') return updateWikiPaper({ year: null }, m.wiki.yearLabel)
+                        const next = Number(text)
+                        if (!Number.isInteger(next) || next < 1000 || next > 3000) {
+                          notice.refusal(m.wiki.yearRange)
+                          return false
+                        }
+                        return updateWikiPaper({ year: next }, m.wiki.yearLabel)
+                      }}
+                    />
+                  </Property>
+                  <Property label={m.wiki.venueLabel}>
+                    <InlineMetadataField
+                      label={m.wiki.venueLabel} value={shownPaper.venue} keep={{ scope: ['wiki', shownPaper.id], target: 'venue' }}
+                      onSave={(venue) => updateWikiPaper({ venue: venue.trim() }, m.wiki.venueLabel)}
+                    />
+                  </Property>
                   {shownPaper.pdf === ''
                     ? null
-                    : (
-                      <>
-                        <div className="pk">{m.wiki.originalLabel}</div>
-                        <div className="pv lm">{shownPaper.pdf}</div>
-                      </>
-                    )}
-                  <div className="pk">{m.wiki.updatedLabel}</div><div className="pv">{fmt.date(shownPaper.updated)}</div>
-                </div>
+                    : <Property label={m.wiki.originalLabel}>{shownPaper.pdf}</Property>}
+                  <Property label={m.wiki.updatedLabel}>{fmt.date(shownPaper.updated)}</Property>
+                </PropertyList>
                 <SectionHeading variant="rail">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0
                   ? <EmptyState variant="section">{m.wiki.noMembership}</EmptyState>
@@ -1061,16 +1061,13 @@ export function Wiki() {
                           onClick={() => go(ms.aggregation.id)}
                         >{ms.aggregation.title}</TagButton>
                       </div>
-                      <div className="wkprops">
+                      <PropertyList>
                         {ms.cells.map((c) => (
-                          <Fragment key={c.label}>
-                            <div className="pk">{c.label}</div>
-                            <div className="pv">
-                              <Cell cell={c.cell} onAnchor={(page) => openSource(shownPaper.id, page)} />
-                            </div>
-                          </Fragment>
+                          <Property key={c.label} label={c.label}>
+                            <Cell cell={c.cell} onAnchor={(page) => openSource(shownPaper.id, page)} />
+                          </Property>
                         ))}
-                      </div>
+                      </PropertyList>
                     </div>
                   ))}
                 <WikiBacklinks links={shownBacklinks} onOpen={openBacklink} />

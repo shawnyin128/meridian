@@ -3,6 +3,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { ConfirmDialog } from './ConfirmDialog.js'
 import { GenerationControl } from './GenerationControl.js'
 import { NoModelTag } from './NoModelTag.js'
+import { Property, PropertyList } from './PropertyList.js'
 import { Tag } from './Tag.js'
 import { Button } from './Button.js'
 import './HarnessAction.css'
@@ -46,16 +47,13 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
           </Tag>
         )}
       description={(
-        <div className="harness-cost-plan">
-          <dl>
-            <div><dt>{m.wiki.harness.scopeLabel}</dt><dd>{m.wiki.scope.currentPaper}</dd></div>
-            <div>
-              <dt>{m.wiki.harness.personalContentLabel}</dt>
-              <dd>{m.wiki.harness.personalContentSummary(personal, plan.scope.hasRemark)}</dd>
-            </div>
-            <div><dt>{m.wiki.harness.modelLabel}</dt><dd>{plan.model.provider} · {plan.model.name}</dd></div>
-          </dl>
-        </div>
+        <PropertyList className="harness-cost-plan">
+          <Property label={m.wiki.harness.scopeLabel}>{m.wiki.scope.currentPaper}</Property>
+          <Property label={m.wiki.harness.personalContentLabel}>
+            {m.wiki.harness.personalContentSummary(personal, plan.scope.hasRemark)}
+          </Property>
+          <Property label={m.wiki.harness.modelLabel}>{plan.model.provider} · {plan.model.name}</Property>
+        </PropertyList>
       )}
     />
   )

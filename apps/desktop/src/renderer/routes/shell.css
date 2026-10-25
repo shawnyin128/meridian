@@ -51,12 +51,6 @@
 .ptable th.th-add,.cmp th.th-add{padding:var(--sp-2)}
 .th-add .row-actions{gap:0;vertical-align:middle}
 
-/* The label column is as wide as the longest label, which stays on one line. */
-.wkprops{display:grid;grid-template-columns:max-content minmax(0,1fr);width:100%;max-width:100%;min-width:0;row-gap:var(--sp-6);column-gap:var(--sp-12);font-size:var(--fs-sm);line-height:var(--lh-ui)}
-.wkprops>*{min-width:0}
-.wkprops .pk{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
-.wkprops .pv{color:var(--sec)}
-
 /*
  * Single-value metadata editing used across the app: Zotero-style hover over the whole cell; a click
  * replaces just that value with an input in the same place.
@@ -73,7 +67,6 @@
  */
 .wkpage{display:flex;gap:var(--sp-32);align-items:flex-start;font-size:var(--fs-read);line-height:var(--lh-read)}
 .wkmain{flex:1;min-width:0}
-.wkpage .lm{font-size:var(--fs-sm)}
 /* A page body that holds a rail is a size container: 100cqh, its height inside the padding, keeps the rail inside the visible page at any window height. */
 .wiki-body,.project-detail-body{container-type:size}
 .wkside{box-sizing:border-box;flex:0 0 260px;width:260px;max-width:260px;min-width:0;font-size:var(--fs-sm);line-height:var(--lh-ui);border-left:1px solid var(--sep2);padding-left:var(--sp-24);

@@ -115,11 +115,6 @@
 .wiki-ingest{box-sizing:border-box;background:var(--content);display:flex;flex-direction:column;overflow:auto}
 .wiki-ingest-body{padding:var(--sp-12);display:flex;flex-direction:column;align-items:stretch}
 .wiki-ingest-body>p{font-size:var(--fs-sm);line-height:1.55;color:var(--sec);margin:0}
-.wiki-ingest-scope{margin:0 0 var(--sp-10);border:1px solid var(--sep2);border-radius:var(--r-card);overflow:hidden;background:var(--card)}
-.wiki-ingest-scope>div{height:35px;padding:0 var(--sp-10);display:flex;align-items:center;justify-content:space-between;border-top:1px solid var(--sep)}
-.wiki-ingest-scope>div:first-child{border-top:0}
-.wiki-ingest-scope span{color:var(--ter);font-size:var(--fs-cap)}
-.wiki-ingest-scope strong{font-size:var(--fs-sm)}
 .wiki-ingest .wiki-ingest-status{margin-top:var(--sp-10);padding:0 var(--sp-2)}
 .wiki-ingest-actions{display:flex;justify-content:flex-end;gap:var(--sp-8);margin-top:var(--sp-14)}
 .wiki-ingest-review{margin-top:var(--sp-14);padding-top:var(--sp-14);border-top:1px solid var(--sep2)}

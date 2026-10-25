@@ -163,6 +163,10 @@ Current shared contracts:
 - `FieldRow` and `FieldRows` (in `FormControls`): the one labelled field. The label stands in the label
   column, in the meta size and `--ter`, and names the text field after it; the rows of one `FieldRows`, or of
   a `DraftForm`, share a label column as wide as their longest label. Screens render no `<label>` of their own.
+- `PropertyList` and `Property`: the one label/value list, in the project and Wiki rails, the paper
+  metadata, a run's cost plan, the Wiki ingest scope and proposal cards. Labels stand in a column as wide as
+  the longest, in the meta size and `--ter`, values after them in `--sec`; `aligned` lists take the label
+  column of the grid around them. Screens render no `dl` of their own.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. `SearchField` is
   the one search, a `ClearableInput` with the search glyph at its start: the sidebar search, the command
   palette and the library search configure the same focus restoration, icon geometry, and accessible naming.

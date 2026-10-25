@@ -4,6 +4,7 @@ import { projectAreas } from '../../../shared/project-signals.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
+import { Property } from '../PropertyList.js'
 import { StatusDot } from '../StatusDot.js'
 import { Tag } from '../Tag.js'
 import { Tooltip } from '../Tooltip.js'
@@ -95,7 +96,7 @@ export function ProjectIdentity({
   )
 }
 
-/** Stable field order for editable or read-only project property panels. */
+/** Stable field order for editable or read-only project property panels: Properties of the PropertyList around them. */
 export function ProjectIdentityFields({ project, fields = {} }: {
   project: ProjectIdentitySource
   fields?: Partial<Record<'name' | 'status' | 'priority' | 'topic', ReactNode>>
@@ -103,14 +104,12 @@ export function ProjectIdentityFields({ project, fields = {} }: {
   const m = useMessages()
   return (
     <>
-      <div className="pk">{m.project.identity.nameLabel}</div>
-      {fields.name ?? <div className="pv">{project.name}</div>}
-      <div className="pk">{m.project.identity.statusLabel}</div>
-      {fields.status ?? <ProjectStatusTag status={project.status} />}
-      <div className="pk">{m.project.identity.priorityLabel}</div>
-      {fields.priority ?? <ProjectPriorityTag priority={project.priority} />}
-      <div className="pk">{m.project.identity.topic}</div>
-      {fields.topic ?? <div className="pv">{project.topic === undefined ? '—' : areasName(m, { ...project, topic: project.topic })}</div>}
+      <Property label={m.project.identity.nameLabel}>{fields.name ?? project.name}</Property>
+      <Property label={m.project.identity.statusLabel}>{fields.status ?? <ProjectStatusTag status={project.status} />}</Property>
+      <Property label={m.project.identity.priorityLabel}>{fields.priority ?? <ProjectPriorityTag priority={project.priority} />}</Property>
+      <Property label={m.project.identity.topic}>
+        {fields.topic ?? (project.topic === undefined ? '—' : areasName(m, { ...project, topic: project.topic }))}
+      </Property>
     </>
   )
 }

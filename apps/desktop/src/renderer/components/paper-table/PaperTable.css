@@ -172,10 +172,8 @@
 .pd-t{order:1;width:100%;font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui)}
 /* The title is the panel's head, in the head's ink rather than a property value's grey. */
 .pd-t .metadata-editable{color:inherit}
-.pdetail .wkprops{grid-template-columns:52px 1fr;font-size:var(--fs-sm)}
 .pdetail>.paper-meta{height:auto;margin:0 calc(-1 * var(--sp-16)) calc(-1 * var(--sp-16))}
 .paper-reading-summary{margin-top:var(--sp-16)}
-.paper-reading-summary .paper-meta-list{padding:0}
 .paper-reading-summary .reading-summary-all{margin:var(--sp-6) 0 0 calc(-1 * var(--sp-10))}
 
 /*

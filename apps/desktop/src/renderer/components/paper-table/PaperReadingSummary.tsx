@@ -9,6 +9,7 @@ import { EmptyState } from '../EmptyState.js'
 import { EntityLink } from '../EntityLink.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
+import { Property, PropertyList } from '../PropertyList.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Button } from '../Button.js'
 
@@ -36,16 +37,14 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
   const remark = held?.remark ?? ''
   return (
     <div className="paper-reading-summary">
-      <dl className="paper-meta-list">
-        <dt>{m.papers.reading.notes}</dt>
-        <dd>{paper.noteCount === 0
+      <PropertyList>
+        <Property label={m.papers.reading.notes}>{paper.noteCount === 0
           ? paper.noteCount
-          : <EntityLink kind="paper" label={paper.noteCount} onOpen={() => onRead({ panel: 'notes' })} />}</dd>
-        <dt>{m.papers.reading.conclusions}</dt>
-        <dd>{paper.conclusionCount === 0
+          : <EntityLink kind="paper" label={paper.noteCount} onOpen={() => onRead({ panel: 'notes' })} />}</Property>
+        <Property label={m.papers.reading.conclusions}>{paper.conclusionCount === 0
           ? paper.conclusionCount
-          : <EntityLink kind="page" label={paper.conclusionCount} onOpen={onConclusions} />}</dd>
-      </dl>
+          : <EntityLink kind="page" label={paper.conclusionCount} onOpen={onConclusions} />}</Property>
+      </PropertyList>
       <SectionHeading variant="rail">{m.papers.reading.remarkAndNotes}</SectionHeading>
       <PageError error={error} />
       {held === null

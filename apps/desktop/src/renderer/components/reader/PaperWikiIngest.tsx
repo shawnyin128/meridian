@@ -23,6 +23,7 @@ import { HarnessAction } from '../HarnessAction.js'
 import { InlineMessage } from '../InlineMessage.js'
 import { SectionHeading } from '../PageShell.js'
 import { NoModelTag } from '../NoModelTag.js'
+import { Property, PropertyList } from '../PropertyList.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { Tag, TagButton } from '../Tag.js'
@@ -321,15 +322,14 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
     <section className="wiki-ingest" ref={ingestFade} aria-label={m.wiki.addToWiki}>
       <ReaderPanelHeader title={m.wiki.addToWiki} />
       <div className="wiki-ingest-body">
-        <div className="wiki-ingest-scope">
-          <div><span>{m.wiki.scope.source}</span><strong>{m.wiki.scope.currentPaper}</strong></div>
-          <div><span>{m.wiki.scope.highlights}</span><strong>{m.wiki.scope.count(writtenHighlights)}</strong></div>
-          <div><span>{m.wiki.scope.notes}</span><strong>{m.wiki.scope.count(reading.notes.length)}</strong></div>
-          <div>
-            <span>{m.wiki.scope.remark}</span>
-            <strong>{reading.remark.trim() === '' ? m.wiki.scope.notRecorded : m.wiki.scope.recorded}</strong>
-          </div>
-        </div>
+        <PropertyList className="wiki-ingest-scope">
+          <Property label={m.wiki.scope.source}>{m.wiki.scope.currentPaper}</Property>
+          <Property label={m.wiki.scope.highlights}>{m.wiki.scope.count(writtenHighlights)}</Property>
+          <Property label={m.wiki.scope.notes}>{m.wiki.scope.count(reading.notes.length)}</Property>
+          <Property label={m.wiki.scope.remark}>
+            {reading.remark.trim() === '' ? m.wiki.scope.notRecorded : m.wiki.scope.recorded}
+          </Property>
+        </PropertyList>
 
         <Tag>{personal === 0 ? m.wiki.ingest.noPersonalRecords : m.wiki.ingest.personalRecordsIncluded(personal)}</Tag>
 

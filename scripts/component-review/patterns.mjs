@@ -148,14 +148,11 @@ export const PATTERNS = {
     metrics: 'list',
     entries: [
       entry('shared:StructuredList', '.structured-list'),
-      entry('shared:PaperMetadata', '.paper-meta-list'),
-      entry('shared:ProposalRows', '.proposal-rows'),
       entry('hand:shell/CommandPalette.tsx', '.cmdk-list'),
       entry('hand:components/settings/ExtensionSettings.tsx', '.extension-prompt-list'),
       entry('hand:components/settings/DiscoverySettings.tsx', '.direction-project'),
       entry('hand:routes/Feed.tsx', '.brief'),
       entry('hand:routes/Watches.tsx', '.author-matches'),
-      entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope'),
       entry('hand:routes/Wiki.tsx', '.wktoc'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glabels'),
     ],
@@ -180,7 +177,7 @@ export const PATTERNS = {
   PropertyGrid: {
     metrics: 'list',
     entries: [
-      entry('hand:routes/Wiki.tsx', '.wkprops'),
+      entry('shared:PropertyList', '.property-list'),
       entry('hand:routes/Projects.tsx', '.project-card-decisions'),
     ],
   },
@@ -194,7 +191,6 @@ export const PATTERNS = {
       entry('hand:routes/Wiki.tsx', '.cmp tbody tr:not(.newrow)'),
       entry('hand:routes/Wiki.tsx', '.wktoc li'),
       entry('hand:components/wiki/WikiClaims.tsx', '.wkclaim-lines li'),
-      entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope > div'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.glrow'),
       entry('hand:components/settings/DiscoverySettings.tsx', '.direction-row'),
       entry('hand:components/settings/ExtensionSettings.tsx', '.extension-prompt'),
