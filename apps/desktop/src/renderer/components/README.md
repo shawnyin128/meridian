@@ -221,6 +221,9 @@ Current shared contracts:
   single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select. `DotsMenu` is the one
   overflow-menu trigger: `label` names it, `stopRowActivation` keeps a click from activating the row it
   sits in, and `open` with `onOpenChange` lets a host control it. The host owns the rule that reveals it.
+  A right-click on the row or card that hosts its `RowActions` slot opens this same menu at the pointer,
+  and the ContextMenu key or Shift+F10 there opens it at the trigger, so a row never defines a second,
+  right-click menu of its own.
 
 Dependency direction is enforced by ESLint: `components/`, `hooks/`, and `lib/` cannot import from
 `routes/`. If a shared component needs something currently owned by a route, move the smallest stable

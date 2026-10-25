@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import type { ReactNode } from 'react'
 import type { Task } from '../../shared/contract.js'
 import { useToday } from '../shell/AppShell.js'
@@ -11,15 +11,23 @@ import { IconButton } from './IconButton.js'
 import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
 import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
 import { FadeText } from './FadeText.js'
+import { typesText } from '../lib/keyboard.js'
 import { Button } from './Button.js'
 import './FieldPickers.css'
 
 const PRIORITIES: Task['priority'][] = ['p0', 'p1', 'p2']
 
+/** Where a menu opened by a right-click sits: its top-left corner at the pointer, from the trigger's bottom-left. */
+type PointerPlace = { sideOffset: number; alignOffset: number }
+
 /**
  * The one overflow-menu trigger, named and tooltipped by `label`, which says which object the menu
  * belongs to, or by the shared "more actions" label without one. `stopRowActivation` keeps the click
  * off a clickable row or card underneath. It goes in its row's `RowActions` slot, which shows it.
+ * The same menu opens on a right-click anywhere on the row or card that hosts the slot (the nearest
+ * element marked `data-row-actions`), at the pointer, and on the ContextMenu key or Shift+F10 there,
+ * at the trigger; a right-click in a text field or on selected text keeps the system's edit menu, and
+ * a row inside another opens only its own menu.
  * `onCloseAutoFocus` runs once the closed menu is about to hand focus back to its trigger; preventing
  * it leaves focus to an editor an item opens in place.
  */
@@ -37,16 +45,57 @@ export function DotsMenu({
   onCloseAutoFocus?: (event: Event) => void
 }) {
   const m = useMessages()
+  const [own, setOwn] = useState(false)
+  const [place, setPlace] = useState<PointerPlace | null>(null)
+  const trigger = useRef<HTMLButtonElement>(null)
+  const change = (next: boolean) => {
+    if (open === undefined) setOwn(next)
+    onOpenChange?.(next)
+  }
+  const changeNow = useRef(change)
+  changeNow.current = change
+  useEffect(() => {
+    const button = trigger.current
+    const host = button === null ? null : button.closest<HTMLElement>('[data-row-actions]')
+    if (button === null || host === null) return
+    const pointer = (event: MouseEvent) => {
+      const selection = window.getSelection()
+      const selected = selection !== null && !selection.isCollapsed && event.target instanceof Node
+        && selection.getRangeAt(0).intersectsNode(event.target)
+      if (event.defaultPrevented || typesText(event.target) || selected) return
+      event.preventDefault()
+      const anchor = button.getBoundingClientRect()
+      setPlace({ sideOffset: event.clientY - anchor.bottom, alignOffset: event.clientX - anchor.left })
+      changeNow.current(true)
+    }
+    const key = (event: KeyboardEvent) => {
+      if (event.key !== 'ContextMenu' && !(event.shiftKey && event.key === 'F10')) return
+      if (event.defaultPrevented || typesText(event.target)) return
+      event.preventDefault()
+      setPlace(null)
+      changeNow.current(true)
+    }
+    host.addEventListener('contextmenu', pointer)
+    host.addEventListener('keydown', key)
+    return () => {
+      host.removeEventListener('contextmenu', pointer)
+      host.removeEventListener('keydown', key)
+    }
+  }, [])
   return (
     <ActionMenu
-      {...(open === undefined ? {} : { open })}
-      {...(onOpenChange === undefined ? {} : { onOpenChange })}
+      open={open ?? own}
+      onOpenChange={(next) => {
+        if (next) setPlace(null)
+        change(next)
+      }}
+      {...(place === null ? {} : { align: 'start' as const, ...place })}
       {...(surface === undefined ? {} : { surface })}
       {...(onCloseAutoFocus === undefined ? {} : { contentProps: { onCloseAutoFocus } })}
       stopContentClickPropagation
       trigger={(
         <IconButton
-          label={label ?? m.common.menu.more} size="nested" className="dots"
+          ref={trigger} label={label ?? m.common.menu.more} size="nested" className="dots"
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         ><IconDots /></IconButton>
       )}

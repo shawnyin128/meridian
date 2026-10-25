@@ -6,7 +6,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { TodayContext } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { MenuItem } from './ActionMenu.js'
 import { ChoicePicker, DateButton, DotsMenu } from './FieldPickers.js'
+import { RowActions } from './StructuredList.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
 declare global {
@@ -44,6 +46,102 @@ describe('DotsMenu', () => {
     act(() => root.render(<MessagesProvider><DotsMenu label="管理想法：蒸馏预算"><span>归档</span></DotsMenu></MessagesProvider>))
     expect(hoverTip(host.querySelector('.dots')!)).toBe('管理想法：蒸馏预算')
     act(() => root.unmount())
+  })
+})
+
+describe('DotsMenu on its row', () => {
+  let root: Root
+  beforeEach(() => {
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    document.body.innerHTML = ''
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+  afterEach(() => {
+    act(() => root.unmount())
+    window.getSelection()?.removeAllRanges()
+  })
+
+  /** A row that hosts a … menu named `name` with one item, a title and a field; `children` go inside it. */
+  function Row({ name, onItem = () => {}, children }: { name: string; onItem?: () => void; children?: React.ReactNode }) {
+    return (
+      <div data-row-actions="" id={name}>
+        <span className="title">{name}</span>
+        <input aria-label={`${name} 名称`} />
+        {children}
+        <RowActions><DotsMenu label={`管理 ${name}`}><MenuItem onSelect={onItem}>{`${name} 归档`}</MenuItem></DotsMenu></RowActions>
+      </div>
+    )
+  }
+  const render = async (node: React.ReactNode) => { await act(async () => { root.render(<MessagesProvider>{node}</MessagesProvider>) }) }
+  /** Right-clicks `target` at (300, 200); returns whether the page took the click from the system's menu. */
+  const rightClick = async (target: Element) => {
+    const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true, button: 2, clientX: 300, clientY: 200 })
+    await act(async () => { target.dispatchEvent(event) })
+    return event.defaultPrevented
+  }
+  const menus = () => [...document.querySelectorAll('[role="menu"]')].map((menu) => menu.textContent)
+
+  it('右键行的任意处打开它 … 按钮的同一个菜单,从指针处展开;选一项和从 … 打开时一样', async () => {
+    const archived = vi.fn()
+    await render(<Row name="想法" onItem={archived} />)
+    expect(await rightClick(document.querySelector('#想法 .title')!)).toBe(true)
+    expect(menus()).toEqual(['想法 归档'])
+    expect(document.querySelector('[aria-label="管理 想法"]')!.getAttribute('aria-expanded')).toBe('true')
+    expect(document.querySelector('[role="menu"]')!.getAttribute('data-align')).toBe('start')
+    await act(async () => { document.querySelector<HTMLElement>('[role="menuitem"]')!.click() })
+    expect(archived).toHaveBeenCalledTimes(1)
+    expect(menus()).toEqual([])
+  })
+
+  it('在行里的文本框上、或在选中的文字上右键,留给系统的编辑菜单', async () => {
+    await render(<Row name="想法" />)
+    expect(await rightClick(document.querySelector('[aria-label="想法 名称"]')!)).toBe(false)
+    const title = document.querySelector('#想法 .title')!
+    const range = document.createRange()
+    range.selectNodeContents(title)
+    window.getSelection()!.addRange(range)
+    expect(await rightClick(title)).toBe(false)
+    expect(menus()).toEqual([])
+  })
+
+  it('行里套着的行右键只打开里面那一行自己的菜单', async () => {
+    await render(<Row name="项目"><Row name="任务" /></Row>)
+    expect(await rightClick(document.querySelector('#任务 .title')!)).toBe(true)
+    expect(menus()).toEqual(['任务 归档'])
+  })
+
+  it('焦点在行里时 ContextMenu 键和 Shift+F10 打开同一个菜单,从 … 按钮下展开', async () => {
+    for (const init of [{ key: 'ContextMenu' }, { key: 'F10', shiftKey: true }]) {
+      await render(<Row name="想法" />)
+      const dots = document.querySelector<HTMLElement>('[aria-label="管理 想法"]')!
+      dots.focus()
+      await act(async () => { dots.dispatchEvent(new KeyboardEvent('keydown', { bubbles: true, cancelable: true, ...init })) })
+      expect(menus()).toEqual(['想法 归档'])
+      expect(document.querySelector('[role="menu"]')!.getAttribute('data-align')).toBe('end')
+      await act(async () => { document.querySelector('[role="menu"]')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+      expect(menus()).toEqual([])
+    }
+  })
+
+  it('自己管着开合的菜单从 onOpenChange 听到右键', async () => {
+    const changes: boolean[] = []
+    function Held() {
+      const [open, setOpen] = useState(false)
+      return (
+        <div data-row-actions="" id="held">
+          <RowActions>
+            <DotsMenu open={open} onOpenChange={(next) => { changes.push(next); setOpen(next) }}><MenuItem>改名</MenuItem></DotsMenu>
+          </RowActions>
+        </div>
+      )
+    }
+    await render(<Held />)
+    await rightClick(document.querySelector('#held')!)
+    expect([changes, menus()]).toEqual([[true], ['改名']])
   })
 })
 

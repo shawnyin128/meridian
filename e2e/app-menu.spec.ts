@@ -1,5 +1,5 @@
 import type { ElectronApplication, Page } from '@playwright/test'
-import { expect, gotoPapers, test } from './app.js'
+import { expect, gotoPapers, popupMenus, test } from './app.js'
 
 /** Visited screens stay mounted, so selectors are scoped to the screen shown. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -70,4 +70,19 @@ test('在 macOS 上向返回方向轻扫,和点返回按钮一样回到来的那
   await expect(shown(win, '.zoomctl')).toBeVisible()
   await app.evaluate(({ BrowserWindow }) => { BrowserWindow.getAllWindows()[0]!.emit('swipe', {}, 'left') })
   await expect(shown(win, '#libq')).toBeVisible()
+})
+
+test('右键项目卡片和侧栏的对话行打开它们 … 按钮的同一个菜单,主进程不再弹编辑菜单', async ({ app, win }) => {
+  await win.locator('[data-desk="resproj"]').click()
+  const card = shown(win, '.research-object-card[data-actionable]').first()
+  await card.click({ button: 'right', position: { x: 40, y: 16 } })
+  await expect(win.locator('[role="menu"] [role="menuitem"]').first()).toHaveText('重命名')
+  await expect(card.locator('.dots')).toHaveAttribute('aria-expanded', 'true')
+  await win.keyboard.press('Escape')
+  await expect(win.locator('[role="menu"]')).toHaveCount(0)
+
+  const chat = win.locator('#chatList [data-chat]').first()
+  await chat.click({ button: 'right' })
+  await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['归档', '删除'])
+  expect(await popupMenus(app)).toEqual([])
 })
