@@ -711,6 +711,27 @@ describe('Ideas', () => {
     expect([...host.querySelectorAll('.idea-detail-panel .section-heading')].map((item) => item.firstChild!.textContent)).not.toContain('科研节点')
   })
 
+  it('候选节点的来源项目已删除时想法照常打开，不报整页错误；科研节点一节是项目不在的那行警告，只能忽略', async () => {
+    api.unreadable['project-gone'] = 'not-found'
+    try {
+      const detail = await openWith({
+        ...OWN, id: 'idea-orphan-candidate', title: '来源项目删了的候选', sourceProject: 'project-gone', candidateNode: 'node-1',
+        source: { chatTitle: '树宽讨论', agent: true },
+      })
+      const heading = [...detail.querySelectorAll<HTMLElement>('.section-heading')].find((item) => item.firstChild!.textContent === '科研节点')
+      const warning = heading?.nextElementSibling
+      expect([
+        host.querySelector('.page-error'),
+        [...(heading?.querySelectorAll('.section-heading-actions .btn') ?? [])].map((button) => button.textContent),
+        warning?.matches('.idea-missing-project.inline-message--line.inline-message--warning'), warning?.textContent,
+      ]).toEqual([null, ['忽略'], true, '原关联项目当前不可用'])
+      await act(async () => { heading!.querySelector<HTMLButtonElement>('.section-heading-actions .btn')!.click() })
+      expect(api.place).toHaveBeenLastCalledWith('idea-orphan-candidate', { kind: 'dismiss' })
+    } finally {
+      delete api.unreadable['project-gone']
+    }
+  })
+
   it('论文对话的标题就是论文名时，来源只写一次', async () => {
     const detail = await openWith({
       ...OWN, id: 'idea-paper', source: { chatId: 'chat-9', chatTitle: 'EAGLE', paperId: 'paper-9', paperTitle: 'EAGLE' },
