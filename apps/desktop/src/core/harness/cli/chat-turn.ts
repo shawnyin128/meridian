@@ -1,9 +1,11 @@
 import type { HarnessCli } from '../../../shared/contract.js'
-import { type ChildOutcome, cliEnvironment, CliRunError, runChild } from './child.js'
+import { type ChildOutcome, cliEnvironment, inTemporaryFolder, runChild } from './child.js'
+import { type InternalMcp, internalMcpArgs } from './internal-mcp.js'
 import {
-  claudeFailure, claudeUsage, CODEX_DISABLED_FEATURES, codexFailure, codexUsage, type CliUsage, failureDetails,
-  isRecord, jsonLine,
+  claudeExitFailure, claudeFailure, claudeUsage, cliCheck, CODEX_DISABLED_FEATURES, codexFailure, codexUsage,
+  type CliRunnerDeps, type CliUsage, isRecord, jsonLine,
 } from './runner.js'
+import type { VaultToolScope } from './vault-tools.js'
 
 export type CliChatCall = {
   cli: HarnessCli
@@ -19,8 +21,8 @@ export type CliChatCall = {
   folder: string
   /** Called with the id of the session the turn runs in, as soon as the CLI names it. */
   onSession?: (id: string) => void
-  /** The flags that give the CLI the run's MCP servers. */
-  mcpFlags: readonly string[]
+  /** What the turn may look up in the vault through the internal MCP server; without it the CLI has no tools. */
+  lookup?: VaultToolScope
   timeoutMs: number
   signal: AbortSignal
   /** Called with the answer as far as the CLI has written it, each time that grows. */
@@ -36,29 +38,31 @@ export type CliChatResult = {
 
 /**
  * One chat turn on the user's signed-in CLI. Rejects with a CliRunError when the CLI is not
- * installed, fails, runs past the turn's timeout, or the turn's signal aborts.
+ * installed, lacks a flag the turn passes, is not signed in with the user's subscription, reports
+ * the plan's usage limit reached or fails otherwise, runs past the turn's timeout, or the turn's
+ * signal aborts.
  */
 export type CliChatRunner = (call: CliChatCall) => Promise<CliChatResult>
 
 const modelFlag = (call: CliChatCall) => (call.model === undefined ? [] : [`--model=${call.model}`])
 
-function claudeArgs(call: CliChatCall): string[] {
+function claudeArgs(call: CliChatCall, mcp: InternalMcp | null): string[] {
   const session = 'resume' in call.session ? ['--resume', call.session.resume]
     : call.session.start === undefined ? [] : ['--session-id', call.session.start]
   return [
     '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--tools', '', '--strict-mcp-config', '--setting-sources', 'project',
     ...session, '--system-prompt', call.system,
-    ...modelFlag(call), ...call.mcpFlags,
+    ...modelFlag(call), ...(mcp?.claudeArgs ?? []),
   ]
 }
 
 /** `codex exec resume` takes no --sandbox, --color or -C; its sandbox is set through -c. */
-function codexArgs(call: CliChatCall): string[] {
+function codexArgs(call: CliChatCall, mcp: InternalMcp | null): string[] {
   const common = [
     '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', 'web_search="disabled"',
     ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
-    ...modelFlag(call), ...call.mcpFlags,
+    ...modelFlag(call), ...(mcp?.codexArgs ?? []),
   ]
   return 'resume' in call.session
     ? ['exec', 'resume', ...common, '-c', 'sandbox_mode="read-only"', call.session.resume, '-']
@@ -66,17 +70,23 @@ function codexArgs(call: CliChatCall): string[] {
 }
 
 /**
- * Every flag a chat turn that starts or resumes a session passes to `cli`, the way `claude --help`
- * and `codex exec --help` list them.
+ * Every flag a chat turn that starts or resumes a session, and looks up the vault, passes to `cli`,
+ * the way `claude --help` and `codex exec --help` list them, with Codex's `resume` command.
  */
 export function chatTurnFlags(cli: HarnessCli): string[] {
   const turn = (session: CliChatCall['session']): CliChatCall => ({
-    cli, model: 'model', system: 'system', prompt: 'prompt', session, folder: 'folder', mcpFlags: [], timeoutMs: 0,
+    cli, model: 'model', system: 'system', prompt: 'prompt', session, folder: 'folder', timeoutMs: 0,
     signal: new AbortController().signal,
   })
+  const lookup: InternalMcp = {
+    ...internalMcpArgs({ configFile: 'config', server: { command: 'server', args: [] }, env: {}, tools: ['tool'] }),
+    env: {},
+    close: async () => {},
+  }
   const args = [turn({ start: 'id' }), turn({ resume: 'id' })]
-    .flatMap((call) => (cli === 'claude' ? claudeArgs(call) : codexArgs(call)))
-  return [...new Set(args.filter((arg) => arg.startsWith('-') && arg !== '-').map((arg) => arg.split('=')[0]!))]
+    .flatMap((call) => (cli === 'claude' ? claudeArgs(call, lookup) : codexArgs(call, lookup)))
+  const flags = args.filter((arg) => arg.startsWith('-') && arg !== '-').map((arg) => arg.split('=')[0]!)
+  return [...new Set([...flags, ...(cli === 'codex' ? ['resume'] : [])])]
 }
 
 /**
@@ -137,9 +147,7 @@ function eventReader(cli: HarnessCli, onSession: (id: string) => void, onText: (
 function claudeAnswer(events: ReadonlyArray<Record<string, unknown>>, outcome: ChildOutcome) {
   const result = events.findLast((event) => event['type'] === 'result')
   if (result === undefined) {
-    if (outcome.code !== 0) {
-      throw new CliRunError('failed', `claude 运行失败（退出码 ${String(outcome.code)}）`, failureDetails(outcome))
-    }
+    if (outcome.code !== 0) throw claudeExitFailure(outcome)
     return { answer: null }
   }
   if (result['is_error'] === true) throw claudeFailure(result, outcome)
@@ -155,32 +163,46 @@ function codexAnswer(events: ReadonlyArray<Record<string, unknown>>, outcome: Ch
 }
 
 /**
- * The chat turn runner that starts the CLI `binary` resolves, in `environment` without its API-key
- * variables, inside the turn's folder. Claude reads the system prompt as an option and the prompt on
- * stdin; Codex reads both on stdin when it starts a session, and only the prompt when it resumes one,
- * whose first message already holds the system prompt.
+ * The chat turn runner that starts the CLI as `discover` finds it, after the same check a runner's
+ * call makes, in `environment` without its API-key variables, inside the turn's folder. Claude reads
+ * the system prompt as an option and the prompt on stdin; Codex reads both on stdin when it starts a
+ * session, and only the prompt when it resumes one, whose first message already holds the system
+ * prompt. A turn with a `lookup` scope also gets the internal MCP server `internalMcp` opens in a
+ * fresh temporary folder, closed and removed once the CLI has exited.
  */
-export function createCliChatRunner(deps: {
-  binary: (cli: HarnessCli) => Promise<string | null>
-  environment?: NodeJS.ProcessEnv
-}): CliChatRunner {
+export function createCliChatRunner(deps: CliRunnerDeps): CliChatRunner {
   const environment = deps.environment ?? process.env
+  const check = cliCheck(deps)
   return async (call) => {
-    const binary = await deps.binary(call.cli)
-    if (binary === null) throw new CliRunError('unavailable', `没有找到 ${call.cli} 命令`)
-    const reader = eventReader(call.cli, call.onSession ?? (() => {}), call.onText ?? (() => {}))
-    const started = Date.now()
-    const outcome = await runChild(binary, call.cli === 'claude' ? claudeArgs(call) : codexArgs(call), {
-      cwd: call.folder,
-      env: cliEnvironment(environment, binary),
-      input: call.cli === 'claude' || 'resume' in call.session ? call.prompt : `${call.system}\n\n${call.prompt}`,
-      timeoutMs: call.timeoutMs,
-      signal: call.signal,
-      onOutput: reader.push,
+    const binary = await check.binary(call.cli)
+    if (call.lookup !== undefined && deps.internalMcp === undefined) {
+      throw new Error('This runner has no internal MCP server for a turn that looks up the vault')
+    }
+    // The internal MCP server's socket goes in a short temporary path, not the chat's folder.
+    return inTemporaryFolder(async (root) => {
+      const mcp = call.lookup === undefined ? null : await deps.internalMcp!({ ...call.lookup, folder: root })
+      const reader = eventReader(call.cli, call.onSession ?? (() => {}), call.onText ?? (() => {}))
+      const started = Date.now()
+      let outcome: ChildOutcome
+      try {
+        outcome = await runChild(binary, call.cli === 'claude' ? claudeArgs(call, mcp) : codexArgs(call, mcp), {
+          cwd: call.folder,
+          env: { ...cliEnvironment(environment, binary), ...mcp?.env },
+          input: call.cli === 'claude' || 'resume' in call.session ? call.prompt : `${call.system}\n\n${call.prompt}`,
+          timeoutMs: call.timeoutMs,
+          signal: call.signal,
+          onOutput: reader.push,
+        })
+      } finally {
+        await mcp?.close()
+      }
+      const durationMs = Date.now() - started
+      reader.end()
+      const result = call.cli === 'claude' ? claudeAnswer(reader.events, outcome) : codexAnswer(reader.events, outcome)
+      return { ...result, durationMs }
+    }).catch((cause: unknown) => {
+      check.failed(call.cli, cause)
+      throw cause
     })
-    const durationMs = Date.now() - started
-    reader.end()
-    const result = call.cli === 'claude' ? claudeAnswer(reader.events, outcome) : codexAnswer(reader.events, outcome)
-    return { ...result, durationMs }
   }
 }

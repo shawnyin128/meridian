@@ -227,11 +227,14 @@ export const wiki = {
     startUpdate: 'Update Wiki draft',
     billableNote: 'Costs money',
     freeNote: 'Free',
+    planNote: { claude: 'Counts toward Claude plan', codex: 'Counts toward ChatGPT plan' },
     scopeLabel: 'Scope',
     personalContentLabel: 'Personal content',
     personalContentSummary: (n: number, hasRemark: boolean) =>
       `${n} ${pluralEn(n, { one: 'note', other: 'notes' })}${hasRemark ? ' · overall thoughts included' : ''}`,
     modelLabel: 'Model',
+    outputLimitLabel: 'Output limit',
+    noOutputLimit: 'No limit',
   },
   claims: {
     heading: 'Findings',

@@ -98,7 +98,7 @@ describe('英文的大小写', () => {
   // Names that keep their capitals inside a sentence: products, services, formats and Meridian's own surfaces.
   const PROPER = new Set([
     'Meridian', 'App', 'Wiki', 'Paper', 'Lab', 'Skill', 'Skills', 'MCP', 'Harness', 'PDF', 'PDFs', 'API', 'AI', 'ID', 'IDs', 'URL',
-    'SSH', 'JSON', 'arXiv', 'Semantic', 'Scholar', 'OpenAI', 'Anthropic', 'Claude', 'Code', 'Codex', 'Google', 'Gemini', 'DeepSeek',
+    'SSH', 'JSON', 'arXiv', 'Semantic', 'Scholar', 'OpenAI', 'ChatGPT', 'Anthropic', 'Claude', 'Code', 'Codex', 'Google', 'Gemini', 'DeepSeek',
     'OpenRouter', 'Ollama', 'LM', 'Studio', 'Responses', 'Chat', 'Completions', 'GitHub', 'Markdown', 'Transformer', 'I',
   ])
   // Texts that are content, not UI copy: the agent prompts and the sample paper the theme editor previews.
