@@ -5,10 +5,12 @@
 /**
  * Measures every element the `entries` match inside the `scope` roots and returns one record per
  * element: its entry, a stable element id, its box, a short label and the metric values of its
- * pattern class. `scope` is `screen` (the visible screen and open overlays), `shell` (sidebar and
- * title bar) or `overlay` (open overlays only). At most `cap` elements are measured per entry; the
- * total each entry matched is returned in `totals`. The element id lives in `data-review-id`, so
- * the same element measured again carries the same id. Colours are named by the tokens in
+ * pattern class, and its `path`, the element's position in the document as each ancestor's
+ * index among its siblings, which stays the same when a later state draws the same screen again.
+ * `scope` is `screen` (the visible screen and open overlays), `shell` (sidebar and title bar) or
+ * `overlay` (open overlays only). At most `cap` elements are measured per entry; the total each
+ * entry matched is returned in `totals`. The element id lives in `data-review-id`, so the same
+ * element measured again carries the same id. Colours are named by the tokens in
  * `colourTokens` they resolve to, or given as `rgb(...)`. A field's `focus` is its current look,
  * which the caller compares with its look under a forced `:focus`.
  */
@@ -117,6 +119,11 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
     if (!selector) return null
     const found = [...el.querySelectorAll(selector)].find(shown)
     return found ?? null
+  }
+  const pathOf = (el) => {
+    const steps = []
+    for (let node = el; node.parentElement; node = node.parentElement) steps.unshift([...node.parentElement.children].indexOf(node))
+    return steps.join('.')
   }
   const classesOf = (el) => (typeof el.className === 'string' ? el.className : el.getAttribute('class') ?? '').split(/\s+/).filter(Boolean)
   const variant = (el) => classesOf(el).filter((c) => variantClasses.includes(c)).join(' ') || 'plain'
@@ -301,7 +308,7 @@ export function measureInPage({ entries, scope, cap, colourTokens, shadowTokens,
       el.dataset.reviewId ??= String(window.__reviewNextId++)
       const box = rect(el)
       records.push({
-        entry: item.id, pattern: item.pattern, impl: item.impl, id: Number(el.dataset.reviewId),
+        entry: item.id, pattern: item.pattern, impl: item.impl, id: Number(el.dataset.reviewId), path: pathOf(el),
         box: [r1(box.left), r1(box.top), r1(box.width), r1(box.height)],
         label: `${classesOf(el).slice(0, 3).join('.')} ${(el.innerText ?? '').trim().replace(/\s+/g, ' ').slice(0, 40)}`.trim(),
         metrics: metricsOf(el, item),
