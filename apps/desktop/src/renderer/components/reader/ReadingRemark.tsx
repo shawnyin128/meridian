@@ -5,6 +5,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { commitsMultiline } from '../../lib/keyboard.js'
 import { FormTextarea } from '../FormControls.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
+import { CommitActions } from '../CommitActions.js'
 
 /**
  * The remark in the reader's right rail: a free thought about the whole paper, tied to no page. The
@@ -38,7 +39,7 @@ export function ReadingRemark({ reading, saving, onSave, edits }: {
             edit.fieldProps.onKeyDown(event)
           }}
         />
-        <button className="btn sm" disabled={saving || unchanged} onClick={save}>{m.common.save}</button>
+        <CommitActions place="item" saving={saving} canSave={!unchanged} onSave={save} />
       </div>
     </aside>
   )

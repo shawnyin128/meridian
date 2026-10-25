@@ -10,6 +10,7 @@ import { EntityLink } from '../EntityLink.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError, SectionHeading } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Button } from '../Button.js'
 
 const EXCERPT = 2
 
@@ -64,9 +65,9 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
         )}
       {entries.length > EXCERPT
         ? (
-          <button type="button" className="btn ghost sm reading-summary-all" onClick={() => onRead({ panel: 'notes' })}>
+          <Button size="compact" variant="ghost" className="reading-summary-all" onClick={() => onRead({ panel: 'notes' })}>
             {m.papers.reading.viewAll(entries.length)}
-          </button>
+          </Button>
         )
         : null}
     </div>

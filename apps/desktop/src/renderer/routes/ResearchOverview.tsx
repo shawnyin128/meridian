@@ -25,7 +25,6 @@ import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIden
 import { DAY_SLOT_HOURS, useTimelinePeriod } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
 import { useMilestoneEditor } from '../components/timeline/MilestoneEditor.js'
-import { ToolbarButton } from '../components/Toolbar.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
@@ -33,6 +32,7 @@ import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from '../components/PageShell.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './ResearchOverview.css'
 
@@ -358,10 +358,10 @@ function OverviewGantt({
       foldable
       {...editor.board}
       headerAction={(
-        <ToolbarButton
-          className="btn ghost sm overview-history-toggle" aria-pressed={showInactive}
+        <Button
+          size="compact" variant="ghost" className="overview-history-toggle" pressed={showInactive}
           onClick={() => { editor.close(); setShowInactive((shown) => !shown) }}
-        >{m.research.overview.historyProjects}</ToolbarButton>
+        >{m.research.overview.historyProjects}</Button>
       )}
       onTaskLabelClick={onOpenTask}
       onProjectLabelClick={onOpenProject}

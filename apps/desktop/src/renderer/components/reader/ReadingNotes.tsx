@@ -11,6 +11,7 @@ import { RowActions } from '../StructuredList.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { useClipped } from '../../hooks/useClipped.js'
+import { CommitActions } from '../CommitActions.js'
 
 /** A note or highlight card's delete, in the row-actions slot at the end of the card's top line. */
 function ReadingDelete({ onDelete }: { onDelete: () => Promise<boolean> }) {
@@ -43,10 +44,10 @@ function NoteCard({ note, edits, onSave, onDelete, onJump }: {
       </div>
       <FormTextarea aria-label={m.reader.notes.pageAria(note.page)} {...edit.fieldProps} />
       <div className="reading-actions">
-        <button
-          className="btn ghost sm" disabled={!changed || text.trim() === ''}
-          onClick={() => { if (!edit.stale) void onSave(text.trim()).then((saved) => { if (saved) edit.drop() }) }}
-        >{m.common.save}</button>
+        <CommitActions
+          place="item" canSave={changed && text.trim() !== ''}
+          onSave={() => { if (!edit.stale) void onSave(text.trim()).then((saved) => { if (saved) edit.drop() }) }}
+        />
       </div>
     </article>
   )
@@ -87,10 +88,10 @@ function HighlightCard({ highlight, edits, onSave, onDelete, onJump, focus, sele
         {...edit.fieldProps}
       />
       <div className="reading-actions">
-        <button
-          className="btn ghost sm" disabled={note === highlight.note}
-          onClick={() => { if (!edit.stale) void onSave(note).then((saved) => { if (saved) edit.drop() }) }}
-        >{m.common.save}</button>
+        <CommitActions
+          place="item" canSave={note !== highlight.note}
+          onSave={() => { if (!edit.stale) void onSave(note).then((saved) => { if (saved) edit.drop() }) }}
+        />
       </div>
     </article>
   )
@@ -135,10 +136,7 @@ export function ReadingNotes({
           aria-label={m.reader.notes.newAria} placeholder={m.reader.notes.placeholder(currentPage)}
           value={draft} onChange={(event) => drafts.set(compose, event.target.value)}
         />
-        <button
-          className="btn sm" disabled={draft.trim() === '' || saving}
-          onClick={() => { void addNote() }}
-        >{m.common.save}</button>
+        <CommitActions place="item" saving={saving} canSave={draft.trim() !== ''} onSave={() => { void addNote() }} />
       </div>}
       <div className="reading-list" ref={listFade}>
         {mode === 'notes' ? null : reading.highlights.map((highlight) => (

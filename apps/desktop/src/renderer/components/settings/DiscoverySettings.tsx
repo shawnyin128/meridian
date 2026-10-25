@@ -14,6 +14,7 @@ import { Tag } from '../Tag.js'
 import { Card } from '../Card.js'
 import { FadeText } from '../FadeText.js'
 import { plainTitle } from '../paper/paper-text.js'
+import { Button } from '../Button.js'
 
 function resultNote(result: DiscoveryFetchResult, m: Catalog): string {
   const parts = [
@@ -76,11 +77,11 @@ export function DiscoverySettings() {
             <header>
               <strong>{profile.name}</strong>
               <span>{m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}</span>
-              <button
-                className="btn ghost sm" disabled={refreshing !== null || profile.intentCount === 0}
+              <Button
+                size="compact" variant="ghost" disabled={refreshing !== null || profile.intentCount === 0}
+                busy={refreshing === profile.id} busyLabel={m.settings.discovery.refreshing}
                 onClick={() => refresh(profile.id)}
-              >{refreshing === profile.id
-                ? m.settings.discovery.refreshing : m.settings.discovery.refreshProject}</button>
+              >{m.settings.discovery.refreshProject}</Button>
             </header>
             {profile.intents.length === 0 ? (
               <EmptyState variant="section">{m.settings.discovery.needsArxiv}</EmptyState>
@@ -99,10 +100,10 @@ export function DiscoverySettings() {
                 </div>
                 <div className="direction-actions">
                   {!intent.core && intent.enabled ? (
-                    <button
-                      className="btn ghost sm" disabled={busy.has(intent.id)}
+                    <Button
+                      size="compact" variant="ghost" disabled={busy.has(intent.id)}
                       onClick={() => update(profile.id, intent.id, 'set-core')}
-                    >{m.settings.discovery.setCoreAction}</button>
+                    >{m.settings.discovery.setCoreAction}</Button>
                   ) : null}
                   <Switch
                     label={intent.label} checked={intent.enabled} disabled={busy.has(intent.id)}

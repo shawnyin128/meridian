@@ -6,6 +6,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { PageError } from '../PageShell.js'
 import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { FadeText } from '../FadeText.js'
+import { Button } from '../Button.js'
 import './ApiOverview.css'
 
 /** The API category's summary: which model and which scholarly source Meridian uses now, each opening its own page. */
@@ -40,7 +41,7 @@ export function ApiOverview({ onOpen }: { onOpen: (category: 'model' | 'research
           <StructuredRow composite className="wrow" data-api={row.key} key={row.key} onActivate={() => onOpen(row.key)}>
             <span className="nm">{row.name}</span>
             <FadeText className="api-state">{row.state}</FadeText>
-            <button className="btn ghost sm" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</button>
+            <Button size="compact" variant="ghost" onClick={(event) => { event.stopPropagation(); onOpen(row.key) }}>{copy.open}</Button>
           </StructuredRow>
         ))}
       </StructuredList>

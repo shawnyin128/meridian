@@ -4,6 +4,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { useJump, usePaperCount, useSettingsOpen, useVaultRevision } from '../shell/AppShell.js'
 import { Card } from './Card.js'
 import { IconCheck } from './icons.js'
+import { Button } from './Button.js'
 import './FirstRunChecklist.css'
 
 /** The renderer localStorage key of the checklist's state for the library at `root`: `open` or `closed`. */
@@ -105,11 +106,11 @@ export function FirstRunChecklist({ className, onError, onShown }: {
             <li key={step.key} data-step={step.key} data-done={step.done}>
               {step.done
                 ? <span className="firstrun-done"><IconCheck />{f.steps[step.key]}</span>
-                : <button type="button" className="btn sm" onClick={step.go}>{f.steps[step.key]}</button>}
+                : <Button size="compact" onClick={step.go}>{f.steps[step.key]}</Button>}
             </li>
           ))}
         </ul>
-        <button type="button" className="btn ghost sm firstrun-hide" onClick={() => keep(setup.root, 'closed')}>{f.dismiss}</button>
+        <Button size="compact" variant="ghost" className="firstrun-hide" onClick={() => keep(setup.root, 'closed')}>{f.dismiss}</Button>
       </div>
     </Card>
   )

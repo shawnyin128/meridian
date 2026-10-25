@@ -30,6 +30,7 @@ import { PaperText } from '../paper/PaperText.js'
 import { ProposalCard, ProposalChange, ProposalDecision } from '../wiki/ProposalChange.js'
 import { ReaderPanelHeader } from './ReaderPanelHeader.js'
 import { PaperWikiProposalReview } from './PaperWikiProposalReview.js'
+import { Button } from '../Button.js'
 
 type ReviewMode = 'structured' | 'markdown'
 
@@ -285,29 +286,25 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
             disabled={rejecting}
             value={rejectionNote} onChange={(event) => setRejection({ reasons: rejectionReasons, note: event.target.value })} />
           <div className="wiki-ingest-actions">
-            <button type="button" className="btn" disabled={rejecting}
-              onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</button>
-            <button type="button" className="btn danger" disabled={rejecting}
-              onClick={submitRejection}>
-              {rejecting
-                ? m.wiki.ingest.discarding
-                : rejectionReasons.length === 0 && rejectionNote.trim() === ''
-                  ? m.wiki.ingest.discardNoFeedback
-                  : m.wiki.ingest.discardWithFeedback}
-            </button>
+            <Button size="compact" disabled={rejecting} onClick={() => setRejection(null)}>{m.wiki.ingest.backToReview}</Button>
+            <Button size="compact" tone="danger" busy={rejecting} busyLabel={m.wiki.ingest.discarding} onClick={submitRejection}>
+              {rejectionReasons.length === 0 && rejectionNote.trim() === ''
+                ? m.wiki.ingest.discardNoFeedback
+                : m.wiki.ingest.discardWithFeedback}
+            </Button>
           </div>
         </div>
       ) : (
         <ProposalDecision>
-          <button className="btn ghost danger" disabled={applying || rejecting}
-            onClick={() => setRejection({ reasons: [], note: '' })}>
-            {m.wiki.ingest.discardProposal}
-          </button>
-          <button className="btn"
-            disabled={applying || rejecting || draft.trim() === '' || pending?.stale === true}
-            onClick={() => { void apply() }}>
-            {applying ? m.wiki.ingest.writing : m.wiki.ingest.confirm}
-          </button>
+          <Button
+            size="compact" variant="ghost" tone="danger" disabled={applying || rejecting}
+            onClick={() => setRejection({ reasons: [], note: '' })}
+          >{m.wiki.ingest.discardProposal}</Button>
+          <Button
+            size="compact" busy={applying} busyLabel={m.wiki.ingest.writing}
+            disabled={rejecting || draft.trim() === '' || pending?.stale === true}
+            onClick={() => { void apply() }}
+          >{m.wiki.ingest.confirm}</Button>
           {pending?.stale === true
             ? (
               <TagButton tone="warn" disabled={applying || rejecting} onClick={() => setRejection({ reasons: [], note: '' })}>
@@ -355,7 +352,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
             : null}
           {cancelling ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.stopping}</InlineMessage> : null}
           {receipt !== null || failed !== null || rejected
-            ? <button className="btn" onClick={reprepare}>{m.wiki.ingest.reprepare}</button>
+            ? <Button size="regular" onClick={reprepare}>{m.wiki.ingest.reprepare}</Button>
             : null}
         </div>
         {proposal !== undefined && !applied && !rejected ? (

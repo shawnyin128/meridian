@@ -54,6 +54,7 @@ import { FilterMenu } from '../FilterMenu.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
 import { ResearchMap } from './ResearchMap.js'
+import { Button } from '../Button.js'
 import './PaperTable.css'
 
 type ChipKey = 'topics'
@@ -201,9 +202,9 @@ function GroupValuePicker({ current, facets, name, onPick }: {
     <ActionMenu
       align="start"
       trigger={(
-        <button type="button" className="btn sm" aria-label={m.papers.toolbar.groupValueAria}>
+        <Button size="compact" aria-label={m.papers.toolbar.groupValueAria}>
           {shown}{count === undefined ? null : <CountBadge count={count} />}
-        </button>
+        </Button>
       )}
     >
       <MenuRadioGroup value={current ?? ''}>

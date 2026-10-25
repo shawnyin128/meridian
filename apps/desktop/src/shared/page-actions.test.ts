@@ -208,10 +208,10 @@ const PLACES: Record<string, Place[]> = {
     { slot: 'page header', size: 'md', variant: 'danger' },
     { slot: 'section heading', size: 'sm', variant: 'danger', scope: 'a section clears its own entries' },
   ],
-  'decline a proposal': [{ slot: 'inline', size: 'md', variant: 'ghost danger' }],
+  'decline a proposal': [{ slot: 'inline', size: 'sm', variant: 'ghost danger' }],
   'apply a proposal': [
-    { slot: 'inline', size: 'md', variant: 'plain' },
-    { slot: 'inline', size: 'md', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
+    { slot: 'inline', size: 'sm', variant: 'plain' },
+    { slot: 'inline', size: 'sm', variant: 'primary', scope: "the review queue's first applicable proposal, its one primary" },
   ],
   'option switch': [{ slot: 'inline', size: 'md', variant: 'plain' }],
   'open pending work': [{ slot: 'page header', size: 'md', variant: 'plain' }],
@@ -232,6 +232,28 @@ const buttonLook = (classes: string[]) => ({
     .map((word) => (word === 'pri' ? 'primary' : word)).join(' ') || 'plain',
 })
 
+/**
+ * The look of a text button: a Button by its size, variant and tone, the buttons of a CommitActions or
+ * an EditActions by the size and Save of their place, a raw button by its btn classes, or null for any
+ * other element.
+ */
+function textButtonLook(element: Node) {
+  const name = nameOf(element)
+  if (name === 'CommitActions') {
+    const place = strings(attribute(element, 'place'))[0]
+    return { size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }
+  }
+  if (name === 'EditActions') return { size: 'sm', variant: 'plain' }
+  if (name === 'Button') {
+    const words = [...strings(attribute(element, 'variant')), ...strings(attribute(element, 'tone'))]
+    return {
+      size: strings(attribute(element, 'size')).includes('compact') ? 'sm' : 'md',
+      variant: ['primary', 'ghost', 'danger'].filter((word) => words.includes(word)).join(' ') || 'plain',
+    }
+  }
+  return (name === 'button' || name === 'ToolbarButton') && classesOf(element).includes('btn') ? buttonLook(classesOf(element)) : null
+}
+
 /** A Settings card's save, by its label. */
 const SETTINGS_SAVE = /\bm\.(common|settings\.model)\.save\b/
 
@@ -248,10 +270,14 @@ function lookOf(element: Node, source: string, path: string): Look | null {
   if (name === 'AddAction') {
     const variant = literal('variant') ?? 'section'
     if (variant === 'page') return { operation: 'create', size: 'md', variant: 'primary' }
-    if (variant === 'section') return { operation: 'add', size: 'sm', variant: classesOf(element).includes('ghost') ? 'ghost' : 'plain' }
+    if (variant === 'section') return { operation: 'add', size: 'sm', variant: 'plain' }
     return { operation: 'add', size: variant === 'icon' ? 'nested' : variant, variant }
   }
   if (name === 'EditActions') return { operation: 'edit', size: 'sm', variant: 'plain' }
+  if (name === 'CommitActions' && path.startsWith('components/settings/')) {
+    const place = literal('place')
+    return { operation: 'settings save', size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }
+  }
   if (name === 'PanelClose') return { operation: 'close', size: 'default', variant: 'plain' }
   if (name === 'DotsMenu') return { operation: 'overflow menu', size: 'nested', variant: 'plain' }
   if (name === 'SegmentedControl') {
@@ -266,12 +292,13 @@ function lookOf(element: Node, source: string, path: string): Look | null {
       operation, size: literal('size') ?? 'default', variant: literal('tone') === 'danger' ? 'danger' : 'plain',
     }
   }
-  if (name === 'button' || name === 'ToolbarButton') {
+  if (name === 'Button' || name === 'button' || name === 'ToolbarButton') {
     const children = (element.children as Node[]).filter((child) => child.type === 'JSXExpressionContainer')
       .map((child) => text(child.expression as Node))
     const operation = path.startsWith('components/settings/') && children.some((child) => SETTINGS_SAVE.test(child))
       ? 'settings save' : children.map(labelled).find(Boolean)
-    return operation === undefined ? null : { operation, ...buttonLook(classesOf(element)) }
+    const look = textButtonLook(element) ?? buttonLook([])
+    return operation === undefined ? null : { operation, ...look }
   }
   return null
 }
@@ -347,9 +374,8 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
       if (name === 'IconButton' && !CONTROL_FILES.has(path)) {
         icons.push({ slot, size: strings(attribute(held, 'size'))[0] ?? 'default', at: `${path}:${line(held)}` })
       }
-      if ((name === 'button' || name === 'ToolbarButton') && classesOf(held).includes('btn') && !CONTROL_FILES.has(path)) {
-        buttons.push({ slot, ...buttonLook(classesOf(held)), at: `${path}:${line(held)}` })
-      }
+      const textLook = textButtonLook(held)
+      if (textLook !== null && !CONTROL_FILES.has(path)) buttons.push({ slot, ...textLook, at: `${path}:${line(held)}` })
       const built = ((attribute(held, 'className')?.value as Node | undefined)?.expression as Node | undefined)
       const builder = built?.type === 'CallExpression' && (built.callee as Node).type === 'Identifier'
         ? functions.get((built.callee as Node).name as string) ?? [] : []
@@ -376,6 +402,16 @@ function placementsIn(path: string): { actions: Placement[]; icons: IconPlacemen
 
 const READ = SOURCES.map(placementsIn)
 const PLACEMENTS = READ.flatMap((file) => file.actions)
+
+/**
+ * The one text button size of each slot: regular in the page header bar and at dialog, popover and form
+ * feet; compact in section, group and panel headings, inside rows and cards, and in toolbars.
+ */
+const BUTTON_SIZES: Partial<Record<Slot, string>> = {
+  'page header': 'md', 'dialog actions': 'md', 'card foot': 'md',
+  'section heading': 'sm', 'group heading': 'sm', 'panel head': 'sm', 'row actions': 'sm', 'timeline toolbar': 'sm',
+  'selection toolbar': 'sm',
+}
 
 /** The one icon button size of the slots that hold rows' and chips' own actions. */
 const ICON_SIZES: Partial<Record<Slot, string>> = { 'row actions': 'nested', chip: 'inline' }
@@ -418,10 +454,17 @@ describe('一个操作一个位置', () => {
     expect([...new Set(menus.map((menu) => menu.at.split(':')[0]))].sort()).toEqual(['routes/Ideas.tsx', 'routes/Inbox.tsx', 'routes/Projects.tsx'])
   })
 
-  it('详情面板头部的文字按钮都是小号的普通按钮', () => {
+  it('详情面板头部的文字按钮都是普通按钮', () => {
     const offenders = READ.flatMap((file) => file.buttons)
-      .filter((button) => button.slot === 'panel head' && `${button.size} · ${button.variant}` !== 'sm · plain')
+      .filter((button) => button.slot === 'panel head' && button.variant !== 'plain')
       .map((button) => `${button.at} ${button.size} · ${button.variant}`)
+    expect([...new Set(offenders)]).toEqual([])
+  })
+
+  it('一个槽里的文字按钮一种尺寸：屏头、对话框和表单脚上是常规尺寸，小标题、组标题、面板头、行里和工具栏里是紧凑尺寸', () => {
+    const offenders = READ.flatMap((file) => file.buttons)
+      .filter((button) => BUTTON_SIZES[button.slot] !== undefined && button.size !== BUTTON_SIZES[button.slot])
+      .map((button) => `${button.at} ${button.slot}: ${button.size}`)
     expect([...new Set(offenders)]).toEqual([])
   })
 

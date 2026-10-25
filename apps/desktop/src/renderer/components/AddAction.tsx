@@ -4,6 +4,7 @@ import { IconButton } from './IconButton.js'
 import { IconPlus } from './icons.js'
 import { useToolbarItem } from './Toolbar.js'
 import { Tooltip } from './Tooltip.js'
+import { Button } from './Button.js'
 
 export type AddActionVariant = 'page' | 'section' | 'icon' | 'chip'
 
@@ -31,13 +32,19 @@ export const AddAction = forwardRef<HTMLButtonElement, AddActionProps>(function 
       </IconButton>
     )
   }
-  const visual = variant === 'page' ? 'btn pri' : variant === 'section' ? 'btn sm' : ''
-  const classes = [visual, 'add-action', `add-action-${variant}`, className].filter(Boolean).join(' ')
-  const button = asItem(
-    <button {...props} ref={ref} className={classes} aria-label={label}>
-      <IconPlus />
-      {children === undefined ? null : <span>{children}</span>}
-    </button>,
+  const classes = ['add-action', `add-action-${variant}`, className].filter(Boolean).join(' ')
+  if (variant === 'chip') {
+    return (
+      <Tooltip label={label!}>
+        {asItem(<button {...props} ref={ref} className={classes} aria-label={label}><IconPlus /></button>)}
+      </Tooltip>
+    )
+  }
+  return (
+    <Button
+      {...props} ref={ref} size={variant === 'page' ? 'regular' : 'compact'} variant={variant === 'page' ? 'primary' : 'secondary'}
+      className={classes}
+      aria-label={label} icon={<IconPlus />}
+    >{children === undefined ? null : <span>{children}</span>}</Button>
   )
-  return variant === 'chip' ? <Tooltip label={label!}>{button}</Tooltip> : button
 })

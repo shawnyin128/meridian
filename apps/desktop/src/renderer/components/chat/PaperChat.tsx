@@ -27,6 +27,7 @@ import { IdeaDraft, type IdeaDraftText } from '../ideas/IdeaDraft.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
+import { Button } from '../Button.js'
 import './Chat.css'
 
 /**
@@ -168,10 +169,10 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         <div className="mwrap">
           <div className="qacts">
             {hasDiscussion ? null : <Tag>{m.chat.noDiscussion}</Tag>}
-            <button
-              className="btn ghost sm save-idea" disabled={session === null || !hasDiscussion}
+            <Button
+              size="compact" variant="ghost" className="save-idea" disabled={session === null || !hasDiscussion}
               onClick={startIdea}
-            >{m.chat.saveIdeaLabel}</button>
+            >{m.chat.saveIdeaLabel}</Button>
           </div>
           <ChatComposer
             key={paperId} ref={composer} label={m.chat.askAboutPaper} placeholder={m.chat.paperComposerPlaceholder}

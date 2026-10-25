@@ -12,6 +12,8 @@ import {
   ServiceActions, ServiceCard, ServiceClearKeyButton, ServiceConnectionStatus, ServiceError, ServiceField,
   ServiceFoot, ServiceSavedKey, ServiceStatus,
 } from './ServiceCard.js'
+import { Button } from '../Button.js'
+import { CommitActions } from '../CommitActions.js'
 
 const APPLY_URL = 'https://www.semanticscholar.org/product/api#api-key-form'
 
@@ -26,6 +28,8 @@ export function SemanticKeySettings() {
   const [editing, setEditing] = useState(false)
   const [clearPending, setClearPending] = useState(false)
   const [saving, setSaving] = useState(false)
+  // Whether the last save succeeded; Save shows its check as it turns true.
+  const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
   const { error, load } = useScreenLoad()
@@ -38,9 +42,11 @@ export function SemanticKeySettings() {
 
   const save = async () => {
     setSaving(true)
+    setSaved(false)
     setSaveError(null)
     try {
       const next = await delivery.setSemanticKey(clearPending ? null : draft)
+      setSaved(true)
       setStatus(next)
       setDraft('')
       setEditing(false)
@@ -125,15 +131,16 @@ export function SemanticKeySettings() {
             />
           ) : null}
           {canTestConnection ? null : <Tag>{m.settings.model.connection.notSaved}</Tag>}
-          <button
-            className="btn" disabled={!canTestConnection || saving || connectionCheck.state === 'testing'}
+          <Button
+            size="regular" disabled={!canTestConnection || saving}
+            busy={connectionCheck.state === 'testing'} busyLabel={m.settings.model.connection.testing}
             onClick={() => { void testConnection() }}
-          >
-            {connectionCheck.state === 'testing' ? m.settings.model.connection.testing : m.settings.model.connection.action}
-          </button>
-          <button className="btn pri" disabled={saving || !canSave} onClick={() => { void save() }}>
-            {saving ? m.settings.model.saving : m.settings.model.save}
-          </button>
+          >{m.settings.model.connection.action}</Button>
+          <CommitActions
+            place="foot" saving={saving} canSave={canSave} done={saved} saveLabel={m.settings.model.save}
+            busyLabel={m.settings.model.saving}
+            onSave={() => { void save() }}
+          />
         </ServiceActions>
       </ServiceFoot>
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}

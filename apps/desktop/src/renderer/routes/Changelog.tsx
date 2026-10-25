@@ -24,6 +24,7 @@ import {
 import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
+import { Button } from '../components/Button.js'
 import './shell.css'
 import './Changelog.css'
 
@@ -97,7 +98,7 @@ function ClearArchivedButton({ count, onClear }: { count: number; onClear: () =>
   const m = useMessages()
   return (
     <ConfirmDialog
-      trigger={<button className="btn danger sm">{m.changelog.clearArchived}</button>}
+      trigger={<Button size="compact" tone="danger">{m.changelog.clearArchived}</Button>}
       title={m.changelog.confirmClearArchived(count)} description={m.changelog.confirmClearArchivedDescription}
       confirmLabel={m.changelog.confirmClearArchivedLabel} onConfirm={onClear}
     />
@@ -221,10 +222,10 @@ export function Changelog() {
       <PageBody>
         <SectionHeading
           actions={(
-            <button
-              className="btn sm archall" disabled={unread === 0}
+            <Button
+              size="compact" className="archall" disabled={unread === 0}
               onClick={() => archiveAll(unread)}
-            >{m.changelog.archiveAll}</button>
+            >{m.changelog.archiveAll}</Button>
           )}
         >{m.changelog.unarchivedHeading}
         </SectionHeading>

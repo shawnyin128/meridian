@@ -46,6 +46,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
 import { FadeText } from '../components/FadeText.js'
+import { Button } from '../components/Button.js'
 import './Ideas.css'
 
 
@@ -318,10 +319,10 @@ function IdeaDetailPanel({
         <SectionHeading
           variant="rail"
           actions={idea.project === undefined
-            ? <button className="btn sm" onClick={onPromote}>{m.ideas.promote.action}</button>
+            ? <Button size="compact" onClick={onPromote}>{m.ideas.promote.action}</Button>
             : linked === undefined
               ? undefined
-              : <button className="btn sm" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</button>}
+              : <Button size="compact" onClick={() => onOpen('project', linked.id)}>{m.ideas.promote.openProject}</Button>}
         >{m.ideas.work.heading}
         </SectionHeading>
         <ChoicePicker

@@ -28,6 +28,8 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { composing } from '../lib/keyboard.js'
 import { FadeText } from '../components/FadeText.js'
+import { Button } from '../components/Button.js'
+import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
 import './Watches.css'
 
@@ -399,9 +401,9 @@ export function WatchSettings() {
               <span>
                 {m.watches.currentIdentity(editingWatch.identity.affiliations.join(' · ') || m.watches.noAffiliation)}
               </span>
-              <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
+              <Button size="compact" variant="ghost" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
                 {m.watches.reconfirm}
-              </button>
+              </Button>
             </div>
           )
           : name.trim().length < 2
@@ -414,9 +416,9 @@ export function WatchSettings() {
                     <InlineMessage
                       tone="error" variant="line" className="author-search-error"
                       action={(
-                        <button className="btn ghost sm" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
+                        <Button size="compact" variant="ghost" onClick={() => setAuthorSearchNonce((value) => value + 1)}>
                           {m.common.retry}
-                        </button>
+                        </Button>
                       )}
                     >
                       {typeof authorSearchError === 'string'
@@ -440,9 +442,9 @@ export function WatchSettings() {
                               {m.watches.candidateInfo(candidate.paperCount, candidate.citationCount, candidate.hIndex)}
                             </FadeText>
                           </div>
-                          <button className="btn ghost sm" onClick={() => chooseAuthor(candidate)}>
+                          <Button size="compact" variant="ghost" onClick={() => chooseAuthor(candidate)}>
                             {editor.id === undefined ? m.watches.follow : m.watches.choose}
-                          </button>
+                          </Button>
                         </div>
                       ))}
                     </div>
@@ -451,11 +453,12 @@ export function WatchSettings() {
           || editingWatch?.type === 'author' && editingWatch.identity === undefined)
           ? (
             <div className="author-resolver-actions">
-              <button
-                className="btn" onClick={() => {
+              <CommitActions
+                place="item" saveLabel={editor.id === undefined ? m.watches.saveByName : m.watches.saveUnconfirmed}
+                onSave={() => {
                   void persist({ type: 'author', name: name.trim() }).then((saved) => { if (saved) stop() })
                 }}
-              >{editor.id === undefined ? m.watches.saveByName : m.watches.saveUnconfirmed}</button>
+              />
             </div>
           )
           : null}
@@ -511,11 +514,11 @@ export function WatchSettings() {
                 }}
               />
             )}
-          <button
-            className="btn pri" disabled={suggesting || addingSuggestion !== null
-              || (suggestionSource === 'focus' ? focus.trim().length < 3 : projectId === '')}
+          <Button
+            size="regular" variant="primary" busy={suggesting} busyLabel={m.watches.suggesting}
+            disabled={addingSuggestion !== null || (suggestionSource === 'focus' ? focus.trim().length < 3 : projectId === '')}
             onClick={() => { void suggest() }}
-          >{suggesting ? m.watches.suggesting : m.watches.suggestAction}</button>
+          >{m.watches.suggestAction}</Button>
         </div>
         {suggestionError === null
           ? null : <InlineMessage tone="error" variant="line" className="watch-suggestion-error">{suggestionError}</InlineMessage>}
@@ -535,10 +538,10 @@ export function WatchSettings() {
                         <strong>{m.watches.topicSuggestions}</strong>
                         {suggestions.topics.length > 1
                           ? (
-                            <button
-                              className="btn ghost sm" disabled={addingSuggestion !== null}
+                            <Button
+                              size="compact" variant="ghost" disabled={addingSuggestion !== null}
                               onClick={() => { void addAllSuggestedTopics() }}
-                            >{m.watches.addAllTopics}</button>
+                            >{m.watches.addAllTopics}</Button>
                           )
                           : null}
                       </div>
@@ -549,10 +552,10 @@ export function WatchSettings() {
                               <FadeText className="nm" label={item.name}>{item.name}</FadeText>
                               <FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
-                            <button
-                              className="btn ghost sm" disabled={addingSuggestion !== null}
+                            <Button
+                              size="compact" variant="ghost" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedTopic(item.name) }}
-                            >{m.watches.addAction}</button>
+                            >{m.watches.addAction}</Button>
                           </StructuredRow>
                         ))}
                       </StructuredList>
@@ -572,10 +575,10 @@ export function WatchSettings() {
                                 ? m.watches.suggestedAuthorInfo(item.relatedPapers, item.hIndex, item.citationCount)
                                 : m.watches.relatedPapers(item.relatedPapers)}</FadeText>
                             </div>
-                            <button
-                              className="btn ghost sm" disabled={addingSuggestion !== null}
+                            <Button
+                              size="compact" variant="ghost" disabled={addingSuggestion !== null}
                               onClick={() => { void addSuggestedAuthor(item) }}
-                            >{m.watches.addAction}</button>
+                            >{m.watches.addAction}</Button>
                           </StructuredRow>
                         ))}
                       </StructuredList>

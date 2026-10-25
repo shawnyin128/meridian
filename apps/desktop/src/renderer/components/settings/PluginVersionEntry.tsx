@@ -3,6 +3,7 @@ import { useFormat } from '../../lib/format.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { SectionHeading } from '../PageShell.js'
 import { Tag } from '../Tag.js'
+import { Button } from '../Button.js'
 
 export interface PluginVersionEntryProps {
   plugin: PluginVersion
@@ -30,7 +31,7 @@ export function PluginVersionEntry({ plugin, checking, onCheck }: PluginVersionE
         </div>
         <div className="extension-head-side">
           <Tag className="extension-state">{copy.latest(plugin.version)}</Tag>
-          <button className="btn" disabled={checking} onClick={onCheck}>{checking ? copy.checking : copy.check}</button>
+          <Button size="compact" busy={checking} busyLabel={copy.checking} onClick={onCheck}>{copy.check}</Button>
         </div>
       </div>
     </section>

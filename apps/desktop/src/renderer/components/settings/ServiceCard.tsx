@@ -3,6 +3,7 @@ import { Card } from '../Card.js'
 import { FormButton } from '../FormControls.js'
 import { InlineMessage } from '../InlineMessage.js'
 import { Tag } from '../Tag.js'
+import { Button } from '../Button.js'
 import './ServiceCard.css'
 
 /** Card container for one external service's settings: a status head, field rows, and a foot with actions. */
@@ -95,13 +96,9 @@ export function ServiceClearKeyButton({ pending, label, pendingLabel, onClick }:
   onClick: () => void
 }) {
   return (
-    <button
-      className={pending ? 'btn danger service-clear-key' : 'btn service-clear-key'}
-      aria-pressed={pending}
-      onClick={onClick}
-    >
+    <Button size="regular" tone={pending ? 'danger' : 'neutral'} className="service-clear-key" pressed={pending} onClick={onClick}>
       {pending ? pendingLabel : label}
-    </button>
+    </Button>
   )
 }
 

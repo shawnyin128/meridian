@@ -19,6 +19,7 @@ import { StructuredList, StructuredRow } from '../StructuredList.js'
 import { Tag } from '../Tag.js'
 import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
+import { Button } from '../Button.js'
 import './ProjectConclusions.css'
 
 const STATE_TONE: Record<ConclusionState, 'warn' | 'good' | 'bad'> = {
@@ -126,13 +127,13 @@ export function ProjectConclusionPanel({
         actions={(
           <>
             {conclusion.node !== undefined && conclusion.fingerprint !== undefined && conclusion.state === 'pending'
-              ? <button className="btn sm" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</button>
+              ? <Button size="compact" onClick={() => onVerify(conclusion.node!, conclusion.fingerprint!)}>{c.verify}</Button>
               : null}
             {conclusion.node !== undefined && conclusion.verifiedOn !== undefined
-              ? <button className="btn sm" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</button>
+              ? <Button size="compact" onClick={() => onUnverify(conclusion.node!)}>{c.unverify}</Button>
               : null}
             {conclusion.state === 'verified' ? null : <Tag>{c.unverifiedState}</Tag>}
-            <button className="btn sm" disabled={conclusion.state !== 'verified'} onClick={startWriting}>{c.write}</button>
+            <Button size="compact" disabled={conclusion.state !== 'verified'} onClick={startWriting}>{c.write}</Button>
             <PanelClose onClose={onClose} />
           </>
         )}

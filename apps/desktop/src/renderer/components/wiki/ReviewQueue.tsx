@@ -20,6 +20,7 @@ import { Tag, TagButton } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { ProposalCard, ProposalChange, ProposalDecision, ProposalRows, ProposalText, type ProposalRow } from './ProposalChange.js'
 import type { ClaimLinks } from './WikiClaims.js'
+import { Button } from '../Button.js'
 import './ReviewQueue.css'
 
 /** Local calendar day, the vault's day, a proposal arrived or was decided, from epoch ms. */
@@ -321,23 +322,23 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
                           if (next) reasons.set(p.id, '')
                         }}
                         surface="form" contentClassName="review-decline" align="start"
-                        trigger={<button type="button" className="btn ghost danger" disabled={pending}>{r.decline}</button>}
+                        trigger={<Button size="compact" variant="ghost" tone="danger" disabled={pending}>{r.decline}</Button>}
                       >
                         <div className="review-decline-form">
                           <FormInput
                             appearance="field" autoFocus value={reason} placeholder={r.reasonPlaceholder}
                             onChange={(e) => reasons.set(p.id, e.target.value)}
                           />
-                          <button
-                            type="button" className="btn danger" disabled={pending}
+                          <Button
+                            size="regular" tone="danger" disabled={pending}
                             onClick={() => {
                               reasons.drop(p.id)
                               onDecline(p, reason.trim())
                             }}
-                          >{r.declineConfirm}</button>
+                          >{r.declineConfirm}</Button>
                         </div>
                       </ActionPopover>
-                      <button type="button" className={p.id === lead ? 'btn pri' : 'btn'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</button>
+                      <Button size="compact" variant={p.id === lead ? 'primary' : 'secondary'} disabled={pending || !applicable(p)} onClick={() => onApply(p)}>{r.apply}</Button>
                       {p.staleNow ? <TagButton tone="warn" onClick={() => links.openPage(p.stalePage!)}>{r.stale}</TagButton> : null}
                       {unverified === undefined ? null : (
                         <TagButton

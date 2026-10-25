@@ -275,7 +275,7 @@ const lookOf = (path: string, selector: string): string => {
 
 describe('主操作', () => {
   /** The primary button and the composer's send: their fill and text tokens. */
-  const PRIMARY = [['routes/shell.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
+  const PRIMARY = [['components/Button.css', '.btn.pri'], ['components/chat/Chat.css', '.send']] as const
 
   it('主按钮和输入框的发送都是实心强调色配白字,两种主题一样', () => {
     expect(PRIMARY.map(([path, selector]) => lookOf(path, selector))).toEqual(['--accent-solid --on-accent', '--accent-solid --on-accent'])
@@ -418,7 +418,7 @@ describe('选中、当前、已应用和按下的状态', () => {
     ['components/FieldPickers.css', '.cd.sel'],
     ['routes/Reader.css', '.reader-rail button.on'],
     ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
-    ['routes/shell.css', '.btn:not(.danger)[aria-pressed="true"]'],
+    ['components/Button.css', '.btn:not(.danger)[aria-pressed="true"]'],
     ['components/IconButton.css', '.icbtn[aria-pressed="true"]'],
   ] as const
 

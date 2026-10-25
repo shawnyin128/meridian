@@ -22,6 +22,7 @@ import { GripTooltip } from './GripTooltip.js'
 import { SearchBox } from './SearchBox.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
+import { Button } from '../components/Button.js'
 
 /** A watch's row in the sidebar. When `count` is 0 there is no badge; a paused watch is greyed out and keeps its count. */
 function WatchRow({ watch, count, on, onOpen }: {
@@ -98,10 +99,10 @@ function UpdateRow() {
       tone="info" variant="box" className="update-row" data-desk="update"
       lead={<Icon><path d="M12 4v11" /><path d="M7 10l5 5 5-5" /><path d="M5 20h14" /></Icon>}
       action={(
-        <button
-          type="button" className="btn sm"
+        <Button
+          size="compact"
           onClick={() => { if (ready) appUpdates.install(); else window.open(update.url) }}
-        >{ready ? m.shell.update.relaunch : m.shell.update.download}</button>
+        >{ready ? m.shell.update.relaunch : m.shell.update.download}</Button>
       )}
     >
       {ready ? m.shell.update.ready(update.version) : m.shell.update.available(update.version)}

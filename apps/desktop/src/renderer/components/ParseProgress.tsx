@@ -10,6 +10,7 @@ import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { ProgressFill } from './ProgressFill.js'
 import { Card } from './Card.js'
+import { Button } from './Button.js'
 import './ParseProgress.css'
 
 const PROGRESS: Record<MetadataJob['step'], number> = {
@@ -79,11 +80,11 @@ export function ParseProgress({ onParsed, onOpenPaper }: {
             ><IconCross /></IconButton>
           </div>
           <div className="upacts">
-            {retryable.length === 0 ? null : <button type="button" className="btn sm" onClick={retry}>{m.common.retry}</button>}
-            <button
-              type="button" className="btn sm"
+            {retryable.length === 0 ? null : <Button size="compact" onClick={retry}>{m.common.retry}</Button>}
+            <Button
+              size="compact"
               onClick={() => { close([failed[0]!]); onOpenPaper(failed[0]!.paperId) }}
-            >{m.papers.parse.fill}</button>
+            >{m.papers.parse.fill}</Button>
           </div>
         </Card>
       ) : null}

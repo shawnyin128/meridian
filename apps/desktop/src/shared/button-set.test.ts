@@ -61,11 +61,11 @@ const PAIRED = new Set(readdirSync(RENDERER, { recursive: true, encoding: 'utf8'
   .filter((name) => /^[a-z][\w-]*$/.test(name) && !SET_CLASSES.has(name)))
 
 /** The stylesheet that owns the button set. */
-const BUTTON_SET = join('routes', 'shell.css')
+const BUTTON_SET = join('components', 'Button.css')
 /** The running ring's stylesheet, which colours the ring inside the buttons that hold it. */
 const RING_SHEET = join('components', 'icons.css')
 
-const STYLES = [join('shell', 'tokens.css'), BUTTON_SET].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
+const STYLES = [join('shell', 'tokens.css'), join('routes', 'shell.css'), BUTTON_SET].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
 /** Every variant and size of the set, by the classes a call site writes. */
 const VARIANTS = {
@@ -165,6 +165,13 @@ describe('按钮组', () => {
     })
   })
 
+  it('两种尺寸左右都留同一份内边距：按钮组里只有一条内边距声明', () => {
+    const paddings = rulesOf(readFileSync(join(RENDERER, BUTTON_SET), 'utf8')).flatMap(([selector, body]) => [
+      ...body.matchAll(/(?:^|;)\s*(padding[\w-]*)\s*:([^;]+)/g),
+    ].map(([, property, value]) => `${selector} { ${property}:${value!.trim()} }`))
+    expect(paddings).toEqual(['.btn { padding:0 var(--sp-10) }'])
+  })
+
   it('默认按钮和它旁边带框的输入框、选择框一样高', () => {
     document.head.innerHTML += `<style>${readFileSync(join(RENDERER, 'components', 'FormControls.css'), 'utf8')}</style>`
     document.body.innerHTML = '<button type="button" class="btn">保存</button>'
@@ -178,15 +185,14 @@ describe('按钮组', () => {
 
   describe('忙着的动作按钮', () => {
     beforeEach(() => {
-      document.head.innerHTML += ['ActionButton.css', 'icons.css']
-        .map((name) => `<style>${readFileSync(join(RENDERER, 'components', name), 'utf8')}</style>`).join('')
+      document.head.innerHTML += `<style>${readFileSync(join(RENDERER, RING_SHEET), 'utf8')}</style>`
     })
 
-    /** The computed styles of a busy ActionButton of `classes`, its hidden label, its ring and the ring's track. */
+    /** The computed styles of a busy Button of `classes`, its hidden label, its ring and the ring's track. */
     const busy = (classes: string) => {
-      document.body.innerHTML = `<button type="button" class="action-button ${classes}" aria-busy="true" disabled aria-label="正在重置…">`
-        + '<span class="action-label">重置库…</span><svg class="ring spin"><circle /><circle class="arc" /></svg></button>'
-      return ['button', '.action-label', '.ring', '.ring circle:not(.arc)']
+      document.body.innerHTML = `<button type="button" class="${classes}" aria-busy="true" disabled aria-label="正在重置…">`
+        + '<span class="btn-label">重置库…</span><svg class="ring spin"><circle /><circle class="arc" /></svg></button>'
+      return ['button', '.btn-label', '.ring', '.ring circle:not(.arc)']
         .map((selector) => getComputedStyle(document.querySelector(selector)))
     }
 
@@ -219,6 +225,13 @@ describe('按钮组', () => {
       return `${style.backgroundColor} ${style.color}`
     })
     expect([on, off]).toEqual(['var(--selected) var(--on-selected)', `${TRANSPARENT} var(--sec)`])
+  })
+
+  it('只有 Button 写按钮组的类：别的组件和屏幕不借 btn 类画按钮', () => {
+    const writers = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
+      .filter((path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx'))
+      .filter((path) => /['"`](?:[a-z][\w-]* )*btn(?: [a-z][\w-]*)*['"`]/.test(readFileSync(join(RENDERER, path), 'utf8')))
+    expect(writers).toEqual([join('components', 'Button.tsx')])
   })
 
   it('别的样式表和别的规则不改按钮的尺寸、字号、底色、边框、光标或禁用样式', () => {

@@ -116,7 +116,8 @@ describe('外观主题编辑页', () => {
     expect(window.localStorage.getItem(COLOUR_THEME_STORAGE_KEY)).toBe('my-theme-2')
     expect(document.documentElement.dataset.colourTheme).toBe('my-theme-2')
     expect($('#meridian-colour-theme').textContent).toContain('--accent:#2f6fbf')
-    expect(buttonOf('已保存').disabled).toBe(true)
+    expect([buttonOf('保存').getAttribute('aria-label'), buttonOf('保存').querySelector('.cki') !== null, buttonOf('保存').disabled])
+      .toEqual(['已保存', true, true])
     expect($<HTMLInputElement>('input[aria-label="名称"]').value).toBe('My Theme')
 
     await type($<HTMLInputElement>('input[aria-label="名称"]'), 'Renamed')

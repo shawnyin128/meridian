@@ -1,4 +1,6 @@
 import { useMessages } from '../messages/useMessages.js'
+import { Button } from './Button.js'
+import { CommitActions } from './CommitActions.js'
 
 /**
  * The one edit-and-commit control of a long text edited in place, kept in its heading's action slot:
@@ -14,11 +16,6 @@ export function EditActions({ editing, onEdit, onCancel, onSave, saving = false,
   canSave?: boolean
 }) {
   const m = useMessages()
-  if (!editing) return <button type="button" className="btn sm" onClick={onEdit}>{m.common.edit}</button>
-  return (
-    <>
-      <button type="button" className="btn sm" disabled={saving} onClick={onCancel}>{m.common.cancel}</button>
-      <button type="button" className="btn sm" disabled={saving || !canSave} onClick={onSave}>{m.common.save}</button>
-    </>
-  )
+  if (!editing) return <Button size="compact" onClick={onEdit}>{m.common.edit}</Button>
+  return <CommitActions place="heading" saving={saving} canSave={canSave} onCancel={onCancel} onSave={onSave} />
 }
