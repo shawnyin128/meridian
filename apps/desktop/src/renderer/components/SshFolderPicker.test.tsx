@@ -35,9 +35,12 @@ const folder = (path: string, names: string[]): SshFolders => ({
 function Probe() {
   const remote = useSshFolders()
   useEffect(() => { remote.connect({ host: 'gpu-lab' }) }, [remote.connect])
-  return remote.folder === null
-    ? null
-    : <SshFolderBrowser folder={remote.folder} opening={remote.opening} issue={remote.issue} onOpen={remote.open} />
+  return (
+    <>
+      {remote.folder === null ? null : <SshFolderBrowser choice={remote} />}
+      <output>{remote.edited ? 'edited' : 'shown'}</output>
+    </>
+  )
 }
 
 let root: Root | null = null
@@ -52,7 +55,24 @@ async function mount(): Promise<void> {
 const answer = async (index: number, folders: SshFolders) => {
   await act(async () => { api.listings[index]!.answer(folders) })
 }
-const path = () => document.querySelector('.ssh-folders-path')?.textContent
+const field = () => document.querySelector<HTMLInputElement>('input.ssh-folders-path')!
+const path = () => field().value
+/** Whether the path field holds the folder shown or a path typed and not yet gone to. */
+const edited = () => document.querySelector('output')!.textContent
+
+function type(value: string): void {
+  act(() => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(field(), value)
+    field().dispatchEvent(new Event('input', { bubbles: true }))
+  })
+}
+
+/** Presses `key` in the path field and returns whether its default was prevented. */
+async function press(key: string): Promise<boolean> {
+  const event = new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })
+  await act(async () => { field().dispatchEvent(event) })
+  return event.defaultPrevented
+}
 const names = () => [...document.querySelectorAll('.ssh-folder-row')].map((row) => row.textContent)
 const row = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('.ssh-folder-row')].find((b) => b.textContent === name)!
 const up = () => document.querySelector<HTMLButtonElement>('.ssh-folders-head button')!
@@ -94,6 +114,32 @@ describe('SSH 文件夹浏览', () => {
     await answer(2, folder('/', []))
     expect([path(), up().disabled, document.querySelector('.ssh-folders .empty-state')?.textContent]).toEqual(['/', true, '没有文件夹'])
     expect(document.querySelector('.ssh-folders [role="alert"]')).toBeNull()
+  })
+
+  it('路径框里输入一个目录回车就去那里，也能去 ~ 下的隐藏文件夹；回车不提交表单，焦点留在路径框里', async () => {
+    await mount()
+    await answer(0, folder('/home/researcher', ['projects']))
+    act(() => field().focus())
+    type('~/.cache')
+    expect(edited()).toBe('edited')
+    expect(await press('Enter')).toBe(true)
+    expect(api.listings.at(-1)!.params).toEqual({ host: 'gpu-lab', path: '~/.cache' })
+    await answer(1, folder('/home/researcher/.cache', ['pip']))
+    expect([path(), names(), edited(), document.activeElement]).toEqual(['/home/researcher/.cache', ['pip'], 'shown', field()])
+  })
+
+  it('输入的目录不存在时原因写在列表下面，列表不动，输入的字留着；Esc 换回显示的文件夹，开着时 Esc 不关对话框', async () => {
+    await mount()
+    await answer(0, folder('/home/researcher', ['projects']))
+    type('/home/researcher/missing')
+    expect(field().hasAttribute('data-inline-draft')).toBe(true)
+    await press('Enter')
+    await answer(1, { state: 'failed', issue: 'cd: /home/researcher/missing: No such file or directory' })
+    expect([path(), names(), edited(), document.querySelector('.ssh-folders [role="alert"]')?.textContent])
+      .toEqual(['/home/researcher/missing', ['projects'], 'edited', 'cd: /home/researcher/missing: No such file or directory'])
+
+    await press('Escape')
+    expect([path(), edited(), field().hasAttribute('data-inline-draft')]).toEqual(['/home/researcher', 'shown', false])
   })
 
   it('用键盘打开文件夹后焦点落在新文件夹的第一个子文件夹上，没有子文件夹时落在上层文件夹上', async () => {

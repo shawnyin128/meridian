@@ -785,7 +785,7 @@ export function ProjectDetail({
           <CommitActions
             place="foot" onCancel={() => setWorkspaceOpen(false)}
             saving={binding !== null || (workspaceMode === 'ssh' && remote.folder === null && remote.opening)}
-            canSave={workspaceMode === 'local' || remote.folder === null || !remote.opening}
+            canSave={workspaceMode === 'local' || remote.folder === null || (!remote.opening && !remote.edited)}
             {...workspaceMode === 'local'
               ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
               : remote.folder === null
@@ -840,11 +840,7 @@ export function ProjectDetail({
                   </label>
                   {remote.folder === null
                     ? remote.issue === null ? null : <InlineMessage tone="error" variant="line">{remote.issue}</InlineMessage>
-                    : (
-                      <SshFolderBrowser
-                        folder={remote.folder} opening={remote.opening} issue={remote.issue} onOpen={remote.open}
-                      />
-                    )}
+                    : <SshFolderBrowser choice={remote} />}
                 </form>
               )}
       </ModalDialog>

@@ -107,7 +107,7 @@ async function answer(folders: SshFolders): Promise<void> {
 
 /** The path the SSH folder browser shows and the names of the subfolders it lists. */
 const browsed = (dialog: HTMLElement) => [
-  dialog.querySelector('.ssh-folders-path')?.textContent,
+  dialog.querySelector<HTMLInputElement>('input.ssh-folders-path')?.value,
   [...dialog.querySelectorAll('.ssh-folder-row')].map((row) => row.textContent),
 ]
 
@@ -203,6 +203,25 @@ describe('项目工作区对话框', () => {
     expect(submit(dialog).disabled).toBe(true)
     await act(async () => { submit(dialog).click() })
     expect(api.binds).toHaveLength(1)
+  })
+
+  it('路径框里改了目录还没回车时选择按不动，回车去了那里之后选择存的就是那个文件夹', async () => {
+    const dialog = await openWorkspaceDialog()
+    await chooseSsh(dialog)
+    act(() => setValue(dialog.querySelector<HTMLInputElement>('#workspaceSsh input')!, 'gpu-lab'))
+    await act(async () => { submit(dialog).click() })
+    await answer(folder('/home/researcher', ['projects']))
+    const pathField = dialog.querySelector<HTMLInputElement>('input.ssh-folders-path')!
+    act(() => setValue(pathField, '/srv/shared'))
+    expect(submit(dialog).disabled).toBe(true)
+    await act(async () => {
+      pathField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
+    })
+    expect(api.listings.at(-1)!.params).toEqual({ host: 'gpu-lab', path: '/srv/shared' })
+    await answer(folder('/srv/shared', []))
+    expect(submit(dialog).disabled).toBe(false)
+    await act(async () => { submit(dialog).click() })
+    expect(api.binds.map((bind) => bind.binding)).toEqual([{ kind: 'ssh', host: 'gpu-lab', path: '/srv/shared' }])
   })
 
   it('连不上时原因显示在主机下面，什么都不存，按钮回到连接；改了主机就断开已连上的主机', async () => {
