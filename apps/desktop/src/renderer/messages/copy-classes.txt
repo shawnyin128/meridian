@@ -808,6 +808,9 @@ settings.model.subscription.signInLabel label
 settings.model.subscription.unsupported state
 settings.model.subscriptions.claude.label label
 settings.model.subscriptions.codex.label label
+settings.model.tabs.api label
+settings.model.tabs.label aria
+settings.model.tabs.subscription label
 settings.model.templates.chooseAria aria
 settings.model.templates.chooseLabel label
 settings.model.templates.choosePlaceholder placeholder

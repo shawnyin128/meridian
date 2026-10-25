@@ -140,6 +140,19 @@ async function openPicker(dialog: Element, label: string): Promise<HTMLElement[]
   return [...document.querySelectorAll<HTMLElement>('.choice-picker-menu [role="menuitemradio"]')]
 }
 
+/** Switches the model card to its tab named `name`. */
+async function modelTab(dialog: Element, name: 'API' | '订阅'): Promise<void> {
+  const tab = [...dialog.querySelectorAll<HTMLButtonElement>('.model-settings-card .segmented-control>button')]
+    .find((button) => button.textContent === name)!
+  await act(async () => { tab.click() })
+}
+
+/** Opens the model card's subscription tab and picks the subscription shown as `name`. */
+async function pickSubscription(dialog: Element, name: 'Claude 订阅' | 'ChatGPT 订阅'): Promise<void> {
+  await modelTab(dialog, '订阅')
+  await pick(dialog, '模型服务', name)
+}
+
 /** Closes the open picker menu without picking. */
 async function closePicker(): Promise<void> {
   await act(async () => {
@@ -1114,7 +1127,7 @@ describe('Settings', () => {
 
     expect(dialog.querySelector('select')).toBeNull()
     expect((await openPicker(dialog, '模型服务')).map((item) => item.textContent))
-      .toEqual(['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API', 'Claude 订阅', 'ChatGPT 订阅'])
+      .toEqual(['OpenAI', 'Anthropic', 'Google Gemini', 'OpenAI 兼容 API'])
     await closePicker()
     expect(dialog.querySelector('[aria-label="模型协议"]')?.textContent).toContain('Responses API')
     expect(dialog.querySelectorAll('.model-settings-card .form-control-field').length).toBe(3)
@@ -1341,7 +1354,8 @@ describe('Settings', () => {
     const head = () => [...document.querySelector('.setdlg .service-card')!.children].slice(0, 2).map((part) => part.className.split(' ')[0])
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
-    expect(head()).toEqual(['section-heading', 'field-rows'])
+    expect(head()).toEqual(['section-heading', 'tabbed-section-panel'])
+    expect(document.querySelector('.setdlg .service-card .tabbed-section-panel')?.firstElementChild?.className).toBe('field-rows')
     api.requestedCategory = 'research'
     await act(async () => { root.render(<MessagesProvider key="research"><Settings /></MessagesProvider>) })
     expect(head()).toEqual(['section-heading', 'field-rows'])
@@ -1391,7 +1405,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
 
     expect(api.subscriptionStatus).toHaveBeenCalledWith('claude')
     expect(dialog.querySelector('.model-settings-card .section-heading')?.firstChild?.textContent).toBe('Claude 订阅')
@@ -1420,7 +1434,7 @@ describe('Settings', () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
 
     const headlines = []
@@ -1444,7 +1458,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await pickSubscription(dialog, 'ChatGPT 订阅')
     await fill(dialog, '模型名称', 'gpt-5-codex')
     await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
 
@@ -1459,7 +1473,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
 
     const line = dialog.querySelector('.model-settings-card .field-row .inline-message')
     expect([line?.classList.contains('inline-message--line'), line?.classList.contains('inline-message--warning'), line?.textContent])
@@ -1476,7 +1490,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
 
     const line = dialog.querySelector('.model-settings-card .field-row .inline-message')
     expect([line?.classList.contains('inline-message--line'), line?.classList.contains('inline-message--warning'), line?.textContent])
@@ -1485,12 +1499,92 @@ describe('Settings', () => {
     expect(dialog.querySelector('.model-settings-card .command-tray')).toBeNull()
     expect(dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')?.disabled).toBe(true)
 
-    await pick(dialog, '模型服务', 'OpenAI')
+    await modelTab(dialog, 'API')
     expect(dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')?.disabled).toBe(false)
   })
 
   /** Whether the model card's Save can be pressed. */
   const canSave = (dialog: Element) => dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')?.disabled === false
+
+  /** The model card's tabs, each as its label and whether it is picked. */
+  const modelTabs = (dialog: Element) => [...dialog.querySelectorAll('.model-settings-card .section-heading .segmented-control>button')]
+    .map((tab) => [tab.textContent, tab.getAttribute('aria-checked')])
+
+  it('模型卡片分成 API 和订阅两个 tab：API 只列 API 服务和它们的字段，订阅只列两种订阅和 CLI、登录、模型', async () => {
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    expect(modelTabs(dialog)).toEqual([['API', 'true'], ['订阅', 'false']])
+    expect(modelRows(dialog).map(([label]) => label)).toEqual(['模型服务', '调用协议', '模型 ID', 'API Key'])
+    expect(api.subscriptionStatus).not.toHaveBeenCalled()
+
+    await modelTab(dialog, '订阅')
+    expect(modelTabs(dialog)).toEqual([['API', 'false'], ['订阅', 'true']])
+    expect((await openPicker(dialog, '模型服务')).map((item) => item.textContent)).toEqual(['Claude 订阅', 'ChatGPT 订阅'])
+    await closePicker()
+    expect(modelRows(dialog).map(([label]) => label)).toEqual(['模型服务', 'CLI', '登录', '模型 ID'])
+    expect(dialog.querySelector('.model-settings-card .section-heading')?.firstChild?.textContent).toBe('Claude 订阅')
+    expect(dialog.querySelector('[aria-label="模型 API Key"]')).toBeNull()
+    expect(api.updateModelSettings).not.toHaveBeenCalled()
+    expect(api.updateSubscription).not.toHaveBeenCalled()
+  })
+
+  it('打开设置时选中在用的来源所在的 tab；只切 tab 不改在用的来源，存了才改', async () => {
+    api.modelSettings.mockResolvedValueOnce({
+      ...(await api.modelSettings()), model: 'gpt-saved', apiKeyConfigured: true, apiKeyLastFour: '1111', configured: true,
+      profiles: [{
+        provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-saved',
+        authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: '1111', configured: true,
+      }],
+      subscription: { active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, error: undefined },
+    })
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    expect(modelTabs(dialog)).toEqual([['API', 'false'], ['订阅', 'true']])
+    expect(dialog.querySelector('[aria-label="模型服务"]')?.textContent).toBe('ChatGPT 订阅')
+    expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('已配置')
+
+    await modelTab(dialog, 'API')
+    expect(dialog.querySelector('[aria-label="模型服务"]')?.textContent).toBe('OpenAI')
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('gpt-saved')
+    expect(testButton(dialog).disabled).toBe(true)
+    await modelTab(dialog, '订阅')
+    expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('gpt-5-codex')
+    expect(testButton(dialog).disabled).toBe(false)
+    expect(api.updateModelSettings).not.toHaveBeenCalled()
+    expect(api.updateSubscription).not.toHaveBeenCalled()
+
+    await modelTab(dialog, 'API')
+    await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
+    expect(api.updateModelSettings).toHaveBeenCalledOnce()
+    expect(api.updateSubscription).not.toHaveBeenCalled()
+  })
+
+  it('订阅初次读 CLI 时 CLI、登录、模型 ID 三行都在值的位置转圈，各占它的值的高度；读完换成值', async () => {
+    let answer: (status: HarnessSubscriptionStatus) => void = () => {}
+    api.subscriptionStatus.mockReturnValueOnce(new Promise((resolve) => { answer = resolve }))
+    api.requestedCategory = 'model'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const dialog = document.querySelector('.setdlg')!
+
+    await modelTab(dialog, '订阅')
+
+    /** What each subscription row holds while it loads: the value it stands in for, or null for none. */
+    const rings = () => [...dialog.querySelectorAll('.model-settings-card .field-row')].slice(1).map((row) => {
+      const ring = row.querySelector('.field-row-field > .loading-placeholder--ring')
+      return [row.querySelector('.field-row-label')?.textContent, ring === null ? null : ring.className.match(/loading-placeholder--holds-(\w+)/)?.[1], ring?.querySelector('svg.ring.spin') !== null]
+    })
+    expect(rings()).toEqual([['CLI', 'text', true], ['登录', 'tag', true], ['模型 ID', 'field', true]])
+    expect(dialog.querySelector('[aria-label="模型名称"]')).toBeNull()
+
+    await act(async () => { answer({ state: 'found', version: '2.1.3', signIn: 'subscription', models: [] }) })
+    expect(dialog.querySelector('.model-settings-card .loading-placeholder')).toBeNull()
+    expect(modelRows(dialog)).toEqual([['模型服务', 'Claude 订阅'], ['CLI', 'Claude Code 2.1.3'], ['登录', '已用订阅登录'], ['模型 ID', '']])
+    expect(dialog.querySelector('[aria-label="模型名称"]')).not.toBeNull()
+  })
 
   it('订阅只有在它的 CLI 找到且支持时才能存成在用的模型：没找到、还在查、查不出来都不能存', async () => {
     api.requestedCategory = 'model'
@@ -1498,19 +1592,19 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
 
     api.subscriptionStatus.mockResolvedValueOnce({ state: 'missing' })
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     expect(canSave(dialog)).toBe(false)
 
     api.subscriptionStatus.mockReturnValueOnce(new Promise(() => {}))
-    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await pickSubscription(dialog, 'ChatGPT 订阅')
     expect(dialog.querySelector('.model-settings-card .field-row .loading-placeholder')).not.toBeNull()
     expect(canSave(dialog)).toBe(false)
 
     api.subscriptionStatus.mockRejectedValueOnce(new CallError('harness.subscriptionStatus', 'unavailable'))
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     expect(canSave(dialog)).toBe(false)
 
-    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await pickSubscription(dialog, 'ChatGPT 订阅')
     expect(canSave(dialog)).toBe(true)
   })
 
@@ -1518,7 +1612,7 @@ describe('Settings', () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
 
     api.subscriptionStatus.mockRejectedValueOnce(new CallError('harness.subscriptionStatus', 'unavailable'))
@@ -1529,12 +1623,12 @@ describe('Settings', () => {
   })
 
   it('读不出 CLI 的版本时 CLI 一行只写它的名字', async () => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription', models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'] }).mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription', models: [] })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await pickSubscription(dialog, 'ChatGPT 订阅')
 
     expect(modelRows(dialog)[1]).toEqual(['CLI', 'Codex'])
   })
@@ -1549,7 +1643,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
 
     const tag = dialog.querySelector('.model-settings-card .field-row .tag')!
     expect([tag.textContent, tag.classList.contains('tag--warning')]).toEqual([text, true])
@@ -1576,10 +1670,11 @@ describe('Settings', () => {
     expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('已配置')
     expect(testButton(dialog).disabled).toBe(false)
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('opus')
     expect(testButton(dialog).disabled).toBe(true)
 
+    await modelTab(dialog, 'API')
     await pick(dialog, '模型服务', 'OpenAI')
     expect(dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')?.value).toBe('gpt-saved')
     expect(dialog.querySelector('[aria-label="模型 API Key 已保存，末四位 1111"]')).not.toBeNull()
@@ -1589,8 +1684,12 @@ describe('Settings', () => {
 
   /** The text of each candidate row the open model list shows. */
   const modelCandidates = () => [...document.querySelectorAll('.pickhits .rrow')].map((row) => row.textContent)
-  /** Focuses the model field of `dialog`, which opens its list. */
+  /**
+   * Focuses the model field of `dialog`, which opens its list, once a picker menu that just closed
+   * has handed focus back to its trigger, which Radix does a task later.
+   */
   const focusModel = async (dialog: Element) => {
+    await act(async () => { await new Promise((done) => setTimeout(done, 0)) })
     await act(async () => { dialog.querySelector<HTMLInputElement>('[aria-label="模型名称"]')!.focus() })
   }
   const keyOnModel = async (dialog: Element, key: string) => {
@@ -1607,7 +1706,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
 
     const tray = dialog.querySelector('.model-settings-card .command-tray')!
     expect([tray.querySelector('.command-tray-heading')?.textContent, tray.querySelector('.command-tray-summary code')?.textContent])
@@ -1623,12 +1722,12 @@ describe('Settings', () => {
     ['unknown', 'codex login'],
     ['subscription', null],
   ] as const)('Codex 登录方式是 %s 时登录命令是 %s', async (signIn, command) => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn, models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'] }).mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn, models: [] })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await pickSubscription(dialog, 'ChatGPT 订阅')
 
     expect(dialog.querySelector('.model-settings-card .command-tray code')?.textContent ?? null).toBe(command)
   })
@@ -1639,7 +1738,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
 
     expect(dialog.querySelector('.model-settings-card .command-tray')).toBeNull()
   })
@@ -1648,7 +1747,7 @@ describe('Settings', () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     expect(modelCandidates()).toEqual([])
 
     await focusModel(dialog)
@@ -1667,7 +1766,7 @@ describe('Settings', () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     await focusModel(dialog)
 
     await fill(dialog, '模型名称', 'son')
@@ -1692,7 +1791,7 @@ describe('Settings', () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
     await focusModel(dialog)
     await act(async () => { [...document.querySelectorAll<HTMLElement>('.pickhits .rrow')][2]!.click() })
 
@@ -1704,11 +1803,11 @@ describe('Settings', () => {
   })
 
   it('CLI 不列模型时模型列表只有默认', async () => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn: 'subscription', models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'] }).mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn: 'subscription', models: [] })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
-    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await pickSubscription(dialog, 'ChatGPT 订阅')
 
     await focusModel(dialog)
 
@@ -1721,7 +1820,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
 
-    await pick(dialog, '模型服务', 'Claude 订阅')
+    await pickSubscription(dialog, 'Claude 订阅')
 
     const line = dialog.querySelector('.model-settings-card .field-row .inline-message--error')
     expect(line?.textContent).not.toBe('')
