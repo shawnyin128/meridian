@@ -1,6 +1,6 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
-import { Icon } from './icons.js'
+import { FoldToggle } from './FoldToggle.js'
 import './CollapsibleGroup.css'
 
 /**
@@ -23,6 +23,7 @@ export function CollapsibleGroup({
   variant?: 'section' | 'quiet'
 } & { [key: `data-${string}`]: string }) {
   const [opening, setOpening] = useState(false)
+  const bodyId = useId()
   const classes = [
     'collapsible-group',
     variant === 'quiet' ? 'collapsible-group--quiet' : '',
@@ -31,20 +32,19 @@ export function CollapsibleGroup({
   return (
     <section className={classes} {...data}>
       <div className="collapsible-group-head">
-        <button
-          type="button" className="collapsible-group-toggle" aria-expanded={open}
-          onClick={() => { setOpening(!open); onToggle() }}
+        <FoldToggle
+          className="collapsible-group-toggle" open={open} controls={bodyId}
+          onToggle={() => { setOpening(!open); onToggle() }}
         >
-          <span className="collapsible-group-caret"><Icon sw={2.4}><path d="M6 9l6 6 6-6" /></Icon></span>
           <span className="collapsible-group-label">
             <span className="collapsible-group-title">{title}</span>
             {count === undefined ? null : <span className="collapsible-group-count"> · {count}</span>}
           </span>
-        </button>
+        </FoldToggle>
         {actions === undefined ? null : <div className="collapsible-group-actions">{actions}</div>}
       </div>
       {open ? (
-        <div className={opening ? 'collapsible-group-body is-opening' : 'collapsible-group-body'}>
+        <div className={opening ? 'collapsible-group-body is-opening' : 'collapsible-group-body'} id={bodyId}>
           <div className="collapsible-group-content">{children}</div>
         </div>
       ) : null}

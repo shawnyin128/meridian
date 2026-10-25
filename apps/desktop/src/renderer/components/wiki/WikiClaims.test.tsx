@@ -135,7 +135,7 @@ describe('WikiClaims', () => {
     expect([...knee.querySelectorAll('.wkclaim-conflict .tag')].map((tag) => tag.className)).toEqual(['tag tag--label tag--warn'])
     expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率批量实验批量实测')
     const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
-    expect(history.querySelector('.card-tray-chevron svg')).not.toBeNull()
+    expect(history.querySelector('.fold-caret svg')).not.toBeNull()
     expect(history.getAttribute('aria-expanded')).toBe('false')
     act(() => history.click())
     expect(history.getAttribute('aria-expanded')).toBe('true')

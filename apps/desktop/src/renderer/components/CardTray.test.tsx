@@ -43,6 +43,21 @@ describe('CardTray', () => {
     expect(host.querySelector('.card-tray')?.classList.contains('is-open')).toBe(true)
   })
 
+  it('every tray leads its summary with the shared fold caret, which turns while the details are hidden', () => {
+    for (const variant of ['tray', 'row'] as const) {
+      act(() => root.render(variant === 'row'
+        ? <CardTray variant="row" summary="Renamed the project"><p>diff</p></CardTray>
+        : <CardTray summary="Install command" expandLabel="Show details" collapseLabel="Hide details"><p>npm</p></CardTray>))
+      const toggle = host.querySelector<HTMLButtonElement>('.card-tray-toggle')!
+      expect([...toggle.children].map((child) => child.classList[0]), variant).toEqual(['fold-caret', 'fade-text'])
+      expect(toggle.querySelector('.fold-caret')!.classList.contains('is-closed'), variant).toBe(true)
+      expect(document.getElementById(toggle.getAttribute('aria-controls')!), variant).toBe(host.querySelector('.card-tray-reveal'))
+      act(() => toggle.click())
+      expect(toggle.querySelector('.fold-caret')!.classList.contains('is-closed'), variant).toBe(false)
+      act(() => root.render(<></>))
+    }
+  })
+
   it('a row tray draws no surface and lets its summary name the toggle', () => {
     act(() => root.render(<CardTray variant="row" summary="Renamed the project"><p>diff</p></CardTray>))
     const toggle = host.querySelector<HTMLButtonElement>('.card-tray-toggle')!
@@ -64,7 +79,8 @@ describe('CardTray', () => {
     const summary = host.querySelector<HTMLElement>('.card-tray-summary')!
     const link = summary.querySelector('a')!
     expect(toggle.contains(summary)).toBe(false)
-    expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)).toBe(summary)
+    expect(document.getElementById(toggle.getAttribute('aria-labelledby')!)!.firstElementChild).toBe(summary)
+    expect(toggle.nextElementSibling!.matches('.fold-caret.is-closed')).toBe(true)
     expect(toggle.compareDocumentPosition(link) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy()
     act(() => link.click())
     expect([onOpen.mock.calls.length, toggle.getAttribute('aria-expanded')]).toEqual([1, 'false'])

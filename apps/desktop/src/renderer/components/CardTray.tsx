@@ -1,18 +1,17 @@
 import { useId, useState } from 'react'
 import type { ReactNode } from 'react'
-import { IconChevron } from './icons.js'
-import { Tooltip } from './Tooltip.js'
 import { FadeText } from './FadeText.js'
+import { FoldToggle } from './FoldToggle.js'
 import './CardTray.css'
 
 /**
  * Progressive-disclosure surface for secondary details. The summary stays in place while the detail
- * area expands below it, so the host never shifts its identity or primary actions. `tray` is a filled
- * one-line tray inside a card, its toggle named by `expandLabel` and `collapseLabel`; `row` draws no
- * surface of its own and leads with the caret, for a list row whose summary is the row itself and
- * names the toggle. A `composite` row's summary holds a control of its own, such as an entity link,
- * so the toggle, named by the summary, lies over the caret and the summary instead of holding them,
- * and the control sits above it.
+ * area expands below it, so the host never shifts its identity or primary actions; a fold toggle
+ * leads the summary with its caret. `tray` is a filled one-line tray inside a card, its toggle named
+ * by `expandLabel` and `collapseLabel`; `row` draws no surface of its own, for a list row whose
+ * summary is the row itself and names the toggle. A `composite` row's summary holds a control of its
+ * own, such as an entity link, so the toggle, named by the summary, lies over the caret and the
+ * summary instead of holding them, and the control sits above it.
  */
 export function CardTray({
   summary, children, action, variant = 'tray', composite = false, expandLabel, collapseLabel, defaultOpen = false,
@@ -29,36 +28,22 @@ export function CardTray({
 )) {
   const [open, setOpen] = useState(defaultOpen)
   const detailId = useId()
-  const summaryId = useId()
   const label = variant === 'row' ? undefined : open ? collapseLabel : expandLabel
-  const chevron = <span className="card-tray-chevron" aria-hidden="true"><IconChevron /></span>
+  const text = <FadeText className="card-tray-summary">{summary}</FadeText>
   const toggle = () => setOpen((held) => !held)
   return (
     <div className={`card-tray card-tray--${variant}${open ? ' is-open' : ''}${className ? ` ${className}` : ''}`}>
       <div className="card-tray-head">
         {composite
           ? (
-            <div className="card-tray-press">
-              <button
-                className="card-tray-toggle" type="button" aria-expanded={open}
-                aria-controls={detailId} aria-labelledby={summaryId} onClick={toggle}
-              />
-              {chevron}
-              <FadeText className="card-tray-summary" id={summaryId}>{summary}</FadeText>
-            </div>
+            <FoldToggle variant="composite" className="card-tray-toggle" open={open} controls={detailId} onToggle={toggle}>
+              {text}
+            </FoldToggle>
           )
           : (
-            <Tooltip label={label}>
-              <button
-                className="card-tray-toggle" type="button" aria-expanded={open}
-                aria-controls={detailId} aria-label={label}
-                onClick={toggle}
-              >
-                {variant === 'row' ? chevron : null}
-                <FadeText className="card-tray-summary">{summary}</FadeText>
-                {variant === 'row' ? null : chevron}
-              </button>
-            </Tooltip>
+            <FoldToggle className="card-tray-toggle" label={label} open={open} controls={detailId} onToggle={toggle}>
+              {text}
+            </FoldToggle>
           )}
         {action === undefined ? null : <div className="card-tray-action">{action}</div>}
       </div>
