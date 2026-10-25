@@ -12,6 +12,8 @@ export default defineConfig({
         input: {
           'main/index': resolve(__dirname, 'src/main/index.ts'),
           'core/index': resolve(__dirname, 'src/core/index.ts'),
+          // A subscription CLI starts this with Electron's own Node, so it must stay beside core/index.js.
+          'core/internal-mcp-server': resolve(__dirname, 'src/core/harness/cli/internal-mcp-server.ts'),
         },
       },
     },
