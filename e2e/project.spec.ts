@@ -136,7 +136,7 @@ test('在项目页的想法一节就地写下想法：存好就落在草稿那�
   await win.locator('[data-desk="ideas"]').click()
   const card = page.locator('.idea-card', { hasText: '项目页写下的想法' })
   await expect(card).toContainText('来源 · draft 效率')
-  await expect(page.locator('.ideas-list > .section-heading').first()).toHaveText(/^未开始/)
+  await expect(page.locator('.ideas-list > .grouped-list > .section-heading--group').first()).toHaveText(/^未开始/)
 })
 
 test('想法在科研图中动态标出关联节点，节点详情反向展示想法', async ({ win }) => {
