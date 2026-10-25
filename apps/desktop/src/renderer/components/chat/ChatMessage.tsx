@@ -5,8 +5,9 @@ import type {
 import { useMessages } from '../../messages/useMessages.js'
 import { useJump } from '../../shell/AppShell.js'
 import { ENTITY_SCREEN, EntityLink, opensHere } from '../EntityLink.js'
-import { Icon } from '../icons.js'
-import { AgentLabel } from '../SourceLabel.js'
+import { Icon, RunningRing } from '../icons.js'
+import { InlineMessage } from '../InlineMessage.js'
+import { AgentLabel, ModelLabel } from '../SourceLabel.js'
 import { Tag } from '../Tag.js'
 import { Button } from '../Button.js'
 import { statusLine } from './status-lines.js'
@@ -47,14 +48,17 @@ function Runs({ runs }: { runs: ChatRun[] }) {
 }
 
 /**
- * One message: what you said sits on the right as a bubble, an answer is unboxed text under the agent
- * label, and a status line is an inline note led by an icon that never poses as a model answer. With
- * `onRetry`, given to the status line of a turn that got no answer, the line ends with Retry.
+ * One message: what you said sits on the right as a bubble, an answer is unboxed text under the label
+ * of the model that wrote it, or of an agent for an answer kept without one, and a status line is an
+ * inline note led by an icon that never poses as a model answer. With `onRetry`, given to the status
+ * line of a turn that got no answer, the line ends with Retry. With `writing`, the answer is being
+ * written, and until it has text it says the model is thinking, beside the running ring.
  */
-export function ChatMessageView({ message, onAct, onRetry }: {
+export function ChatMessageView({ message, onAct, onRetry, writing = false }: {
   message: ChatMessage
   onAct: (action: ChatAction) => void
   onRetry?: (() => void) | undefined
+  writing?: boolean
 }) {
   const m = useMessages()
   if (message.role === 'status') {
@@ -78,9 +82,13 @@ export function ChatMessageView({ message, onAct, onRetry }: {
   return (
     <div className="mwrap">
       <div className={answer ? 'msg ai' : 'msg you'}>
-        {answer ? <AgentLabel className="msg-who" /> : null}
+        {!answer ? null : message.model === undefined
+          ? <AgentLabel className="msg-who" />
+          : <ModelLabel model={message.model} className="msg-who" />}
         <div className={answer ? 'answer' : 'bubble'}>
-          <Runs runs={message.runs} />
+          {writing && message.runs.every((run) => run.text === '')
+            ? <InlineMessage tone="info" variant="line" lead={<RunningRing />} aria-busy>{m.chat.thinking}</InlineMessage>
+            : <Runs runs={message.runs} />}
           {message.actions.length > 0
             ? (
               <div className="macts">

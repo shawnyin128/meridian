@@ -2110,15 +2110,27 @@ export const ChatActionSchema = z.object({
 }).strict()
 
 /**
+ * Which model wrote an AI answer: one run on the user's subscription CLI `cli`, `id` naming the model
+ * the CLI reported or was set to and absent when the CLI ran its own default and named none; or one
+ * reached through an API, `id` naming the configured model.
+ */
+export const ChatAnswerModelSchema = z.discriminatedUnion('route', [
+  z.object({ route: z.literal('subscription'), cli: HarnessCliSchema, id: z.string().min(1).max(200).optional() }).strict(),
+  z.object({ route: z.literal('api'), id: z.string().min(1).max(200) }).strict(),
+])
+
+/**
  * Chat message. `role` distinguishes user, AI answer, and Meridian status copy;
  * status messages are not rendered as answer bubbles. Messages without buttons
- * carry an empty actions array.
+ * carry an empty actions array. `model`, on an AI answer, is the model that wrote
+ * it; answers kept before 0.0.21.0 name none.
  */
 export const ChatMessageSchema = z.object({
   id: z.string(),
   role: z.enum(['you', 'ai', 'status']),
   runs: z.array(ChatRunSchema),
   actions: z.array(ChatActionSchema),
+  model: ChatAnswerModelSchema.optional(),
 }).strict()
 
 /**
@@ -2230,11 +2242,15 @@ export const ChatSendResultSchema = z.object({
 
 export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
 
-/**
- * Reads the answer the model is writing in a chat, as far as it has written it: a string, or null
- * while the chat's model writes none, which a model that does not stream never does.
- */
+/** Reads the answer being written in a chat; answers a ChatWriting, or null while no turn runs there. */
 export const ChatWritingParamsSchema = z.object({ id: z.string() }).strict()
+
+/**
+ * The answer a chat's turn is writing: the model writing it, as far as Core knows it yet, and its
+ * `text` so far, empty until the first text arrives, which a model that does not stream sends only
+ * with the whole answer.
+ */
+export const ChatWritingSchema = z.object({ text: z.string(), model: ChatAnswerModelSchema }).strict()
 
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
 export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
@@ -2706,6 +2722,8 @@ export type ProposalStatus = ProposalRecord['status']
 export type ChatRun = z.infer<typeof ChatRunSchema>
 export type ChatAction = z.infer<typeof ChatActionSchema>
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
+export type ChatAnswerModel = z.infer<typeof ChatAnswerModelSchema>
+export type ChatWriting = z.infer<typeof ChatWritingSchema>
 export type ChatMessageFields = z.infer<typeof ChatMessageFieldsSchema>
 export type ChatSession = z.infer<typeof ChatSessionSchema>
 export type ChatSendResult = z.infer<typeof ChatSendResultSchema>

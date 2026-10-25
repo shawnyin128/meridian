@@ -7,6 +7,7 @@ import { type HarnessCli, type HarnessCliModel, HarnessCliSchema } from '../../.
 import { writeJson } from '../../vault/writer.js'
 import { cliEnvironment, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
 import { resolveCliBinary } from './discovery.js'
+import { jsonLine } from './runner.js'
 
 /** A session id as both CLIs write one: a UUID, which nothing in a file name pattern can mistake. */
 const SessionIdSchema = z.string().regex(/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i)
@@ -35,6 +36,8 @@ const CliChatRecordSchema = z.looseObject({
 })
 const SessionsFileSchema = z.looseObject({ chats: z.array(z.unknown()) })
 const DELETE_TIMEOUT_MS = 30_000
+/** A line of a Codex session file that names the model its turn ran on. */
+const TurnContextLineSchema = z.object({ type: z.literal('turn_context'), payload: z.object({ model: z.string().min(1) }) })
 
 type CliChatRecord = z.infer<typeof CliChatRecordSchema>
 export type ResumableSession = z.infer<typeof ResumableRecordSchema>
@@ -179,6 +182,20 @@ export function openCliChatSessions(options: {
     /** Makes `session`, which holds the turns `session.history` fingerprints, the one chat `chat`'s next turn resumes. */
     keep(chat: string, session: ResumableSession) {
       if (validId(session.id)) change(chat, (record) => ({ ...withSession(record, session.cli, session.id), resumable: session }))
+    },
+    /**
+     * The model Codex session `id` ran its last turn on, as the session's own file records it, or null
+     * when the file names none or is gone.
+     */
+    codexModel(id: string): string | null {
+      if (!SessionIdSchema.safeParse(id).success) return null
+      const sessions = join(codexHome, 'sessions')
+      const file = globSync(`**/*${id}*.jsonl`, { cwd: sessions })[0]
+      if (file === undefined) return null
+      const turns = readFileSync(join(sessions, file), 'utf8').split('\n')
+        .filter((line) => line.includes('"turn_context"'))
+        .map((line) => TurnContextLineSchema.safeParse(jsonLine(line)))
+      return turns.findLast((turn) => turn.success)?.data?.payload.model ?? null
     },
     /**
      * Deletes the CLI sessions of every chat of the vault that `kept` does not name, then the chat's

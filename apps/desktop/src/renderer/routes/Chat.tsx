@@ -204,7 +204,7 @@ export function Chat() {
                       : undefined}
                   />
                 ))}
-            {writing === null ? null : <ChatMessageView key={writing.id} message={writing} onAct={() => act(writing)} />}
+            {writing === null ? null : <ChatMessageView key={writing.id} message={writing} onAct={() => act(writing)} writing />}
             {id === null || ideaDraft === undefined
               ? null
               : (

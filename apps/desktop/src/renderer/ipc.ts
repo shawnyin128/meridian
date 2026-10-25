@@ -2,8 +2,8 @@ import type { AppUpdateStatus } from '../shared/app-update.js'
 import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
-  ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ColourTheme, ColourThemeFile, ConclusionState,
-  ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
+  ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme, ColourThemeFile,
+  ConclusionState, ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
@@ -288,8 +288,8 @@ export const chat = {
   /** Asks again for an answer to the chat's last question after its turn ended in a status line. */
   retry: (id: string) => call<ChatSendResult>('chat.retry', { id }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
-  /** The answer the model is writing in the chat, as far as it has written it, or null. */
-  writing: (id: string) => call<string | null>('chat.writing', { id }),
+  /** The answer being written in the chat, with the model writing it, or null while no turn runs there. */
+  writing: (id: string) => call<ChatWriting | null>('chat.writing', { id }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>

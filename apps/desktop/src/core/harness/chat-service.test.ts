@@ -81,7 +81,7 @@ describe('Core chat service', () => {
     expect(store.chatMessages('amortize')[before]!.runs).toEqual([
       { kind: 'text', text: '看看 ' }, mention, { kind: 'text', text: ' 这条线还剩什么' },
     ])
-    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @草稿树项目 这条线还剩什么', expect.anything(), expect.any(Function))
+    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @草稿树项目 这条线还剩什么', expect.anything(), expect.any(Object))
   })
 
   it('hands over a mention with the entity it names while that entity is in the vault, and as its text once it is gone', async () => {
@@ -105,16 +105,19 @@ describe('Core chat service', () => {
     expect(store.chatMessages('amortize').at(-1)!.runs).toEqual([...named, ...gone])
   })
 
-  it('reports the answer as far as the model has written it while the turn runs, and nothing once it ends or stops', async () => {
+  it('reports the answer being written with its model, from before its first text until the turn ends or stops', async () => {
     const store = createFixtureStore()
+    const configured = { route: 'subscription' as const, cli: 'claude' as const }
+    const reported = { route: 'subscription' as const, cli: 'claude' as const, id: 'claude-opus-5-5[1m]' }
+    let write: (text: string) => void = () => {}
     let finish: (answer: string) => void = () => {}
     const runner: ChatHarnessRunner = {
       checkConnection: vi.fn(async () => ({
         state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
       })),
-      answer: vi.fn((_id, _text, signal, onText) => new Promise<string>((resolve, reject) => {
-        onText?.('EAGLE reaches')
-        onText?.('EAGLE reaches 3.76x')
+      answer: vi.fn((_id, _text, signal, progress) => new Promise<string>((resolve, reject) => {
+        progress?.onModel(configured)
+        write = (text) => progress?.onText(text)
         finish = resolve
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
@@ -124,17 +127,36 @@ describe('Core chat service', () => {
     expect(service.writing('amortize')).toBeNull()
 
     const answered = service.send('amortize', written('EAGLE 快多少'))
-    expect(service.writing('amortize')).toBe('EAGLE reaches 3.76x')
+    expect(service.writing('amortize')).toEqual({ text: '', model: configured })
+    write('EAGLE reaches')
+    vi.mocked(runner.answer).mock.calls[0]![3]!.onModel(reported)
+    write('EAGLE reaches 3.76x')
+    expect(service.writing('amortize')).toEqual({ text: 'EAGLE reaches 3.76x', model: reported })
     expect(service.writing('widthknee')).toBeNull()
     finish('EAGLE reaches 3.76x [p. 6].')
     await expect(answered).resolves.toMatchObject({ state: 'complete' })
     expect(service.writing('amortize')).toBeNull()
+    expect(store.chatMessages('amortize').at(-1)).toMatchObject({ role: 'ai', model: reported })
 
     const stopped = service.send('amortize', written('再问一句'))
-    expect(service.writing('amortize')).toBe('EAGLE reaches 3.76x')
+    expect(service.writing('amortize')).toEqual({ text: '', model: configured })
     service.cancel('amortize')
     expect(service.writing('amortize')).toBeNull()
     await expect(stopped).resolves.toMatchObject({ state: 'cancelled' })
+  })
+
+  it('keeps an answer whose runner named no model without one', async () => {
+    const store = createFixtureStore()
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      answer: vi.fn(async () => '回答'),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    await service.send('amortize', written('问'))
+    expect(store.chatMessages('amortize').at(-1)).not.toHaveProperty('model')
   })
 
   it('keeps the user turn and emits no fake answer when cancelled', async () => {
@@ -252,7 +274,7 @@ describe('Core chat service', () => {
     await service.send('amortize', written('  要重试的问题 '))
 
     await expect(service.retry('amortize')).resolves.toEqual({ id: 'amortize', state: 'complete' })
-    expect(runner.answer).toHaveBeenLastCalledWith('amortize', '要重试的问题', expect.any(AbortSignal), expect.any(Function))
+    expect(runner.answer).toHaveBeenLastCalledWith('amortize', '要重试的问题', expect.any(AbortSignal), expect.any(Object))
     expect(textsAfter(store, before)).toEqual([
       ['you', '要重试的问题'], ['status', '生成失败：AI 服务停了'], ['ai', '重试后的回答'],
     ])

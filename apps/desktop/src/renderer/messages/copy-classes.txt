@@ -34,6 +34,7 @@ chat.mentionGroup.page label
 chat.mentionGroup.paper label
 chat.mentionGroup.project label
 chat.messagesLabel aria
+chat.thinking state
 chat.newChat state
 chat.paperChatLabel aria
 chat.paperChatWidth aria
@@ -67,6 +68,8 @@ common.archive action
 common.archived label
 common.attribution.agent state
 common.attribution.withSource state
+common.attribution.routes.subscription state
+common.attribution.routes.api state
 common.calendar.next action
 common.calendar.previous action
 common.cancel action

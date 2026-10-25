@@ -110,21 +110,25 @@ describe('a chat turn on Claude Code', () => {
   it('streams the answer as Claude writes it into the session it starts, with every tool, setting and MCP server off', async () => {
     const { runner, records, release, folder } = standIns({
       lines: [
-        { type: 'system', subtype: 'init', session_id: 'session-1' },
+        { type: 'system', subtype: 'init', session_id: 'session-1', model: 'claude-opus-5-5[1m]' },
         { type: 'stream_event', event: { type: 'message_start', message: {} } },
         delta('EAGLE reaches '),
         delta('3.76x [p. 6].'),
         { type: 'assistant', message: { content: [{ type: 'text', text: 'EAGLE reaches 3.76x [p. 6].' }] } },
-        claudeResult('EAGLE reaches 3.76x [p. 6].'),
+        claudeResult('EAGLE reaches 3.76x [p. 6].', {
+          modelUsage: { 'claude-haiku-4-5': { outputTokens: 12 }, 'claude-opus-5-5[1m]': { outputTokens: 88 } },
+        }),
       ],
       waitAfter: 3,
     })
     const seen: string[] = []
     const sessions: string[] = []
+    const models: string[] = []
     const result = await runner(turn('claude', folder, {
       model: 'opus',
       session: { start: 'session-1' },
       onSession: (id) => sessions.push(id),
+      onModel: (id) => models.push(id),
       onText: (text) => {
         seen.push(text)
         release()
@@ -133,8 +137,10 @@ describe('a chat turn on Claude Code', () => {
 
     expect(seen).toEqual(['EAGLE reaches ', 'EAGLE reaches 3.76x [p. 6].'])
     expect(sessions).toEqual(['session-1'])
+    expect(models).toEqual(['claude-opus-5-5[1m]'])
     expect(result).toMatchObject({
       answer: 'EAGLE reaches 3.76x [p. 6].',
+      model: 'claude-opus-5-5[1m]',
       usage: { inputTokens: 24_182, cachedInputTokens: 23_327, outputTokens: 88 },
     })
     const [seenCall] = records()
@@ -203,6 +209,7 @@ describe('a chat turn on Codex', () => {
 
     expect(seen).toEqual(['Drafting [p. 4].', 'EAGLE drafts features [p. 4].'])
     expect(sessions).toEqual(['thread-1'])
+    expect(result.model).toBeUndefined()
     expect(result).toMatchObject({
       answer: 'EAGLE drafts features [p. 4].',
       usage: { inputTokens: 27_023, cachedInputTokens: 7_552, outputTokens: 117 },

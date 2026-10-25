@@ -37,7 +37,10 @@ export const common = {
   overdue: 'Overdue',
   archived: 'Archived',
   priority: { p0: 'Urgent', p1: 'Normal', p2: 'Low' },
-  attribution: { agent: 'Agent', withSource: (who: string, source: string) => `${who} · ${source}` },
+  attribution: {
+    agent: 'Agent', withSource: (who: string, source: string) => `${who} · ${source}`,
+    routes: { subscription: 'Subscription', api: 'API' },
+  },
   daySections: { today: 'Today', yesterday: 'Yesterday', week: 'This week', earlier: 'Earlier' },
   nav: { back: 'Back' },
   dialog: { close: 'Close' },
