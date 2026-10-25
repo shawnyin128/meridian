@@ -27,7 +27,7 @@ const sheet = (path: string) => readFileSync(join(RENDERER, path), 'utf8')
 /** Every stylesheet a title, a heading or a small label below takes its type from, in bundle order. */
 const SHEETS = [
   'shell/tokens.css', 'routes/shell.css', 'components/PageShell.css', 'components/CollapsibleGroup.css',
-  'components/ResearchObjectCard.css', 'components/paper/PaperCard.css', 'components/paper/PaperUnderstanding.css',
+  'components/Item.css', 'components/paper/PaperCard.css', 'components/paper/PaperUnderstanding.css',
   'components/project/ProjectIdentity.css', 'components/project/ResearchGraph.css',
   'components/paper-table/PaperTable.css', 'shell/AppShell.css', 'routes/Wiki.css', 'routes/Projects.css',
   'routes/Ideas.css', 'routes/Watches.css',
@@ -50,7 +50,7 @@ const MARKUP = `
   <div class="pd-h"><span class="pd-t" id="paper-detail">QuIP#: Even Better LLM Quantization</span></div>
   <article class="paper-card"><div class="paper-card-heading"><h3 id="paper-card">Acceptance Is Not Speed</h3></div>
     <section class="paper-card-section"><div class="paper-card-label" id="card-label">摘要</div></section></article>
-  <article class="research-object-card research-object-card--grid wkcard"><div class="wt"><button class="tt" id="wiki-card">KV cache 压缩</button></div></article>
+  <article class="item item--card wkcard"><div class="wt"><button class="tt" id="wiki-card">KV cache 压缩</button></div></article>
   <span class="project-identity header"><span class="project-identity-name" id="project-card">MoE 路由分析</span></span>
   <div class="idea-card-title-row"><strong id="idea-card">蒸馏预算</strong></div>
   <span class="project-card-label" id="project-label">当前目标</span>

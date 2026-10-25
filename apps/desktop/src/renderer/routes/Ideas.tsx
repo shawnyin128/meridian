@@ -23,8 +23,8 @@ import { nodeMode } from '../components/project/ResearchGraph.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { DetailPanel } from '../components/DetailPanel.js'
 import { TrailingDate } from '../components/DateTimeDisplay.js'
-import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, ItemOpen, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { ProjectLabel, ProjectStatusTag } from '../components/project/ProjectIdentity.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -168,13 +168,13 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
 }) {
   const m = useMessages()
   return (
-    <ResearchObjectCard
+    <Item density="card"
       className="idea-card" selected={selected} muted={idea.archived}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="idea-card-content">
         <div className="idea-card-title-row">
-          <CardOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></CardOpen>
+          <ItemOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>
           <IdeaRelationTags idea={idea} projectsById={projectsById} pageTitles={pageTitles} />
         </div>
         <div className="idea-card-meta">
@@ -186,7 +186,7 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
         </div>
       </div>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -206,7 +206,7 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
   const m = useMessages()
   const work = idea.project === undefined ? undefined : projectsById.get(idea.project)
   return (
-    <StructuredRow
+    <Item
       composite className="idea-row" selected={selected}
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
     >
@@ -223,7 +223,7 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
       </span>
       <TrailingDate date={idea.updated} label={m.ideas.updated} />
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -474,7 +474,7 @@ export function Ideas() {
     ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
     : ideas.length === 0
       ? <EmptyState variant="section">{empty}</EmptyState>
-      : <StructuredList variant="embedded" maxVisibleRows="all" className="idea-rows">{ideas.map(row)}</StructuredList>)
+      : <List variant="embedded" rows="all" className="idea-rows">{ideas.map(row)}</List>)
   const rowGroups = (
     <>
       {groupRows(started, m.ideas.emptyGroup.active)}
@@ -513,11 +513,11 @@ export function Ideas() {
             {draft === null
               ? null
               : (
-                <ResearchObjectCard className="idea-draft-card" cardRef={draftCard}>
+                <Item density="card" className="idea-draft-card" elementRef={draftCard}>
                   <IdeaDraft
                     draft={draft} triggers={draftTriggers} onChange={setDraft} onSave={createIdea} onCancel={() => setDraft(null)}
                   />
-                </ResearchObjectCard>
+                </Item>
               )}
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
@@ -543,9 +543,9 @@ export function Ideas() {
                 <div className="idea-stats-head" aria-hidden="true">
                   <span /><span>{b.ideas}</span><span>{b.active}</span><span>{b.done}</span>
                 </div>
-                <StructuredList variant="embedded" className="idea-stats">
+                <List variant="embedded" className="idea-stats">
                   {counts.map(({ project, ideas, active, done: finished }) => (
-                    <StructuredRow
+                    <Item
                       className="idea-stats-row" key={project.id}
                       onActivate={() => jumpTo('project', project.id)}
                     >
@@ -553,9 +553,9 @@ export function Ideas() {
                       {[[b.ideas, ideas], [b.active, active], [b.done, finished]].map(([label, count]) => (
                         <span className={`idea-stats-n${count === 0 ? ' zero' : ''}`} aria-label={`${label} ${count}`} key={label}>{count}</span>
                       ))}
-                    </StructuredRow>
+                    </Item>
                   ))}
-                </StructuredList>
+                </List>
               </>
             )}
           </main>

@@ -26,7 +26,7 @@
 }
 
 /*
- * Shelved and completed projects: one StructuredRow each, padded inline like the cards above it plus their
+ * Shelved and completed projects: one row Item each, padded inline like the cards above it plus their
  * border, so its name, meta and row actions line up with theirs.
  */
 .prow{display:flex;align-items:center;gap:var(--sp-10);padding:var(--sp-8) calc(var(--item-inset) + 1px);font-size:var(--fs-base)}

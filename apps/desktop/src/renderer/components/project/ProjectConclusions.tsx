@@ -15,7 +15,8 @@ import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { PanelClose } from '../PanelClose.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { EntityLink } from '../EntityLink.js'
 import { ProjectSignalDate, ProjectSignalKind } from './ProjectSignals.js'
@@ -45,7 +46,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
   const written = conclusion.wiki[0]
   const wikiState = written === undefined ? c.notWritten : c.writtenTo(written.title, written.version)
   return (
-    <StructuredRow
+    <Item
       className="attnrow record-row conclusion-row" selected={selected}
       data-conclusion={conclusion.id} onActivate={onOpen}
     >
@@ -60,7 +61,7 @@ export function ProjectConclusionRow({ conclusion, node, selected, onOpen }: {
         {node === undefined ? null : <EntityLink kind="node" label={node.label} mode={node.mode} fill />}
       </span>
       <span className="record-who">{conclusion.node === undefined ? null : <AgentLabel />}</span>
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -194,13 +195,13 @@ export function ProjectConclusionPanel({
             {conclusion.tasks.length === 0
               ? <EmptyState variant="section">{c.noTasks}</EmptyState>
               : (
-                <StructuredList variant="embedded" className="conclusion-chain">
+                <List variant="embedded" className="conclusion-chain">
                   {conclusion.tasks.map((task) => (
-                    <StructuredRow key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}>
+                    <Item key={task.id} className="conclusion-chain-row" onActivate={() => onOpenTask(task.id)}>
                       <FadeText>{task.title}</FadeText>
-                    </StructuredRow>
+                    </Item>
                   ))}
-                </StructuredList>
+                </List>
               )}
             <SectionHeading variant="rail">{c.node}</SectionHeading>
             {node === undefined
@@ -214,14 +215,14 @@ export function ProjectConclusionPanel({
             {conclusion.experiments.length === 0
               ? <EmptyState variant="section">{c.noExperiments}</EmptyState>
               : (
-                <StructuredList variant="embedded" className="conclusion-chain">
+                <List variant="embedded" className="conclusion-chain">
                   {conclusion.experiments.map((experiment) => (
-                    <StructuredRow key={experiment.id} className="conclusion-chain-row">
+                    <Item key={experiment.id} className="conclusion-chain-row">
                       <FadeText>{experiment.title}</FadeText>
                       {experiment.title === experiment.id ? null : <span className="conclusion-chain-id">{experiment.id}</span>}
-                    </StructuredRow>
+                    </Item>
                   ))}
-                </StructuredList>
+                </List>
               )}
           </>
         )}
@@ -230,17 +231,17 @@ export function ProjectConclusionPanel({
       {conclusion.wiki.length === 0
         ? <EmptyState variant="section">{c.notWritten}</EmptyState>
         : (
-          <StructuredList variant="embedded" className="conclusion-chain">
+          <List variant="embedded" className="conclusion-chain">
             {conclusion.wiki.map((claim) => (
-              <StructuredRow
+              <Item
                 key={`${claim.page}#${claim.claim}`} className="conclusion-chain-row" data-wk={claim.page}
                 onActivate={() => onOpenPage(claim.page)}
               >
                 <FadeText>{claim.title}</FadeText>
                 <span className="conclusion-chain-id">v{claim.version}</span>
-              </StructuredRow>
+              </Item>
             ))}
-          </StructuredList>
+          </List>
         )}
 
     </>

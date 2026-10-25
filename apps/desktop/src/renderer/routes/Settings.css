@@ -32,7 +32,7 @@
   border-radius:var(--r-card);background-color:var(--field);box-shadow:inset 0 0 0 1px var(--sep2);
   transition:background-color var(--t-fast) var(--e-out),box-shadow var(--t-fast) var(--e-out)}
 .appearance-choice:hover .appearance-preview{box-shadow:inset 0 0 0 1px var(--sep-strong)}
-/* The selected look of rows, cards and graph nodes; see StructuredList.css. */
+/* The selected look of rows, cards and graph nodes; see Item.css. */
 .appearance-choice[aria-checked="true"] .appearance-preview{background-color:var(--selected)}
 .appearance-label{display:block;margin-top:var(--sp-8);font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--sec)}
 .appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}

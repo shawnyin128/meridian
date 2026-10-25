@@ -7,7 +7,8 @@ import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
-import { ListColumn, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List, ListColumn } from '../List.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
@@ -71,7 +72,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
   }, [entries, selectedId])
 
   const entryRow = (entry: MapEntry) => (
-    <StructuredRow
+    <Item
       key={entry.id}
       className="research-map-group" selected={selected?.id === entry.id}
       aria-pressed={selected?.id === entry.id}
@@ -86,7 +87,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
         {entry.kind === undefined ? null : <span>{entry.kind}</span>}
       </span>
       <CountBadge count={entry.papers.length} />
-    </StructuredRow>
+    </Item>
   )
 
   return (
@@ -102,12 +103,12 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
           : (
             <div className="research-map-layout">
               <ListColumn className="research-map-index">
-                <StructuredList className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
+                <List className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
                   {entries.groups.map(entryRow)}
-                </StructuredList>
+                </List>
                 {entries.beyond.length === 0
                   ? null
-                  : <StructuredList className="research-map-groups">{entries.beyond.map(entryRow)}</StructuredList>}
+                  : <List className="research-map-groups">{entries.beyond.map(entryRow)}</List>}
               </ListColumn>
 
               {selected === undefined
@@ -120,8 +121,8 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                         <span>{m.papers.researchMap.paperCount(selected.papers.length)}</span>
                       </div>
                     </div>
-                    <StructuredList
-                      variant="embedded" maxVisibleRows="fill" className="research-map-papers"
+                    <List
+                      variant="embedded" rows="fill" flush className="research-map-papers"
                       aria-label={m.papers.researchMap.paperListAria(selected.label)}
                     >
                       {selected.papers.map((member) => (
@@ -130,7 +131,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                           trigger={(
                             // The row is the toolbar of its own controls, from its title to its reading status.
                             <Toolbar label={plainTitle(member.paper.title)}>
-                              <StructuredRow composite className="research-map-paper" onActivate={() => onOpenPaper(member.paper)}>
+                              <Item composite className="research-map-paper" onActivate={() => onOpenPaper(member.paper)}>
                                 <ToolbarButton className="research-map-paper-open">
                                   <FadeText className="research-map-paper-title" label={plainTitle(member.paper.title)}>
                                     <PaperText text={member.paper.title} />
@@ -151,7 +152,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                                     {member.chips.map((chip) => <Tag shape="chip" key={chip.key}>{chip.text}</Tag>)}
                                   </FadeText>
                                 )}
-                              </StructuredRow>
+                              </Item>
                             </Toolbar>
                           )}
                         >
@@ -159,7 +160,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                           <ContextMenuItem onSelect={() => onReadPaper(member.paper)}>{m.papers.contextMenu.openReader}</ContextMenuItem>
                         </ContextMenu>
                       ))}
-                    </StructuredList>
+                    </List>
                   </div>
                 )}
             </div>

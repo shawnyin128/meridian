@@ -2,10 +2,3 @@
 .drag-handle:active{cursor:var(--cursor-dragging)}
 /* The grip is drawn on a 12×16 box, narrower than the square glyphs IconButton sizes. */
 .icbtn.drag-handle>svg{width:9px;height:12px}
-/*
- * The drop feedback useDragReorder marks on a reorderable item: the item held dims, and a
- * line shows where it would land. :where() keeps these weaker than an item's own look, such as a card's.
- */
-:where([data-reorder-item]).dragging{opacity:.4}
-:where([data-reorder-item]).drag-over-before{box-shadow:0 -2px 0 0 var(--ink)}
-:where([data-reorder-item]).drag-over-after{box-shadow:0 2px 0 0 var(--ink)}

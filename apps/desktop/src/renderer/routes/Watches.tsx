@@ -13,7 +13,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { afterLeaving, InlineDraftInput } from '../components/InlineDraftInput.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconPencil, IconTrash } from '../components/icons.js'
 import { FormInput } from '../components/FormControls.js'
@@ -73,18 +74,18 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
         : watches.length === 0 && editor === undefined
         ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
         : (
-          <StructuredList className="wlist">
+          <List className="wlist">
             {editor === undefined || editor.id !== undefined
               ? null
-              : <StructuredRow className="wrow newrow" rowRef={editor.row}>{editor.input}</StructuredRow>}
+              : <Item className="wrow newrow" elementRef={editor.row}>{editor.input}</Item>}
             {watches.map((w) => (editor?.id === w.id
               ? (
-                <StructuredRow className="wrow editrow" data-w={w.id} key={w.id} rowRef={editor.row}>
+                <Item className="wrow editrow" data-w={w.id} key={w.id} elementRef={editor.row}>
                   {editor.input}
-                </StructuredRow>
+                </Item>
               )
               : (
-                <StructuredRow className="wrow" data-w={w.id} key={w.id}>
+                <Item className="wrow" data-w={w.id} key={w.id}>
                   <span className="nm">{w.name}</span>
                   {w.type !== 'author' ? null : w.identity === undefined
                     ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag>
@@ -103,9 +104,9 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
                       confirmLabel={m.watches.confirmRemoveLabel} onConfirm={() => onRemove(w.id)}
                     />
                   </RowActions>
-                </StructuredRow>
+                </Item>
               ))) }
-          </StructuredList>
+          </List>
         )}
     </>
   )
@@ -545,9 +546,9 @@ export function WatchSettings() {
                           )
                           : null}
                       </div>
-                      <StructuredList variant="embedded" className="watch-suggestion-list">
+                      <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.topics.map((item) => (
-                          <StructuredRow className="watch-suggestion-row" key={item.name}>
+                          <Item className="watch-suggestion-row" key={item.name}>
                             <div className="watch-suggestion-copy">
                               <FadeText className="nm" label={item.name}>{item.name}</FadeText>
                               <FadeText>{m.watches.relatedPapers(item.relatedPapers)}</FadeText>
@@ -558,9 +559,9 @@ export function WatchSettings() {
                                 onClick={() => { void addSuggestedTopic(item.name) }}
                               >{m.watches.addAction}</AddAction>
                             </RowActions>
-                          </StructuredRow>
+                          </Item>
                         ))}
-                      </StructuredList>
+                      </List>
                     </section>
                   )}
                   {suggestions.authors.length === 0 ? null : (
@@ -568,9 +569,9 @@ export function WatchSettings() {
                       <div className="watch-suggestion-group-heading">
                         <strong>{m.watches.authorSuggestions}</strong>
                       </div>
-                      <StructuredList variant="embedded" className="watch-suggestion-list">
+                      <List variant="embedded" className="watch-suggestion-list">
                         {suggestions.authors.map((item) => (
-                          <StructuredRow className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
+                          <Item className="watch-suggestion-row" key={suggestedAuthorKey(item)}>
                             <div className="watch-suggestion-copy">
                               <FadeText className="nm" label={item.name}>{item.name}</FadeText>
                               <FadeText>{'id' in item
@@ -583,9 +584,9 @@ export function WatchSettings() {
                                 onClick={() => { void addSuggestedAuthor(item) }}
                               >{m.watches.addAction}</AddAction>
                             </RowActions>
-                          </StructuredRow>
+                          </Item>
                         ))}
-                      </StructuredList>
+                      </List>
                     </section>
                   )}
                 </>

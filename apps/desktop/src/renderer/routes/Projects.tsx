@@ -26,8 +26,8 @@ import { ProjectBlockerView, ProjectNextActionView } from '../components/project
 import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
-import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, ItemOpen, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { Tag } from '../components/Tag.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat } from '../lib/format.js'
@@ -147,14 +147,14 @@ function ProjectCreateRow({ row, triggers, onCreate, onCancel, kept }: {
 }) {
   const m = useMessages()
   return (
-    <div className="research-object-card projpanel" ref={row}>
+    <Item density="card" className="projpanel" elementRef={row}>
       <div className="pp-h">
         <InlineDraftInput
           className="inedit" scopeRef={row} triggers={triggers} placeholder={m.project.identity.nameFieldLabel}
           onSubmit={onCreate} onCancel={onCancel} kept={kept}
         />
       </div>
-    </div>
+    </Item>
   )
 }
 
@@ -177,12 +177,12 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
   const record = newest?.date === project.lastProgress ? newest : undefined
 
   return (
-    <ResearchObjectCard
+    <Item density="card"
       className="projpanel"
       data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
       <div className="pp-h">
-        <CardOpen><ProjectIdentity project={project} showTopic /></CardOpen>
+        <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
         {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
         <span className="dd">
           {next && left !== null
@@ -236,7 +236,7 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
             )}
         </span>
       </div>
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -252,7 +252,7 @@ function ProjectRow({ project, onOpen, menu, reorder }: {
   const { idle } = signals(project, useToday())
   const m = useMessages()
   return (
-    <StructuredRow
+    <Item
       composite className="prow"
       data-proj={project.id} onActivate={onOpen} {...reorder.item}
     >
@@ -264,7 +264,7 @@ function ProjectRow({ project, onOpen, menu, reorder }: {
         {idleNote(idle, m.project.signals.idle)}
       </FadeText>
       <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -425,14 +425,14 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                 />
               ))
               : (
-                <StructuredList variant="embedded" maxVisibleRows="all">
+                <List variant="embedded" rows="all">
                   {g.items.map((p) => (
                     <ProjectRow
                       project={p} onOpen={() => onOpen(p.id)} menu={menuOf(p)} key={p.id}
                       reorder={{ item: reorder.itemProps(p.id), handle: reorder.handleProps(p.id) }}
                     />
                   ))}
-                </StructuredList>
+                </List>
               )}
           </Fragment>
         ))}

@@ -404,7 +404,7 @@ test('搁置或已完成的项目菜单开着、指针挪到菜单项上之后,�
 
   await row.hover()
   await settle(row)
-  // The row's hover is an overlay image over its own colour (StructuredList.css).
+  // The row's hover is an overlay image over its own colour (Item.css).
   const hoverBg = await row.evaluate((el) => getComputedStyle(el).backgroundImage)
   expect(hoverBg).not.toBe('none')
   await dots.click()

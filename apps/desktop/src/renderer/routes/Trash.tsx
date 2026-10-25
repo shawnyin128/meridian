@@ -12,7 +12,8 @@ import { FadeText } from '../components/FadeText.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
@@ -115,9 +116,9 @@ export function Trash() {
           : groups.map((g) => (
             <Fragment key={g.kind}>
               <SectionHeading count={g.items.length}>{m.trash.kinds[g.kind]}</SectionHeading>
-              <StructuredList variant="embedded" maxVisibleRows="all" className="tgroup">
+              <List variant="embedded" rows="all" className="tgroup">
                 {g.items.map((entry) => (
-                  <StructuredRow className="trow" key={entry.id}>
+                  <Item className="trow" key={entry.id}>
                     <FadeText className="tt2">{PAPER_KINDS.has(entry.kind) ? <PaperText text={entry.title} /> : entry.title}</FadeText>
                     <span className="tm2">{m.trash.autoClear(daysLeft(entry.deletedAt, today))}</span>
                     <RowActions>
@@ -135,9 +136,9 @@ export function Trash() {
                         confirmLabel={m.trash.confirmPurgeLabel} onConfirm={() => purge(entry.id)}
                       />
                     </RowActions>
-                  </StructuredRow>
+                  </Item>
                 ))}
-              </StructuredList>
+              </List>
             </Fragment>
           ))}
       </PageBody>

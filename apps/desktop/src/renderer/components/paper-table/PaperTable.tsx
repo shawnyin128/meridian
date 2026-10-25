@@ -38,7 +38,8 @@ import {
 import { AddAction } from '../AddAction.js'
 import { BackButton } from '../BackButton.js'
 import { IconButton } from '../IconButton.js'
-import { holdRepeatSelection, RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { holdRepeatSelection, Item, RowActions } from '../Item.js'
+import { List } from '../List.js'
 import { PanelClose } from '../PanelClose.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
@@ -1323,18 +1324,18 @@ export function PaperTable() {
               )
               : !listed
               ? (
-                <StructuredList variant="embedded" maxVisibleRows="all">
+                <List variant="embedded" rows="all">
                   {facets.map((f) => {
                     const newest = m.papers.groupIndex.newest(plainTitle(f.newestTitle))
                     return (
-                      <StructuredRow className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
+                      <Item className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}>
                         <span className="gx-t">{valueName(f.value)}</span>
                         <FadeText className="gx-m" label={newest}>{newest}</FadeText>
                         <CountBadge className="n" count={f.count} />
-                      </StructuredRow>
+                      </Item>
                     )
                   })}
-                </StructuredList>
+                </List>
               )
               : (
                 <>

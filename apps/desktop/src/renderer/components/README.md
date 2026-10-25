@@ -73,10 +73,17 @@ Current shared contracts:
   returns to where it was.
 - `ShortTextEditor`: the shared create/rename popover body, including fixed input geometry, focus,
   Enter/Escape, async acceptance, and optional deletion.
-- `StructuredList`: list shell and actionable/static row semantics; routes only supply columns and cells.
-  A row that holds controls of its own is `composite`: it stays a div that forwards pointer clicks, and
-  its children carry the keyboard-accessible control, so a button is never nested inside a button. A
-  `selected` row takes the one selected look, the sidebar's current row's: `--accent-soft` with `--accent-text`.
+- `Item`: the one list item, in two densities that start their content at one `--item-inset`, so rows
+  and cards line up on a page that mixes them: `row`, a line of a `List`, and `card`, a bordered item of its
+  own. It owns the item's type, the hover, the selected look (the sidebar's current row's: `--accent-soft`
+  with `--accent-text`), the drop feedback of `useDragReorder` and the look it keeps while one of its
+  menus is open, and the slots leading, title, meta, tags, trailing, `actions` and the overflow `menu`,
+  which go in its `RowActions` slot. An actionable row is a button; an item that holds controls of its own
+  is `composite` (an actionable card always is): it stays a div that forwards pointer clicks, and its
+  `ItemOpen` around the name is the keyboard control, so a button is never nested inside a button.
+- `List`: the one container of Items: the outline (`card`) or none (`embedded`), the dividers between
+  its rows and the gap between its cards, and how many rows it shows before it scrolls inside itself
+  (`rows`: five by default when embedded, `all`, or `fill` for the rest of its container's height).
 - `NavRow`: the one row of a navigation list, the sidebar's and the Settings categories'. It is a button,
   or, when it holds controls of its own, a div whose label is the button; the row's class gives the look.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
@@ -152,9 +159,6 @@ Current shared contracts:
   (`live`, `usePruneDrafts`) so a kept draft of a deleted item is dropped.
 - `hooks/useWheelZoom`: the one wheel rule of a zoomable view, shared by the reader and the research graph:
   a pinch or a Ctrl- or ⌘-scroll zooms about the pointer, and every other scroll scrolls the page.
-- `ResearchObjectCard`: one list-card shell for first-class research objects such as projects and ideas;
-  routes provide their domain-specific identity and metadata without redefining width, spacing, borders,
-  selection, management-menu visibility, or keyboard activation. A selected card takes the one selected look.
 - `FormInput`, `FormTextarea`, and `FormSelect`: the one field, in two appearances: `field`, the boxed field
   of forms, dialogs, popovers and filters (the default), and `inline`, which edits a value in the place of its
   text in a row, cell or property list. Both share one edge, fill, radius and the one focus rule in

@@ -36,7 +36,7 @@ describe('ResearchMap', () => {
     // Every row draws a 78px box, stacked from the top of its list.
     vi.spyOn(HTMLElement.prototype, 'getClientRects').mockReturnValue([{}] as unknown as DOMRectList)
     vi.spyOn(HTMLElement.prototype, 'getBoundingClientRect').mockImplementation(function (this: HTMLElement) {
-      const rows = [...this.closest('.structured-list')!.querySelectorAll('.structured-row')]
+      const rows = [...this.closest('.list')!.querySelectorAll('.item')]
       return { top: 0, bottom: 78 * (rows.indexOf(this) + 1) } as DOMRect
     })
     const grouped = ['Alpha', 'Bravo', 'Charlie', 'Delta', 'Echo', 'Foxtrot', 'Golf']
@@ -53,7 +53,7 @@ describe('ResearchMap', () => {
 
     const list = host.querySelector<HTMLElement>('.research-map-papers')!
     expect(list.querySelectorAll('.research-map-paper')).toHaveLength(grouped.length)
-    expect(list.classList.contains('structured-list--fill')).toBe(true)
+    expect(list.classList.contains('list--fill')).toBe(true)
     expect(list.style.maxHeight).toBe('')
     expect(host.querySelector('.research-map-index')?.classList.contains('list-column')).toBe(true)
     act(() => root.unmount())

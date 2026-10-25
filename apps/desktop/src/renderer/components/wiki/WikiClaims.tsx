@@ -22,7 +22,8 @@ import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { SourceAnchor } from '../SourceAnchor.js'
 import { AgentLabel } from '../SourceLabel.js'
-import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item, RowActions } from '../Item.js'
+import { List } from '../List.js'
 import { Tag } from '../Tag.js'
 import { PaperText } from '../paper/PaperText.js'
 import { Button } from '../Button.js'
@@ -284,7 +285,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
   const addDraft = form?.kind !== 'add'
     ? null
     : (
-      <StructuredRow className="wkclaim wkclaim-draft" rowRef={addRow}>
+      <Item className="wkclaim wkclaim-draft" elementRef={addRow}>
         <DraftForm canSave={ready !== null} onSave={saveDraft} onCancel={close}>
           {(invalid) => (
             <>
@@ -333,7 +334,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
             </>
           )}
         </DraftForm>
-      </StructuredRow>
+      </Item>
     )
 
   return (
@@ -345,11 +346,11 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
       {page.claims.length === 0 && addDraft === null
         ? <EmptyState variant="section">{c.empty}</EmptyState>
         : (
-          <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
+          <List variant="embedded" rows="all" className="wkclaims">
             {page.claims.map((claim) => (
-              <StructuredRow
+              <Item
                 key={claim.id} data-claim={claim.id} className="wkclaim"
-                {...claim.id === arrival ? { rowRef: arrivalRow } : {}}
+                {...claim.id === arrival ? { elementRef: arrivalRow } : {}}
               >
                 <div className="wkclaim-head">
                   {form?.kind === 'revise' && form.claim.id === claim.id
@@ -486,10 +487,10 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                       />
                     </CardTray>
                   )}
-              </StructuredRow>
+              </Item>
             ))}
             {addDraft}
-          </StructuredList>
+          </List>
         )}
     </>
   )

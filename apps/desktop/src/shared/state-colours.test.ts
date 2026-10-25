@@ -183,9 +183,9 @@ describe('强调色', () => {
    */
   const ACCENT = [
     'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri',
-    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/ProgressFill.css  .progress-fill>span',
-    'components/ResearchObjectCard.css  .research-object-card.selected', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
-    'components/StructuredList.css  .structured-row--selected', 'components/Switch.css  .switch[data-state="checked"]',
+    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/Item.css  .item--selected',
+    'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
+    'components/Switch.css  .switch[data-state="checked"]',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
     'components/paper-table/PaperTable.css  .ptable tbody tr.selected', 'components/paper-table/PaperTable.css  .ptable tbody tr.selected .pt-title',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
@@ -207,8 +207,7 @@ describe('强调色', () => {
     const current = tokens(bodyOf('shell/AppShell.css', '.srow.on'))
     expect(current).toEqual(['--accent-soft', '--accent-text'])
     for (const [path, selector] of [
-      ['components/StructuredList.css', '.structured-row--selected'], ['components/ResearchObjectCard.css', '.research-object-card.selected'],
-      ['routes/Reader.css', '.reading-card.selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
+      ['components/Item.css', '.item--selected'], ['routes/Reader.css', '.reading-card.selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
     ] as const) expect(tokens(bodyOf(path, selector)), selector).toEqual(current)
     expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected'))).toEqual(['--accent-soft'])
     expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected .pt-title'))).toEqual(['--accent-text'])

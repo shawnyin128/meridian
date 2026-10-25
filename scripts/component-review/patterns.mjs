@@ -147,7 +147,7 @@ export const PATTERNS = {
   List: {
     metrics: 'list',
     entries: [
-      entry('shared:StructuredList', '.structured-list'),
+      entry('shared:List', '.list'),
       entry('shared:PaperMetadata', '.paper-meta-list'),
       entry('shared:ProposalRows', '.proposal-rows'),
       entry('hand:shell/CommandPalette.tsx', '.cmdk-list'),
@@ -187,7 +187,7 @@ export const PATTERNS = {
   Row: {
     metrics: 'item',
     entries: [
-      entry('shared:StructuredRow', '.structured-row', { not: '.structured-row:has(> .form-control)' }),
+      entry('shared:Item', '.item--row', { not: '.item--row:has(> .form-control)' }),
       entry('shared:NavRow', '.nav-row', { not: '.srow.disc, .sb-h' }),
       entry('shared:PickOption', '.mi.rrow', { parts: { title: '.rt', meta: '.rm' } }),
       entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr', { parts: { title: '.pt-title' } }),
@@ -203,7 +203,7 @@ export const PATTERNS = {
   Card: {
     metrics: 'item',
     entries: [
-      entry('shared:ResearchObjectCard', '.research-object-card', { not: '.newcard, .research-object-card:has(.form-control)' }),
+      entry('shared:Item', '.item--card', { not: '.newcard, .item--card:has(.form-control)' }),
       entry('shared:Card', '.card-surface'),
       entry('shared:PaperCard', '.paper-card', { parts: { title: 'h3', meta: '.paper-card-metadata' } }),
       entry('shared:ProposalCard', '.proposal-card'),
@@ -217,8 +217,8 @@ export const PATTERNS = {
   DraftRow: {
     metrics: 'item',
     entries: [
-      entry('shared:InlineDraftInput', '.structured-row:has(> .form-control)'),
-      entry('hand:routes/Projects.tsx', '.research-object-card:has(.form-control)'),
+      entry('shared:InlineDraftInput', '.item--row:has(> .form-control)'),
+      entry('hand:routes/Projects.tsx', '.item--card:has(.form-control)'),
       entry('hand:routes/Wiki.tsx', '.wkcard.newcard'),
       entry('hand:routes/Wiki.tsx', '.cmp .newrow'),
       entry('hand:components/project/ProjectSections.tsx', '.reladd'),
@@ -319,7 +319,7 @@ export const PATTERNS = {
   SelectedState: {
     metrics: 'state',
     entries: [
-      entry('shared:StructuredRow', '.structured-row--selected'),
+      entry('shared:Item', '.item--selected'),
       entry('shared:NavRow', '.srow.on'),
       entry('shared:IconButton', '.icbtn[aria-pressed="true"]'),
       entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr.selected'),

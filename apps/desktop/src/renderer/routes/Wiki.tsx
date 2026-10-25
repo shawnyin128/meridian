@@ -48,8 +48,8 @@ import { tidyRows, TidyList } from '../components/wiki/WikiTidy.js'
 import { SourceAnchor } from '../components/SourceAnchor.js'
 import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
-import { CardOpen, ResearchObjectCard } from '../components/ResearchObjectCard.js'
-import { EMBEDDED_LIST_ROW_LIMIT, RowActions } from '../components/StructuredList.js'
+import { Item, ItemOpen, RowActions } from '../components/Item.js'
+import { EMBEDDED_LIST_ROW_LIMIT, List } from '../components/List.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
 import { Button } from '../components/Button.js'
@@ -88,10 +88,10 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   const summary = useRef<HTMLDivElement>(null)
   const summaryCut = useClipped(summary, card.summary, true)
   return (
-    <ResearchObjectCard variant="grid" className="wkcard" data-wk={card.id} onActivate={onOpen}>
+    <Item density="card" className="wkcard" data-wk={card.id} onActivate={onOpen}>
       <div className="wt">
         <Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>
-        <CardOpen className="tt"><FadeText>{card.title}</FadeText></CardOpen>
+        <ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>
         {card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
         <span className="sp" />
       </div>
@@ -111,7 +111,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
             ><IconCross /></IconButton>
           </RowActions>
         )}
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -126,17 +126,17 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
     .filter((part) => part !== '').join(' · ')
   return (
-    <ResearchObjectCard variant="grid" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
+    <Item density="card" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}>
       <div className="wt">
         <Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>
         <Tooltip label={plainTitle(paper.title)} whenClipped>
-          <CardOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></CardOpen>
+          <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>
         </Tooltip>
         <span className="sp" />
       </div>
       <FadeText className="wm" label={line}>{line}</FadeText>
       <FadeText className="wf">{m.wiki.paperCardFooter(paper.noteCount, paper.conclusionCount)}</FadeText>
-    </ResearchObjectCard>
+    </Item>
   )
 }
 
@@ -795,7 +795,7 @@ export function Wiki() {
                 {shownAgg.children.length === 0 && adding !== 'child'
                   ? <EmptyState variant="section">{m.wiki.noChildren}</EmptyState>
                   : (
-                    <div className="wkgrid">
+                    <List variant="embedded" rows="all" grid className="wkgrid">
                       {shownAgg.children.map((c) => (
                         <AggregationCard
                           key={c.id} card={c} pending={pending}
@@ -804,7 +804,7 @@ export function Wiki() {
                       ))}
                       {adding === 'child'
                         ? (
-                          <ResearchObjectCard variant="grid" className="wkcard newcard" cardRef={addRow}>
+                          <Item density="card" className="wkcard newcard" elementRef={addRow}>
                             <div className="wt">
                               <Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>
                               <PickRow
@@ -816,10 +816,10 @@ export function Wiki() {
                               />
                             </div>
                             <div className="wf" />
-                          </ResearchObjectCard>
+                          </Item>
                         )
                         : null}
-                    </div>
+                    </List>
                   )}
                 <SectionHeading
                   actions={(
@@ -1105,17 +1105,17 @@ export function Wiki() {
                 return roots.length === 0 ? null : (
                   <Fragment key={k.key}>
                     <SectionHeading>{k.label}</SectionHeading>
-                    <div className="wkgrid">
+                    <List variant="embedded" rows="all" grid className="wkgrid">
                       {roots.map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
-                    </div>
+                    </List>
                   </Fragment>
                 )
               })}
 
               <SectionHeading>{m.project.sections.papers}</SectionHeading>
-              <div className="wkgrid">
+              <List variant="embedded" rows="all" grid className="wkgrid">
                 {rows.map((p) => <PaperCard key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)} />)}
-              </div>
+              </List>
             </>
           )
           : null}

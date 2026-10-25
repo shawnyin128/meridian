@@ -383,35 +383,30 @@ components/paper-table/PaperTable.css:208: .research-map-detail-head .research-m
 components/paper-table/PaperTable.css:208: .research-map-detail-head .research-map-detail-name { font-weight }
 components/paper-table/PaperTable.css:209: .research-map-detail-head>div>span { color }
 components/paper-table/PaperTable.css:209: .research-map-detail-head>div>span { font-size }
-components/paper-table/PaperTable.css:211: .research-map-detail>.research-map-papers.structured-list--fill { padding }
-components/paper-table/PaperTable.css:211: .research-map-detail>.research-map-papers.structured-list--fill { margin-inline }
-components/paper-table/PaperTable.css:212: .research-map-paper { display }
-components/paper-table/PaperTable.css:212: .research-map-paper { grid-template-columns }
-components/paper-table/PaperTable.css:212: .research-map-paper { grid-template-areas }
-components/paper-table/PaperTable.css:212: .research-map-paper { align-items }
-components/paper-table/PaperTable.css:212: .research-map-paper { gap }
-components/paper-table/PaperTable.css:212: .research-map-paper { min-height }
-components/paper-table/PaperTable.css:212: .research-map-paper { padding }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { display }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { padding }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { border }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { background }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { color }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { font }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { text-align }
-components/paper-table/PaperTable.css:213: .research-map-paper-open { cursor }
-components/paper-table/PaperTable.css:214: .research-map-paper-title { font-weight }
-components/paper-table/PaperTable.css:216: .research-map-paper-meta { color }
-components/paper-table/PaperTable.css:216: .research-map-paper-meta { font-size }
-components/paper-table/PaperTable.css:216: .research-map-paper-meta { white-space }
-components/paper-table/PaperTable.css:217: .research-map-why { display }
-components/paper-table/PaperTable.css:217: .research-map-why { align-items }
-components/paper-table/PaperTable.css:217: .research-map-why { gap }
-components/paper-table/PaperTable.css:217: .research-map-why { color }
-components/paper-table/PaperTable.css:217: .research-map-why { font-size }
-components/paper-table/PaperTable.css:220: @media (max-width:900px) .research-map-groups { display }
-components/paper-table/PaperTable.css:220: @media (max-width:900px) .research-map-groups { grid-template-columns }
-components/paper-table/PaperTable.css:221: @media (max-width:900px) .research-map-groups>.structured-row:nth-child(2) { border-top }
+components/paper-table/PaperTable.css:210: .research-map-paper { display }
+components/paper-table/PaperTable.css:210: .research-map-paper { grid-template-columns }
+components/paper-table/PaperTable.css:210: .research-map-paper { grid-template-areas }
+components/paper-table/PaperTable.css:210: .research-map-paper { align-items }
+components/paper-table/PaperTable.css:210: .research-map-paper { gap }
+components/paper-table/PaperTable.css:210: .research-map-paper { min-height }
+components/paper-table/PaperTable.css:210: .research-map-paper { padding }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { display }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { padding }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { border }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { background }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { color }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { font }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { text-align }
+components/paper-table/PaperTable.css:211: .research-map-paper-open { cursor }
+components/paper-table/PaperTable.css:212: .research-map-paper-title { font-weight }
+components/paper-table/PaperTable.css:214: .research-map-paper-meta { color }
+components/paper-table/PaperTable.css:214: .research-map-paper-meta { font-size }
+components/paper-table/PaperTable.css:214: .research-map-paper-meta { white-space }
+components/paper-table/PaperTable.css:215: .research-map-why { display }
+components/paper-table/PaperTable.css:215: .research-map-why { align-items }
+components/paper-table/PaperTable.css:215: .research-map-why { gap }
+components/paper-table/PaperTable.css:215: .research-map-why { color }
+components/paper-table/PaperTable.css:215: .research-map-why { font-size }
 components/paper/PaperCard.css:1: .paper-card { border }
 components/paper/PaperCard.css:1: .paper-card { border-radius }
 components/paper/PaperCard.css:1: .paper-card { padding }
@@ -1726,120 +1721,119 @@ routes/Watches.css:41: .watch-suggestion-copy .nm { color }
 routes/Watches.css:41: .watch-suggestion-copy .nm { font-size }
 routes/Watches.css:42: .watch-suggestion-copy span:last-child { color }
 routes/Watches.css:42: .watch-suggestion-copy span:last-child { font-size }
-routes/Wiki.css:12: .wkgrid { margin }
-routes/Wiki.css:13: .wkcard .wt { font-size }
-routes/Wiki.css:14: .wkcard .tt { display }
-routes/Wiki.css:14: .wkcard .tt { font-weight }
-routes/Wiki.css:15: .wkcard .tt>.fade-text { display }
-routes/Wiki.css:16: .wkcard .sp { margin-left }
-routes/Wiki.css:17: .wkcard .wm { font-size }
-routes/Wiki.css:17: .wkcard .wm { color }
-routes/Wiki.css:17: .wkcard .wm { margin-top }
-routes/Wiki.css:17: .wkcard .wm { line-height }
-routes/Wiki.css:17: .wkcard .wm { height }
-routes/Wiki.css:18: .wkcard .wf { font-size }
-routes/Wiki.css:18: .wkcard .wf { color }
-routes/Wiki.css:18: .wkcard .wf { margin-top }
-routes/Wiki.css:18: .wkcard .wf { display }
-routes/Wiki.css:18: .wkcard .wf { align-items }
-routes/Wiki.css:18: .wkcard .wf { gap }
-routes/Wiki.css:24: .wkcard--paper .tt { white-space }
-routes/Wiki.css:24: .wkcard--paper .tt { mask-image }
-routes/Wiki.css:25: .wkcard--paper .tt-lines { display }
-routes/Wiki.css:25: .wkcard--paper .tt-lines { height }
-routes/Wiki.css:26: .wkcard--paper .wm { display }
-routes/Wiki.css:29: .wkpage p { margin }
-routes/Wiki.css:37: .cmpwrap { overflow }
-routes/Wiki.css:37: .cmpwrap { margin }
-routes/Wiki.css:37: .cmpwrap { padding }
-routes/Wiki.css:38: .cmpwrap { overflow-y }
-routes/Wiki.css:38: .cmpwrap { overscroll-behavior }
-routes/Wiki.css:38: .cmpwrap { scrollbar-gutter }
-routes/Wiki.css:39: .cmp { border-collapse }
-routes/Wiki.css:39: .cmp { font-size }
-routes/Wiki.css:39: .cmp { line-height }
-routes/Wiki.css:40: .cmp th { text-align }
-routes/Wiki.css:40: .cmp th { font-size }
-routes/Wiki.css:40: .cmp th { color }
-routes/Wiki.css:40: .cmp th { font-weight }
-routes/Wiki.css:40: .cmp th { padding }
-routes/Wiki.css:40: .cmp th { border-bottom }
-routes/Wiki.css:40: .cmp th { white-space }
-routes/Wiki.css:40: .cmp th { background }
-routes/Wiki.css:43: .cmp th::after { content }
-routes/Wiki.css:43: .cmp th::after { position }
-routes/Wiki.css:43: .cmp th::after { top }
-routes/Wiki.css:43: .cmp th::after { left }
-routes/Wiki.css:43: .cmp th::after { right }
-routes/Wiki.css:43: .cmp th::after { height }
-routes/Wiki.css:43: .cmp th::after { background }
-routes/Wiki.css:44: .cmp th::after { mask-image }
-routes/Wiki.css:44: .cmp th::after { opacity }
-routes/Wiki.css:44: .cmp th::after { pointer-events }
-routes/Wiki.css:44: .cmp th::after { transition }
-routes/Wiki.css:45: @container scroll-state(stuck: top) .cmp th::after { opacity }
-routes/Wiki.css:46: .cmp td { padding }
-routes/Wiki.css:46: .cmp td { border-bottom }
-routes/Wiki.css:46: .cmp td { vertical-align }
-routes/Wiki.css:46: .cmp td { max-width }
-routes/Wiki.css:47: .cmp tbody tr:last-child td { border-bottom }
-routes/Wiki.css:48: .cmp td.rh { white-space }
-routes/Wiki.css:49: .cmp td.na { color }
-routes/Wiki.css:51: .cmp th .wkind { margin-left }
-routes/Wiki.css:54: .memb { margin }
-routes/Wiki.css:55: .memb .wkprops { margin-top }
-routes/Wiki.css:58: .section-heading+.md>h2:first-child { margin-top }
-routes/Wiki.css:59: .wkmain .md.src { margin-top }
-routes/Wiki.css:65: .wktoc { list-style }
-routes/Wiki.css:65: .wktoc { margin }
-routes/Wiki.css:65: .wktoc { padding }
-routes/Wiki.css:65: .wktoc { border-left }
-routes/Wiki.css:66: .wktoc li { font-size }
-routes/Wiki.css:66: .wktoc li { line-height }
-routes/Wiki.css:66: .wktoc li { color }
-routes/Wiki.css:66: .wktoc li { cursor }
-routes/Wiki.css:66: .wktoc li { padding }
-routes/Wiki.css:66: .wktoc li { margin-left }
-routes/Wiki.css:66: .wktoc li { border-left }
-routes/Wiki.css:66: .wktoc li { white-space }
-routes/Wiki.css:68: .wktoc li button { padding }
-routes/Wiki.css:68: .wktoc li button { border }
-routes/Wiki.css:68: .wktoc li button { background }
-routes/Wiki.css:68: .wktoc li button { color }
-routes/Wiki.css:68: .wktoc li button { font }
-routes/Wiki.css:68: .wktoc li button { text-align }
-routes/Wiki.css:68: .wktoc li button { cursor }
-routes/Wiki.css:69: .wktoc li:hover { color }
-routes/Wiki.css:70: .wktoc li.on { color }
-routes/Wiki.css:70: .wktoc li.on { font-weight }
-routes/Wiki.css:70: .wktoc li.on { border-left-color }
-routes/Wiki.css:71: .wktoc li.l2 { padding-left }
-routes/Wiki.css:71: .wktoc li.l2 { font-size }
-routes/Wiki.css:72: .wktoc li.l3 { padding-left }
-routes/Wiki.css:72: .wktoc li.l3 { font-size }
-routes/Wiki.css:72: .wktoc li.l3 { color }
-routes/Wiki.css:73: .wktoc li.l3.on { color }
-routes/Wiki.css:77: .wkcard .row-actions { top }
-routes/Wiki.css:77: .wkcard .row-actions { right }
-routes/Wiki.css:79: .cmp th.rx { width }
-routes/Wiki.css:79: .cmp td.rx { width }
-routes/Wiki.css:79: .cmp th.rx { padding-left }
-routes/Wiki.css:79: .cmp td.rx { padding-left }
-routes/Wiki.css:79: .cmp th.rx { padding-right }
-routes/Wiki.css:79: .cmp td.rx { padding-right }
-routes/Wiki.css:81: .cmp td.rx { padding-top }
-routes/Wiki.css:81: .cmp td.rx { padding-bottom }
-routes/Wiki.css:82: .coledit { margin }
-routes/Wiki.css:82: .coledit { max-width }
-routes/Wiki.css:84: .coledit .acts { margin-top }
-routes/Wiki.css:90: .wkcard.newcard { cursor }
-routes/Wiki.css:90: .wkcard.newcard { border-style }
-routes/Wiki.css:91: .wkcard.newcard .wf { height }
-routes/Wiki.css:97: .cmp th.th-new { padding }
-routes/Wiki.css:100: .colpop .coledit { margin }
-routes/Wiki.css:101: .coledit .ch { font-size }
-routes/Wiki.css:101: .coledit .ch { font-weight }
-routes/Wiki.css:101: .coledit .ch { color }
+routes/Wiki.css:12: .wkcard .wt { font-size }
+routes/Wiki.css:13: .wkcard .tt { display }
+routes/Wiki.css:13: .wkcard .tt { font-weight }
+routes/Wiki.css:14: .wkcard .tt>.fade-text { display }
+routes/Wiki.css:15: .wkcard .sp { margin-left }
+routes/Wiki.css:16: .wkcard .wm { font-size }
+routes/Wiki.css:16: .wkcard .wm { color }
+routes/Wiki.css:16: .wkcard .wm { margin-top }
+routes/Wiki.css:16: .wkcard .wm { line-height }
+routes/Wiki.css:16: .wkcard .wm { height }
+routes/Wiki.css:17: .wkcard .wf { font-size }
+routes/Wiki.css:17: .wkcard .wf { color }
+routes/Wiki.css:17: .wkcard .wf { margin-top }
+routes/Wiki.css:17: .wkcard .wf { display }
+routes/Wiki.css:17: .wkcard .wf { align-items }
+routes/Wiki.css:17: .wkcard .wf { gap }
+routes/Wiki.css:23: .wkcard--paper .tt { white-space }
+routes/Wiki.css:23: .wkcard--paper .tt { mask-image }
+routes/Wiki.css:24: .wkcard--paper .tt-lines { display }
+routes/Wiki.css:24: .wkcard--paper .tt-lines { height }
+routes/Wiki.css:25: .wkcard--paper .wm { display }
+routes/Wiki.css:28: .wkpage p { margin }
+routes/Wiki.css:36: .cmpwrap { overflow }
+routes/Wiki.css:36: .cmpwrap { margin }
+routes/Wiki.css:36: .cmpwrap { padding }
+routes/Wiki.css:37: .cmpwrap { overflow-y }
+routes/Wiki.css:37: .cmpwrap { overscroll-behavior }
+routes/Wiki.css:37: .cmpwrap { scrollbar-gutter }
+routes/Wiki.css:38: .cmp { border-collapse }
+routes/Wiki.css:38: .cmp { font-size }
+routes/Wiki.css:38: .cmp { line-height }
+routes/Wiki.css:39: .cmp th { text-align }
+routes/Wiki.css:39: .cmp th { font-size }
+routes/Wiki.css:39: .cmp th { color }
+routes/Wiki.css:39: .cmp th { font-weight }
+routes/Wiki.css:39: .cmp th { padding }
+routes/Wiki.css:39: .cmp th { border-bottom }
+routes/Wiki.css:39: .cmp th { white-space }
+routes/Wiki.css:39: .cmp th { background }
+routes/Wiki.css:42: .cmp th::after { content }
+routes/Wiki.css:42: .cmp th::after { position }
+routes/Wiki.css:42: .cmp th::after { top }
+routes/Wiki.css:42: .cmp th::after { left }
+routes/Wiki.css:42: .cmp th::after { right }
+routes/Wiki.css:42: .cmp th::after { height }
+routes/Wiki.css:42: .cmp th::after { background }
+routes/Wiki.css:43: .cmp th::after { mask-image }
+routes/Wiki.css:43: .cmp th::after { opacity }
+routes/Wiki.css:43: .cmp th::after { pointer-events }
+routes/Wiki.css:43: .cmp th::after { transition }
+routes/Wiki.css:44: @container scroll-state(stuck: top) .cmp th::after { opacity }
+routes/Wiki.css:45: .cmp td { padding }
+routes/Wiki.css:45: .cmp td { border-bottom }
+routes/Wiki.css:45: .cmp td { vertical-align }
+routes/Wiki.css:45: .cmp td { max-width }
+routes/Wiki.css:46: .cmp tbody tr:last-child td { border-bottom }
+routes/Wiki.css:47: .cmp td.rh { white-space }
+routes/Wiki.css:48: .cmp td.na { color }
+routes/Wiki.css:50: .cmp th .wkind { margin-left }
+routes/Wiki.css:53: .memb { margin }
+routes/Wiki.css:54: .memb .wkprops { margin-top }
+routes/Wiki.css:57: .section-heading+.md>h2:first-child { margin-top }
+routes/Wiki.css:58: .wkmain .md.src { margin-top }
+routes/Wiki.css:64: .wktoc { list-style }
+routes/Wiki.css:64: .wktoc { margin }
+routes/Wiki.css:64: .wktoc { padding }
+routes/Wiki.css:64: .wktoc { border-left }
+routes/Wiki.css:65: .wktoc li { font-size }
+routes/Wiki.css:65: .wktoc li { line-height }
+routes/Wiki.css:65: .wktoc li { color }
+routes/Wiki.css:65: .wktoc li { cursor }
+routes/Wiki.css:65: .wktoc li { padding }
+routes/Wiki.css:65: .wktoc li { margin-left }
+routes/Wiki.css:65: .wktoc li { border-left }
+routes/Wiki.css:65: .wktoc li { white-space }
+routes/Wiki.css:67: .wktoc li button { padding }
+routes/Wiki.css:67: .wktoc li button { border }
+routes/Wiki.css:67: .wktoc li button { background }
+routes/Wiki.css:67: .wktoc li button { color }
+routes/Wiki.css:67: .wktoc li button { font }
+routes/Wiki.css:67: .wktoc li button { text-align }
+routes/Wiki.css:67: .wktoc li button { cursor }
+routes/Wiki.css:68: .wktoc li:hover { color }
+routes/Wiki.css:69: .wktoc li.on { color }
+routes/Wiki.css:69: .wktoc li.on { font-weight }
+routes/Wiki.css:69: .wktoc li.on { border-left-color }
+routes/Wiki.css:70: .wktoc li.l2 { padding-left }
+routes/Wiki.css:70: .wktoc li.l2 { font-size }
+routes/Wiki.css:71: .wktoc li.l3 { padding-left }
+routes/Wiki.css:71: .wktoc li.l3 { font-size }
+routes/Wiki.css:71: .wktoc li.l3 { color }
+routes/Wiki.css:72: .wktoc li.l3.on { color }
+routes/Wiki.css:76: .wkcard .row-actions { top }
+routes/Wiki.css:76: .wkcard .row-actions { right }
+routes/Wiki.css:78: .cmp th.rx { width }
+routes/Wiki.css:78: .cmp td.rx { width }
+routes/Wiki.css:78: .cmp th.rx { padding-left }
+routes/Wiki.css:78: .cmp td.rx { padding-left }
+routes/Wiki.css:78: .cmp th.rx { padding-right }
+routes/Wiki.css:78: .cmp td.rx { padding-right }
+routes/Wiki.css:80: .cmp td.rx { padding-top }
+routes/Wiki.css:80: .cmp td.rx { padding-bottom }
+routes/Wiki.css:81: .coledit { margin }
+routes/Wiki.css:81: .coledit { max-width }
+routes/Wiki.css:83: .coledit .acts { margin-top }
+routes/Wiki.css:89: .wkcard.newcard { cursor }
+routes/Wiki.css:89: .wkcard.newcard { border-style }
+routes/Wiki.css:90: .wkcard.newcard .wf { height }
+routes/Wiki.css:96: .cmp th.th-new { padding }
+routes/Wiki.css:99: .colpop .coledit { margin }
+routes/Wiki.css:100: .coledit .ch { font-size }
+routes/Wiki.css:100: .coledit .ch { font-weight }
+routes/Wiki.css:100: .coledit .ch { color }
 routes/shell.css:12: .mwrap { margin }
 routes/shell.css:15: .filters { margin-bottom }
 routes/shell.css:21: .wlist { margin-top }

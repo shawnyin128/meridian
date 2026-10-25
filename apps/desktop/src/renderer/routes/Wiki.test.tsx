@@ -174,14 +174,14 @@ describe('Wiki keyboard reach', () => {
     expect(card.querySelector('.wm')?.matches('.fade-text')).toBe(true)
   })
 
-  it('home, subpage and paper cards are the shared research object card in its grid variant', async () => {
+  it('home, subpage and paper cards are the shared card Item, actionable', async () => {
     expect(all('.wkcard').map((el) => el.className)).toEqual([
-      'research-object-card research-object-card--grid wkcard', 'research-object-card research-object-card--grid wkcard wkcard--paper',
+      'item item--card item--actionable wkcard', 'item item--card item--actionable wkcard wkcard--paper',
     ])
-    expect(all('.wkcard .tt').map((el) => el.classList.contains('research-object-card-open'))).toEqual([true, true])
+    expect(all('.wkcard .tt').map((el) => el.classList.contains('item-open'))).toEqual([true, true])
     await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
     const child = host.querySelector('.wkmain .wkcard')!
-    expect(child.classList.contains('research-object-card--grid')).toBe(true)
+    expect(child.classList.contains('item--card')).toBe(true)
     expect([...child.querySelectorAll('.row-actions button')].map((b) => b.getAttribute('aria-label'))).toEqual(['从这一页移出'])
   })
 
@@ -525,7 +525,7 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     fixture.signals.mockResolvedValue([signal('open-conflict', 'topics/sd', ['topics/sd#knee'])])
     await render()
     await press(actions().find((button) => button.textContent!.startsWith('需要整理'))!)
-    await press(all('.desk-body .structured-row')[0]!)
+    await press(all('.desk-body .item')[0]!)
     expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/sd')
     expect(host.querySelector('.claims-probe')!.getAttribute('data-arrival')).toBe('knee')
   })
@@ -536,7 +536,7 @@ describe('Wiki 首页屏头的待审阅与需要整理', () => {
     expect(host.querySelector('.desk-head .t')!.textContent).toBe('需要整理 · 3')
     expect(host.querySelector('.desk-head .back')).not.toBeNull()
     expect(host.querySelector('.desk-head .page-actions')).toBeNull()
-    const rows = all('.desk-body .structured-row')
+    const rows = all('.desk-body .item')
     expect(rows.map((row) => [row.querySelector('.tidy-open')!.tagName, row.textContent])).toEqual([
       ['BUTTON', '结论冲突推测解码'], ['BUTTON', '链接失效推测解码加速→ old'], ['BUTTON', '未归入主题EAGLE-2'],
     ])

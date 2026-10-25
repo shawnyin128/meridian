@@ -93,7 +93,7 @@ test('项目反向展示关联想法，点击后在项目右栏就地打开详�
   const page = win.locator('.screenslot:not([hidden])')
   const list = page.locator('.project-ideas')
   const row = page.locator(`.project-idea-row[data-idea="${idea!.id}"]`)
-  await expect(list).toHaveClass(/structured-list--embedded/)
+  await expect(list).toHaveClass(/list--embedded/)
   await expect(row).toContainText(idea!.title)
   expect(await row.evaluate((element) => {
     const style = getComputedStyle(element)
@@ -119,7 +119,7 @@ test('在项目页的想法一节就地写下想法：存好就落在草稿那�
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden])')
   await page.locator('.section-heading', { hasText: '关联想法' }).getByRole('button', { name: '新建想法' }).click()
-  const slots = () => page.locator('.project-ideas > .structured-row').evaluateAll((rows) => rows.map((row) =>
+  const slots = () => page.locator('.project-ideas > .item').evaluateAll((rows) => rows.map((row) =>
     (row as HTMLElement).dataset['idea'] ?? (row.querySelector('.idea-draft') === null ? '?' : 'draft')))
   const draftAt = (await slots()).indexOf('draft')
   expect(draftAt).toBeGreaterThan(-1)
@@ -218,9 +218,9 @@ test('需要注意的类型、日期和正文使用统一列宽与间隔', async
   const page = win.locator('.screenslot:not([hidden])')
   const list = page.locator('.attn')
   const rows = list.locator('.attnrow')
-  await expect(list).toHaveClass(/structured-list--embedded/)
-  await expect(page.locator('#taskList')).toHaveClass(/structured-list--embedded/)
-  await expect(page.locator('.evlist')).toHaveClass(/structured-list--embedded/)
+  await expect(list).toHaveClass(/list--embedded/)
+  await expect(page.locator('#taskList')).toHaveClass(/list--embedded/)
+  await expect(page.locator('.evlist')).toHaveClass(/list--embedded/)
   expect(await rows.count()).toBeGreaterThan(1)
   const geometry = await rows.evaluateAll((elements) => elements.map((row) => {
     const kind = row.querySelector('.project-signal-kind')!.getBoundingClientRect()
@@ -1062,7 +1062,7 @@ test('标签页组里有一行的标签页和空着的一样高:科研计划与�
         const panel = el.nextElementSibling!
         const following = [...document.querySelectorAll('.screenslot:not([hidden]) .wkpage .section-heading')]
           .find((candidate) => candidate.textContent!.startsWith(next))!
-        const rows = panel.querySelectorAll('.structured-row').length
+        const rows = panel.querySelectorAll('.item--row').length
         return {
           content: rows === 1 ? 'row' : rows === 0 && panel.querySelector('.empty-state') !== null ? 'empty' : `${rows} rows`,
           panel: panel.getBoundingClientRect().height,

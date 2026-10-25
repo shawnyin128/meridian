@@ -24,7 +24,8 @@ import { TaskScheduleField } from '../TaskScheduleField.js'
 import { IconButton } from '../IconButton.js'
 import { IconPencil, IconTrash } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
-import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item, RowActions } from '../Item.js'
+import { List } from '../List.js'
 import { TabbedSection } from '../TabbedSection.js'
 import { Toolbar, ToolbarButton } from '../Toolbar.js'
 import { editText, useDrafts, type EditDraft } from '../../hooks/useDrafts.js'
@@ -117,7 +118,7 @@ function TaskCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
     })
   }
   return (
-    <StructuredRow className="ddlrow task-create-row" rowRef={row}>
+    <Item className="ddlrow task-create-row" elementRef={row}>
       <DateButton iso={start} className="din" onPick={pickStart} />
       <span className="dsep">–</span>
       <DateButton iso={end} className="din" onPick={pickEnd} />
@@ -155,7 +156,7 @@ function TaskCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
         onSubmit={save} onCancel={onCancel}
         value={title} onChange={(event) => patch({ title: event.target.value })}
       />
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -176,7 +177,7 @@ function MilestoneCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
   }
 
   return (
-    <StructuredRow className="ddlrow milestone-create-row" rowRef={row}>
+    <Item className="ddlrow milestone-create-row" elementRef={row}>
       <DateButton iso={date} className="din" onPick={(next) => onDraft({ ...draft, date: next })} />
       <button
         className="din state-edit" type="button"
@@ -187,7 +188,7 @@ function MilestoneCreateRow({ draft, onDraft, triggers, onSave, onCancel }: {
         onSubmit={save} onCancel={onCancel}
         value={title} onChange={(event) => onDraft({ ...draft, title: event.target.value })}
       />
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -314,7 +315,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
   return (
     // The row is the toolbar of its own controls, from its date to its delete.
     <Toolbar label={task.title}>
-      <StructuredRow
+      <Item
         composite selected={selected} data-row={task.id} {...reorder?.item} {...reorder?.handle} onActivate={onOpen}
         className={`ddlrow task-row${task.state === 'done' ? ' done' : ''}${flash ? ' flash' : ''}`}
       >
@@ -344,7 +345,7 @@ function TaskRow({ projectId, task, flash, selected, reorder, onSave, onDelete, 
             className="row-delete" onClick={(event) => { event.stopPropagation(); onDelete() }}
           ><IconTrash /></IconButton>
         </RowActions>
-      </StructuredRow>
+      </Item>
     </Toolbar>
   )
 }
@@ -360,7 +361,7 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
   const m = useMessages()
   const milestoneState: typeof MILESTONE_STATES[number] = milestone.done ? 'done' : 'open'
   return (
-    <StructuredRow
+    <Item
       data-row={milestone.id}
       className={`ddlrow milestone-row${milestone.done ? ' done' : ''}${flash ? ' flash' : ''}`}
       onMouseEnter={() => onHover(milestone.id)} onMouseLeave={() => onHover(null)}
@@ -388,7 +389,7 @@ function MilestoneRow({ projectId, milestone, flash, onHover, onSave, onDelete }
           tone="danger" className="row-delete" onClick={onDelete}
         ><IconTrash /></IconButton>
       </RowActions>
-    </StructuredRow>
+    </Item>
   )
 }
 
@@ -471,7 +472,7 @@ export function ProjectPlan({
           {
             value: 'task', label: m.project.plan.taskMode, empty: m.project.plan.noTasks,
             content: project.tasks.length === 0 && creating?.kind !== 'task' ? null : (
-              <StructuredList id="taskList" variant="embedded">
+              <List id="taskList" variant="embedded">
                 {creating?.kind === 'task'
                   ? (
                     <TaskCreateRow
@@ -510,13 +511,13 @@ export function ProjectPlan({
                       ))}
                     </CollapsibleGroup>
                   )}
-              </StructuredList>
+              </List>
             ),
           },
           {
             value: 'ms', label: m.project.plan.milestoneMode, empty: m.project.plan.noMilestones,
             content: project.milestones.length === 0 && creating?.kind !== 'ms' ? null : (
-              <StructuredList id="msList" variant="embedded">
+              <List id="msList" variant="embedded">
                 {activeMilestones.map((milestone) => (
                   <MilestoneRow
                     projectId={projectId}
@@ -553,7 +554,7 @@ export function ProjectPlan({
                       ))}
                     </CollapsibleGroup>
                   )}
-              </StructuredList>
+              </List>
             ),
           },
         ]}

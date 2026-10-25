@@ -20,7 +20,8 @@ import { useMessages } from '../../messages/useMessages.js'
 import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { RowActions, StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item, RowActions } from '../Item.js'
+import { List } from '../List.js'
 import { Tag, tagClass } from '../Tag.js'
 import { TagChips } from '../TagChips.js'
 import { Tooltip } from '../Tooltip.js'
@@ -388,9 +389,9 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
         {attachments.length === 0
           ? null
           : (
-            <StructuredList className="attachment-list" variant="embedded">
+            <List className="attachment-list" variant="embedded">
               {attachments.map((attachment) => (
-                <StructuredRow className="attrow" key={attachment.id}>
+                <Item className="attrow" key={attachment.id}>
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
                     <path d={CLIP_PATH} />
                   </svg>
@@ -406,9 +407,9 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
                       onClick={() => onRemove(attachment.id)}
                     ><IconTrash /></IconButton>
                   </RowActions>
-                </StructuredRow>
+                </Item>
               ))}
-            </StructuredList>
+            </List>
           )}
       </div>
     </>

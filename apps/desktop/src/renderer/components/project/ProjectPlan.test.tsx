@@ -64,7 +64,7 @@ describe('ProjectPlan', () => {
 
   it('任务模式把日期和时间保留为两个独立编辑入口', () => {
     const output = renderPlan('task')
-    expect(output).toContain('structured-list--embedded')
+    expect(output).toContain('list--embedded')
     expect(output).toMatch(/<button type="button" class="schedule-trigger task-date-part"/)
     expect(output).toMatch(/<button type="button" class="schedule-trigger task-clock-part"/)
     expect(output).toContain('9月16日')
@@ -140,7 +140,7 @@ describe('ProjectPlan', () => {
 
   it('里程碑模式复用同一列表外壳并只显示里程碑字段', () => {
     const output = renderPlan('ms')
-    expect(output).toContain('structured-list--embedded')
+    expect(output).toContain('list--embedded')
     expect(output).toContain('完成首轮校准')
     expect(output).toContain('9月20日')
     expect(output).toContain('未完成')
@@ -259,7 +259,7 @@ describe('ProjectPlan', () => {
     it('一行任务只占一个 Tab 停靠点，方向键依次走过日期、时间、优先级、状态、任务名、改名铅笔和删除，双击仍不选中字', async () => {
       const { host } = mount()
       const row = host.querySelector<HTMLElement>('.task-row')!
-      const stops = [...host.querySelectorAll<HTMLElement>('.structured-list *')]
+      const stops = [...host.querySelectorAll<HTMLElement>('.list *')]
         .filter((element) => element.tabIndex >= 0 && !(element as HTMLButtonElement).disabled)
       expect(stops).toEqual([row])
       await act(async () => { row.focus() })

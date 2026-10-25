@@ -13,7 +13,7 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 
 const RENDERER = join(import.meta.dirname, '..', 'renderer')
 const SHEETS = [
-  'shell/tokens.css', 'components/FadeText.css', 'components/ResearchObjectCard.css',
+  'shell/tokens.css', 'components/FadeText.css', 'components/Item.css',
   'components/paper-table/PaperTable.css', 'routes/Wiki.css',
 ]
 
@@ -29,8 +29,8 @@ const MARKUP = `<table class="ptable"><tbody><tr>
 </tr></tbody></table>
 <span class="research-map-group-copy"><span class="fade-text research-map-group-name" id="group">KV cache 量化</span><span>项目关联</span></span>
 <div class="research-map-detail-head"><div><span class="fade-text research-map-detail-name" id="detail">KV cache 量化</span><span>3 篇论文</span></div></div>
-<article class="research-object-card research-object-card--grid wkcard wkcard--paper"><div class="wt"><span class="tag">论文</span>
-  <button class="research-object-card-open tt" id="paper-title"><span class="tt-lines fade-lines" id="paper-lines">EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty</span></button>
+<article class="item item--card wkcard wkcard--paper"><div class="wt"><span class="tag">论文</span>
+  <button class="item-open tt" id="paper-title"><span class="tt-lines fade-lines" id="paper-lines">EAGLE: Speculative Sampling Requires Rethinking Feature Uncertainty</span></button>
 </div><span class="fade-text wm" id="paper-meta">2024 arXiv · 推测解码</span></article>`
 
 describe('标题放不下时', () => {

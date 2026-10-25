@@ -21,7 +21,8 @@ import { AgentLabel } from '../components/SourceLabel.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
 import { Button } from '../components/Button.js'
@@ -159,7 +160,7 @@ export function Changelog() {
   const unread = fresh.length
 
   const row = (c: ChangeEntry) => (
-    <StructuredRow className="crow" key={c.id}>
+    <Item className="crow" key={c.id}>
       <CardTray
         variant="row" composite
         summary={(
@@ -188,7 +189,7 @@ export function Changelog() {
       >
         <DiffLines lines={c.lines} />
       </CardTray>
-    </StructuredRow>
+    </Item>
   )
 
   /**
@@ -206,7 +207,7 @@ export function Changelog() {
     return days.map((day, at) => (
       <Fragment key={`${day.date}-${at}`}>
         <DayHeading>{fmt.dayHead(day.date, today)}</DayHeading>
-        <StructuredList variant="embedded" maxVisibleRows="all">{day.entries.map(row)}</StructuredList>
+        <List variant="embedded" rows="all">{day.entries.map(row)}</List>
       </Fragment>
     ))
   }

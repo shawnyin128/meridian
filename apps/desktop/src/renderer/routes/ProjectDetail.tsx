@@ -27,7 +27,8 @@ import { IconButton } from '../components/IconButton.js'
 import { IconOpen } from '../components/icons.js'
 import { SegmentedControl } from '../components/SegmentedControl.js'
 import { TabbedSection } from '../components/TabbedSection.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { TitleNote } from '../components/TitleNote.js'
 import {
   ProjectAttention, ProjectEventList, ProjectEventRow,
@@ -216,7 +217,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
     const source = ideaSourceLabel(idea)
     const ideaNode = tag === null ? graph.nodes.find((node) => node.id === idea.node) : undefined
     return (
-      <StructuredRow
+      <Item
         className="project-idea-row" selected={selectedId === idea.id}
         data-idea={idea.id} key={idea.id} onActivate={() => onSelect(idea.id)}
       >
@@ -236,7 +237,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
             <IdeaSource idea={idea} message={m.project.idea.sourceTag} />
           </FadeText>
         )}
-      </StructuredRow>
+      </Item>
     )
   }
   const shown = carried.length + related.length + sparked.length
@@ -261,19 +262,19 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
         : shown === 0 && draft === null
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
-          <StructuredList className="project-ideas" variant="embedded">
+          <List className="project-ideas" variant="embedded">
             {[...carried].sort(newestFirst).map((idea) => row(idea, null))}
             {[...related].sort(newestFirst).map((idea) => row(idea, m.project.sections.links))}
             {draft === null ? null : (
-              <StructuredRow className="project-idea-draft" rowRef={draftAt}>
+              <Item className="project-idea-draft" elementRef={draftAt}>
                 <IdeaDraft
                   draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
                   onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
                 />
-              </StructuredRow>
+              </Item>
             )}
             {[...sparked].sort(newestFirst).map((idea) => row(idea, m.project.sections.source))}
-          </StructuredList>
+          </List>
         )}
     </>
   )

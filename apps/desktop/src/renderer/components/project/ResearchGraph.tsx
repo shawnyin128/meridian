@@ -23,7 +23,8 @@ import { IconMinus, IconPlus } from '../icons.js'
 import { PanelClose } from '../PanelClose.js'
 import { SectionHeading } from '../PageShell.js'
 import { StatusDot } from '../StatusDot.js'
-import { StructuredList, StructuredRow } from '../StructuredList.js'
+import { Item } from '../Item.js'
+import { List } from '../List.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { ToggleGroup, ToggleItem, Toolbar } from '../Toolbar.js'
 import { Tooltip } from '../Tooltip.js'
@@ -518,27 +519,27 @@ export function ResearchNodePanel({
       {tasks.length === 0
         ? <EmptyState variant="section">{m.project.graph.noTasks}</EmptyState>
         : (
-          <StructuredList className="node-tasks" variant="embedded">
+          <List className="node-tasks" variant="embedded">
             {tasks.map((task) => (
-              <StructuredRow className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
+              <Item className="node-task-row" data-task={task.id} key={task.id} onActivate={() => onSelectTask(task.id)}>
                 <FadeText>{task.title}</FadeText>
                 {task.origin === 'agent' ? <AgentLabel /> : null}
-              </StructuredRow>
+              </Item>
             ))}
-          </StructuredList>
+          </List>
         )}
 
       <SectionHeading variant="rail" count={ideas.length}>{m.project.linkedIdeas}</SectionHeading>
       {ideas.length === 0
         ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
         : (
-          <StructuredList className="node-ideas" variant="embedded">
+          <List className="node-ideas" variant="embedded">
             {ideas.map((idea) => {
               const source = idea.source.paperTitle === undefined
                 ? plainTitle(idea.source.chatTitle)
                 : `${plainTitle(idea.source.paperTitle)} · ${plainTitle(idea.source.chatTitle)}`
               return (
-                <StructuredRow
+                <Item
                   className="node-idea-row" data-idea={idea.id} key={idea.id}
                   onActivate={() => onSelectIdea(idea.id)}
                 >
@@ -551,10 +552,10 @@ export function ResearchNodePanel({
                       {chatDeleted(idea) ? <SourceChatDeleted /> : null}
                     </span>
                   )}
-                </StructuredRow>
+                </Item>
               )
             })}
-          </StructuredList>
+          </List>
         )}
 
       {nodeEvents.length === 0 ? null : (

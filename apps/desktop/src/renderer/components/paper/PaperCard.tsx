@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
 import { InlineMessage } from '../InlineMessage.js'
-import { RowActions } from '../StructuredList.js'
+import { RowActions } from '../Item.js'
 import { Tag } from '../Tag.js'
 import { PaperAbstract } from './PaperAbstract.js'
 import { PaperText } from './PaperText.js'

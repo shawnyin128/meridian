@@ -24,8 +24,8 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 
 /** The slot's stylesheet, the "More" button's, then the stylesheets of the rows that hold a slot. */
 const STYLES = [
-  'components/StructuredList.css', 'components/FieldPickers.css', 'components/IconButton.css', 'shell/AppShell.css',
-  'components/ResearchObjectCard.css', 'routes/Projects.css', 'routes/ProjectDetail.css', 'components/wiki/WikiClaims.css',
+  'components/Item.css', 'components/List.css', 'components/FieldPickers.css', 'components/IconButton.css', 'shell/AppShell.css',
+  'routes/Projects.css', 'routes/ProjectDetail.css', 'components/wiki/WikiClaims.css',
   'components/paper-table/PaperTable.css', 'components/project/ProjectPlan.css', 'routes/shell.css',
 ].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
@@ -37,11 +37,11 @@ const SLOT = '<span class="row-actions"><button type="button" class="icbtn sm do
 // away from the slot.
 const ROWS = {
   chat: `<div class="srow chat-row" data-row-actions=""><span class="ct-t" data-point>对话</span>${SLOT}</div>`,
-  card: `<article class="research-object-card projpanel" data-actionable="" data-row-actions=""><div class="pp-h"><button type="button" data-focus>MoE 路由分析</button><span class="dd" data-point>没有里程碑</span>${SLOT}</div></article>`,
-  project: `<div class="structured-row prow" data-row-actions=""><span class="tp" data-point>投机解码</span>${SLOT}</div>`,
+  card: `<article class="item item--card projpanel" data-actionable="" data-row-actions=""><div class="pp-h"><button type="button" data-focus>MoE 路由分析</button><span class="dd" data-point>没有里程碑</span>${SLOT}</div></article>`,
+  project: `<div class="item item--row prow" data-row-actions=""><span class="tp" data-point>投机解码</span>${SLOT}</div>`,
   workspace: `<div class="pv workspace-field" data-row-actions=""><button class="workspace-root" data-point data-focus>meridian</button>${SLOT}</div>`,
-  claim: `<div class="structured-row wkclaim" data-row-actions=""><div class="wkclaim-head"><span class="wkclaim-text">拐点在宽度 6</span>${SLOT}</div><div class="wkclaim-meta" data-point>v2</div><button class="wkclaim-history" data-focus>版本史</button></div>`,
-  plan: `<section class="project-plan"><div class="structured-row structured-row--composite ddlrow task-row" data-row-actions=""><span class="plan-name-cell"><button class="plan-cell plan-name plan-open" data-focus>校准批次</button>${SLOT}</span><span class="dleft" data-point>进行中</span></div></section>`,
+  claim: `<div class="item item--row wkclaim" data-row-actions=""><div class="wkclaim-head"><span class="wkclaim-text">拐点在宽度 6</span>${SLOT}</div><div class="wkclaim-meta" data-point>v2</div><button class="wkclaim-history" data-focus>版本史</button></div>`,
+  plan: `<section class="project-plan"><div class="item item--row item--actionable ddlrow task-row" data-row-actions=""><span class="plan-name-cell"><button class="plan-cell plan-name plan-open" data-focus>校准批次</button>${SLOT}</span><span class="dleft" data-point>进行中</span></div></section>`,
   header: `<table class="ptable"><thead><tr data-row-actions=""><th data-point>标题</th><th class="th-add">${SLOT}</th></tr></thead></table>`,
   column: `<div class="mi colrow" data-row-actions=""><span class="ck"></span><span class="cl" data-point>读法</span><button type="button" class="icbtn xs fold-toggle" data-focus></button>${SLOT}</div>`,
 }
@@ -123,9 +123,9 @@ describe('行尾操作槽', () => {
     }
   })
 
-  it('只有 StructuredList.css 写悬停才显出来的按钮：别处不用 opacity:0 加 pointer-events:none 藏起、再在悬停或聚焦时放出来', () => {
+  it('只有 Item.css 写悬停才显出来的按钮：别处不用 opacity:0 加 pointer-events:none 藏起、再在悬停或聚焦时放出来', () => {
     const rules = STYLESHEETS
-      .filter((path) => path !== join('components', 'StructuredList.css'))
+      .filter((path) => path !== join('components', 'Item.css'))
       .flatMap((path) => [...readFileSync(join(RENDERER, path), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .matchAll(/([^{}]+)\{([^{}]*)\}/g)]
@@ -150,9 +150,9 @@ describe('行尾操作槽', () => {
     ])
   })
 
-  it('只有 StructuredList.css 决定槽和「更多」按钮显不显、点不点得到，各行不另写一份', () => {
+  it('只有 Item.css 决定槽和「更多」按钮显不显、点不点得到，各行不另写一份', () => {
     const offenders = STYLESHEETS
-      .filter((path) => path !== join('components', 'StructuredList.css'))
+      .filter((path) => path !== join('components', 'Item.css'))
       .flatMap((path) => [...readFileSync(join(RENDERER, path), 'utf8')
         .replace(/\/\*[\s\S]*?\*\//g, '')
         .matchAll(/([^{}]+)\{([^{}]*)\}/g)]

@@ -10,7 +10,7 @@ import { IconCross } from '../icons.js'
 import { SectionHeading } from '../PageShell.js'
 import { PickRow, type PickHit } from '../PickRow.js'
 import { SegmentedControl } from '../SegmentedControl.js'
-import { RowActions } from '../StructuredList.js'
+import { RowActions } from '../Item.js'
 import { tagClass } from '../Tag.js'
 
 type Row = keyof Relations

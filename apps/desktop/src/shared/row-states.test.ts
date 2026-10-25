@@ -23,8 +23,8 @@ type Window = {
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
 const STYLES = [
-  'shell/tokens.css', 'components/StructuredList.css', 'shell/AppShell.css', 'components/paper-table/PaperTable.css',
-  'components/ResearchObjectCard.css', 'components/project/ResearchGraph.css', 'routes/Settings.css',
+  'shell/tokens.css', 'components/Item.css', 'components/List.css', 'shell/AppShell.css', 'components/paper-table/PaperTable.css',
+  'components/project/ResearchGraph.css', 'routes/Settings.css',
   'components/timeline/TimelineBoard.css', 'routes/Ideas.css', 'routes/Reader.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
@@ -45,10 +45,10 @@ describe('选中的样子只有一种', () => {
 
   it('选中的列表行、研究地图分组、卡片和高亮卡片都和侧栏的当前行一个样子:浅强调色的底配强调色的字', () => {
     const looks = {
-      row: styleOf('<div class="structured-list"><button class="structured-row structured-row--selected">项目</button></div>', '.structured-row'),
+      row: styleOf('<div class="list"><button class="item item--row item--actionable item--selected">项目</button></div>', '.item'),
       sidebar: styleOf('<button class="nav-row srow on"><span class="ic"></span>论文</button>', '.srow'),
-      map: styleOf('<div class="research-map-groups structured-list"><button class="structured-row structured-row--selected research-map-group">KV cache</button></div>', '.research-map-group'),
-      card: styleOf('<article class="research-object-card selected">想法</article>', '.research-object-card'),
+      map: styleOf('<div class="research-map-groups list"><button class="item item--row item--actionable item--selected research-map-group">KV cache</button></div>', '.research-map-group'),
+      card: styleOf('<article class="item item--card item--selected">想法</article>', '.item'),
       highlight: styleOf('<div class="reading-card highlight-card yellow selected">批注</div>', '.reading-card'),
     }
     const current = ['var(--accent-soft)', 'var(--accent-text)', '']
@@ -58,7 +58,7 @@ describe('选中的样子只有一种', () => {
   })
 
   it('选中的想法卡片，标题也用强调色的字', () => {
-    const card = '<article class="research-object-card selected idea-card"><div class="idea-card-title-row"><strong>草稿头共享浅层 KV</strong></div></article>'
+    const card = '<article class="item item--card item--selected idea-card"><div class="idea-card-title-row"><strong>草稿头共享浅层 KV</strong></div></article>'
     expect(styleOf(card, 'strong').color).toBe('var(--accent-text)')
   })
 
@@ -96,7 +96,7 @@ describe('悬停的反馈不被任何状态盖掉', () => {
   })
 
   it('选中的列表行和侧栏的当前行悬停时，浅强调色上再盖一层悬停色', () => {
-    const row = styleOf('<div class="structured-list"><button class="structured-row structured-row--selected">项目</button></div>', '.structured-row', '.structured-row')
+    const row = styleOf('<div class="list"><button class="item item--row item--actionable item--selected">项目</button></div>', '.item', '.item')
     expect([row.backgroundColor, row.backgroundImage]).toEqual(['var(--accent-soft)', HOVER])
     const sidebar = styleOf('<button class="nav-row srow on">论文</button>', '.srow', '.srow')
     expect([sidebar.backgroundColor, sidebar.backgroundImage]).toEqual(['var(--accent-soft)', HOVER])
@@ -104,10 +104,10 @@ describe('悬停的反馈不被任何状态盖掉', () => {
 
   it('最近变动的一行悬停时整行铺上列表行的悬停色，能点的仍只是它展开详情的开关；只在末尾带一段历史的论断行不铺', () => {
     const tray = '<div class="card-tray card-tray--row"><div class="card-tray-head"><button type="button" class="card-tray-toggle"><span class="card-tray-summary">改了标题</span></button></div></div>'
-    const row = `<div class="structured-list"><div class="structured-row crow" data-row-actions="">${tray}</div></div>`
+    const row = `<div class="list"><div class="item item--row crow" data-row-actions="">${tray}</div></div>`
     expect([styleOf(row, '.crow').backgroundImage, styleOf(row, '.crow', '.crow').backgroundImage]).toEqual(['none', HOVER])
     expect(styleOf(row, '.crow', '.crow').cursor).not.toBe('pointer')
-    const claim = `<div class="structured-list"><div class="structured-row wkclaim" data-row-actions=""><div class="wkclaim-head">论断</div>${tray}</div></div>`
+    const claim = `<div class="list"><div class="item item--row wkclaim" data-row-actions=""><div class="wkclaim-head">论断</div>${tray}</div></div>`
     expect(styleOf(claim, '.wkclaim', '.wkclaim').backgroundImage).toBe('none')
   })
 

@@ -1,0 +1,28 @@
+/* A card list does not clip, so a focused row's ring shows whole: its end rows take its rounded corners. */
+.list{background:var(--card);border:1px solid var(--sep);border-radius:var(--r-card)}
+.list:not(.list--embedded)>.item--row:first-child{border-top-left-radius:calc(var(--r-card) - 1px);
+  border-top-right-radius:calc(var(--r-card) - 1px)}
+.list:not(.list--embedded)>.item--row:last-child{border-bottom-left-radius:calc(var(--r-card) - 1px);
+  border-bottom-right-radius:calc(var(--r-card) - 1px)}
+.list--embedded{background:transparent;border:0;border-radius:0}
+/* Rows are divided where two meet, never above the first or below the last. */
+.list>.item--row+.item--row{border-top:1px solid var(--sep2)}
+/* A grid lays its cards out in as many columns of the card width as fit, the item gap apart. */
+.list--grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:var(--item-gap)}
+.list--grid>.item--card+.item--card{margin-top:0}
+/*
+ * List sets the height from the first five rendered rows. A list that scrolls clips, so it keeps the
+ * ring room inside its edges, and reaches out by as much at the sides so its rows stay put; a list that
+ * is a page's own column centres the same way the column does.
+ */
+.list--scrollable{overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
+.list.list--scrollable{padding:var(--ring-room);margin-inline:calc(-1 * var(--ring-room))}
+.desk .desk-body>.list.list--scrollable{max-width:none;
+  margin-inline:max(calc(-1 * var(--ring-room)),calc((100% - var(--pagew)) / 2 - var(--ring-room)))}
+/* A list that fills its container shrinks to the room it is given, and clips and keeps ring room as a scrolling list does. */
+.list--fill{flex:0 1 auto;min-height:0;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain}
+.list.list--fill{padding:var(--ring-room);margin-inline:calc(-1 * var(--ring-room))}
+/* A list in a surface that clips at its edges keeps its rows against them. */
+.list.list--flush{padding:0;margin-inline:0}
+.list-column{display:flex;min-height:0;flex-direction:column;overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
+  padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}

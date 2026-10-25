@@ -130,7 +130,7 @@ describe('项目列表的卡片', () => {
       summary({ id: 'kv', name: 'KV cache 量化', priority: 'p2', lastProgress: '2026-10-09' }),
     ]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .pp-h > .research-object-card-open`)!.nextElementSibling!
+    const afterName = (id: string) => host.querySelector(`[data-proj="${id}"] .pp-h > .item-open`)!.nextElementSibling!
     expect([afterName('spec').className, afterName('spec').textContent]).toEqual(['tag tag--label tag--warn', '已 10 天无推进'])
     expect(afterName('kv').className).toBe('dd')
     expect(host.querySelectorAll('.project-card-alert')).toHaveLength(0)
@@ -141,9 +141,9 @@ describe('Project list', () => {
   it('opens an ongoing project from the button that holds its name; the card itself is no button', async () => {
     api.projects = [summary({ id: 'moe', name: 'MoE 路由分析', status: '进行中', priority: 'p2', topic: '混合专家' })]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
-    const card = host.querySelector<HTMLElement>('.research-object-card[data-proj="moe"]')!
+    const card = host.querySelector<HTMLElement>('.item--card[data-proj="moe"]')!
     expect(card.getAttribute('role')).toBeNull()
-    const open = card.querySelector<HTMLElement>('.research-object-card-open')!
+    const open = card.querySelector<HTMLElement>('.item-open')!
     expect(open.tagName).toBe('BUTTON')
     expect(open.textContent).toContain('MoE 路由分析')
     act(() => open.click())
@@ -157,8 +157,8 @@ describe('Project list', () => {
     ]
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     const row = host.querySelector<HTMLElement>('[data-proj="draft"]')!
-    expect(row.classList.contains('structured-row')).toBe(true)
-    expect(row.parentElement!.className).toBe('structured-list structured-list--embedded')
+    expect(row.classList.contains('item')).toBe(true)
+    expect(row.parentElement!.className).toBe('list list--embedded')
     const identity = [...row.querySelector('.project-identity')!.children].map((part) => part.textContent)
     expect(identity).toEqual(['draft 效率', '搁置', '推理'])
     expect(row.querySelector('.tp')).toBeNull()

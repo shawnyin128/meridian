@@ -33,7 +33,8 @@ import { ConfirmDialog } from '../components/ConfirmDialog.js'
 import { DateTimeDisplay } from '../components/DateTimeDisplay.js'
 import { ModalDialog, ModalTitle } from '../components/ModalDialog.js'
 import { NavRow } from '../components/NavRow.js'
-import { RowActions, StructuredList, StructuredRow } from '../components/StructuredList.js'
+import { Item, RowActions } from '../components/Item.js'
+import { List } from '../components/List.js'
 import { PageError, SectionHeading } from '../components/PageShell.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -322,12 +323,12 @@ export function Settings() {
           : (
             <>
               <SectionHeading count={backups.length}>{m.settings.storage.backupsHeading}</SectionHeading>
-              <StructuredList className="storage-backup-list">
+              <List className="storage-backup-list">
                 {backups.map((backup) => {
                   const label = `${format.date(localDayOf(backup.createdAt))} ${format.clock(backup.createdAt)}`
                   const busy = switchingBackup !== null || deletingBackup !== null
                   return (
-                    <StructuredRow composite className="storage-backup-row" key={backup.id}>
+                    <Item composite className="storage-backup-row" key={backup.id}>
                       <div className="storage-backup-copy">
                         <DateTimeDisplay at={backup.createdAt} />
                         <FadeText className="storage-backup-path" label={backup.path}>{backup.path}</FadeText>
@@ -352,10 +353,10 @@ export function Settings() {
                           onConfirm={() => { void deleteBackup(backup) }}
                         />
                       </div>
-                    </StructuredRow>
+                    </Item>
                   )
                 })}
-              </StructuredList>
+              </List>
             </>
           )}
       </>
@@ -420,9 +421,9 @@ export function Settings() {
           : archived.length === 0
           ? <EmptyState variant="section">{m.settings.archived.empty}</EmptyState>
           : (
-            <StructuredList className="wlist">
+            <List className="wlist">
               {archived.map((s) => (
-                <StructuredRow className="wrow" data-chat={s.id} key={s.id}>
+                <Item className="wrow" data-chat={s.id} key={s.id}>
                   <span className="nm"><PaperText text={s.title} /></span>
                   <RowActions>
                     <IconButton label={m.settings.archived.open} size="nested" onClick={() => openChat(s)}>
@@ -435,9 +436,9 @@ export function Settings() {
                       <IconTrash />
                     </IconButton>
                   </RowActions>
-                </StructuredRow>
+                </Item>
               ))}
-            </StructuredList>
+            </List>
           )}
       </>
     ),
