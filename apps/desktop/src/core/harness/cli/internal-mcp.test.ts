@@ -111,8 +111,13 @@ const temporaryFolder = () => {
   return folder
 }
 
-/** A runner whose `claude` and `codex` are stand-ins and whose internal MCP server answers from the fixture vault. */
-function standIns(calls: Array<[string, unknown]>, options: { hang?: boolean } = {}) {
+/**
+ * A runner whose `claude` and `codex` are stand-ins, signed in with the subscription unless `signIn`
+ * says otherwise, and whose internal MCP server answers from the fixture vault.
+ */
+function standIns(
+  calls: Array<[string, unknown]>, options: { hang?: boolean; signIn?: 'subscription' | 'signed-out' } = {},
+) {
   const root = temporaryFolder()
   const bin = join(root, 'bin')
   mkdirSync(bin)
@@ -129,7 +134,9 @@ function standIns(calls: Array<[string, unknown]>, options: { hang?: boolean } =
     return { ...mcp, close: async () => { await mcp.close(); opened.push('closed') } }
   }
   const runner = createCliRunner({
-    binary: async (cli: HarnessCli) => join(bin, cli),
+    discover: async (cli: HarnessCli) => ({
+      cli, installed: true, binary: join(bin, cli), version: '2.1.280', missingFlags: [], signIn: options.signIn ?? 'subscription',
+    }),
     environment: {
       PATH: process.env['PATH'] ?? '',
       STAND_IN_RECORD: recordFile,
@@ -310,6 +317,13 @@ describe('the internal MCP server of a subscription CLI run', () => {
     expect(opened).toEqual([expect.any(String), 'closed'])
     expect(alive(seen!.serverPid)).toBe(false)
     expect(existsSync(opened[0]!)).toBe(false)
+  })
+
+  it('opens no server for a call the runner refuses before it starts the CLI', async () => {
+    const { runner, records, opened } = standIns([['paper_search', { query: 'speculative decoding' }]], { signIn: 'signed-out' })
+
+    await expect(runner(call('claude'))).rejects.toMatchObject({ kind: 'signed-out' })
+    expect([opened, records()]).toEqual([[], []])
   })
 
   it('ends the server and the channel when the run is cancelled', async () => {

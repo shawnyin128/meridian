@@ -168,6 +168,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
   let loadError: CallFailure | undefined
   let subscription = noSubscription()
   let subscriptionError: CallFailure | undefined
+  let subscriptionRevision = 0
   try {
     subscription = readSubscriptionChoice(subscriptionFile)
   } catch (error) {
@@ -225,6 +226,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     })
     subscription = next
     subscriptionError = undefined
+    subscriptionRevision += 1
   }
 
   return {
@@ -274,6 +276,8 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       if (subscription.active !== null || subscriptionError !== undefined) choose({ ...subscription, active: null })
       return publicSettings()
     },
+    /** A number that changes each time the subscription choice is saved. */
+    subscriptionRevision: () => subscriptionRevision,
     /** Makes subscription CLI `cli` the model source, running `model`; the API profiles stay as they are. */
     updateSubscription(input: HarnessUpdateSubscriptionParams): HarnessModelSettings {
       const { cli, model } = HarnessUpdateSubscriptionParamsSchema.parse(input)
@@ -325,6 +329,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       if (cli !== null) {
         return {
           provider: SUBSCRIPTION_LABELS[cli], name: subscription.models[cli] || '默认模型', configured: true, billable: false,
+          cli,
         }
       }
       const settings = publicSettings()
