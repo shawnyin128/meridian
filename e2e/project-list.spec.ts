@@ -173,7 +173,6 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
   await expect(rows).toHaveCount(before.length + 1)
   const created = (await listProjects(win)).find((p) => p.name === NEW_PROJECT)
   expect(created?.status).toBe(ACTIVE)
@@ -183,15 +182,13 @@ test('新建一个项目,重命名、改状态、删掉,再从垃圾桶恢复', 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '重命名' }).click()
-  await win.locator('.ctxmenu .mi-in input').fill(RENAMED_PROJECT)
-  await win.locator('.ctxmenu .mi-in input').press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
+  await card.locator('.metadata-input').fill(RENAMED_PROJECT)
+  await card.locator('.metadata-input').press('Enter')
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 
   await card.hover()
   await card.locator('.dots').click()
   await win.locator('.ctxmenu .mi', { hasText: '搁置' }).click()
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已标记为 搁置')
   // It moves to another group: the panel becomes a compact row, and project.list has the new status.
   await expect(card).toHaveClass(/prow/)
   expect((await listProjects(win)).find((p) => p.id === created!.id)?.status).toBe('搁置')
@@ -229,7 +226,7 @@ test('面板的最近推进、停滞天数与细行的上次推进都按最近�
   // Nothing has changed draft since its latest entry; the earliest entry is further back, so reading
   // the wrong end of the log gives a different number.
   expect(draftProgress).toBe(draft.at(-1)!.date)
-  await expect(shown(win).locator('[data-proj="draft"] .item-title > .tag--warn'))
+  await expect(shown(win).locator('[data-proj="draft"] .item-title > .tag--warning'))
     .toHaveText(`已 ${daysSince(today, draftProgress!)} 天无推进`)
 
   // moe is shelved and shows as one compact row, ending with the days since it last progressed.
@@ -271,7 +268,7 @@ test('没有图数据的项目出的是一行占位,不是空画布加图例', a
   expect((await getProject(win, 'sched')).graphNodes).toBe(0)
 
   await win.locator('.section-heading-actions .segmented-control>button', { hasText: '科研图' }).click()
-  await expect(win.locator('.screenslot:not([hidden]) .record-view .empty-state--section')).toHaveText('还没有科研图')
+  await expect(win.locator('.screenslot:not([hidden]) .record-view .empty-state--section')).toHaveText('—')
   await expect(win.locator('.rgraph')).toHaveCount(0)
   await expect(win.locator('.glegend')).toHaveCount(0)
 
@@ -319,12 +316,12 @@ async function typeKey(win: Page, ch: string): Promise<void> {
   await cdp.detach()
 }
 
-test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、Home/End、空格都进输入框,焦点不跳,Esc 取消、回车提交照旧', async ({ win }) => {
+test('项目菜单是真菜单;重命名合上菜单,把名字就地变成输入框:打菜单项首字、方向键、Home/End、空格都进输入框,焦点不跳,Esc 取消、回车提交照旧', async ({ win }) => {
   test.slow()
   await gotoList(win)
   const card = shown(win).locator('[data-proj="draft"]')
   const menu = win.locator('[role="menu"]')
-  const input = menu.locator('.mi-in input')
+  const input = card.locator('.metadata-input')
 
   await card.hover()
   await expect(card.locator('.dots')).toHaveAttribute('aria-haspopup', 'menu')
@@ -334,21 +331,22 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await expect(menu.locator('[role="menuitemradio"][aria-checked="true"]')).toHaveText(ACTIVE)
 
   await menu.locator('[role="menuitem"]', { hasText: '重命名' }).click()
+  await expect(menu).toHaveCount(0)
   await expect(input).toBeFocused()
+  await expect(input).toHaveValue('draft 效率')
   await input.fill('')
   // The first character of each of the seven menu items: Rename, Move up, Move down, Active, Shelved, Finished, Delete.
   for (const ch of ['重', '上', '下', '进', '搁', '已', '删']) await typeKey(win, ch)
-  // If typeahead takes focus on a key, it moves it in a zero-delay setTimeout. Timers with the same delay
+  // If typeahead took focus on a key, it would move it in a zero-delay setTimeout. Timers with the same delay
   // fire in queue order, so waiting one zero-delay macrotask lets any scheduled focus move run first.
   await win.evaluate(() => new Promise<void>((r) => setTimeout(r, 0)))
-  // Assert here: the next press focuses the input first, which would hide whether focus had moved.
   await expect(input).toBeFocused()
   await input.press('Space')
   await input.press('a')
   await expect(input).toHaveValue('重上下进搁已删 a')
-  await expect(input).toBeFocused()
-  // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, End then z;
-  // Tab does not move focus out of the menu.
+  // Arrow keys and Home/End only move the caret in the input: Home then x, one right then y, the line's
+  // end then z. On macOS Home and End scroll instead, so ArrowUp has already put the caret at the start
+  // and ⌘→ takes it to the end.
   await input.press('ArrowDown')
   await input.press('ArrowUp')
   await input.press('Home')
@@ -356,16 +354,14 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await input.press('ArrowRight')
   await input.press('y')
   await input.press('End')
+  if (process.platform === 'darwin') await input.press('Meta+ArrowRight')
   await input.press('z')
-  // Same reason: assert before press('Tab'), which would otherwise focus the input again first.
-  await expect(input).toBeFocused()
-  await input.press('Tab')
   await expect(input).toHaveValue('x重y上下进搁已删 az')
   await expect(input).toBeFocused()
 
-  // Esc cancels: the menu closes and the name is unchanged.
+  // Esc cancels: the field closes and the name is unchanged.
   await input.press('Escape')
-  await expect(menu).toHaveCount(0)
+  await expect(input).toHaveCount(0)
   await expect(card.locator('.project-identity-name')).toHaveText('draft 效率')
   expect((await listProjects(win)).find((p) => p.id === 'draft')?.name).toBe('draft 效率')
 
@@ -375,7 +371,6 @@ test('项目菜单是真菜单;重命名框里打菜单项首字、方向键、H
   await menu.locator('[role="menuitem"]', { hasText: '重命名' }).click()
   await input.fill(RENAMED_PROJECT)
   await input.press('Enter')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已重命名')
   await expect(card.locator('.project-identity-name')).toHaveText(RENAMED_PROJECT)
 })
 
@@ -446,8 +441,7 @@ test('库里一个项目都没有时,「＋ 新建项目」仍在,建得出第�
   await shown(win).locator('.projpanel .inedit').fill(NEW_PROJECT)
   await shown(win).locator('.projpanel .inedit').press('Enter')
 
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已创建项目')
-  expect((await listProjects(win)).map((p) => p.name)).toEqual([NEW_PROJECT])
+  await expect.poll(async () => (await listProjects(win)).map((p) => p.name)).toEqual([NEW_PROJECT])
   await expect(shown(win).locator('.projpanel .project-identity-name')).toHaveText([NEW_PROJECT])
 })
 

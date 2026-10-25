@@ -1,0 +1,100 @@
+/*
+ * The one table, in a ScrollArea that scrolls both ways, with the horizontal scrollbar at the bottom of
+ * the visible area. The header row sticks to the top, the first column to the start (the corner cell
+ * both ways) and the actions column to the end; the area holds those three edges, and each stuck cell
+ * fades the content under it through data-stuck-fade. Hosts name and place a table but never restyle it.
+ */
+/* A capped table keeps the ring room inside its edges and reaches out by as much, so it stays put. */
+.table-scroll--capped{margin:calc(-1 * var(--ring-room)) calc(-1 * var(--ring-room)) 0;padding:var(--ring-room);overscroll-behavior:contain}
+
+/*
+ * Separate borders: with collapsed ones, Chromium leaves the divider above the last row out of the
+ * sticky cells' first paint, until something repaints them.
+ */
+.table{width:100%;min-width:0;border-collapse:separate;border-spacing:0;table-layout:fixed;
+  font-size:var(--fs-body);line-height:var(--lh-ui);font-variant-numeric:tabular-nums}
+.table-scroll--fill>.table{margin-bottom:var(--sp-16)}
+
+.table th{position:sticky;top:0;z-index:3;padding:var(--sp-6) var(--row-table-pad);border-bottom:1px solid var(--sep);
+  background:var(--content);color:var(--sec);font-size:var(--fs-meta);font-weight:var(--fw-semibold);text-align:left;
+  white-space:nowrap;cursor:default;user-select:none;transition:color var(--t-fast) var(--e-out)}
+.table td{position:relative;height:var(--row-table-h);box-sizing:border-box;padding:var(--sp-6) var(--row-table-pad);
+  border-bottom:1px solid var(--sep2);vertical-align:middle;white-space:nowrap;overflow:hidden}
+/* A table draws a rule only between adjacent rows, never under the last one. */
+.table tbody tr:last-child td{border-bottom:0}
+/* The first and last columns start and end their content where rows and cards do. */
+.table :is(th,td):first-child{padding-left:calc(var(--item-inset) + 1px)}
+.table :is(th,td):last-child{padding-right:calc(var(--item-inset) + 1px)}
+.table .table-end{text-align:right}
+
+/* Only a sortable header shows a pointer and darkens on hover; its button is the keyboard's way to its click. */
+.table th:has(>.table-sort){cursor:pointer}
+.table th:has(>.table-sort):hover{color:var(--ink)}
+.table-sort{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
+.table-sort svg{width:9px;height:9px;vertical-align:0}
+/* A column's grip straddles the border with the next header cell. */
+.table th>.table-grip{right:-5px}
+/*
+ * A column being moved dims, and a 2px ink line marks the side of the header it lands on, as every
+ * reorder's drop look does. Its neighbours paint over a header cell's edges, so the line lies just
+ * inside them.
+ */
+.table th.table-move-moving{opacity:.4}
+.table th.table-move-before{box-shadow:inset 2px 0 0 0 var(--ink)}
+.table th.table-move-after{box-shadow:inset -2px 0 0 0 var(--ink)}
+/* The header cell of a column being created holds its name's field. */
+.table th.table-draft{padding:var(--sp-4) var(--row-table-pad)}
+
+.table :is(th,td):first-child{position:sticky;left:0;z-index:2;background:var(--content);overflow:visible}
+.table th:first-child{z-index:4}
+/*
+ * The actions column sticks to the end, so a row's actions stay in reach while the columns scroll
+ * under them. Its cells lie above a cell's hover box (z-index 6), and its header cell above the body
+ * cells that scroll under it. Two 24px buttons fit its header cell once its padding drops to 2px and
+ * the slot sets them side by side without its gap, which keeps the header no taller than text. Its
+ * content keeps to the end, at the inset rows and cards end theirs, so a table narrower than its box,
+ * which widens every column, moves no action.
+ */
+.table .table-actions{position:sticky;right:0;overflow:visible;text-align:right}
+.table td.table-actions{z-index:7;padding-top:0;padding-bottom:0}
+.table th.table-actions{z-index:8;padding-top:var(--sp-2);padding-bottom:var(--sp-2);padding-left:var(--sp-2)}
+.table th.table-actions .row-actions{gap:0;vertical-align:middle}
+/*
+ * One row colour (--row-bg, the selected look) and the hover over it (--row-over), painted by every
+ * cell and by a cut cell's hover box. The stuck cells and the hover box lay both over --content, so
+ * cells scrolling under them never show through. A row keeps the hover while a menu or popover of
+ * one of its cells is open and the pointer is on it.
+ */
+.table-row{--row-bg:transparent;--row-over:transparent}
+.table-row:hover,.table-row:has([data-state="open"]){--row-over:var(--hover)}
+.table-row--selected{--row-bg:var(--accent-soft)}
+.table-row--opens{cursor:pointer}
+.table-row>td{background-color:var(--row-bg);background-image:linear-gradient(var(--row-over),var(--row-over))}
+.table-row>td:first-child,.table-row>td.table-actions{background-color:var(--content);
+  background-image:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg))}
+
+.table-cell--title{color:var(--ink);font-weight:var(--fw-medium)}
+.table-row--selected>.table-cell--title{color:var(--accent-text)}
+.table-row--opens>.table-cell--title:hover{text-decoration:underline;text-underline-offset:2px}
+.table-cell--meta{color:var(--ter)}
+.table-cell--edit{color:var(--sec);font-size:var(--fs-meta);cursor:text}
+/* An editor opened in a cell takes the cell's whole width. */
+.table-cell--edit>.form-input{display:block}
+/* The button of a row's name draws nothing of its own, and its click reaches the row. */
+.table-open{width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
+
+/* Text that does not fit fades out, until the pointer rests on its cell or keyboard focus is in it. */
+.table-text{display:block;overflow:hidden;white-space:nowrap}
+.table td:not(:hover)>.table-text.table-cut:not(:has(:focus-visible)){mask-image:var(--clipfade)}
+/* Resting on the cell shows the text whole in place (Excel style): it stays put, over the cells beside it, in the row's colours. */
+.table td:has(>.table-cut):hover{overflow:visible}
+.table td:hover>.table-text.table-cut{position:absolute;left:0;top:0;bottom:0;z-index:6;display:flex;align-items:center;width:max-content;
+  padding:inherit;background:linear-gradient(var(--row-over),var(--row-over)),linear-gradient(var(--row-bg),var(--row-bg)) var(--content)}
+
+/* A chip cell clips its chips, so it keeps the ring room around them inside the cell's padding. */
+.table-chips{display:block;overflow:hidden;white-space:nowrap;padding:var(--ring-room);margin:calc(-1 * var(--ring-room))}
+.table-folded{display:none}
+.table-chips.is-open{display:flex;align-items:center;flex-wrap:wrap;gap:var(--sp-2);overflow:visible;white-space:normal}
+.table-chips.is-open>.table-folded{display:inline-flex;animation:table-chip-reveal var(--t) var(--e-out) both}
+@keyframes table-chip-reveal{from{opacity:0;transform:translateX(-4px)}to{opacity:1;transform:translateX(0)}}
+@media (prefers-reduced-motion:reduce){.table-chips.is-open>.table-folded{animation:none}}

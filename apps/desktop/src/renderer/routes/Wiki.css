@@ -23,31 +23,11 @@
 /* Body paragraphs and empty-state lines share one paragraph spacing */
 .wkpage p{margin:var(--sp-4) 0 var(--sp-8)}
 
-/*
- * The aggregation page's paper comparison: rows are member papers, columns come from the aggregation's
- * columns, and cells carry anchors into the source text
- */
-/* Wiki.tsx caps this box at the header and first five rows as rendered; the rest scroll inside it. */
-/* It keeps the ring room inside its edges and reaches out by as much, so the table stays put. */
-.cmpwrap{overflow:auto;margin:calc(-1 * var(--ring-room)) calc(-1 * var(--ring-room)) 0;padding:var(--ring-room);
-  overflow-y:auto;overscroll-behavior:contain;scrollbar-gutter:stable}
-.cmp{width:100%;border-collapse:collapse;font-size:var(--fs-base);line-height:var(--lh-ui)}
-.cmp th{text-align:left;font-size:var(--fs-sm);color:var(--ter);font-weight:var(--fw-semibold);padding:var(--sp-6) var(--row-table-pad);border-bottom:1px solid var(--sep);white-space:nowrap;position:sticky;top:0;background:var(--content)}
-/* While stuck, a header cell fades the content scrolling under it, in its own paint, and covers its rule. */
-.cmp th{container-type:scroll-state}
-.cmp th::after{content:"";position:absolute;top:100%;left:0;right:0;height:var(--sp-24);background:inherit;
-  mask-image:linear-gradient(#000,transparent);opacity:0;pointer-events:none;transition:opacity var(--t-fast) var(--e-out)}
-@container scroll-state(stuck: top){.cmp th::after{opacity:1}}
-.cmp td{padding:var(--sp-8) var(--row-table-pad);border-bottom:1px solid var(--sep2);vertical-align:top;max-width:26ch}
-.cmp tbody tr:last-child td{border-bottom:0}
-.cmp td.rh{white-space:nowrap}
-.cmp td.na{color:var(--ter)}
-/* A derived column is marked by the tag in its header. */
-.cmp th .wkind{margin-left:var(--sp-6)}
+/* A derived column's name is followed by the tag that marks it. */
+.cmp-derived{display:inline-flex;align-items:center;gap:var(--sp-6)}
 
 /* The paper page's "Location in Wiki" blocks in the right rail */
-.memb{margin:var(--sp-4) 0 var(--sp-12)}
-.memb .wkprops{grid-template-columns:max-content 1fr;margin-top:var(--sp-4)}
+.memb{display:grid;gap:var(--sp-4);margin:var(--sp-4) 0 var(--sp-12)}
 
 /* Body: a heading with the page name and "Edit", then rendered Markdown, whose first heading sits close under it. */
 .section-heading+.md>h2:first-child{margin-top:var(--sp-6)}
@@ -67,10 +47,7 @@
 .wktoc li.l3{padding-left:calc(3 * var(--sp-12));font-size:var(--fs-sm);color:var(--ter)}
 .wktoc li.l3.on{color:var(--ink)}
 
-/* Management controls: the × table rows show on hover, and the column editor; the row's × sits in its row-actions slot. */
-.cmp th.rx,.cmp td.rx{width:24px;padding-left:var(--sp-2);padding-right:var(--sp-2)}
-/* Its 24px button centres on the row's first line without making the row taller. */
-.cmp td.rx{padding-top:var(--sp-6);padding-bottom:0}
+/* The column editor */
 .coledit{margin:var(--sp-6) 0 var(--sp-12);display:grid;gap:var(--sp-6);max-width:420px}
 .coledit .row{display:flex;gap:var(--sp-8);align-items:center}
 .coledit .acts{display:flex;gap:var(--sp-8);margin-top:var(--sp-4)}
@@ -80,12 +57,6 @@
  * title line is an input and its last line is empty, only holding the height.
  */
 .wkcard.newcard .wf{height:1.5em}
-
-/*
- * The new-column cell at the end of the comparison table's header row: its width and the rules for the
- * two buttons are shared with the paper table, in shell.css; this only sets its padding.
- */
-.cmp th.th-new{padding:var(--sp-4) var(--row-table-pad)}
 
 /* The editor in the column-settings popover the gear opens */
 .colpop .coledit{margin:0;max-width:none}

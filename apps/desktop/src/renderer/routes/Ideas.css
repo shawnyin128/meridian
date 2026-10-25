@@ -1,8 +1,5 @@
-/* A size container: 100cqh, its height inside the padding, keeps the detail panel inside the visible page at any window height. */
-.ideas-body{padding:var(--sp-20) var(--sp-24);container-type:size}
-.ideas-workspace{display:flex;align-items:flex-start;gap:0;width:100%;box-sizing:border-box}
 /* An inline-size container: the rows' columns follow the list's own width, which the detail panel narrows. */
-.ideas-list{flex:1;min-width:0;container:idea-list/inline-size}
+.ideas-list{container:idea-list/inline-size}
 
 /* The idea card supports triage; full content and editing remain in the detail panel. */
 .idea-relation-tag{max-width:220px}
@@ -31,31 +28,7 @@
   .idea-row-work{display:none}
 }
 
-/* Ideas by project: the name, then three counts spread over the list's width, under their column labels. */
-.idea-stats-head,.idea-stats-row{display:grid;grid-template-columns:minmax(0,2fr) repeat(3,minmax(0,1fr));align-items:center;column-gap:var(--sp-16)}
-.idea-stats-head{padding:0 calc(var(--item-inset) + 1px) var(--sp-6);color:var(--ter);font-size:var(--fs-cap);text-align:right}
-.idea-stats-n{color:var(--sec);text-align:right;font-variant-numeric:tabular-nums}
-.idea-stats-n.zero{color:var(--ter)}
-
-/*
- * The detail panel follows a research graph node's layout, content on the left and its document on
- * the right, but keeps the idea itself editable.
- */
-.idea-detail-slot{--detail-panel-width:min(420px,42vw);--detail-panel-gap:var(--sp-24);position:sticky;top:0;z-index:2;align-self:flex-start;
-  max-height:100cqh}
-/* The idea itself is the shared IdeaPanel, with the document panes' padding; see ResearchGraph.css. */
-.idea-detail-panel{width:100%;max-height:100cqh;
-  box-sizing:border-box;padding:var(--sp-20) var(--sp-24);border:1px solid var(--sep);border-radius:var(--r-card);background:var(--card);
-  box-shadow:var(--sh-1);overflow-x:hidden;overflow-y:auto;overscroll-behavior:contain;
-  --fade-paint:var(--card);--fade-pad-top:var(--sp-20);--fade-pad-bottom:var(--sp-20)}
-.idea-detail-editor{display:grid;gap:var(--sp-14);margin-top:var(--sp-20)}
-.idea-detail-editor label{display:grid;gap:var(--sp-6);color:var(--ter);font-size:var(--fs-sm)}
-.idea-detail-editor .form-control{width:100%}
+.idea-detail-editor{margin-top:var(--sp-20)}
 .idea-detail-editor .form-textarea{min-height:150px}
 .idea-detail-panel .idea-link-picker{width:100%}
 .idea-missing-project{margin-top:var(--sp-8)}
-
-@media (max-width:1150px){
-  .idea-detail-slot{--detail-panel-width:38%;--detail-panel-gap:var(--sp-20)}
-  .idea-detail-panel{padding:var(--sp-16) var(--sp-20);--fade-pad-top:var(--sp-16);--fade-pad-bottom:var(--sp-16)}
-}

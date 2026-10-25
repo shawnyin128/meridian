@@ -181,7 +181,7 @@ describe('idea and graph association', () => {
     document.body.append(host)
     const root = createRoot(host)
     act(() => root.render(withMessages(<ResearchGraph graph={GRAPH} selected={null} onSelect={vi.fn()} />)))
-    const controls = host.querySelector<HTMLElement>('.graph-view-controls')!
+    const controls = host.querySelector<HTMLElement>('.zoom-control')!
     expect([controls, ...controls.querySelectorAll<HTMLElement>('*')].filter((element) => element.tabIndex === 0)).toEqual([controls])
     await act(async () => { controls.focus() })
     const walked: (string | null)[] = []
@@ -245,7 +245,7 @@ describe('idea and graph association', () => {
           .exec(host.querySelector('svg > g')!.getAttribute('transform')!)!
         return { x: Number(x), y: Number(y), zoom: Number(zoom) }
       }
-      const shown = () => host.querySelector('.graph-zoom-reset')!.textContent
+      const shown = () => host.querySelector('.zoom-control-reset')!.textContent
       return { host, root, view, shown }
     }
     afterEach(() => { vi.restoreAllMocks() })
@@ -304,7 +304,7 @@ describe('idea and graph association', () => {
       const opened = view()
       act(() => host.querySelector<HTMLButtonElement>('[aria-label="放大科研图"]')!.click())
       expect(view().zoom).toBeGreaterThan(opened.zoom)
-      act(() => host.querySelector<HTMLButtonElement>('.graph-zoom-reset')!.click())
+      act(() => host.querySelector<HTMLButtonElement>('.zoom-control-reset')!.click())
       expect(view()).toEqual(opened)
       act(() => root.unmount())
     })
@@ -339,7 +339,8 @@ describe('idea and graph association', () => {
     )))
 
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1)).toEqual(['分支 · 1', '任务 · 1', '关联想法 · 1'])
+    expect([host.querySelector('.panel-head-title')!.textContent, ...headings])
+      .toEqual([GRAPH.nodes[0]!.label, '分支 · 1', '任务 · 1', '关联想法 · 1'])
     expect(host.querySelector('.node-task-row')?.textContent).toBe('重跑延迟矩阵agent')
     act(() => (host.querySelector('.node-task-row') as HTMLButtonElement).click())
     expect(onSelectTask).toHaveBeenCalledWith('task-7')
@@ -412,8 +413,8 @@ describe('idea and graph association', () => {
       />,
     )))
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
-    expect(headings.slice(1)).toEqual(['任务 · 0', '关联想法 · 0'])
-    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['还没有任务', '还没有关联想法'])
+    expect([host.querySelector('.panel-head-title')!.textContent, ...headings]).toEqual([leaf.label, '任务 · 0', '关联想法 · 0'])
+    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['—', '—'])
     act(() => root.unmount())
   })
 

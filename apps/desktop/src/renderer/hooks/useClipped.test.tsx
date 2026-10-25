@@ -2,7 +2,7 @@
 import { act, useRef } from 'react'
 import { createRoot } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { useClipped } from './useClipped.js'
+import { isClipped, useClipped } from './useClipped.js'
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -59,5 +59,20 @@ describe('useClipped', () => {
     vi.spyOn(document, 'createRange').mockReturnValue({ selectNodeContents() {}, getClientRects: () => rects } as unknown as Range)
     expect(measure({ width: 100, height: 62 }, true)).toEqual({ clipped: 'true', end: '72px' })
     expect(measure({ width: 100, height: 40 }, true)).toEqual({ clipped: 'false', end: '' })
+  })
+})
+
+describe('isClipped', () => {
+  /** A 100px by 40px box whose content is `width` by `height` px. */
+  const box = (width: number, height: number) => ({ clientWidth: 100, clientHeight: 40, scrollWidth: width, scrollHeight: height }) as Element
+
+  it('只按问的方向算:横向只看宽,纵向只看高,两个方向哪边放不下都算', () => {
+    expect([isClipped(box(180, 40), 'x'), isClipped(box(180, 40), 'y'), isClipped(box(180, 40), 'both')]).toEqual([true, false, true])
+    expect([isClipped(box(100, 62), 'x'), isClipped(box(100, 62), 'y'), isClipped(box(100, 62), 'both')]).toEqual([false, true, true])
+  })
+
+  it('取整多出的一像素不算被截', () => {
+    expect(isClipped(box(101, 41), 'both')).toBe(false)
+    expect(isClipped(box(102, 40), 'x')).toBe(true)
   })
 })

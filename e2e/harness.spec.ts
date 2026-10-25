@@ -60,7 +60,7 @@ realHarnessTest('真实 Electron/Core/Python Harness 零费用链路停在审核
     await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
     await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
     await win.locator('.ptable tbody tr').click()
-    await shown('.pdetail [aria-label="开始阅读"]').click()
+    await shown('.paper-detail-slot [aria-label="开始阅读"]').click()
     await shown('.reader-rail [aria-label="内化到 Wiki"]').click()
 
     const body = async () => (await call<{ body: string }>('wiki.paper', { id: `papers/${PAPER}` })).body

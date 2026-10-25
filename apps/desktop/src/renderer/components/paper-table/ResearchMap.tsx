@@ -4,10 +4,12 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
+import { IconPapers } from '../icons.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
 import { Item, ItemOpen } from '../Item.js'
+import { SplitPage } from '../SplitPage.js'
 import { List, ListColumn } from '../List.js'
 import { CountBadge } from '../CountBadge.js'
 import { Tag } from '../Tag.js'
@@ -46,7 +48,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
   const entries = useMemo(() => {
     const groups = map.groups.map<MapEntry>((group) => ({
       id: group.id, label: group.label,
-      ...(group.kind === 'phrase' ? {} : { kind: m.papers.researchMap.kind[group.kind] }),
+      ...(group.kind === 'project' ? { kind: m.papers.researchMap.kind.project } : {}),
       papers: group.members.map((member) => ({
         paper: member.paper,
         chips: member.reasons.map((item) => ({ key: reasonKey(item), text: m.papers.researchMap.reason[item.kind](item.label) })),
@@ -98,9 +100,9 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
       {loading && rows.length === 0
         ? <LoadingPlaceholder shape="rows" />
         : map.groups.length === 0
-          ? <EmptyState variant="page">{m.papers.researchMap.empty}</EmptyState>
+          ? <EmptyState variant="page" icon={<IconPapers sw={1.4} />} />
           : (
-            <div className="research-map-layout">
+            <SplitPage columns="index">
               <ListColumn className="research-map-index">
                 <List className="research-map-groups" aria-label={m.papers.researchMap.groupListAria}>
                   {entries.groups.map(entryRow)}
@@ -171,7 +173,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
                     </List>
                   </div>
                 )}
-            </div>
+            </SplitPage>
           )}
     </section>
   )

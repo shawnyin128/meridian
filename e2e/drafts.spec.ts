@@ -10,7 +10,7 @@ async function openReader(win: Page): Promise<void> {
   await win.locator('#libq').fill('STAR: SPECULATIVE DECODING')
   await expect(win.locator('.ptable tbody tr')).toHaveCount(1)
   await win.locator('.ptable tbody tr').click()
-  await shown(win, '.pdetail [aria-label="开始阅读"]').click()
+  await shown(win, '.paper-detail-slot [aria-label="开始阅读"]').click()
   await shown(win, '[aria-label="阅读笔记"]').click()
 }
 
@@ -107,14 +107,15 @@ test('关掉 App 再打开,打了一半的新项目名或新任务那一行回�
     await gotoProject(first.win)
     const plan = shown(first.win, '.project-plan')
     await plan.locator('[aria-label="添加任务"]').first().click()
-    await plan.locator('.task-create-row .tag').click()
-    await plan.locator('.task-create-row .min').fill('打了一半的任务')
+    await plan.locator('.task-create-row .plan-priority').click()
+    await first.win.locator('[role="menuitemradio"]', { hasText: 'P2' }).click()
+    await plan.locator('.task-create-row input').fill('打了一半的任务')
 
     second = await relaunch(first.app, configHome, profile)
     await gotoProject(second.win)
     const row = shown(second.win, '.project-plan .task-create-row')
-    await expect(row.locator('.min')).toHaveValue('打了一半的任务')
-    await expect(row.locator('.tag')).toHaveText('P2')
+    await expect(row.locator('input')).toHaveValue('打了一半的任务')
+    await expect(row.locator('.plan-priority')).toHaveText('P2')
     const kept = await second.win.evaluate(() => Object.keys(window.localStorage)
       .filter((key) => key.startsWith('meridian.drafts:'))
       .map((key) => window.localStorage.getItem(key)!).join(''))

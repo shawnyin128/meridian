@@ -161,8 +161,8 @@ describe('Reader', () => {
 
   it('缩放到上限或下限时那一侧的按钮变淡，点百分比回到 100%', async () => {
     await render()
-    const button = (label: string) => host.querySelector<HTMLButtonElement>(`.zoomctl [aria-label="${label}"]`)!
-    const reset = () => host.querySelector<HTMLButtonElement>('.zoomctl .zoom-reset')!
+    const button = (label: string) => host.querySelector<HTMLButtonElement>(`.zoom-control [aria-label="${label}"]`)!
+    const reset = () => host.querySelector<HTMLButtonElement>('.zoom-control .zoom-control-reset')!
     const shown = () => reset().textContent
     const press = async (label: string, times: number) => {
       for (let n = 0; n < times; n += 1) await act(async () => { button(label).click() })
@@ -177,7 +177,7 @@ describe('Reader', () => {
 
   it('阅读器显示着时,视图菜单的放大、缩小、实际大小(⌘+、⌘−、⌘0)缩放论文,和缩放控件走同样的步子', async () => {
     await render()
-    const shown = () => host.querySelector('.zoomctl .zoom-reset')!.textContent
+    const shown = () => host.querySelector('.zoom-control-reset')!.textContent
     const command = async (name: string) => { await act(async () => { shell.appCommand!(name) }) }
     await command('zoomIn')
     await command('zoomIn')
@@ -200,7 +200,7 @@ describe('Reader', () => {
   it('滚轮平常滚动页面;双指捏合或按住 Ctrl、⌘ 滚动才缩放,缩放不超出上下限', async () => {
     await render()
     const pages = host.querySelector<HTMLElement>('.pdfwrap')!
-    const shown = () => host.querySelector('.zoomctl .zoom-reset')!.textContent
+    const shown = () => host.querySelector('.zoom-control .zoom-control-reset')!.textContent
     /** Turns the wheel over the pages; returns whether the reader kept the event from scrolling them. */
     const wheel = async (init: WheelEventInit) => {
       const event = new WheelEvent('wheel', { deltaY: -100, bubbles: true, cancelable: true, ...init })
@@ -702,7 +702,7 @@ describe('Reader', () => {
       await render()
       await select()
       expect(tools()).not.toBeNull()
-      await act(async () => { host.querySelector<HTMLButtonElement>('.zoomctl button:last-child')!.click() })
+      await act(async () => { host.querySelector<HTMLButtonElement>('.zoom-control button:last-child')!.click() })
       expect(tools()).toBeNull()
     })
   })

@@ -155,7 +155,7 @@ describe('研究总览的项目推进', () => {
     ])
   })
 
-  it('最近科研记录给每条记录标上项目页科研记录的类型名和色调,没有类型的旧记录标成记录', async () => {
+  it('最近科研记录给每条记录标上项目页科研记录的类型名，类型都是中性的标签，没有类型的旧记录标成记录', async () => {
     api.rows = [row([
       { date: '2026-10-13', text: '旧记录' },
       { date: '2026-10-14', text: '开工', kind: 'start' },
@@ -166,8 +166,8 @@ describe('研究总览的项目推进', () => {
     const kinds = [...host.querySelectorAll('.ovcols .ovlist-row .project-signal-kind .tag')]
       .map((tag) => `${tag.textContent} ${tag.className}`)
     expect(kinds).toEqual([
-      '实验结果 tag tag--label tag--good', '决定 tag tag--label tag--accent',
-      '开始推进 tag tag--label tag--info', '记录 tag tag--label tag--neutral',
+      '实验结果 tag tag--label tag--neutral', '决定 tag tag--label tag--neutral',
+      '开始推进 tag tag--label tag--neutral', '记录 tag tag--label tag--neutral',
     ])
   })
 })
@@ -204,7 +204,7 @@ describe('研究总览按领域筛', () => {
       const item = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitemradio"]')].find((option) => option.textContent === label)!
       await act(async () => { item.click() })
     }
-    const stats = () => [...host.querySelectorAll('.ovstat b')].map((value) => value.textContent)
+    const stats = () => [...host.querySelectorAll('.stat-tile-value')].map((value) => value.textContent)
     expect(stats()).toEqual(['2', '1', '2', '2'])
 
     await pick('量化')
@@ -256,14 +256,38 @@ describe('研究总览的需要注意', () => {
     expect(api.open).toHaveBeenLastCalledWith('project', 'spec')
   })
 
+  it('需要注意的一行只有项目、日期、类型和内容，不写下一步该做什么', async () => {
+    api.rows = [{
+      ...row([]), block: '等 8 卡机器', lastProgress: '2026-10-01',
+      research: { ...row([]).research, pathState: 'broken' },
+    }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    expect([...host.querySelectorAll('.ovlist-row.attention')].map((line) => [
+      line.querySelector('.ovlist-kind')!.textContent, line.querySelector('.ovlist-main')!.textContent, line.querySelector('.ovlist-meta'),
+    ])).toEqual([['阻塞', '等 8 卡机器', null], ['科研路径', '已断裂', null], ['推进停滞', '已 15 天无推进', null]])
+  })
+
+  it('还没有科研记录的项目，项目推进里记录那一格下面写 —，不写等待回传', async () => {
+    api.rows = [row([])]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    expect(host.querySelectorAll('.ovpulse-row .ovpulse-cell')[1]!.querySelector('.ovpulse-sub')!.textContent).toBe('—')
+  })
+
+  it('搁置的项目在项目推进里只有它的状态标签，下面不再写一句不计入', async () => {
+    api.rows = [{ ...row([]), status: '搁置' }]
+    await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
+    const signal = host.querySelector('.ovpulse-cell.signal')!
+    expect([signal.querySelector('.tag')!.textContent, signal.querySelector('.ovpulse-sub')]).toEqual(['搁置', null])
+  })
+
   it('推进停滞在需要注意和项目推进里都是警示色', async () => {
     api.rows = [{ ...row([]), lastProgress: '2026-10-01' }]
     await act(async () => root.render(<MessagesProvider><ResearchOverview /></MessagesProvider>))
     const tone = (tag: Element) => tag.className.split(' ').find((name) => /^tag--(?!label$|chip$)/.test(name))
     expect([...host.querySelectorAll('.ovlist-row.attention .tag--label')].map((tag) => [tag.textContent, tone(tag)]))
-      .toEqual([['推进停滞', 'tag--warn']])
+      .toEqual([['推进停滞', 'tag--warning']])
     expect([...host.querySelectorAll('.ovpulse-cell.signal .tag')].map((tag) => [tag.textContent, tone(tag)]))
-      .toEqual([['推进停滞', 'tag--warn']])
+      .toEqual([['推进停滞', 'tag--warning']])
   })
 
   it('阻塞在需要决策和项目进展里都是警示色,逾期仍是红色', async () => {
@@ -275,8 +299,8 @@ describe('研究总览的需要注意', () => {
     const tone = (tag: Element) => tag.className.split(' ').find((name) => /^tag--(?!label$|chip$)/.test(name))
     const kinds = [...host.querySelectorAll('.ovlist-row.attention .tag--label')]
       .map((tag) => [tag.textContent, tone(tag)])
-    expect(kinds).toEqual([['阻塞', 'tag--warn'], ['里程碑逾期', 'tag--bad']])
+    expect(kinds).toEqual([['阻塞', 'tag--warning'], ['里程碑逾期', 'tag--error']])
     const pulse = [...host.querySelectorAll('.ovpulse-cell.signal .tag')]
-    expect(pulse.map((tag) => [tag.textContent, tone(tag)])).toEqual([['受阻', 'tag--warn']])
+    expect(pulse.map((tag) => [tag.textContent, tone(tag)])).toEqual([['受阻', 'tag--warning']])
   })
 })
