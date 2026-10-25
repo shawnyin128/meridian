@@ -31,7 +31,7 @@ function AboutBody({ status }: { status: AppUpdateStatus }) {
         </div>
       </div>
       <InlineMessage
-        tone={status.phase === 'error' ? 'error' : 'info'} variant="box" className="about-status"
+        tone={status.phase === 'error' ? 'error' : status.phase === 'latest' ? 'done' : 'info'} variant="box" className="about-status"
         data-about-update={status.phase} lead={statusMark(status)}
         progress={status.phase === 'downloading' ? { percent: status.percent, label: updateLine(status, m) } : undefined}
       >

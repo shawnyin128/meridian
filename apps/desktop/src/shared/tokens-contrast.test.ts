@@ -331,18 +331,22 @@ describe('暗色的三级文字', () => {
 })
 
 /** The tones of the shared InlineMessage. */
-const MESSAGE_TONES = ['error', 'warning', 'info'] as const
+const MESSAGE_TONES = ['error', 'warning', 'info', 'done'] as const
 
-/** The text token of an InlineMessage tone, and the fill of its box. */
+/** The text token of an InlineMessage tone, and the fill of its box, which every tone shares. */
 const messageLook = (tone: typeof MESSAGE_TONES[number]): [string, string] => [
   lookOf('components/InlineMessage.css', `.inline-message--${tone}`).split(' ')[1]!,
-  lookOf('components/InlineMessage.css', `.inline-message--box.inline-message--${tone}`).split(' ')[0]!,
+  lookOf('components/InlineMessage.css', '.inline-message--box').split(' ')[0]!,
 ]
 
-describe('就地的错误、警告和提示', () => {
-  it('每种语气的字用它的文字色,框铺它自己的浅色底', () => {
-    expect(Object.fromEntries(MESSAGE_TONES.map((tone) => [tone, messageLook(tone)])))
-      .toEqual({ error: ['--bad-text', '--tint-bad'], warning: ['--warn-text', '--tint-warn'], info: ['--sec', '--tint-mut'] })
+describe('就地的错误、警告、提示和完成', () => {
+  it('每种语气只给字上它的文字色,框都铺同一个中性底', () => {
+    expect(Object.fromEntries(MESSAGE_TONES.map((tone) => [tone, lookOf('components/InlineMessage.css', `.inline-message--${tone}`)])))
+      .toEqual({ error: '无 --bad-text', warning: '无 --warn-text', info: '无 --sec', done: '无 --good-text' })
+    expect(lookOf('components/InlineMessage.css', '.inline-message--box')).toBe('--tint-mut 无')
+    const css = readFileSync(new URL('../renderer/components/InlineMessage.css', import.meta.url), 'utf8').replace(/\/\*[\s\S]*?\*\//g, '')
+    expect([...css.matchAll(/([^{}]+)\{([^{}]*)\}/g)].filter((rule) => /(?:^|;)\s*background/.test(rule[2]!)).map((rule) => rule[1]!.trim()))
+      .toEqual(['.inline-message--box'])
   })
 
   for (const theme of THEMES) {

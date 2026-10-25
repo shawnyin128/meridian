@@ -168,7 +168,7 @@ describe('PaperWikiProposalReview', () => {
     expect(html).toContain('7 项规则检查未发现问题')
     const host = document.createElement('div')
     host.innerHTML = html
-    expect(host.querySelector('.paper-wiki-quality')?.matches('.inline-message--box.inline-message--info[role="status"]')).toBe(true)
+    expect(host.querySelector('.paper-wiki-quality')?.matches('.inline-message--box.inline-message--done[role="status"]')).toBe(true)
     expect(host.querySelector('.paper-wiki-quality p')).toBeNull()
     expect(host.querySelector('.paper-wiki-review-legend')).toBeNull()
   })

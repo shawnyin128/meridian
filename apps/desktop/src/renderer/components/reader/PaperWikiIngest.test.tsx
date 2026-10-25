@@ -210,8 +210,8 @@ describe('PaperWikiIngest', () => {
         .find((button) => button.textContent === '确认写入 Wiki')!.click()
     })
     expect(api.apply).toHaveBeenCalledWith('proposal-1', '# Reviewed')
-    expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--line.inline-message--info')].map((line) => line.textContent))
-      .toContain('已写入 Wiki。')
+    expect([...host.querySelectorAll('.wiki-ingest-status.inline-message--line.inline-message--done')].map((line) => line.textContent))
+      .toEqual(['请审核', '已写入 Wiki。'])
   })
 
   it('offers Undo in the notice of the Wiki write, undoing the change entry that write recorded', async () => {

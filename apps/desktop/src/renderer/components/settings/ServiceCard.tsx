@@ -68,7 +68,7 @@ export function ServiceActions({ children }: { children: ReactNode }) {
 }
 
 /**
- * One connection-check outcome line: a note when it connected, an error with an optional diagnostic
+ * One connection-check outcome line: a success when it connected, an error with an optional diagnostic
  * detail under it when it failed.
  */
 export function ServiceConnectionStatus({ state, message, detail, detailLabel }: {
@@ -78,7 +78,7 @@ export function ServiceConnectionStatus({ state, message, detail, detailLabel }:
   detailLabel?: string | undefined
 }) {
   return (
-    <InlineMessage tone={state === 'failed' ? 'error' : 'info'} variant="line" className="service-connection-status">
+    <InlineMessage tone={state === 'failed' ? 'error' : 'done'} variant="line" className="service-connection-status">
       <div>{message}</div>
       {state === 'failed' && detail !== undefined ? (
         <div className="service-connection-detail">{detailLabel}: {detail}</div>

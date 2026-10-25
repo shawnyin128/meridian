@@ -90,7 +90,7 @@ function QualityReport({ quality }: { quality: HarnessPaperWikiQuality }) {
     : m.wiki.quality.findingsTitle(quality.findings.length)
   return (
     <InlineMessage
-      tone={quality.passed ? 'info' : 'warning'} variant="box" className="paper-wiki-quality" aria-label={m.wiki.quality.heading}
+      tone={quality.passed ? 'done' : 'warning'} variant="box" className="paper-wiki-quality" aria-label={m.wiki.quality.heading}
     >
       <div className="paper-wiki-quality-head">
         <strong>{m.wiki.quality.heading}</strong>

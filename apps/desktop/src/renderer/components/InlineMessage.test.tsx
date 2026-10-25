@@ -3,12 +3,12 @@ import { describe, expect, it } from 'vitest'
 import { InlineMessage } from './InlineMessage.js'
 
 describe('InlineMessage', () => {
-  it('announces an error as an alert, and a warning or a note as a status', () => {
-    const roles = (['error', 'warning', 'info'] as const).map((tone) => {
+  it('announces an error as an alert, and a warning, a note or a success as a status', () => {
+    const roles = (['error', 'warning', 'info', 'done'] as const).map((tone) => {
       const html = renderToStaticMarkup(<InlineMessage tone={tone} variant="line">原因</InlineMessage>)
       return [tone, /role="(\w+)"/.exec(html)?.[1]]
     })
-    expect(roles).toEqual([['error', 'alert'], ['warning', 'status'], ['info', 'status']])
+    expect(roles).toEqual([['error', 'alert'], ['warning', 'status'], ['info', 'status'], ['done', 'status']])
   })
 
   it('draws every tone as a box or a line of the one message, its text in its own slot', () => {
@@ -18,6 +18,9 @@ describe('InlineMessage', () => {
     expect(renderToStaticMarkup(<InlineMessage tone="warning" variant="line">原关联项目当前不可用</InlineMessage>))
       .toBe('<div class="inline-message inline-message--line inline-message--warning" role="status">'
         + '<div class="inline-message-text">原关联项目当前不可用</div></div>')
+    expect(renderToStaticMarkup(<InlineMessage tone="done" variant="line">连接成功</InlineMessage>))
+      .toBe('<div class="inline-message inline-message--line inline-message--done" role="status">'
+        + '<div class="inline-message-text">连接成功</div></div>')
   })
 
   it('puts its lead mark before the text and its one action after it', () => {

@@ -53,9 +53,9 @@ describe('AboutDialog', () => {
       .toEqual([true, '检查更新失败：服务器出错'])
   })
 
-  it('已是最新时是带对勾的中性提示框', async () => {
+  it('已是最新时是带对勾的完成提示框', async () => {
     const line = await statusLine({ phase: 'latest', current: '0.0.19000' })
-    expect([line.matches('.inline-message--box.inline-message--info[role="status"]'), line.querySelector('.inline-message-lead svg') !== null,
+    expect([line.matches('.inline-message--box.inline-message--done[role="status"]'), line.querySelector('.inline-message-lead svg') !== null,
       line.querySelector('.inline-message-text')?.textContent]).toEqual([true, true, '已是最新版本'])
   })
 

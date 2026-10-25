@@ -340,7 +340,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
           ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.preparing}</InlineMessage>
           : null}
         {plan !== null && !plan.model.configured ? <NoModelTag label={m.wiki.ingest.notConnectedNote} /> : null}
-        {receipt !== null ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
+        {receipt !== null ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{receipt.message}</InlineMessage> : null}
         {pending !== null ? <Tag tone="good">{m.wiki.ingest.restoredPending}</Tag> : null}
         {receipt?.warning === undefined ? null : (
           <InlineMessage tone="error" variant="line" className="wiki-ingest-status">
@@ -376,7 +376,7 @@ export function PaperWikiIngest({ paper, reading, onJump, edits }: {
               )}
           </div>
         ) : null}
-        {applied ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.written}</InlineMessage> : null}
+        {applied ? <InlineMessage tone="done" variant="line" className="wiki-ingest-status">{m.wiki.ingest.written}</InlineMessage> : null}
         {rejected ? <InlineMessage tone="info" variant="line" className="wiki-ingest-status">{m.wiki.ingest.discarded}</InlineMessage> : null}
       </div>
     </section>

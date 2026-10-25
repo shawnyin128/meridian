@@ -277,6 +277,9 @@ const SURFACES: readonly (readonly ColourToken[])[] = [
 ]
 const CHIPS = SURFACES.map((ground) => [...ground, '--chip'] as const)
 
+/** The neutral box of an in-place message on the canvas, a card and the window. */
+const MESSAGE_BOX = [['--content', '--tint-mut'], ['--card', '--tint-mut'], ['--window', '--sidebar', '--tint-mut']] as const
+
 const over = (module: ColourModule, fg: ColourToken, grounds: readonly (readonly Layer[])[], min = TEXT): ContrastCheck[] =>
   grounds.map((ground) => ({ module, fg, ground, min }))
 
@@ -290,7 +293,7 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
   return [
     ...over('ink', '--ink', [...SURFACES, ...CHIPS, ['--field'], ['--content', '--sel'], ['--card', '--selected', '--hover']]),
     ...over('ink', '--window', [['--ink']]),
-    ...over('inkSecondary', '--sec', [...SURFACES, ...CHIPS, ['--field'], ['--content', '--tint-mut']]),
+    ...over('inkSecondary', '--sec', [...SURFACES, ...CHIPS, ['--field'], ...MESSAGE_BOX]),
     ...over('inkSecondary', '--sec', mode === 'light' ? [[...current[0], '--chip']] : []),
     ...over('inkTertiary', '--ter', mode === 'light' ? [...SURFACES, ...CHIPS] : [...SURFACES, ...CHIPS.slice(0, 4)]),
     ...over('accent', '--ring', [['--content'], ['--window'], ['--field'], ['--card']], MARK),
@@ -301,9 +304,9 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
     ...over('accent', '--accent-text', current),
     ...over('error', '--bad', [['--content'], ['--card']], MARK),
     ...over('error', '--on-accent', solid('--bad-solid')),
-    ...over('error', '--bad-text', [...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised']]),
-    ...over('warning', '--warn-text', [...CHIPS, ['--content', '--tint-warn'], ['--card', '--tint-warn']]),
-    ...over('done', '--good-text', CHIPS),
+    ...over('error', '--bad-text', [...CHIPS, ['--content', '--tint-bad'], ['--card', '--tint-bad'], ['--card'], ['--raised'], ...MESSAGE_BOX]),
+    ...over('warning', '--warn-text', [...CHIPS, ...MESSAGE_BOX]),
+    ...over('done', '--good-text', [...CHIPS, ...MESSAGE_BOX]),
     ...over('highlight', '--ink', [['--card', HIGHLIGHTED], ['--content', HIGHLIGHTED]]),
   ]
 }

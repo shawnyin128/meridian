@@ -2,14 +2,14 @@ import type { HTMLAttributes, ReactNode } from 'react'
 import { ProgressFill } from './ProgressFill.js'
 import './InlineMessage.css'
 
-/** What a message in place says: something failed, something needs attention, or a neutral note. */
-export type InlineMessageTone = 'error' | 'warning' | 'info'
+/** What a message in place says: something failed, something needs attention, a neutral note, or something done. */
+export type InlineMessageTone = 'error' | 'warning' | 'info' | 'done'
 
 /**
- * The one error, warning or note shown in place, next to what it is about. `box` sets it on a tinted
- * surface of its tone, for a message that stands for a section, a card or a dialog's state; `line` writes
- * it as text in its tone, under the field or control it is about. An error is an alert, a warning or a
- * note a status.
+ * The one error, warning, note or success shown in place, next to what it is about. Only its text takes
+ * the tone's colour. `box` sets it on the neutral surface, for a message that stands for a section, a card
+ * or a dialog's state; `line` writes it as text, under the field or control it is about. An error is an
+ * alert, every other tone a status.
  * @param lead A mark before the text, such as an icon or the running ring.
  * @param action The one control that acts on the message, after the text.
  * @param progress Fills the message's own surface from the left up to `percent`, under everything else.

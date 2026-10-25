@@ -9,9 +9,9 @@ describe('ServiceCard', () => {
         + '<div class="inline-message-text">没能保存密钥</div></div>')
   })
 
-  it('连接成功是一行中性的提示,连接失败是带详情的错误行', () => {
+  it('连接成功是一行完成的提示,连接失败是带详情的错误行', () => {
     expect(renderToStaticMarkup(<ServiceConnectionStatus state="connected" message="连接成功" detail="HTTP 200" detailLabel="详情" />))
-      .toBe('<div class="inline-message inline-message--line inline-message--info service-connection-status" role="status">'
+      .toBe('<div class="inline-message inline-message--line inline-message--done service-connection-status" role="status">'
         + '<div class="inline-message-text"><div>连接成功</div></div></div>')
     expect(renderToStaticMarkup(<ServiceConnectionStatus state="failed" message="认证失败" detail="HTTP 401" detailLabel="详情" />))
       .toBe('<div class="inline-message inline-message--line inline-message--error service-connection-status" role="alert">'

@@ -432,7 +432,7 @@ describe('Settings', () => {
     await act(async () => { test.click() })
     expect(api.checkSemanticKey).toHaveBeenCalledOnce()
     const worked = card.querySelector('.service-connection-status')!
-    expect([worked.matches('.inline-message--line.inline-message--info[role="status"]'), worked.textContent]).toEqual([true, '连接成功'])
+    expect([worked.matches('.inline-message--line.inline-message--done[role="status"]'), worked.textContent]).toEqual([true, '连接成功'])
 
     api.checkSemanticKey.mockResolvedValueOnce({
       state: 'failed', reason: 'authentication', detail: 'HTTP 401',
