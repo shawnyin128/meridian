@@ -42,7 +42,7 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
   '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /<ScrollArea axis="x" fill className="gwrap" ref=\{wrap\}>/], ...SCROLL_AREA],
-  '.cmdk-list': [['shell/CommandPalette.tsx', /className="cmdk-list" ref=\{listFade\}/]],
+  '.cmdk-list': [['shell/CommandPalette.tsx', /<ScrollArea axis="y" className="cmdk-list" ref=\{list\}>/], ...SCROLL_AREA],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.pickhits--tall': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
   '.ctxmenu.choice-picker-menu': [

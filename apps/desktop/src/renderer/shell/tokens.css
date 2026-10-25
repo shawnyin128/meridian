@@ -8,7 +8,7 @@
  * 2. The tokens added beyond the demo (--accent-solid / --press / --press-solid / --hover-solid /
  *    --bad-solid / --bad-text / --good-text / --warn-text / --accent-text / --accent-mark / --ring* / --sel / --selected /
  *    --on-selected / --tint-* / --star / --hl-* / --paper / --scrim / --raised / --chip / --track / --r-* /
- *    --pad-* / --sp-* / --page-inset / --section-gap / --item-* / --row-* / --fs-* / --fw-* / --lh-* / --t-* / --e-* /
+ *    --pad-* / --sp-* / --page-inset / --section-gap / --item-* / --row-* / --menu-list-h / --fs-* / --fw-* / --lh-* / --t-* / --e-* /
  *    --window-buttons-* / --cursor-*)
  *    and the split into --sh-1 / --sh-2 / --sh-3 / --sh-paper are not in the demo: the demo is the
  *    reference for layout and behavior, not for the finished look, so the two differ on these.
@@ -136,6 +136,8 @@
   --sp-2:2px; --sp-4:4px; --sp-6:6px; --sp-8:8px; --sp-10:10px; --sp-12:12px; --sp-14:14px; --sp-16:16px; --sp-20:20px; --sp-24:24px; --sp-32:32px;
   --row-nav-h:30px; --row-nav-pad:var(--sp-8); --row-menu-h:30px; --row-menu-pad:var(--sp-10); --row-menu-check:13px;
   --row-list-h:38px; --row-list-pad:var(--sp-8); --row-table-h:38px; --row-table-pad:var(--sp-10);
+  /* A long list of menu rows, as the chat's mentions or the command palette's, scrolls past this height. */
+  --menu-list-h:min(440px,55vh);
   /*
    * Spacing roles: a page's inline inset, the space above a section, the space between items, and the
    * inline inset of an item, which rows and cards share so the two align when mixed; a row listed among

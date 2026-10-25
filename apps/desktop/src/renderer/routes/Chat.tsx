@@ -5,8 +5,9 @@ import type {
 import { chat, feed, idea as ideaApi, papers, project, wiki } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import {
-  useChatSession, useCrumbTail, useJump, useNotice, useVaultRevision, type CrumbSeg,
+  useChatSession, useCrumbTail, useJump, useNotice, useVaultRevision,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { dnum } from '../../shared/dates.js'
 import { useFormat, type Format } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'

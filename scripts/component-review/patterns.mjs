@@ -52,8 +52,8 @@ const entry = (impl, selector, options = {}) => ({ id: `${impl} ${selector}`, im
  * element counts once, for the first entry that matches it.
  */
 export const PATTERNS = {
-  TitleBar: { metrics: 'head', entries: [entry('hand:shell/AppShell.tsx', '.titlebar', { parts: { title: '#crumb' } })] },
-  Breadcrumb: { metrics: 'text', entries: [entry('hand:shell/AppShell.tsx', '#crumb')] },
+  TitleBar: { metrics: 'head', entries: [entry('shared:TitleBar', '.titlebar', { parts: { title: '#crumb' } })] },
+  Breadcrumb: { metrics: 'text', entries: [entry('shared:Breadcrumb', '#crumb')] },
   NavList: { metrics: 'list', entries: [entry('hand:shell/Sidebar.tsx', '#sidebar .sb-top')] },
   PageHeader: {
     metrics: 'head',

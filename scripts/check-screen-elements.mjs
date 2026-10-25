@@ -18,7 +18,6 @@ export const RAW_BUTTONS = [
     keys: ['components/ideas/IdeaRelations.tsx tagchip-open', 'components/project/ProjectSections.tsx tagchip-open'] },
   { reason: 'a name in a list row that opens what it names', keys: ['components/project/ProjectSections.tsx an'] },
   { reason: 'a link of the page contents that scrolls to its heading', keys: ['routes/Wiki.tsx wktoc > button'] },
-  { reason: 'a breadcrumb segment of the title bar that opens its place', keys: ['shell/AppShell.tsx cseg'] },
   { reason: 'a property value that opens its editor', keys: ['routes/ProjectDetail.tsx workspace-root', 'routes/ProjectDetail.tsx pv'] },
   { reason: 'a draft row\'s field that cycles its value, drawn as the row\'s other field pills',
     keys: ['components/project/ProjectPlan.tsx din'] },

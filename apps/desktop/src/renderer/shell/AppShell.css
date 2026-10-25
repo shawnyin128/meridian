@@ -1,51 +1,8 @@
 /*
- * The app shell: title bar, breadcrumbs and sidebar, copied rule by rule from
+ * The app shell's sidebar and command palette, copied rule by rule from
  * e2e/fixtures/platform-shell-demo.html. Selectors keep the demo's names so the two can be compared
- * side by side. The demo's .window / .tl draw a fake window frame in the browser; Electron has real
- * window chrome, so the frame, rounded corners and traffic lights are not copied.
+ * side by side.
  */
-
-/*
- * This bar is the window's title bar. Its background drags the window; buttons and breadcrumb links
- * are exempted one by one, because .crumb is flex:1 and exempting it whole would leave only the ~19px
- * strips above and below it draggable.
- * The height is fixed at 50px: it used to come from the tallest child, so swapping any element in
- * the bar changed it silently. titleBarOverlay's height in main/index.ts matches this number by hand;
- * change both together.
- */
-.titlebar{display:flex;align-items:center;gap:var(--sp-8);height:50px;padding:var(--sp-12) var(--sp-16);background:var(--sidebar);backdrop-filter:blur(20px);border-bottom:1px solid var(--sep);z-index:5;-webkit-app-region:drag}
-.titlebar .tbtn,.titlebar .cseg.link,.titlebar .appbtn{-webkit-app-region:no-drag}
-/*
- * Make way for window buttons: the three buttons of win32/linux are on the upper right, and the
- * traffic light of darwin is on the upper left, except in full screen, where macOS hides it.
- */
-:root[data-os="win32"] .titlebar,:root[data-os="linux"] .titlebar{padding-right:var(--window-buttons-end)}
-:root[data-os="darwin"]:not([data-fullscreen]) .titlebar{padding-left:var(--window-buttons-start)}
-
-/* The bar's content is only 26px tall, so its icon buttons take the nested size, not the 30px one. */
-.titlebar .brandmark{width:18px;height:18px;display:block}
-/* Breadcrumbs: always shown after the app button, they tell where the user is */
-.crumb{display:flex;align-items:center;gap:var(--sp-6);margin-left:var(--sp-8);font-size:var(--fs-sm);color:var(--ter);flex:1;min-width:0;overflow:hidden;white-space:nowrap;user-select:none}
-.crumb::before{content:"";width:1px;height:12px;background:var(--sep);margin-right:var(--sp-4);flex-shrink:0}
-.crumb:empty{display:none}
-.crumb .csep{opacity:.5;font-size:var(--fs-sm);flex-shrink:0}
-/* Every segment fades its text out when it does not fit; a link fades its text inside its hover pill. */
-.crumb .cseg{max-width:260px}
-.crumb .cseg:last-child{color:var(--sec)}
-/* Padding paired with a negative margin: the pill grows outward only, and the text does not move. */
-.crumb .cseg.link{display:flex;min-width:0;border:0;background:transparent;color:inherit;font:inherit;cursor:pointer;padding:var(--sp-2) var(--sp-6);margin:calc(-1 * var(--sp-2)) calc(-1 * var(--sp-6));border-radius:var(--r-sm);transition:background var(--t-fast) var(--e-out),color var(--t-fast) var(--e-out)}
-.crumb .cseg.link:hover{background:var(--hover);color:var(--ink)}
-
-/* The demo takes this background from .window; the window frame is not copied, so it moves here. */
-.main{flex:1;display:flex;min-height:0;position:relative;background:var(--window)}
-
-/*
- * Keeps a screen alive: the demo holds view state in global variables; here it lives in DOM that
- * stays mounted. display:contents keeps this wrapper out of layout, so the screen's root is still a
- * direct flex child of .main.
- */
-.screenslot{display:contents}
-.screenslot[hidden]{display:none}
 
 /*
  * min-width:0 is required: a flex item's default min-width:auto lets its content's minimum size
@@ -73,20 +30,10 @@
 .sfield{margin-bottom:var(--sp-6)}
 .sfield>.form-input{width:100%}
 
-/* A search with no hits keeps the panel open; its empty state sits on the rows' inline padding. */
-.pickhits.sres .sres-empty{padding:0 var(--row-menu-pad)}
-
-/*
- * The command palette is the one dialog surface pinned near the top of the window, so its field stays
- * put while the list under it grows and shrinks; the list scrolls by itself. Its title is for
- * assistive technology only.
- */
-.modal.cmdk{top:12vh;bottom:auto;max-height:calc(88vh - var(--sp-24))}
-.cmdk .modal-body{display:flex;flex-direction:column;gap:var(--sp-8)}
+/* The command palette: its field above the list of commands, which scrolls by itself. */
+.cmdk-body{display:flex;flex-direction:column;gap:var(--sp-8)}
 .cmdk-field>.form-input{width:100%}
-.cmdk-list{max-height:min(440px,60vh);overflow-y:auto}
-.cmdk-list .empty-state{padding:0 var(--row-menu-pad)}
-.cmdk-title{position:absolute;width:1px;height:1px;overflow:hidden;clip-path:inset(50%);white-space:nowrap}
+.cmdk-list{max-height:var(--menu-list-h)}
 
 .sb-h{display:flex;align-items:center;gap:var(--sp-4);height:var(--sp-24);font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter);padding:0 var(--row-nav-pad);margin:var(--sp-8) 0 0}
 .sect.closed{display:none}
@@ -126,6 +73,3 @@
 /* .dim is a content state (a watch with no new papers), not an "unimplemented" mark */
 .srow.dim{color:var(--ter)}
 .wgroup.closed{display:none}
-
-/* The sidebar's and the paper chat's grips straddle the pane's right border. */
-#sbgrip,#rrgrip{right:-5px}

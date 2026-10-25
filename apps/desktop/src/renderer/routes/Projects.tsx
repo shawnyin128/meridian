@@ -6,7 +6,8 @@ import {
 } from '../../shared/project-signals.js'
 import type { ProjectSortKey } from '../../shared/project-signals.js'
 import { ACTIVE_PROJECT, PROJECT_STATUSES } from '../../shared/vocabulary.js'
-import type { CrumbSeg, ScreenKey } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
+import type { ScreenKey } from '../shell/AppShell.js'
 import { feed, project as projectApi } from '../ipc.js'
 import {
   useCrumbTail, useJump, useScreenEntry, useToday, useVaultRevision,

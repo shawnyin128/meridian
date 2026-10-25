@@ -21,9 +21,13 @@ export function modalSurface(size: ModalSize, className?: string): string {
   return `modal ${size}${className === undefined ? '' : ` ${className}`}`
 }
 
-/** The dialog's title, in the one dialog title role; `className` places it, it never restyles it. */
-export function ModalTitle({ className, children }: { className?: string; children: ReactNode }) {
-  return <Dialog.Title className={`modal-title${className === undefined ? '' : ` ${className}`}`}>{children}</Dialog.Title>
+/**
+ * The dialog's title, in the one dialog title role; `className` places it, it never restyles it. A
+ * `hidden` title names the dialog for assistive technology only, for a dialog whose field says what it is.
+ */
+export function ModalTitle({ className, hidden = false, children }: { className?: string; hidden?: boolean; children: ReactNode }) {
+  const classes = ['modal-title', hidden ? 'modal-title--hidden' : '', className].filter(Boolean).join(' ')
+  return <Dialog.Title className={classes}>{children}</Dialog.Title>
 }
 
 /** The close control in a closable dialog's top-right corner. */
@@ -40,16 +44,18 @@ function DialogClose({ onClose }: { onClose: () => void }) {
  * input method is composing does not close it. `title` heads the surface; a dialog that places its
  * title itself omits it and uses `ModalTitle` in `children`. `children` is the body, which scrolls
  * when it is taller than the window allows, and `actions` stay pinned below it. `closable` puts the
- * dialog's close control in the surface's top-right corner, above anything the body holds. `className`
- * names the layout inside.
+ * dialog's close control in the surface's top-right corner, above anything the body holds. `place: 'top'`
+ * pins the surface near the window's top instead of centring it, so a field at its top stays put while
+ * the list under it grows and shrinks. `className` names the layout inside.
  */
 export function ModalDialog({
-  open, onOpenChange, size, title, actions, closable = false, className, overlayClassName = 'scrim', children,
+  open, onOpenChange, size, place = 'center', title, actions, closable = false, className, overlayClassName = 'scrim', children,
   restoreFocus = true, ariaDescribedBy, contentProps,
 }: {
   open: boolean
   onOpenChange: (open: boolean) => void
   size: ModalSize
+  place?: 'center' | 'top'
   title?: ReactNode
   actions?: ReactNode
   closable?: boolean
@@ -102,7 +108,7 @@ export function ModalDialog({
         <Dialog.Overlay className={overlayClassName} />
         <Dialog.Content
           {...contentProps}
-          className={modalSurface(size, className)}
+          className={modalSurface(size, [place === 'top' ? 'modal--top' : '', className].filter(Boolean).join(' ') || undefined)}
           {...(ariaDescribedBy === undefined
             ? { 'aria-describedby': undefined }
             : { 'aria-describedby': ariaDescribedBy })}

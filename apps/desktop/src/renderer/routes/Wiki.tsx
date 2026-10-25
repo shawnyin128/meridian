@@ -7,8 +7,9 @@ import type {
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, project, wiki } from '../ipc.js'
 import {
-  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type CrumbSeg, type ScreenKey,
+  useCrumbTail, useJump, useNotice, useScreenEntry, useVaultRevision, type ScreenKey,
 } from '../shell/AppShell.js'
+import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'

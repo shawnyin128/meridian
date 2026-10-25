@@ -40,8 +40,6 @@
 .ptable th{position:relative}
 .thsort{padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
 .thsort svg{width:9px;height:9px;vertical-align:0}
-/* A column's grip straddles the border with the next header cell. */
-.ptable th>.thgrip{right:-5px}
 .thmove{display:inline-flex;width:13px;height:17px;align-items:center;justify-content:center;margin:0 var(--sp-4) 0 calc(-1 * var(--sp-6));color:var(--ter);opacity:0;cursor:var(--cursor-draggable);vertical-align:-4px;border-radius:var(--r-xs)}
 .ptable th:hover .thmove,.thmove:focus-visible{opacity:1}
 .thmove:active{cursor:var(--cursor-dragging);color:var(--ink)}

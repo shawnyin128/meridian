@@ -29,7 +29,7 @@ export const STATES = [
   { screen: 'Shell', state: 'sidebar', batch: 'feeds', scope: 'shell', steps: desk('feed') },
   { screen: 'Shell', state: 'app-menu', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['click', '.appbtn'], ['wait', '[data-appmenu]']] },
   { screen: 'Shell', state: 'search', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['fill', '#sSearch', 'KV'], ['wait', '.pickhits'], ['wait', 600]] },
-  { screen: 'Shell', state: 'search-empty', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['fill', '#sSearch', 'zzzqqq'], ['wait', '.sres-empty']] },
+  { screen: 'Shell', state: 'search-empty', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['fill', '#sSearch', 'zzzqqq'], ['wait', '.sres .empty-state--option']] },
   { screen: 'Shell', state: 'command-palette', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['click', '.appbtn'], ['click', '[data-appmenu] .mi', 1], ['wait', '.cmdk-list']] },
   { screen: 'Shell', state: 'tooltip', batch: 'feeds', scope: 'overlay', keepPointer: true, steps: [...desk('feed'), ['hover', '#sbBtn'], ['wait', '.tooltip']] },
   { screen: 'Shell', state: 'about', batch: 'feeds', scope: 'overlay', steps: [...desk('feed'), ['click', '.appbtn'], ['click', '[data-appmenu] .mi', 3], ['wait', '.about-pop']] },
