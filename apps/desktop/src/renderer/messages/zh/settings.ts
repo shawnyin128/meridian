@@ -138,6 +138,7 @@ export const settings = {
         baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
+    tabs: { label: '模型来源', api: 'API', subscription: '订阅' },
     subscriptions: {
       claude: { label: 'Claude 订阅' },
       codex: { label: 'ChatGPT 订阅' },

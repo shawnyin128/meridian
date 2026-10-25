@@ -145,6 +145,7 @@ export const settings = {
         baseUrlPlaceholder: 'https://api.example.com/v1',
       },
     },
+    tabs: { label: 'Model source', api: 'API', subscription: 'Subscription' },
     subscriptions: {
       claude: { label: 'Claude subscription' },
       codex: { label: 'ChatGPT subscription' },

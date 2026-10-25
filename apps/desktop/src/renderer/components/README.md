@@ -154,8 +154,10 @@ Current shared contracts:
     check) and sends no notice. An error that belongs to a pane or card on screen stays with that pane or
     card instead of becoming a notice.
 - `LoadingPlaceholder`: the one loading state, grey blocks in the shape of the result (`rows`, `cards`,
-  `lines`, `sheet`). Data that has not arrived is `null`, and a screen shows this placeholder for it, never
-  an empty state and never a loading sentence.
+  `lines`, `sheet`), or, for one value of a field row, a `ring`: the `RunningRing` in a box as tall as the
+  value it holds (a line of text, a tag or a field), so the row keeps its height when the value arrives. Data
+  that has not arrived is `null`, and a screen shows this placeholder for it, never an empty state and never a
+  loading sentence.
 - `EmptyState`: the ways a list says it is empty. `page` is a centred line with an optional icon for a
   whole screen; `section` is one line of small grey text under a section heading, flush with it and one list
   row high, so tabs that share a slot keep one height; `option` is that line in a list of options, its text
