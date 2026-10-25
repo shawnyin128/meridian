@@ -793,6 +793,7 @@ settings.model.subscription.signIn.subscription state
 settings.model.subscription.signIn.unknown state
 settings.model.subscription.signInCommand label
 settings.model.subscription.signInLabel label
+settings.model.subscription.unsupported state
 settings.model.subscriptions.claude.label label
 settings.model.subscriptions.codex.label label
 settings.model.templates.chooseAria aria
