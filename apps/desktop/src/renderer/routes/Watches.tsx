@@ -71,7 +71,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
       {watches === null
         ? (failed ? null : <LoadingPlaceholder shape="rows" count={2} />)
         : watches.length === 0 && editor === undefined
-        ? <EmptyState variant="section">{m.watches.empty(m.shell.watchKind[type])}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <StructuredList className="wlist">
             {editor === undefined || editor.id !== undefined
@@ -428,7 +428,7 @@ export function WatchSettings() {
                   </div>
                 )
                 : authorMatches.length === 0
-                  ? <EmptyState variant="section">{m.watches.noMatches}</EmptyState>
+                  ? <EmptyState variant="results" />
                   : (
                     <div className="author-matches">
                       {authorMatches.map((candidate) => (
@@ -505,7 +505,7 @@ export function WatchSettings() {
             )
             : (
               <ChoicePicker
-                appearance="field" aria-label={m.watches.projectLabel} placeholder={m.watches.noProjects}
+                appearance="field" aria-label={m.watches.projectLabel} placeholder={projects.length === 0 ? m.common.noResults : m.watches.projectLabel}
                 value={projectId} options={projects.map((item) => item.id)} disabled={projects.length === 0}
                 label={(id) => projects.find((item) => item.id === id)?.name ?? id}
                 onPick={(id) => {
@@ -525,7 +525,7 @@ export function WatchSettings() {
         {suggestions === null || suggesting ? null : (
           <div className="watch-suggestion-results">
             {suggestions.topics.length + suggestions.authors.length === 0
-              ? <EmptyState variant="section">{hadSuggestions ? m.watches.allAdded : m.watches.noneSuggested}</EmptyState>
+              ? <EmptyState variant={hadSuggestions ? 'section' : 'results'} />
               : (
                 <>
                   <div className="ph2">

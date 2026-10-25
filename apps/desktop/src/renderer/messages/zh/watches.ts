@@ -3,7 +3,6 @@ import { formatNumber } from '../../lib/number.js'
 /** Watch settings (topics and authors) screen copy. */
 export const watches = {
   add: (kind: string) => `添加${kind}`,
-  empty: (kind: string) => `还没有${kind}关注`,
   identityUnconfirmed: '未确认',
   paused: '已暂停',
   resume: '恢复',
@@ -14,7 +13,6 @@ export const watches = {
   currentIdentity: (affiliations: string) => `当前身份：${affiliations}`,
   noAffiliation: '机构信息未收录',
   reconfirm: '重新确认',
-  noMatches: '没有找到可确认的作者',
   authorSearchFailed: '搜索作者失败',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
     `${formatNumber('zh', papers)} 篇论文 · ${formatNumber('zh', citations)} 次引用 · h-index ${formatNumber('zh', hIndex)}`,
@@ -28,12 +26,9 @@ export const watches = {
   sourceProject: '从项目生成',
   focusPlaceholder: '研究方向',
   projectLabel: '项目',
-  noProjects: '暂无可用项目',
   suggestAction: '查找建议',
   suggesting: '查找中…',
   suggestionFailed: '生成关注建议失败',
-  allAdded: '建议已全部添加',
-  noneSuggested: '没有找到新的关键词或作者',
   suggestionBasis: (n: number) => `基于 ${formatNumber('zh', n)} 篇相关论文`,
   suggestionStale: '离线 · 上次的建议',
   topicSuggestions: '值得关注的关键词',

@@ -16,7 +16,6 @@ export const chat = {
   expandPaperChat: '展开论文对话',
   collapsePaperChat: '收起论文对话',
   paperChatWidth: '论文对话宽度',
-  empty: '还没有对话',
   askAboutPaper: '向当前论文提问',
   actionDone: '已记入科研记录',
 } satisfies Record<string, unknown>

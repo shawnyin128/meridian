@@ -29,7 +29,6 @@ export const papers = {
   views: { aria: 'Paper library view', table: 'Table', researchMap: 'Research Map' },
   researchMap: {
     limit: (shown: number, total: number) => `${shown} / ${total} ${pluralEn(total, { one: 'paper', other: 'papers' })}`,
-    empty: 'No papers to group yet',
     groupListAria: 'Automatic research groups',
     kind: { project: 'Project connection' },
     paperCount: (count: number) => `${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
@@ -102,7 +101,6 @@ export const papers = {
     changeType: 'Change type',
     rename: 'Rename column',
     deleteColumn: 'Delete column',
-    noOptionsHint: 'No options yet',
     renameOption: 'Rename option',
     deleteOption: 'Delete option',
   },
@@ -149,7 +147,6 @@ export const papers = {
     conclusions: 'Experiment conclusions',
     remarkAndNotes: 'Thoughts and notes',
     viewAll: (count: number) => `All ${count}`,
-    empty: 'No thoughts or notes yet',
   },
   parse: {
     addedFixable: 'Added to library',
@@ -162,7 +159,6 @@ export const papers = {
   understanding: {
     ariaLabel: 'Your notes',
     heading: 'Your notes',
-    empty: 'No thoughts or notes yet',
     goRead: 'Open reader',
     remarkLabel: 'Thoughts',
     notesLabel: 'Notes',

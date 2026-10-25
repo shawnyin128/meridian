@@ -9,7 +9,6 @@ export const ideas = {
   sort: '排序',
   sortUpdated: '按更新时间',
   create: '新建想法',
-  emptyGroup: { open: '还没有未开始的想法', active: '还没有进行中的想法', done: '还没有已完成的想法' },
   byProject: { heading: '各项目的想法', ideas: '想法', active: '进行中', done: '已完成' },
   sourceKind: { chat: '对话', paperReading: '论文阅读' },
   link: {

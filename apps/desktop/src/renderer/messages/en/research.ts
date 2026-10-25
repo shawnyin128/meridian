@@ -21,7 +21,6 @@ export const research = {
     activeNodesMore: (n: number) => `+${n} more`,
     focusWithActiveTasks: (label: string, n: number) =>
       `${label} · ${n} ${pluralEn(n, { one: 'active task', other: 'active tasks' })}`,
-    noRecentRecord: 'No research log entries yet',
     recentHeading: 'Recent research log',
     upcomingHeading: 'Upcoming milestones',
     historyProjects: 'History',
@@ -33,7 +32,6 @@ export const research = {
   list: {
     title: 'Projects',
     create: 'New project',
-    empty: 'No active projects yet',
     sort: 'Sort',
     sortPriority: 'By priority',
     sortMilestone: 'By next milestone',
@@ -48,10 +46,7 @@ export const research = {
     milestoneOn: (date: string) => `Milestone · ${date}`,
     dueToday: 'Today',
     dueInDays: (n: number) => `In ${n} ${pluralEn(n, { one: 'day', other: 'days' })}`,
-    noUpcomingMilestone: 'No upcoming milestone',
-    focusUndefined: 'Not set yet',
     recentProgressLabel: 'Recent progress',
-    noRecords: 'No research updates yet',
     staleAlert: (n: number) => `No progress for ${n} ${pluralEn(n, { one: 'day', other: 'days' })}`,
   },
   chips: {

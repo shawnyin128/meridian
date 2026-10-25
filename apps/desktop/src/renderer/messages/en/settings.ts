@@ -217,7 +217,6 @@ export const settings = {
       name: 'Meridian Plugin',
       latest: (version: string) => `Latest ${version}`,
       checkedAt: (date: string) => `Last checked ${date}`,
-      neverChecked: 'Not checked online yet',
       check: 'Check for updates',
       checking: 'Checking…',
     },
@@ -317,11 +316,9 @@ export const settings = {
   discovery: {
     heading: 'Discovery',
     directionsHeading: 'Research directions',
-    noDirections: 'No research directions yet',
     seeds: (n: number) => `${n} ${pluralEn(n, { one: 'seed paper', other: 'seed papers' })}`,
     refreshing: 'Refreshing…',
     refreshProject: 'Refresh this project',
-    needsArxiv: 'No directions yet',
     core: 'Priority',
     setCoreAction: 'Mark as priority',
     noNewPapers: 'No new papers found',
@@ -333,7 +330,6 @@ export const settings = {
   },
   archived: {
     heading: 'Archived chats',
-    empty: 'No archived chats yet',
     open: 'Open',
     unarchive: 'Unarchive',
     unarchived: 'Unarchived',

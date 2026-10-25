@@ -6,6 +6,8 @@ export const common = {
   save: 'Save',
   saved: 'Saved',
   copied: 'Copied',
+  empty: '—',
+  noResults: 'No results',
   cancel: 'Cancel',
   edit: 'Edit',
   confirm: 'Confirm',

@@ -339,8 +339,8 @@ describe('ReviewQueue', () => {
     expect(outcome('d1').map((part) => part.textContent)).toEqual(['已应用', '10月17日'])
   })
 
-  it('没有排队的提案时说一句', () => {
+  it('没有排队的提案时是一行分节空态，不说一句', () => {
     render(PROPOSALS.filter((p) => p.status !== 'queued'))
-    expect(host.textContent).toContain('还没有待审阅的提案')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('—')
   })
 })

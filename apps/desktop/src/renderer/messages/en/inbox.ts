@@ -18,10 +18,7 @@ export const inbox = {
   discoverySettings: 'Discovery settings',
   watchSettings: 'Watch settings',
   empty: {
-    discoveryNone: 'No new discoveries yet',
-    discoveryNoSeeds: 'No project papers with an arXiv ID yet',
     openProjects: 'Open project list',
-    watch: 'No new papers yet',
   },
   dismissAll: 'Dismiss all',
   actions: {

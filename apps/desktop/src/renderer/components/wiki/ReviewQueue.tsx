@@ -305,7 +305,7 @@ export function ReviewQueue({ proposals, failed, pending, onApply, onDecline, li
       {proposals === null
         ? (failed ? null : <LoadingPlaceholder shape="rows" />)
         : queued.length === 0
-        ? <EmptyState variant="section">{r.empty}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <StructuredList variant="embedded" maxVisibleRows="all" className="review-list">
             {queued.map((p) => {

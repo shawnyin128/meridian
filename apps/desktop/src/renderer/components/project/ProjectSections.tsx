@@ -162,7 +162,7 @@ export function ProjectMemo({ edit, onSave, onOpen }: {
         className="memo" text={edit.text} editing={edit.editing} box={box}
         live={{ onChange: edit.change }}
         onCancel={edit.drop} onSave={save} onOpen={onOpen}
-        empty={<EmptyState variant="section">{m.project.remarkEmpty}</EmptyState>}
+        empty={<EmptyState variant="section" />}
       />
     </>
   )
@@ -265,7 +265,7 @@ export function ProjectRelations({
   ]
   return (
     <>
-      {rows.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
+      {rows.length === 0 ? <EmptyState variant="section" /> : null}
       {rows.map((row) => (
         <div
           className="wkrel" key={row.group}
@@ -384,7 +384,7 @@ export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
             if (picked.length) onAdd(picked)
           }}
         />
-        {attachments.length === 0 ? <EmptyState variant="section">{m.project.attachments.empty}</EmptyState> : null}
+        {attachments.length === 0 ? <EmptyState variant="section" /> : null}
         {attachments.length === 0
           ? null
           : (

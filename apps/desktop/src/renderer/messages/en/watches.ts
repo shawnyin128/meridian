@@ -5,7 +5,6 @@ import { watches as zh } from '../zh/watches.js'
 /** English counterpart of `zh/watches`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const watches = {
   add: (kind: string) => `Add ${kind.charAt(0).toLowerCase()}${kind.slice(1)}`,
-  empty: (kind: string) => `No ${kind.charAt(0).toLowerCase()}${kind.slice(1)} added yet`,
   identityUnconfirmed: 'Unconfirmed',
   paused: 'Paused',
   resume: 'Resume',
@@ -16,7 +15,6 @@ export const watches = {
   currentIdentity: (affiliations: string) => `Current identity: ${affiliations}`,
   noAffiliation: 'No affiliation on record',
   reconfirm: 'Verify again',
-  noMatches: 'No confirmable authors found',
   authorSearchFailed: 'Author search failed',
   candidateInfo: (papers: number, citations: number, hIndex: number) =>
     `${formatNumber('en', papers)} ${pluralEn(papers, { one: 'paper', other: 'papers' })} · ${formatNumber('en', citations)} ${pluralEn(citations, { one: 'citation', other: 'citations' })} · h-index ${formatNumber('en', hIndex)}`,
@@ -30,12 +28,9 @@ export const watches = {
   sourceProject: 'Use a project',
   focusPlaceholder: 'Research direction',
   projectLabel: 'Project',
-  noProjects: 'No projects available',
   suggestAction: 'Find suggestions',
   suggesting: 'Finding…',
   suggestionFailed: 'Watch suggestions failed',
-  allAdded: 'All suggestions added',
-  noneSuggested: 'No new keywords or authors found',
   suggestionBasis: (n: number) => `Based on ${formatNumber('en', n)} relevant ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
   suggestionStale: 'Offline · last suggestions',
   topicSuggestions: 'Keywords worth watching',

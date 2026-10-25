@@ -58,8 +58,8 @@ describe('ProjectPlan', () => {
       host.innerHTML = renderPlan(tab, { tasks: [], milestones: [] })
       return [...host.querySelectorAll('.empty-state')].map((node) => [node.className, node.textContent])
     }
-    expect(empty('task')).toEqual([['empty-state empty-state--section', '还没有任务']])
-    expect(empty('ms')).toEqual([['empty-state empty-state--section', '还没有里程碑']])
+    expect(empty('task')).toEqual([['empty-state empty-state--section', '—']])
+    expect(empty('ms')).toEqual([['empty-state empty-state--section', '—']])
   })
 
   it('任务模式把日期和时间保留为两个独立编辑入口', () => {
@@ -311,17 +311,17 @@ describe('ProjectTaskPanel', () => {
     expect(output).toContain('进行中')
   })
 
-  it('没有备注时显示空状态提示,而不是空白', () => {
+  it('没有备注时是分节空态 —,而不是空白,也不写一句', () => {
     const output = renderTaskPanel({ note: undefined })
-    expect(output).toContain('还没有备注')
+    expect(output).toContain('<div class="empty-state empty-state--section">—</div>')
   })
 
-  it('显示任务挂在哪个科研节点上;还没挂时只写「未关联」', () => {
+  it('显示任务挂在哪个科研节点上;还没挂时是共享的空值 —', () => {
     const linked = renderTaskPanel({}, { id: 'kv.n3', label: '前缀共调度', mode: 'supported' })
     expect(linked).toContain('科研节点')
     expect(linked).toMatch(/<button type="button" class="entity-link entity-link--node"[^>]*><span class="status-dot status-dot--sm status-dot--good"/)
     expect(linked).not.toContain('title=')
-    expect(renderTaskPanel()).toContain('未关联')
+    expect(renderTaskPanel()).toContain('<div class="empty-state empty-state--section">—</div>')
     expect(renderTaskPanel()).not.toContain('agent 做这个任务')
   })
 
@@ -336,7 +336,8 @@ describe('ProjectTaskPanel', () => {
   it('有备注时渲染备注正文', () => {
     const output = renderTaskPanel({ note: '先跑 A/B 两组,再看结论' })
     expect(output).toContain('先跑 A/B 两组')
-    expect(output).not.toContain('还没有备注')
+    const empties = (html: string) => html.split('empty-state--section').length - 1
+    expect(empties(output)).toBe(empties(renderTaskPanel({ note: undefined })) - 1)
   })
 
   it('备注按长文本的同一套约定编辑:编辑的位置换成取消和保存,取消或 Esc 还原不写,保存或 ⌘回车写回', async () => {

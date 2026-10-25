@@ -52,7 +52,7 @@ export function PaperReadingSummary({ paper, onRead, onConclusions }: {
       {held === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
         : remark === '' && entries.length === 0
-        ? <EmptyState variant="section">{m.papers.reading.empty}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <StructuredList variant="embedded">
             {remark === '' ? null : <StructuredRow className="nrow"><span className="nt">{remark}</span></StructuredRow>}

@@ -11,7 +11,6 @@ export const ideas = {
   sort: 'Sort',
   sortUpdated: 'By updated',
   create: 'New idea',
-  emptyGroup: { open: 'No unstarted ideas yet', active: 'No ideas in progress yet', done: 'No finished ideas yet' },
   byProject: { heading: 'Ideas by project', ideas: 'Ideas', active: 'In progress', done: 'Done' },
   sourceKind: { chat: 'Chat', paperReading: 'Paper notes' },
   link: {

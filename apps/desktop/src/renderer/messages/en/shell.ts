@@ -63,7 +63,6 @@ export const shell = {
     placeholder: 'Search everything',
     clear: 'Clear search',
     results: 'Search results',
-    noHits: 'No matches found',
   },
   palette: { title: 'Command palette', placeholder: 'Command', settingsPane: (pane: string) => `Settings · ${pane}` },
 } satisfies typeof zh

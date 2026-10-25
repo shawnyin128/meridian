@@ -11,6 +11,7 @@ import { ChatComposer, draftText, type ChatComposerHandle } from './ChatComposer
 import { BackButton } from '../BackButton.js'
 import { Grip } from '../Grip.js'
 import { EmptyState } from '../EmptyState.js'
+import { CHAT_BUBBLE_PATH, Icon } from '../icons.js'
 import { FadeText } from '../FadeText.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { PageError } from '../PageShell.js'
@@ -142,7 +143,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
         {messages === null
           ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
           : messages.length === 0 && error === null
-          ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
+          ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
           : messages.map((message) => (
             <ChatMessageView key={message.id} message={message} onAct={() => act(message)} />
           ))}

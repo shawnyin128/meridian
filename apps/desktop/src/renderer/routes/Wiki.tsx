@@ -176,9 +176,9 @@ function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   const cap = useRowCap(wrap, comparisonRows, EMBEDDED_LIST_ROW_LIMIT)
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
-      return <EmptyState variant="section">{m.wiki.noDirectPapers}</EmptyState>
+      return <EmptyState variant="section" />
     }
-    if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
+    if (agg.rows.length === 0) return <EmptyState variant="section" />
   }
   return (
     <div className="cmpwrap" ref={wrapFade} data-fade-held="top" style={cap === null ? undefined : { maxHeight: cap }}>
@@ -793,7 +793,7 @@ export function Wiki() {
                 >{m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
                 </SectionHeading>
                 {shownAgg.children.length === 0 && adding !== 'child'
-                  ? <EmptyState variant="section">{m.wiki.noChildren}</EmptyState>
+                  ? <EmptyState variant="section" />
                   : (
                     <div className="wkgrid">
                       {shownAgg.children.map((c) => (
@@ -927,7 +927,7 @@ export function Wiki() {
                 <MarkdownBox
                   text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
                   onType={bodyEdit.change} onOpen={go}
-                  titles={shownAgg.titles} empty={<EmptyState variant="section">{m.wiki.noBody}</EmptyState>}
+                  titles={shownAgg.titles} empty={<EmptyState variant="section" />}
                 />
               </div>
               <div className="wkside" ref={railFade} data-fade-paint="">
@@ -989,7 +989,7 @@ export function Wiki() {
                   text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
                   onType={bodyEdit.change} onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
                   titles={shownPaper.titles}
-                  empty={<EmptyState variant="section">{m.wiki.noInternalizedContent}</EmptyState>}
+                  empty={<EmptyState variant="section" />}
                 />
               </div>
               <div className="wkside" ref={paperRailFade} data-fade-paint="">
@@ -1051,7 +1051,7 @@ export function Wiki() {
                 </div>
                 <SectionHeading variant="rail">{m.wiki.membershipHeading}</SectionHeading>
                 {shownPaper.memberships.length === 0
-                  ? <EmptyState variant="section">{m.wiki.noMembership}</EmptyState>
+                  ? <EmptyState variant="section" />
                   : shownPaper.memberships.map((ms) => (
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">

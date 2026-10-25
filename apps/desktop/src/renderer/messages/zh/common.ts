@@ -3,6 +3,8 @@ export const common = {
   save: '保存',
   saved: '已保存',
   copied: '已复制',
+  empty: '—',
+  noResults: '无结果',
   cancel: '取消',
   edit: '编辑',
   confirm: '确认',

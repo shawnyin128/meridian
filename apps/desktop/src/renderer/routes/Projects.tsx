@@ -187,15 +187,15 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
                 {left === 0 ? m.research.panel.dueToday : m.research.panel.dueInDays(left)}
               </>
             )
-            : m.research.panel.noUpcomingMilestone}
+            : m.common.empty}
         </span>
         <RowActions><DragHandle {...reorder.handle} />{menu}</RowActions>
       </div>
       <div className="project-card-decisions">
         <div className="project-card-decision">
           <span className="project-card-label">{m.project.identity.focusLabel.currentGoal}</span>
-          <FadeText className="project-card-value" label={project.focus || m.research.panel.focusUndefined}>
-            {project.focus || m.research.panel.focusUndefined}
+          <FadeText className="project-card-value" label={project.focus || m.common.empty}>
+            {project.focus || m.common.empty}
           </FadeText>
         </div>
         <div className="project-card-decision">
@@ -222,7 +222,7 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
         <span className="project-card-fact project-card-recent">
           <span className="project-card-label">{m.research.panel.recentProgressLabel}</span>
           {project.lastProgress === undefined
-            ? <FadeText className="project-card-empty">{m.research.panel.noRecords}</FadeText>
+            ? <FadeText className="project-card-empty">{m.common.empty}</FadeText>
             : (
               <>
                 <FadeText>{fmt.date(project.lastProgress)}</FadeText>
@@ -411,7 +411,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
                   onCancel={stopCreating} onCreate={createProject} kept={{ drafts, target: 'new' }}
                 />
               )
-              : g.items.length === 0 ? <EmptyState variant="section">{m.research.list.empty}</EmptyState> : null}
+              : g.items.length === 0 ? <EmptyState variant="section" /> : null}
             {g.status === ACTIVE_PROJECT
               ? g.items.map((p) => (
                 <ProjectPanel

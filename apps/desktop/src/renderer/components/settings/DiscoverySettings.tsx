@@ -66,7 +66,7 @@ export function DiscoverySettings() {
       <PageError error={error} variant="section" />
       <Card flush className="direction-panel">
         {profiles === null && error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null}
-        {profiles?.length === 0 ? <EmptyState variant="section">{m.settings.discovery.noDirections}</EmptyState> : null}
+        {profiles?.length === 0 ? <EmptyState variant="section" /> : null}
         {(profiles ?? []).map((profile) => (
           <section className="direction-project" key={profile.id}>
             <header>
@@ -79,7 +79,7 @@ export function DiscoverySettings() {
               >{m.settings.discovery.refreshProject}</Button>
             </header>
             {profile.intents.length === 0 ? (
-              <EmptyState variant="section">{m.settings.discovery.needsArxiv}</EmptyState>
+              <EmptyState variant="section" />
             ) : profile.intents.map((intent) => (
               <div className={`direction-row${intent.enabled ? '' : ' disabled'}`} key={intent.id}>
                 <div className="direction-main">

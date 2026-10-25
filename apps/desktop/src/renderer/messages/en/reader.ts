@@ -15,9 +15,6 @@ export const reader = {
   page: {
     at: (n: number) => `Page ${n}`,
   },
-  emptyReading: 'No highlights or notes yet',
-  emptyHighlights: 'No highlights yet',
-  emptyNotes: 'No notes yet',
   notes: {
     ariaLabel: 'Reading notes',
     heading: 'Reading notes',

@@ -3,22 +3,22 @@ import { expect, gotoProject, parkPointer, test, type MeridianWindow } from './a
 
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
 
-test('空态只有两档:整屏的带图标居中,分节的是一行灰字', async ({ win }) => {
+test('空态只有两档:整屏的只有图标居中,分节的是一行灰色的 —', async ({ win }) => {
   test.slow()
   // The bin is empty in the fixture library, so it is the page variant.
   await win.locator('[data-desk="trash"]').click()
   const page = shown(win, '.empty-state')
   await expect(page).toHaveClass(/empty-state--page/)
-  await expect(page).toHaveText('还没有移入垃圾桶的内容')
+  await expect(page).toHaveText('')
   await expect(page.locator('svg')).toHaveCount(1)
 
-  // A leaf aggregation page has no children, so that section states it inline without an icon.
+  // A leaf aggregation page has no children, so that section is one line holding the shared empty value.
   await win.locator('[data-desk="wiki"]').click()
   await shown(win, '[data-wk="topics/quantization"]').click()
   await shown(win, '[data-wk="topics/ptq"]').click()
   await shown(win, '[data-wk="topics/ptq-weight-only"]').click()
   const section = shown(win, '.empty-state--section').first()
-  await expect(section).toHaveText('还没有细分')
+  await expect(section).toHaveText('—')
   await expect(section.locator('svg')).toHaveCount(0)
 
   // No screen keeps a hand-rolled empty-state class any more.

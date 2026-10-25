@@ -212,7 +212,7 @@ export function ColumnMenu({ columns, onChange, onRenameOption, onRetype }: {
                 : (
                   <div id={`${optionsId}${c.key}`}>
                     {c.options.length === 0
-                      ? <div className="mi optrow optnone">{m.papers.columnMenu.noOptionsHint}</div>
+                      ? <div className="mi optrow optnone">{m.common.noResults}</div>
                       : c.options.map((o) => (
                         <div key={o} className="mi optrow" data-row-actions="">
                           {renamingOption?.key === c.key && renamingOption.from === o

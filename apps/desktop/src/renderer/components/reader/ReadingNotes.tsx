@@ -155,11 +155,11 @@ export function ReadingNotes({
           />
         ))}
         {mode === 'notes'
-          ? (reading.notes.length === 0 ? <EmptyState variant="section">{m.reader.emptyNotes}</EmptyState> : null)
+          ? (reading.notes.length === 0 ? <EmptyState variant="section" /> : null)
           : mode === 'highlights'
-            ? (reading.highlights.length === 0 ? <EmptyState variant="section">{m.reader.emptyHighlights}</EmptyState> : null)
+            ? (reading.highlights.length === 0 ? <EmptyState variant="section" /> : null)
             : (reading.highlights.length === 0 && reading.notes.length === 0
-              ? <EmptyState variant="section">{m.reader.emptyReading}</EmptyState> : null)}
+              ? <EmptyState variant="section" /> : null)}
       </div>
     </aside>
   )

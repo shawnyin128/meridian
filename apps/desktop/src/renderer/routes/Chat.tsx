@@ -17,6 +17,7 @@ import {
 } from '../components/chat/ChatComposer.js'
 import { FOCUS_KEY } from '../../shared/project-signals.js'
 import { EmptyState } from '../components/EmptyState.js'
+import { CHAT_BUBBLE_PATH, Icon } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
@@ -195,7 +196,7 @@ export function Chat() {
             {messages === null
               ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
               : messages.length === 0
-                ? <div className="mwrap"><EmptyState variant="page">{m.chat.empty}</EmptyState></div>
+                ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
                 : messages.map((msg) => (
                   <ChatMessageView key={msg.id} message={msg} onAct={() => act(msg)} />
                 ))}

@@ -314,7 +314,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                       {projectId === ''
                         ? null
                         : conclusions.length === 0
-                          ? <span className="draft-form-label">{f.noConclusions}</span>
+                          ? <span className="draft-form-label">{m.common.noResults}</span>
                           : (
                             <ChoicePicker
                               appearance="field" aria-label={f.conclusion} placeholder={f.conclusionPick}
@@ -343,7 +343,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
       >{c.heading}
       </SectionHeading>
       {page.claims.length === 0 && addDraft === null
-        ? <EmptyState variant="section">{c.empty}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <StructuredList variant="embedded" maxVisibleRows="all" className="wkclaims">
             {page.claims.map((claim) => (
@@ -453,7 +453,7 @@ export function WikiClaims({ page, pending, links, onApply, arrival, onArrived }
                             <>
                               <DraftLine label={f.other}>
                                 {others.length === 0
-                                  ? <span className="draft-form-label">{f.noOthers}</span>
+                                  ? <span className="draft-form-label">{m.common.noResults}</span>
                                   : (
                                     <ChoicePicker
                                       appearance="field" aria-label={f.other} placeholder={f.other} value={other}

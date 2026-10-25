@@ -192,7 +192,7 @@ export function ProjectConclusionPanel({
           <>
             <SectionHeading variant="rail" count={conclusion.tasks.length}>{c.tasks}</SectionHeading>
             {conclusion.tasks.length === 0
-              ? <EmptyState variant="section">{c.noTasks}</EmptyState>
+              ? <EmptyState variant="section" />
               : (
                 <StructuredList variant="embedded" className="conclusion-chain">
                   {conclusion.tasks.map((task) => (
@@ -212,7 +212,7 @@ export function ProjectConclusionPanel({
               )}
             <SectionHeading variant="rail" count={conclusion.experiments.length}>{c.experiments}</SectionHeading>
             {conclusion.experiments.length === 0
-              ? <EmptyState variant="section">{c.noExperiments}</EmptyState>
+              ? <EmptyState variant="section" />
               : (
                 <StructuredList variant="embedded" className="conclusion-chain">
                   {conclusion.experiments.map((experiment) => (
@@ -228,7 +228,7 @@ export function ProjectConclusionPanel({
 
       <SectionHeading variant="rail">{c.wiki}</SectionHeading>
       {conclusion.wiki.length === 0
-        ? <EmptyState variant="section">{c.notWritten}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <StructuredList variant="embedded" className="conclusion-chain">
             {conclusion.wiki.map((claim) => (

@@ -4,6 +4,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
 import { EmptyState } from '../EmptyState.js'
 import { FadeText } from '../FadeText.js'
+import { IconPapers } from '../icons.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
 import { RatingStars, ReadStatePicker } from '../PaperMetadata.js'
 import { ReadDots } from '../ReadDots.js'
@@ -98,7 +99,7 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
       {loading && rows.length === 0
         ? <LoadingPlaceholder shape="rows" />
         : map.groups.length === 0
-          ? <EmptyState variant="page">{m.papers.researchMap.empty}</EmptyState>
+          ? <EmptyState variant="page" icon={<IconPapers sw={1.4} />} />
           : (
             <div className="research-map-layout">
               <ListColumn className="research-map-index">

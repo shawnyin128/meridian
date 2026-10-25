@@ -1,22 +1,22 @@
 import type { ReactElement, ReactNode } from 'react'
+import { useMessages } from '../messages/useMessages.js'
 import './EmptyState.css'
 
 /**
- * The app-wide "nothing here" surface. `page` fills an otherwise empty screen with a centred icon
- * and one sentence; `section` states the same thing as a single grey line inside a populated page
- * and ignores `icon`. `action` is the one control that ends the emptiness, placed after the sentence.
+ * The app-wide "nothing here" surface, in its minimal form; it never holds a sentence. `section` is
+ * one list-row-high line holding the shared empty value (—) in tertiary ink, under the heading that
+ * names what is empty; `results` is the same line for a search or picker that found nothing, holding
+ * the shared no-result word; `inline` is the empty value standing in a value's place. `page` fills an
+ * empty screen with the screen's glyph `icon` and, when there is one, `action`, the one control that
+ * ends the emptiness.
  */
-export function EmptyState({ variant, icon, action, children }: {
-  variant: 'page' | 'section'
-  icon?: ReactNode
-  action?: ReactNode
-  children: ReactNode
-}): ReactElement {
+export function EmptyState(props:
+  | { variant: 'section' | 'results' | 'inline' }
+  | { variant: 'page'; icon: ReactNode; action?: ReactNode }): ReactElement {
+  const m = useMessages()
+  if (props.variant === 'page') return <div className="empty-state empty-state--page">{props.icon}{props.action}</div>
+  if (props.variant === 'inline') return <span className="empty-state empty-state--inline">{m.common.empty}</span>
   return (
-    <div className={`empty-state empty-state--${variant}`}>
-      {variant === 'page' && icon !== undefined ? icon : null}
-      <span>{children}</span>
-      {action}
-    </div>
+    <div className="empty-state empty-state--section">{props.variant === 'results' ? m.common.noResults : m.common.empty}</div>
   )
 }

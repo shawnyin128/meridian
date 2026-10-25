@@ -73,7 +73,7 @@ describe('项目列表空着时', () => {
     api.projects = []
     await act(async () => root.render(<MessagesProvider><Projects /></MessagesProvider>))
     expect(host.querySelector('.section-heading')?.textContent).toContain('进行中')
-    expect(host.querySelector('.empty-state--section')?.textContent).toBe('还没有进行中的项目')
+    expect(host.querySelector('.empty-state--section')?.textContent).toBe('—')
     expect(host.querySelector('.section-heading .sort-menu')).toBeNull()
     expect(host.querySelector('#projNew')).not.toBeNull()
   })
@@ -120,8 +120,8 @@ describe('项目列表的卡片', () => {
     expect(recent.lastElementChild!.lastElementChild!.classList.contains('source-label')).toBe(true)
   })
 
-  it('还没有推进时写还没有记录', async () => {
-    expect(await recentProgress(summary({}))).toBe('最近推进还没有记录')
+  it('还没有推进时最近推进一格写 —', async () => {
+    expect(await recentProgress(summary({}))).toBe('最近推进—')
   })
 
   it('停滞超过 7 天的项目在卡片头里、名字那一行的后面挂一个警示标签写着几天无推进,卡片底下不再多一行', async () => {

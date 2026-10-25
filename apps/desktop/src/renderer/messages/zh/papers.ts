@@ -27,7 +27,6 @@ export const papers = {
   views: { aria: '论文库视图', table: '列表', researchMap: '研究地图' },
   researchMap: {
     limit: (shown: number, total: number) => `${shown} / ${total} 篇`,
-    empty: '还没有能分组的论文',
     groupListAria: '自动研究分组',
     kind: { project: '项目关联' },
     paperCount: (count: number) => `${count} 篇论文`,
@@ -100,7 +99,6 @@ export const papers = {
     changeType: '改类型',
     rename: '重命名列',
     deleteColumn: '删除列',
-    noOptionsHint: '还没有选项',
     renameOption: '重命名选项',
     deleteOption: '删除选项',
   },
@@ -148,7 +146,6 @@ export const papers = {
     conclusions: '实验结论',
     remarkAndNotes: '随笔与笔记',
     viewAll: (count: number) => `全部 ${count} 条`,
-    empty: '还没有随笔和笔记',
   },
   parse: {
     addedFixable: '已入库',
@@ -161,7 +158,6 @@ export const papers = {
   understanding: {
     ariaLabel: '个人理解',
     heading: '个人理解',
-    empty: '还没有随笔和笔记',
     goRead: '去阅读论文',
     remarkLabel: '随笔',
     notesLabel: '笔记',

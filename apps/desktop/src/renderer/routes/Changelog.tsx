@@ -231,7 +231,7 @@ export function Changelog() {
         </SectionHeading>
         {entries === null
           ? (error === null ? <LoadingPlaceholder shape="rows" /> : null)
-          : fresh.length === 0 ? <EmptyState variant="section">{m.changelog.empty}</EmptyState> : section(fresh)}
+          : fresh.length === 0 ? <EmptyState variant="section" /> : section(fresh)}
 
         {filed.length === 0 ? null : (
           <>

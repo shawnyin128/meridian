@@ -130,12 +130,7 @@ export function Later() {
           ? (error === null ? <LoadingPlaceholder shape="cards" /> : null)
           : groups.length === 0
           ? (
-            <EmptyState
-              variant="page"
-              icon={<Icon sw={1.4}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>}
-            >
-              {m.later.empty}
-            </EmptyState>
+            <EmptyState variant="page" icon={<Icon sw={1.4}><circle cx="12" cy="12" r="9" /><path d="M12 7v5l3 2" /></Icon>} />
           )
           : groups.map((g) => (
             <Fragment key={g.key}>

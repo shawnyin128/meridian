@@ -3,3 +3,4 @@
 .empty-state--page>svg{width:48px;height:48px}
 /* One list row high and flush with the heading above, so tabs that share a slot stay one height when empty. */
 .empty-state--section{display:flex;align-items:center;gap:var(--sp-12);min-height:var(--row-list-h);font-size:var(--fs-sm);color:var(--ter)}
+.empty-state--inline{color:var(--ter)}

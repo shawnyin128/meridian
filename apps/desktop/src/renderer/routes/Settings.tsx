@@ -407,7 +407,7 @@ export function Settings() {
         {chats === null
           ? (archivedError === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
           : archived.length === 0
-          ? <EmptyState variant="section">{m.settings.archived.empty}</EmptyState>
+          ? <EmptyState variant="section" />
           : (
             <StructuredList className="wlist">
               {archived.map((s) => (

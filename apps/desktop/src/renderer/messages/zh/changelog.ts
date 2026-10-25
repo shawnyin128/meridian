@@ -3,7 +3,6 @@ export const changelog = {
   title: '最近变动',
   unarchivedHeading: '未归档',
   archivedHeading: '已归档',
-  empty: '还没有新的变动',
   archiveAll: '全部归档',
   clearArchived: '清空已归档',
   confirmClearArchived: (count: number) => `清空 ${count} 条已归档记录？`,

@@ -89,7 +89,7 @@ export function IdeaRelations({ idea, projects, pages, onChange, onOpenProject, 
         )}
       >{m.project.sections.links}
       </SectionHeading>
-      {visible.length === 0 ? <EmptyState variant="section">{m.project.links.empty}</EmptyState> : null}
+      {visible.length === 0 ? <EmptyState variant="section" /> : null}
       {visible.map((row) => (
         <div className="wkrel idea-relation-row" data-relations={row} key={row} ref={adding === row ? draftRow : undefined}>
           <span className="rl">{r.rows[row]}</span>

@@ -1776,7 +1776,7 @@ test('科研图由 Agent 管理:空图没有 App 侧新增入口', async ({ win 
   await win.locator('.screenslot:not([hidden]) [data-proj="sched"]').click()
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   await main.locator('.segmented-control>button', { hasText: '科研图' }).click()
-  await expect(main.locator('.record-view .empty-state--section')).toHaveText('还没有科研图')
+  await expect(main.locator('.record-view .empty-state--section')).toHaveText('—')
   await expect(main.locator('.section-heading-actions .btn', { hasText: '节点' })).toHaveCount(0)
 })
 

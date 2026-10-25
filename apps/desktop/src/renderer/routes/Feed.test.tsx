@@ -203,13 +203,13 @@ describe('feed rows', () => {
     expect(host.querySelectorAll('.fitem')).toHaveLength(0)
     const empty = host.querySelector('.msgs > .page-toolbar + .empty-state')
     expect([empty?.className, empty?.textContent, empty?.querySelectorAll('svg').length])
-      .toEqual(['empty-state empty-state--page', '还没有动态', 1])
+      .toEqual(['empty-state empty-state--page', '', 1])
     await act(async () => { root.unmount() })
     host.remove()
     vi.unstubAllGlobals()
   })
 
-  it('开始使用清单显示时，它就是这一屏的空态，下面不再写还没有动态', async () => {
+  it('开始使用清单显示时，它就是这一屏的空态，下面不再摆整屏空态', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     feedList.rows = []

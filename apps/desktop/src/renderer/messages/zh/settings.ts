@@ -210,7 +210,6 @@ export const settings = {
       name: 'Meridian Plugin',
       latest: (version: string) => `最新 ${version}`,
       checkedAt: (date: string) => `上次检查 ${date}`,
-      neverChecked: '还没联网检查过',
       check: '检查更新',
       checking: '检查中…',
     },
@@ -310,11 +309,9 @@ export const settings = {
   discovery: {
     heading: '发现',
     directionsHeading: '发现方向',
-    noDirections: '还没有项目方向',
     seeds: (n: number) => `${n} 篇种子`,
     refreshing: '正在刷新…',
     refreshProject: '刷新本项目',
-    needsArxiv: '还没有方向',
     core: '核心',
     setCoreAction: '设为核心',
     noNewPapers: '没有发现新的论文',
@@ -326,7 +323,6 @@ export const settings = {
   },
   archived: {
     heading: '归档的对话',
-    empty: '还没有归档的对话',
     open: '打开',
     unarchive: '取消归档',
     unarchived: '已取消归档',

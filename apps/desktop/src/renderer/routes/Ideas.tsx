@@ -467,16 +467,16 @@ export function Ideas() {
   const card = (idea: ResearchIdea) => <IdeaCard key={idea.id} {...shared(idea)} pageTitles={pageTitles} menu={menuOf(idea)} />
   const row = (idea: ResearchIdea) => <IdeaRow key={idea.id} {...shared(idea)} menu={menuOf(idea)} />
   /** A group's rows, or its placeholder while they load, or its empty state. */
-  const groupRows = (ideas: ResearchIdea[], empty: string) => (rows === null
+  const groupRows = (ideas: ResearchIdea[]) => (rows === null
     ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : null)
     : ideas.length === 0
-      ? <EmptyState variant="section">{empty}</EmptyState>
+      ? <EmptyState variant="section" />
       : <StructuredList variant="embedded" maxVisibleRows="all" className="idea-rows">{ideas.map(row)}</StructuredList>)
   const rowGroups = (
     <>
-      {groupRows(started, m.ideas.emptyGroup.active)}
+      {groupRows(started)}
       <SectionHeading count={done.length}>{m.ideas.groups.done}</SectionHeading>
-      {groupRows(done, m.ideas.emptyGroup.done)}
+      {groupRows(done)}
     </>
   )
   const b = m.ideas.byProject
@@ -519,7 +519,7 @@ export function Ideas() {
             {rows === null ? (
               error === null ? <LoadingPlaceholder shape="cards" /> : null
             ) : open.length === 0
-              ? (draft === null ? <EmptyState variant="section">{m.ideas.emptyGroup.open}</EmptyState> : null)
+              ? (draft === null ? <EmptyState variant="section" /> : null)
               : open.map(card)}
             <SectionHeading count={started.length}>{m.ideas.groups.active}</SectionHeading>
             {/* Loaded rows of both groups lay out on one grid, so their columns line up across the groups. */}

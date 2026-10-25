@@ -351,12 +351,7 @@ export function Inbox() {
                   <path d="M5.4 5.6L2 13v5a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-5l-3.4-7.4A2 2 0 0 0 16.8 4H7.2a2 2 0 0 0-1.8 1.6z" />
                 </Icon>
               )}
-            >
-              {stream === 'discovery'
-                ? (profiles.some((profile) => profile.seedCount > 0)
-                  ? m.inbox.empty.discoveryNone : m.inbox.empty.discoveryNoSeeds)
-                : m.inbox.empty.watch}
-            </EmptyState>
+            />
           )
           : (
             <>

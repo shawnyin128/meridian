@@ -57,7 +57,7 @@ function PaletteBody({ commands, onCommand }: {
             {command.shortcut === undefined ? null : <span className="mi-key">{command.shortcut}</span>}
           </PickOption>
         ))}
-        {shown.length === 0 ? <EmptyState variant="section">{m.shell.search.noHits}</EmptyState> : null}
+        {shown.length === 0 ? <EmptyState variant="results" /> : null}
       </div>
     </>
   )

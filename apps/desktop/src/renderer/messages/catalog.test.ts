@@ -151,21 +151,21 @@ describe('一个对象一个词', () => {
   type Item = keyof typeof WORDS
   const KEYS: Record<Item, string[]> = {
     finding: [
-      'wiki.claims.heading', 'wiki.claims.add', 'wiki.claims.addShort', 'wiki.claims.empty', 'wiki.claims.actionsLabel',
-      'wiki.claims.form.text', 'wiki.claims.form.textPlaceholder', 'wiki.claims.form.basisLabel', 'wiki.claims.form.noOthers',
+      'wiki.claims.heading', 'wiki.claims.add', 'wiki.claims.addShort', 'wiki.claims.actionsLabel',
+      'wiki.claims.form.text', 'wiki.claims.form.textPlaceholder', 'wiki.claims.form.basisLabel',
       'wiki.claims.form.outcomes.split', 'wiki.claims.form.splitText', 'wiki.claims.proposals.add', 'wiki.claims.proposals.revise',
       'wiki.claims.proposals.conflict', 'wiki.claims.proposals.resolve', 'wiki.claims.proposals.retract', 'wiki.queue.kinds.addClaim',
       'wiki.queue.kinds.reviseClaim', 'wiki.queue.kinds.retractClaim', 'wiki.queue.outcomes.revised', 'wiki.queue.outcomes.split',
       'wiki.queue.outcomes.retracted', 'project.conclusions.text', 'chat.conflictTitle', 'chat.conflictQuestion',
     ],
     experimentConclusion: [
-      'project.recordModes.conclusions', 'project.conclusions.heading', 'project.conclusions.empty', 'project.conclusions.verified',
+      'project.recordModes.conclusions', 'project.conclusions.heading', 'project.conclusions.verified',
       'project.signals.kind.conflict', 'project.signals.reason.conflictCount', 'project.signals.pulse.conflict',
-      'wiki.claims.form.conclusion', 'wiki.claims.form.conclusionPick', 'wiki.claims.form.noConclusions', 'wiki.queue.unverified',
+      'wiki.claims.form.conclusion', 'wiki.claims.form.conclusionPick', 'wiki.queue.unverified',
       'wiki.queue.grounds.experiment', 'wiki.paperCardFooter', 'papers.reading.conclusions',
     ],
     keyword: [
-      'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.noneSuggested', 'watches.topicSuggestions', 'watches.addAllTopics',
+      'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.topicSuggestions', 'watches.addAllTopics',
     ],
     area: [
       'project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea', 'project.identity.addArea',
@@ -174,7 +174,7 @@ describe('一个对象一个词', () => {
     ],
     toRead: ['papers.readState.later'],
     readLater: [
-      'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.empty', 'later.removed', 'inbox.actions.readLater',
+      'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.removed', 'inbox.actions.readLater',
       'inbox.notices.queued', 'inbox.notices.alreadyQueued',
     ],
     topic: [
@@ -277,7 +277,7 @@ describe('提示、标签和占位只说结果', () => {
   // one clause, with no explanation after it.
   const results = (m: typeof zh) => [
     m.changelog.undoneNote, m.chat.ideaSavedNote, m.inbox.notices.duplicateToast, m.inbox.notices.remembered,
-    m.papers.parse.addedFixable, m.papers.notices.remarkSaved, m.papers.columnMenu.noOptionsHint,
+    m.papers.parse.addedFixable, m.papers.notices.remarkSaved,
     m.research.list.createdNote, m.research.list.createdFeedNote('Draft trees'), m.settings.archived.unarchived,
     m.watches.notices.added, m.watches.notices.updated, m.watches.notices.resumed, m.watches.notices.pausedNote,
     m.watches.notices.removed, m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,

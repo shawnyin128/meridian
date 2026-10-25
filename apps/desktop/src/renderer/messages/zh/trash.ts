@@ -1,7 +1,6 @@
 /** Trash screen copy. */
 export const trash = {
   title: '垃圾桶',
-  empty: '还没有移入垃圾桶的内容',
   kinds: {
     inbox: '论文推送', later: '稍后阅读', paper: '论文', project: '项目', idea: '想法', chat: '对话', attachment: '附件',
   },

@@ -70,7 +70,7 @@ export function ProjectBlockerView({ blocker, variant = 'detail', className = ''
       ? null
       : (
         <span className={`project-control-value detail empty ${className}`.trim()}>
-          {m.project.control.noBlocker}
+          {m.common.empty}
         </span>
       )
   }

@@ -116,12 +116,12 @@ describe('Inbox', () => {
     vi.unstubAllGlobals()
   })
 
-  it('全部项目的发现为空、项目里还没有带 arXiv 编号的论文时，空状态只写状态，带一个打开项目列表的操作', async () => {
+  it('全部项目的发现为空、项目里还没有带 arXiv 编号的论文时，整屏空态只有论文推送的图标和打开项目列表这一个操作，不写字', async () => {
     api.mode = 'discovery'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const empty = host.querySelector('.empty-state')!
-    expect(empty.querySelector('span')?.textContent).toBe('还没有带 arXiv 编号的项目论文')
+    expect([empty.querySelector('svg') !== null, empty.textContent]).toEqual([true, '打开项目列表'])
     const action = empty.querySelector<HTMLButtonElement>('button')!
     expect(action.textContent).toBe('打开项目列表')
     act(() => action.click())

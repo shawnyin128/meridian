@@ -17,7 +17,6 @@ export const research = {
     /** Suffix after the first in-progress node's label when several nodes are active at once. */
     activeNodesMore: (n: number) => `等 ${n} 个`,
     focusWithActiveTasks: (label: string, n: number) => `${label} · ${n} 条进行中任务`,
-    noRecentRecord: '暂无科研记录',
     recentHeading: '最近科研记录',
     upcomingHeading: '接下来的里程碑',
     historyProjects: '历史项目',
@@ -29,7 +28,6 @@ export const research = {
   list: {
     title: '项目',
     create: '新建项目',
-    empty: '还没有进行中的项目',
     sort: '排序',
     sortPriority: '按优先级',
     sortMilestone: '按下一个里程碑',
@@ -44,10 +42,7 @@ export const research = {
     milestoneOn: (date: string) => `里程碑 ${date}`,
     dueToday: '今天',
     dueInDays: (n: number) => `${n} 天后`,
-    noUpcomingMilestone: '无后续里程碑',
-    focusUndefined: '待定义',
     recentProgressLabel: '最近推进',
-    noRecords: '还没有记录',
     staleAlert: (n: number) => `已 ${n} 天无推进`,
   },
   chips: {

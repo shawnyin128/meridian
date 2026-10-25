@@ -201,7 +201,7 @@ function ProjectProgress({ rows, onOpen }: {
             : active
               ? m.research.overview.focusWithActiveTasks(m.project.identity.focusLabel[FOCUS_KEY[project.status]], activeCount)
               : m.project.identity.focusLabel[FOCUS_KEY[project.status]]
-          const when = latest ? fmt.date(latest.date) : '—'
+          const when = latest ? fmt.date(latest.date) : m.common.empty
           return (
             <StructuredRow
               className="ovlist-row progress ovpulse-row" data-proj={project.id}
@@ -216,9 +216,7 @@ function ProjectProgress({ rows, onOpen }: {
                 {latest
                   ? <EventText className="ovpulse-latest" text={latest.text} origin={latest.origin} />
                   : (
-                    <FadeText className="ovpulse-title" label={m.research.overview.noRecentRecord}>
-                      {m.research.overview.noRecentRecord}
-                    </FadeText>
+                    <FadeText className="ovpulse-title" label={m.common.empty}>{m.common.empty}</FadeText>
                   )}
                 <FadeText className="ovpulse-sub" label={when}>{when}</FadeText>
               </span>

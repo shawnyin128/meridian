@@ -4,7 +4,6 @@ import { trash as zh } from '../zh/trash.js'
 /** English counterpart of `zh/trash`. `satisfies` makes a missing, extra or re-parameterised key a compile error. */
 export const trash = {
   title: 'Trash',
-  empty: 'No deleted items yet',
   kinds: {
     inbox: 'Inmail', later: 'Read Later', paper: 'Papers', project: 'Projects', idea: 'Ideas', chat: 'Chats',
     attachment: 'Attachments',

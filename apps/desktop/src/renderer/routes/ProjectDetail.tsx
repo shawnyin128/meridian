@@ -259,7 +259,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
       {ideas === null
         ? (error === null ? <LoadingPlaceholder shape="rows" count={2} /> : <PageError variant="section" error={error} />)
         : shown === 0 && draft === null
-        ? <EmptyState variant="section">{m.project.noLinkedIdeas}</EmptyState>
+        ? <EmptyState variant="section" />
         : (
           <StructuredList className="project-ideas" variant="embedded">
             {[...carried].sort(newestFirst).map((idea) => row(idea, null))}
@@ -929,7 +929,7 @@ export function ProjectDetail({
               }}
               tabs={[
                 {
-                  value: 'tl', label: m.project.recordModes.activity, empty: m.project.graph.noRecords,
+                  value: 'tl', label: m.project.recordModes.activity,
                   content: sortedRecords.length === 0 ? null : (
                     <ProjectEventList withNode className="evlist">
                       {sortedRecords.map((ev, index) => {
@@ -952,7 +952,7 @@ export function ProjectDetail({
                   ),
                 },
                 {
-                  value: 'concl', label: m.project.recordModes.conclusions, empty: m.project.conclusions.empty,
+                  value: 'concl', label: m.project.recordModes.conclusions,
                   content: conclusions.length === 0 ? null : (
                     <ProjectEventList withNode className="evlist">
                       {conclusions.map((item) => (
@@ -971,7 +971,7 @@ export function ProjectDetail({
                   ),
                 },
                 {
-                  value: 'graph', label: m.project.sections.graph, empty: m.project.graph.empty,
+                  value: 'graph', label: m.project.sections.graph,
                   content: displayedGraph.nodes.length === 0 ? null : (
                     <ResearchGraph
                       graph={displayedGraph}

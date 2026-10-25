@@ -406,7 +406,7 @@ describe('PaperChat', () => {
       held = { 'chat-paper-2': [] }
       api.revision = 1
       await showPaper(PAPER)
-      expect(shown(host)).toEqual([null, '还没有对话'])
+      expect([shown(host), host.querySelector('.paper-chat .msgs .empty-state--page svg') !== null]).toEqual([[null, ''], true])
 
       held = { 'chat-paper-1': asked }
       api.revision = 2
@@ -449,10 +449,10 @@ describe('PaperChat', () => {
     expect(save.previousElementSibling).toBeNull()
   })
 
-  it('空对话的提示和输入框一样留在对话栏的左右边距里', async () => {
+  it('空对话的空态只有对话的图标，和输入框一样留在对话栏的左右边距里', async () => {
     const host = await mountChat()
     const hint = host.querySelector('.msgs .empty-state')!
-    expect(hint.textContent).toBe('还没有对话')
+    expect([hint.textContent, hint.querySelector('svg') !== null]).toEqual(['', true])
     expect(hint.parentElement!.className).toBe(host.querySelector('.composer > div')!.className)
   })
 

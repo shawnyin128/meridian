@@ -106,7 +106,7 @@ export function CellPicker({ column, values, onCommit, onClose, keep }: {
       content={(
         <>
           {hits.length === 0 && !isNew
-            ? <div className="rh optnone">{m.papers.columnMenu.noOptionsHint}</div>
+            ? <div className="rh optnone">{m.common.noResults}</div>
             : null}
           {hits.map((o, i) => (
             <PickOption keys={keys} index={i} className="opt" key={o} onClick={() => onCommit(o, false)}>

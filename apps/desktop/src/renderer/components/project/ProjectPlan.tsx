@@ -287,7 +287,7 @@ export function ProjectTaskPanel({
       <MarkdownBox
         className="task-note" text={note.text} editing={note.editing} box={box}
         onCancel={note.drop} onSave={save} onType={note.change}
-        empty={<EmptyState variant="section">{m.project.plan.noteEmpty}</EmptyState>}
+        empty={<EmptyState variant="section" />}
       />
     </>
   )
@@ -469,7 +469,7 @@ export function ProjectPlan({
         )}
         tabs={[
           {
-            value: 'task', label: m.project.plan.taskMode, empty: m.project.plan.noTasks,
+            value: 'task', label: m.project.plan.taskMode,
             content: project.tasks.length === 0 && creating?.kind !== 'task' ? null : (
               <StructuredList id="taskList" variant="embedded">
                 {creating?.kind === 'task'
@@ -514,7 +514,7 @@ export function ProjectPlan({
             ),
           },
           {
-            value: 'ms', label: m.project.plan.milestoneMode, empty: m.project.plan.noMilestones,
+            value: 'ms', label: m.project.plan.milestoneMode,
             content: project.milestones.length === 0 && creating?.kind !== 'ms' ? null : (
               <StructuredList id="msList" variant="embedded">
                 {activeMilestones.map((milestone) => (

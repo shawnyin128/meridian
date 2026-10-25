@@ -413,7 +413,7 @@ describe('idea and graph association', () => {
     )))
     const headings = [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
     expect(headings.slice(1)).toEqual(['任务 · 0', '关联想法 · 0'])
-    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['还没有任务', '还没有关联想法'])
+    expect([...host.querySelectorAll('.empty-state')].map((node) => node.textContent)).toEqual(['—', '—'])
     act(() => root.unmount())
   })
 

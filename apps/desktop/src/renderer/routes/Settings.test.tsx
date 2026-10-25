@@ -508,7 +508,7 @@ describe('Settings', () => {
     const pluginRow = dialog.querySelector('[data-plugin-version="0.0.1"]')!
     expect(pluginRow.querySelector('.section-heading--group')?.textContent).toBe('Meridian Plugin')
     expect(pluginRow.querySelector('.extension-state')?.textContent).toBe('最新 0.0.1')
-    expect(pluginRow.querySelector('p')?.textContent).toContain('还没联网检查过')
+    expect(pluginRow.querySelector('p')?.textContent).toBe('—')
     api.pluginVersion.mockResolvedValueOnce({ version: '0.0.2', checkedAt: '2026-09-22T08:00:00.000Z' })
     await act(async () => {
       pluginRow.querySelector<HTMLButtonElement>('button')!.click()

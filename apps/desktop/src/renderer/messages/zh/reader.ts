@@ -13,9 +13,6 @@ export const reader = {
   page: {
     at: (n: number) => `第 ${n} 页`,
   },
-  emptyReading: '还没有高亮和笔记',
-  emptyHighlights: '还没有高亮',
-  emptyNotes: '还没有笔记',
   notes: {
     ariaLabel: '阅读笔记',
     heading: '阅读笔记',

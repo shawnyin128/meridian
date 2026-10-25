@@ -18,7 +18,6 @@ export const chat = {
   expandPaperChat: 'Expand the paper chat',
   collapsePaperChat: 'Collapse the paper chat',
   paperChatWidth: 'Paper chat width',
-  empty: 'No conversation yet',
   askAboutPaper: 'Ask about this paper',
   actionDone: 'Added to the research log',
 } satisfies typeof zh

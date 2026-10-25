@@ -337,7 +337,8 @@ describe('project idea panel', () => {
     const unlinked = mount(<ProjectIdeaPanel idea={idea} graph={graph} workspaceManaged {...on} />)
     expect(unlinked.headingActions('科研节点')).toEqual(taskUnlinked)
     expect(taskUnlinked).toEqual([['关联节点']])
-    expect(unlinked.host.textContent).toContain('未关联')
+    const nodeHeading = [...unlinked.host.querySelectorAll('.section-heading')].find((h) => h.textContent?.startsWith('科研节点'))!
+    expect(nodeHeading.nextElementSibling?.matches('.empty-state--section') && nodeHeading.nextElementSibling.textContent).toBe('—')
     const items = unlinked.pick('关联节点')
     expect(items.map((item) => item.textContent)).toEqual(['动态预算探针'])
     act(() => items[0]!.click())
@@ -357,7 +358,7 @@ describe('project idea panel', () => {
     const heading = [...panel.host.querySelectorAll('.section-heading')].find((h) => h.textContent?.startsWith('科研节点'))!
     const draft = panel.host.querySelector<HTMLElement>('.draft-form')!
     expect(heading.nextElementSibling!.contains(draft)).toBe(true)
-    expect(panel.host.textContent).not.toContain('未关联')
+    expect(heading.nextElementSibling!.querySelector('.empty-state')).toBeNull()
     const label = draft.querySelector('input')!
     expect([label.value, document.activeElement]).toEqual(['用动态预算控制校准成本', label])
     expect(on.onCreateNode).not.toHaveBeenCalled()
