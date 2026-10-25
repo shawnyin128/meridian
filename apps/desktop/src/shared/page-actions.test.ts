@@ -114,7 +114,9 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
   IdeaRow: { menu: 'row actions' },
   ProjectPanel: { menu: 'row actions' },
   ProjectRow: { menu: 'row actions' },
-  Table: { head: 'table header' },
+  Table: { actions: 'table header' },
+  TableRow: { actions: 'row actions' },
+  Comparison: { head: 'table header' },
   TimelineBoard: { headerAction: 'timeline toolbar' },
   ModalDialog: { actions: 'dialog actions' },
   NavSection: { action: 'sidebar heading' },
@@ -124,7 +126,7 @@ const SLOT_PROPS: Record<string, Record<string, Slot>> = {
 /** Elements whose children sit in one slot: components by name, plain elements by a class. */
 const SLOT_CHILDREN: Record<string, Slot> = {
   PageToolbar: 'page toolbar', RowActions: 'row actions', Tag: 'chip', tagchip: 'chip', 'pd-h': 'panel head',
-  'th-add': 'table header', ServiceFoot: 'card foot', 'selection-tools-row': 'selection toolbar',
+  ServiceFoot: 'card foot', 'selection-tools-row': 'selection toolbar',
 }
 
 /** Components whose whole body is one slot wherever they are placed. */

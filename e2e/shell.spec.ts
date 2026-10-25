@@ -188,7 +188,7 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   await expect.poll(titles).not.toEqual(byYear)
 
   // The grip's center lies on the border with the next header cell; 2px inward lands on the grip itself.
-  const grip = (await win.locator('.ptable thead th[data-k="title"] .thgrip').boundingBox())!
+  const grip = (await win.locator('.ptable thead th[data-k="title"] .table-grip').boundingBox())!
   const y = grip.y + grip.height / 2
   const titleColumn = win.locator('col[data-cw="t"]')
   const width = () => titleColumn.evaluate((c) => (c as HTMLElement).style.width)

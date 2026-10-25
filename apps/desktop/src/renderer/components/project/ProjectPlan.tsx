@@ -37,7 +37,7 @@ import type { Catalog } from '../../messages/catalog.js'
 import { AgentLabel } from '../SourceLabel.js'
 import { TagButton, tagClass } from '../Tag.js'
 import { NodeAssignment } from './NodeAssignment.js'
-import { PRIORITY_TONE, ProjectPriorityTag } from './ProjectIdentity.js'
+import { PRIORITY_STATE, ProjectPriorityTag } from './ProjectIdentity.js'
 import { FadeText } from '../FadeText.js'
 import './ProjectPlan.css'
 
@@ -143,7 +143,7 @@ function TaskCreateRow({ row, draft, onDraft, triggers, onSave, onCancel }: {
         )
         : null}
       <TagButton
-        tone={PRIORITY_TONE[priority]}
+        state={PRIORITY_STATE[priority]}
         onClick={() => patch({ priority: NEXT_PRIORITY[priority] })}
       >
         {priority.toUpperCase()}
@@ -328,7 +328,7 @@ function TaskRow({ projectId, task, selected, reorder, onSave, onDelete, onOpen 
         <TaskScheduleField mode="date" task={task} onSave={onSave} className="task-date-part" stopRowActivation />
         <TaskScheduleField mode="time" task={task} onSave={onSave} className="task-clock-part" stopRowActivation />
         <PriorityPicker
-          value={task.priority} className={tagClass(PRIORITY_TONE[task.priority], 'label', 'plan-priority')}
+          value={task.priority} className={tagClass(PRIORITY_STATE[task.priority], 'label', 'plan-priority')}
           stopRowActivation
           onPick={(priority) => { void onSave({ priority }) }}
         >{task.priority.toUpperCase()}</PriorityPicker>

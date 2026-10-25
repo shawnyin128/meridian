@@ -26,7 +26,7 @@ export function ServiceStatus({
     <SectionHeading
       level="group" meta={description}
       actions={(
-        <Tag tone={configured ? 'good' : 'neutral'} className="service-status-pill">
+        <Tag state={configured ? 'done' : undefined} className="service-status-pill">
           {configured ? configuredLabel : notConfiguredLabel}
         </Tag>
       )}

@@ -242,7 +242,7 @@ export function ProjectRelations({
     const before = dropAt !== null && dropAt.row === row.group && dropAt.index === at
     const after = dropAt !== null && dropAt.row === row.group && dropAt.index === at + 1
       && at === rowChipIds(row).length - 1
-    return tagClass('neutral', 'chip', `tagchip${dragging?.id === id ? ' dragging' : ''}${before ? ' drop-before' : ''}${after ? ' drop-after' : ''}`)
+    return tagClass(undefined, 'chip', `tagchip${dragging?.id === id ? ' dragging' : ''}${before ? ' drop-before' : ''}${after ? ' drop-after' : ''}`)
   }
   const groupLabel = (group: string) => (group === PROJECT_PAPER_GROUP
     ? m.project.sections.papers

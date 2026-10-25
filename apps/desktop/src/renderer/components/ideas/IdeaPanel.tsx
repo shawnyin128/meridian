@@ -102,7 +102,7 @@ export function IdeaPanel({
       ><FadeText className="node-document-title" label={idea.title}>{idea.title}</FadeText>
       </SectionHeading>
       <div className="idea-panel-meta">
-        <Tag tone="accent">{m.project.idea.kind}</Tag>
+        <Tag>{m.project.idea.kind}</Tag>
         {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
         <span className="idea-panel-dates">
           {m.common.createdOn(fmt.date(idea.created))}

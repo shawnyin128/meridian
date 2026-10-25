@@ -94,6 +94,13 @@ Current shared contracts:
   scrolls inside itself (`rows`: five by default when embedded, `all`, or `fill` for the rest of its
   container's height), keeping its scrollbar's room. A `nested` list in a card's body or a message box
   starts its rows at that content's edge; a `flush` one lies in a surface that clips at its edges.
+- `Table`: the one table, the paper table's, the Wiki comparison's and the ideas by project's. It owns the
+  header, the cells, sorting, column resizing, the sticky header, first column and actions column with their
+  fades, the row hover and selected looks, and cells that fade where they are cut off and show whole on hover
+  or fold their chips behind +N. `rows` is `fill` or `capped` at five rows; `actions` is the header cell of the
+  actions column (add a column, the column settings) and each `TableRow` puts its own actions in it; `draft` is
+  a `TableDraftHead` for a column being created. Screens render no raw `<table>`:
+  `scripts/check-screen-elements.test.mjs` checks it.
 - `NavRow`: the one row of a navigation list, the sidebar's, the Settings categories' and the theme
   editor's modules, at one height: a glyph slot, the text, and a count or a state at its end. It is a
   button, or, when it holds controls of its own or a fold caret, a div whose label is the button; a row that
@@ -121,6 +128,11 @@ Current shared contracts:
   stop and arrow keys. An on chip takes the one selected look. A choice among many values is a menu picker, not a segment per value.
 - `Swatches`: the one row of colour circles that picks a colour, the theme editor's presets and the reader's
   highlight colours. A picked circle wears the neutral picked ring, never the accent.
+- `ZoomControl`: the one zoom control of a view that zooms, the reader's pages and the research graph:
+  zoom out, the zoom in percent, which resets it, and zoom in, floating at the view's `bottom` or in its
+  `corner`. A step is `zoomStep`, 20% to a round percentage; the wheel stays `hooks/useWheelZoom`.
+- `StatTile`: a figure with its label under it on a card, the Overview's counts; `state` `error` colours
+  only the figure's text.
 - `Switch`: a binary setting that takes effect as soon as it flips. Its name stays the same in both states;
   a button whose label flips between two actions is not used for a setting.
 - `Notice`: the app's one notice. AppShell places it on the canvas and screens show it through
@@ -144,8 +156,8 @@ Current shared contracts:
   recent progress, upcoming milestones, backups, a node's branches, records and document) is hidden while it
   has nothing to show. A control that orders or groups a list is hidden while the list is empty; adding,
   filtering and settings stay.
-- `Tag`: every tag, chip and status pill. `tone` picks the fill and text colour (`neutral`, `accent`, `good`,
-  `warn`, `bad`, `info`, `paper`, `wiki`, and `ghost` for the slot that adds a tag to a row) and `shape` the
+- `Tag`: every tag, chip and status pill, on the one neutral chip. Only a `state` colours its text, `error`,
+  `warning`, `done`, `p0` or `p1`; a kind, source, name or any other word is neutral. `shape` picks the
   box (`label` for a status, kind, priority or source word; `chip` for a name, topic, date or value).
   `TagButton` is the clickable tag and `tagClass` gives a trigger another component renders the same classes.
   A tag keeps the width of its text: the text beside it gives way first, and when its row still has no

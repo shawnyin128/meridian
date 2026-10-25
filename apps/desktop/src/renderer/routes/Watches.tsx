@@ -97,7 +97,7 @@ function WatchGroup({ type, watches, failed, add, editor, onOpen, onEdit, onSetA
                     : undefined}
                   tags={(
                     <>
-                      {w.type === 'author' && w.identity === undefined ? <Tag tone="warn">{m.watches.identityUnconfirmed}</Tag> : null}
+                      {w.type === 'author' && w.identity === undefined ? <Tag state="warning">{m.watches.identityUnconfirmed}</Tag> : null}
                       {w.active ? null : <Tag className="watch-paused">{m.watches.paused}</Tag>}
                     </>
                   )}
@@ -537,7 +537,7 @@ export function WatchSettings() {
                 <GroupedList>
                   <div className="ph2">
                     {m.watches.suggestionBasis(suggestions.paperCount)}
-                    {suggestions.stale === true ? <Tag tone="warn">{m.watches.suggestionStale}</Tag> : null}
+                    {suggestions.stale === true ? <Tag state="warning">{m.watches.suggestionStale}</Tag> : null}
                   </div>
                   {suggestions.topics.length === 0 ? null : (
                     <Group

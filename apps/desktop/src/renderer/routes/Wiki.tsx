@@ -33,7 +33,6 @@ import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
-import { useRowCap } from '../hooks/useRowCap.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -50,8 +49,9 @@ import { SourceAnchor } from '../components/SourceAnchor.js'
 import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
-import { Item, ItemOpen, RowActions } from '../components/Item.js'
-import { EMBEDDED_LIST_ROW_LIMIT, List } from '../components/List.js'
+import { Item, ItemOpen } from '../components/Item.js'
+import { List } from '../components/List.js'
+import { Table, TableCell, TableRow, type TableColumn } from '../components/Table.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
 import { land } from '../hooks/useArrival.js'
@@ -93,7 +93,7 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
   return (
     <Item
       density="card" className="wkcard" data-wk={card.id} onActivate={onOpen}
-      leading={<Tag tone="wiki" className="wkind">{card.kindLabel}</Tag>}
+      leading={<Tag className="wkind">{card.kindLabel}</Tag>}
       title={<ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>}
       tags={card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
       actions={onRemove === undefined
@@ -128,7 +128,7 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
   return (
     <Item
       density="card" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}
-      leading={<Tag tone="paper" className="wkind">{m.wiki.paperKind}</Tag>}
+      leading={<Tag className="wkind">{m.wiki.paperKind}</Tag>}
       title={(
         <Tooltip label={plainTitle(paper.title)} whenClipped>
           <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>
@@ -146,117 +146,102 @@ function Cell({ cell, onAnchor }: { cell: WikiCell; onAnchor: (page: number) => 
   return <>{cell.value}<SourceAnchor page={cell.page} quote={cell.quote} separator=" " onOpen={() => onAnchor(cell.page)} /></>
 }
 
-/** The body rows of the comparison table in `box`, in document order. */
-const comparisonRows = (box: HTMLElement) => [...box.querySelectorAll<HTMLElement>('tbody tr')]
+/** The width the comparison's paper column and each of its other columns start at, in px. */
+const PAPER_WIDTH = 240
+const VALUE_WIDTH = 180
 
 /**
  * The paper comparison: rows are member papers, columns come from the aggregation's columns, empty
  * cells show a dash, and derived columns show chips. Every header cell has a body cell under it in
  * every row. An inner node with no columns and no rows takes no papers directly. Like an embedded
- * list, it shows its header and first five rows as rendered, and the rest scroll inside it.
+ * list, it shows its header and first five rows, and the rest scroll inside it.
  */
-function Table({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
+function Comparison({ agg, onOpen, onAnchor, onRemove, pending, adding, head }: {
   agg: WikiAggregation
   onOpen: (id: string) => void
   /** Opens the source of the paper page `paper` at `page`. */
   onAnchor: (paper: string, page: number) => void
-  onRemove?: (paperId: string) => void
+  onRemove: (paperId: string) => void
   pending?: boolean
   /** The placeholder row for adding a paper: `row` goes on its `<tr>`, `input` sits in its first cell. */
   adding?: { row: RefObject<HTMLTableRowElement | null>; input: ReactNode } | undefined
   /**
-   * The cells at the end of the header row: `controls` holds the add-column + and the column-settings
-   * gear; `newColumn` is the placeholder header cell for a new column, null while it is closed. While
-   * it is open, every body row leaves an empty cell in the same position.
+   * The header's ends: `controls` holds the add-column + and the column-settings gear; `newColumn`
+   * is the placeholder header cell for a new column, null while it is closed. While it is open, every
+   * body row leaves an empty cell in the same position.
    */
   head?: { controls: ReactNode; newColumn: ReactNode } | undefined
 }) {
   const m = useMessages()
-  const wrap = useRef<HTMLDivElement | null>(null)
-  const wrapFade = useScrollFade('both', wrap)
-  const cap = useRowCap(wrap, comparisonRows, EMBEDDED_LIST_ROW_LIMIT)
   if (adding === undefined) {
     if (agg.columns.length === 0 && agg.rows.length === 0) {
       return <EmptyState variant="section">{m.wiki.noDirectPapers}</EmptyState>
     }
     if (agg.rows.length === 0) return <EmptyState variant="section">{m.wiki.noPapers}</EmptyState>
   }
+  // Keys by kind, so a column's key never meets the paper column's or a derived column's.
+  const columns: TableColumn[] = [
+    { key: 'paper', label: m.wiki.paperKind, width: PAPER_WIDTH },
+    ...agg.columns.map((c) => ({ key: `column:${c.key}`, label: c.label, width: VALUE_WIDTH })),
+    ...agg.derivedColumns.map((d) => ({
+      key: `derived:${d.key}`, name: d.label, width: VALUE_WIDTH,
+      label: <span className="cmp-derived">{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></span>,
+    })),
+  ]
   return (
-    <div className="cmpwrap" ref={wrapFade} data-fade-held="top" style={cap === null ? undefined : { maxHeight: cap }}>
-      <table className="cmp">
-        <thead>
-          <tr data-row-actions="">
-            <th data-stuck-fade="top">{m.wiki.paperKind}</th>
-            {agg.columns.map((c) => <th key={c.key} data-stuck-fade="top">{c.label}</th>)}
-            {agg.derivedColumns.map((d) => (
-              <th className="dv" key={d.key} data-stuck-fade="top">{d.label}<Tag className="wkind">{m.wiki.autoColumn}</Tag></th>
-            ))}
-            {head?.newColumn}
-            {onRemove === undefined ? null : <th className="rx" data-stuck-fade="top" />}
-            {head === undefined ? null : <th className="th-add" data-stuck-fade="top"><RowActions>{head.controls}</RowActions></th>}
-          </tr>
-        </thead>
-        <tbody>
-          {agg.rows.map((row) => (
-            <tr key={row.paper.id} data-row-actions="">
-              <td className="rh">
-                <EntityLink
-                  kind="paper" label={<PaperText text={row.paper.title} />} data-wk={row.paper.id}
-                  title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
-                  onOpen={() => onOpen(row.paper.id)}
-                />
-              </td>
-              {agg.columns.map((c) => {
-                const cell = row.cells[c.key]
-                return cell === undefined
-                  ? <td className="na" key={c.key}>—</td>
-                  : <td key={c.key}><Cell cell={cell} onAnchor={(page) => onAnchor(row.paper.id, page)} /></td>
-              })}
-              {agg.derivedColumns.map((d) => {
-                const links = row.derived[d.key] ?? []
-                return (
-                  <td className="dv" key={d.key}>
-                    {links.length === 0 ? '—' : links.map((l) => (
-                      <Tooltip key={l.id} label={l.fullTitle}>
-                        <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => onOpen(l.id)}>
-                          {l.title}
-                        </TagButton>
-                      </Tooltip>
-                    ))}
-                  </td>
-                )
-              })}
-              {head === undefined || head.newColumn === null ? null : <td />}
-              {onRemove === undefined
-                ? null
-                : (
-                  <td className="rx">
-                    <RowActions>
-                      <IconButton
-                        label={m.wiki.removeFromPage} size="nested" aria-disabled={pending}
-                        onClick={() => onRemove(row.paper.id)}
-                      ><IconCross /></IconButton>
-                    </RowActions>
-                  </td>
-                )}
-              {head === undefined ? null : <td className="td-add" />}
-            </tr>
-          ))}
-          {adding === undefined
-            ? null
-            : (
-              <tr className="newrow" ref={adding.row}>
-                <td className="rh">{adding.input}</td>
-                {agg.columns.map((c) => <td className="na" key={c.key}>—</td>)}
-                {agg.derivedColumns.map((d) => <td className="na dv" key={d.key}>—</td>)}
-                {head === undefined || head.newColumn === null ? null : <td />}
-                {onRemove === undefined ? null : <td className="rx" />}
-                {head === undefined ? null : <td className="td-add" />}
-              </tr>
-            )}
-        </tbody>
-      </table>
-    </div>
+    <Table
+      className="cmp" rows="capped" columns={columns} draft={head?.newColumn ?? null}
+      actions={head === undefined ? null : head.controls}
+    >
+      {agg.rows.map((row) => (
+        <TableRow
+          key={row.paper.id}
+          actions={(
+            <IconButton
+              label={m.wiki.removeFromPage} size="nested" aria-disabled={pending}
+              onClick={() => onRemove(row.paper.id)}
+            ><IconCross /></IconButton>
+          )}
+        >
+          <TableCell kind="title" className="rh">
+            <EntityLink
+              kind="paper" label={<PaperText text={row.paper.title} />} data-wk={row.paper.id}
+              title={row.paper.fullTitle === undefined ? undefined : plainTitle(row.paper.fullTitle)}
+              onOpen={() => onOpen(row.paper.id)}
+            />
+          </TableCell>
+          {agg.columns.map((c) => {
+            const cell = row.cells[c.key]
+            return cell === undefined
+              ? <TableCell kind="meta" className="na" key={c.key}>—</TableCell>
+              : <TableCell key={c.key}><Cell cell={cell} onAnchor={(page) => onAnchor(row.paper.id, page)} /></TableCell>
+          })}
+          {agg.derivedColumns.map((d) => {
+            const links = row.derived[d.key] ?? []
+            return links.length === 0 ? <TableCell kind="meta" className="na dv" key={d.key}>—</TableCell> : (
+              <TableCell content="chips" className="dv" key={d.key}>
+                {links.map((l) => (
+                  <Tooltip key={l.id} label={l.fullTitle}>
+                    <TagButton shape="chip" className="tagchip" data-wk={l.id} onClick={() => onOpen(l.id)}>
+                      {l.title}
+                    </TagButton>
+                  </Tooltip>
+                ))}
+              </TableCell>
+            )
+          })}
+        </TableRow>
+      ))}
+      {adding === undefined
+        ? null
+        : (
+          <TableRow className="newrow" ref={adding.row}>
+            <TableCell content="controls" kind="title" className="rh">{adding.input}</TableCell>
+            {agg.columns.map((c) => <TableCell kind="meta" className="na" key={c.key}>—</TableCell>)}
+            {agg.derivedColumns.map((d) => <TableCell kind="meta" className="na dv" key={d.key}>—</TableCell>)}
+          </TableRow>
+        )}
+    </Table>
   )
 }
 
@@ -809,7 +794,7 @@ export function Wiki() {
                         ? (
                           <DraftSlot
                             as="card" className="wkcard newcard" slot={addRow}
-                            leading={<Tag tone="wiki" className="wkind">{shownAgg.kindLabel}</Tag>}
+                            leading={<Tag className="wkind">{shownAgg.kindLabel}</Tag>}
                             title={(
                               <PickRow
                                 row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
@@ -835,7 +820,7 @@ export function Wiki() {
                   )}
                 >{m.wiki.paperComparisonHeading}
                 </SectionHeading>
-                <Table
+                <Comparison
                   agg={shownAgg} onOpen={go} onAnchor={openSource} pending={pending}
                   adding={adding !== 'paper'
                     ? undefined
@@ -1060,7 +1045,7 @@ export function Wiki() {
                   : shownPaper.memberships.map((ms) => (
                     <div className="memb" key={ms.aggregation.id}>
                       <div className="wkrel">
-                        <Tag tone="wiki" className="wkind">{ms.kindLabel}</Tag>
+                        <Tag className="wkind">{ms.kindLabel}</Tag>
                         <TagButton
                           shape="chip" className="tagchip" data-wk={ms.aggregation.id}
                           onClick={() => go(ms.aggregation.id)}

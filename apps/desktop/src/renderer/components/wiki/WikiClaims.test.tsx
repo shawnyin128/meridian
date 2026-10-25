@@ -132,7 +132,7 @@ describe('WikiClaims', () => {
       .toEqual(['个人判断直觉', '实验draft 效率单请求实验单请求实测', '证据EAGLE-2 p.7wide trees amortize'])
     expect(knee.className).toBe(host.querySelector('[data-claim="plain"]')!.className)
     expect(knee.querySelector('.wkclaim-conflict')!.textContent).toBe('冲突批量场景仍净赚批量下拐点后移处理冲突')
-    expect([...knee.querySelectorAll('.wkclaim-conflict .tag')].map((tag) => tag.className)).toEqual(['tag tag--label tag--warn'])
+    expect([...knee.querySelectorAll('.wkclaim-conflict .tag')].map((tag) => tag.className)).toEqual(['tag tag--label tag--warning'])
     expect(host.querySelector('[data-claim="plain"] .wkclaim-evidence')!.textContent).toBe('实验draft 效率批量实验批量实测')
     const history = knee.querySelector<HTMLButtonElement>('.wkclaim-history .card-tray-toggle')!
     expect(history.querySelector('.fold-caret svg')).not.toBeNull()

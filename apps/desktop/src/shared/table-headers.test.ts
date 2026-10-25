@@ -16,11 +16,12 @@ type Window = {
 }
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
-const STYLES = ['shell/tokens.css', 'components/paper-table/PaperTable.css']
+const STYLES = ['shell/tokens.css', 'components/Table.css']
   .map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 
-// The paper table's header as PaperTable renders it: a sortable column carries aria-sort, the others do not.
-const HEAD = '<table class="ptable"><thead><tr><th id="title" aria-sort="none">标题</th><th id="short">短标题</th><th id="year" aria-sort="descending">年份</th></tr></thead></table>'
+// A header as Table renders it: a sortable column holds its sort button and the sorted one carries aria-sort.
+const HEAD = '<table class="table"><thead><tr><th id="title"><button type="button" class="table-sort">标题</button></th>'
+  + '<th id="short">短标题</th><th id="year" aria-sort="descending"><button type="button" class="table-sort">年份</button></th></tr></thead></table>'
 
 /** Cursor and colour of each header cell, after the pointer entered the one named `hovered`. */
 const cells = (hovered?: string) => {
@@ -32,7 +33,7 @@ const cells = (hovered?: string) => {
   }))
 }
 
-describe('论文表的表头', () => {
+describe('表格的表头', () => {
   beforeEach(() => {
     document.head.innerHTML = STYLES.map((css) => `<style>${css}</style>`).join('')
   })

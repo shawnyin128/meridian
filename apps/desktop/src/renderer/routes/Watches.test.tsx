@@ -171,7 +171,7 @@ describe('WatchSettings', () => {
 
     const label = (id: string) => host.querySelector<HTMLElement>(`[data-w="${id}"] .tag.tag--label`)
     expect([label('topic-1')?.textContent, label('topic-1')?.classList.contains('tag--neutral')]).toEqual(['已暂停', true])
-    expect([label('author-2')?.textContent, label('author-2')?.classList.contains('tag--warn')]).toEqual(['未确认', true])
+    expect([label('author-2')?.textContent, label('author-2')?.classList.contains('tag--warning')]).toEqual(['未确认', true])
     expect(label('author-1')).toBeNull()
 
     await act(async () => { root.unmount() })

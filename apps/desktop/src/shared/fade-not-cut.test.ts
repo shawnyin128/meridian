@@ -31,7 +31,6 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.list--fill': [['components/List.tsx', /list\.current = node\n\s*fade\(node\)/]],
   '.list-column': [['components/List.tsx', /<div ref=\{fade\} className=\{`list-column/]],
   '.modal-body': [['components/ModalDialog.tsx', /className="modal-body" ref=\{bodyFade\}/]],
-  '.tblwrap': [['components/paper-table/PaperTable.tsx', /className="tblwrap" ref=\{tableFade\}/]],
   '.pdetail': [['components/paper-table/PaperTable.tsx', /className="pdetail" ref=\{detailFade\}/]],
   '.paper-meta-list': [['components/PaperMetadata.tsx', /className="paper-meta-list" ref=\{listFade\}/]],
   '.reading-list': [['components/reader/ReadingNotes.tsx', /<ScrollArea axis="y" fill>\s*<div className="reading-list">/], ...SCROLL_AREA],
@@ -40,7 +39,6 @@ const FADED: Record<string, [file: string, markup: RegExp][]> = {
   '.paper-chat .msgs': [['components/chat/PaperChat.tsx', /<ScrollArea axis="y" fill ref=\{followRef\}>\s*<div className="msgs">/], ...SCROLL_AREA],
   '.idea-detail-panel': [['routes/Ideas.tsx', /className="idea-detail-panel node-document-pane" ref=\{panelFade\}/]],
   '.wkside': [['routes/Wiki.tsx', /className="wkside" ref=\{railFade\}/]],
-  '.cmpwrap': [['routes/Wiki.tsx', /className="cmpwrap" ref=\{wrapFade\}/]],
   '.gwrap': [['components/timeline/TimelineBoard.tsx', /<ScrollArea axis="x" fill className="gwrap" ref=\{wrap\}>/], ...SCROLL_AREA],
   '.cmdk-list': [['shell/CommandPalette.tsx', /<ScrollArea axis="y" className="cmdk-list" ref=\{list\}>/], ...SCROLL_AREA],
   '.pickhits': [['components/PickerPopover.tsx', /<Popover\.Content\s+ref=\{listFade\}/]],
@@ -63,28 +61,26 @@ const EXEMPT: Record<string, string> = {
   '.extension-command-code': 'wraps',
 }
 
-const PAPER_TABLE = 'components/paper-table/PaperTable.tsx'
+const TABLE = 'components/Table.tsx'
 /**
  * Every sticky element that content slides under, by the selector of its sticky rule: the markup that
  * names the edges it sticks to in data-stuck-fade, for the one stuck fade of ScrollArea.css.
  */
 const STUCK: Record<string, [file: string, markup: RegExp][]> = {
-  '.tblwrap .ptable thead th': [
-    [PAPER_TABLE, /<th data-k="title" data-stuck-fade="top left"/],
-    [PAPER_TABLE, /data-stuck-fade=\{columnDrop\?\.key === c\.k && columnDrop\.after \? undefined : 'top'\}/],
-    ['components/paper-table/ColumnAdd.tsx', /<th className="th-new" ref=\{cell\} data-stuck-fade="top">/],
-    [PAPER_TABLE, /<th className="th-add" data-stuck-fade="top right">/],
+  '.table th': [
+    [TABLE, /data-stuck-fade=\{column === columns\[0\] \? 'top left' : column\.move === 'after' \? undefined : 'top'\}/],
+    [TABLE, /className=\{classes\('table-draft', className\)\} data-stuck-fade="top"/],
+    [TABLE, /<th className="table-actions" data-stuck-fade="top right">/],
   ],
-  '.ptable th:first-child,.ptable td:first-child': [
-    [PAPER_TABLE, /<th data-k="title" data-stuck-fade="top left"/], [PAPER_TABLE, /<td className="pt-title" data-stuck-fade="left">/],
+  '.table :is(th,td):first-child': [
+    [TABLE, /column === columns\[0\] \? 'top left'/], [TABLE, /kind === 'title' \? \{ 'data-stuck-fade': 'left' \}/],
   ],
-  '.ptable td.row-actions-cell,.tblwrap .ptable thead th.th-add': [
-    [PAPER_TABLE, /<td className="row-actions-cell" data-stuck-fade="right">/], [PAPER_TABLE, /<th className="th-add" data-stuck-fade="top right">/],
+  '.table .table-actions': [
+    [TABLE, /<td className="table-actions" data-stuck-fade="right">/], [TABLE, /<th className="table-actions" data-stuck-fade="top right">/],
   ],
   '.collapsible-group--sticky>.section-heading.collapsible-group-head': [['components/GroupedList.tsx', /\{\.\.\.\(sticky \? \{ 'data-stuck-fade': 'top' \} : \{\}\)\}/]],
   '.node-document-pane .node-document-head': ['project/ResearchGraph', 'project/ProjectConclusions', 'ideas/IdeaPanel', 'project/ProjectPlan']
     .map((name) => [`components/${name}.tsx`, /className="[\w -]*node-document-head" data-stuck-fade="top"/]),
-  '.cmp th': [['routes/Wiki.tsx', /<th data-stuck-fade="top">\{m\.wiki\.paperKind\}<\/th>\n\s*\{agg\.columns\.map\(\(c\) => <th key=\{c\.key\} data-stuck-fade="top">/]],
 }
 
 /** Sticky elements nothing slides under, and why. */

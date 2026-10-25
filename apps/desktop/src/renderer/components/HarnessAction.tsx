@@ -44,9 +44,9 @@ export function HarnessAction({ plan, running, onStart, onCancel }: {
       confirmDisabled={!ready}
       onConfirm={onStart}
       state={!ready
-        ? <ModelStatusTag tone="warn" />
+        ? <ModelStatusTag state="warning" />
         : (
-          <Tag tone={plan.model.billable ? 'warn' : 'good'}>
+          <Tag state={plan.model.billable ? 'warning' : undefined}>
             {plan.model.billable ? m.wiki.harness.billableNote : m.wiki.harness.freeNote}
           </Tag>
         )}

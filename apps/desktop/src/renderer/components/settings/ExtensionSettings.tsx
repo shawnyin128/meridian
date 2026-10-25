@@ -3,7 +3,7 @@ import { useMessages } from '../../messages/useMessages.js'
 import { CardTray } from '../CardTray.js'
 import { SectionHeading } from '../PageShell.js'
 import { LoadingPlaceholder } from '../LoadingPlaceholder.js'
-import { Tag, type TagTone } from '../Tag.js'
+import { Tag, type TagState } from '../Tag.js'
 import { Card } from '../Card.js'
 import { PluginVersionEntry, type PluginVersionEntryProps } from './PluginVersionEntry.js'
 import { FadeText } from '../FadeText.js'
@@ -12,8 +12,8 @@ import { Item } from '../Item.js'
 import { List } from '../List.js'
 import './ExtensionSettings.css'
 
-const STATE_TONE: Record<ExtensionStatus['state'], TagTone> = {
-  installed: 'good', 'update-required': 'warn', 'not-installed': 'neutral',
+const STATE: Record<ExtensionStatus['state'], TagState | undefined> = {
+  installed: 'done', 'update-required': 'warning', 'not-installed': undefined,
 }
 
 interface ExtensionSettingsProps {
@@ -51,7 +51,7 @@ export function ExtensionSettings({ statuses, failed, plugin, onCopy, onCopyProm
               <SectionHeading
                 level="group"
                 actions={(
-                  <Tag tone={STATE_TONE[extension.state]} className="extension-state">
+                  <Tag state={STATE[extension.state]} className="extension-state">
                     {m.settings.extensions.state[extension.state]}
                     {extension.version === undefined ? '' : ` · ${extension.version}`}
                   </Tag>

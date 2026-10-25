@@ -90,7 +90,7 @@ export function DiscoverySettings() {
                 {profile.intents.map((intent) => (
                   <Item
                     className="direction-row" key={intent.id} lines={2} muted={!intent.enabled}
-                    title={<>{intent.core ? <Tag tone="accent">{m.settings.discovery.core}</Tag> : null}<span>{intent.label}</span></>}
+                    title={<>{intent.core ? <Tag>{m.settings.discovery.core}</Tag> : null}<span>{intent.label}</span></>}
                     meta={(
                       <FadeText className="direction-seeds" label={intent.seeds.map((seed) => plainTitle(seed.title)).join(' · ')}>
                         {intent.seeds.map((seed, at) => (

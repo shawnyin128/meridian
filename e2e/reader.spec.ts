@@ -508,8 +508,8 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
   await openFromPapers(win)
   await expectPainted(win, READABLE.pages)
 
-  await shown(win, '.zoomctl [aria-label="放大"]').click()
-  await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('120%')
+  await shown(win, '.zoom-control [aria-label="放大"]').click()
+  await expect(shown(win, '.zoom-control .zoom-control-reset')).toHaveText('120%')
   // Settling the zoom moves the scroll to keep the page point at the zoom position in place, so wait
   // until the whole paper is drawn, then two more frames, before scrolling to the position to remember.
   await expect.poll(async () => {
@@ -525,7 +525,7 @@ test('同一篇再进来,读到哪儿、放大到几倍都留着', async ({ win 
   await expect(shown(win, '.ptable')).toHaveCount(1)
   await shown(win, '.pdetail [aria-label="开始阅读"]').click()
 
-  await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('120%')
+  await expect(shown(win, '.zoom-control .zoom-control-reset')).toHaveText('120%')
   await expect(shown(win, '.pdfwrap')).toHaveJSProperty('scrollTop', SCROLLED)
   await expect(shown(win, '.pdfpagebox').first())
     .toHaveJSProperty('clientWidth', Math.floor(PAGE.width * FIT * 1.2))
@@ -571,10 +571,10 @@ test('同一篇再进来按当下的库重取,不吃上一次的结果', async (
 test('放大一档,页面按新的比例重画,百分比跟着变', async ({ win }) => {
   await openFromPapers(win)
   await expect(shown(win, '.pdfpagebox')).toHaveCount(READABLE.pages)
-  await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('100%')
+  await expect(shown(win, '.zoom-control .zoom-control-reset')).toHaveText('100%')
 
-  await shown(win, '.zoomctl [aria-label="放大"]').click()
-  await expect(shown(win, '.zoomctl .zoom-reset')).toHaveText('120%')
+  await shown(win, '.zoom-control [aria-label="放大"]').click()
+  await expect(shown(win, '.zoom-control .zoom-control-reset')).toHaveText('120%')
   await expect(shown(win, '.pdfpagebox').first())
     .toHaveJSProperty('clientWidth', Math.floor(PAGE.width * FIT * 1.2))
 })

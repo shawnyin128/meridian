@@ -95,7 +95,7 @@ describe('HarnessAction', () => {
     act(() => confirm.click())
     expect(start).not.toHaveBeenCalled()
     const state = document.querySelector<HTMLElement>('.modal-actions .tag')!
-    expect([state.tagName, state.className]).toEqual(['BUTTON', 'tag tag--label tag--warn'])
+    expect([state.tagName, state.className]).toEqual(['BUTTON', 'tag tag--label tag--warning'])
     act(() => state.click())
     expect(settings.openCategory).toHaveBeenCalledWith('model')
   })

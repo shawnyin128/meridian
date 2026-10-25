@@ -183,7 +183,7 @@ function ProjectPanel({ project, onOpen, menu, reorder }: {
       title={(
         <>
           <ItemOpen><ProjectIdentity project={project} showTopic /></ItemOpen>
-          {stale ? <Tag tone="warn">{m.research.panel.staleAlert(idle!)}</Tag> : null}
+          {stale ? <Tag state="warning">{m.research.panel.staleAlert(idle!)}</Tag> : null}
         </>
       )}
       trailing={next && left !== null

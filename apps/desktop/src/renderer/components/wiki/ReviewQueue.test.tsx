@@ -187,8 +187,8 @@ describe('ReviewQueue', () => {
     expect(links.openProject).toHaveBeenCalledWith('draft')
     act(() => node!.click())
     expect(onOpenConclusion).toHaveBeenCalledWith('draft', 'wide')
-    expect(experiment!.querySelector('.tag--good')!.textContent).toBe('已验证')
-    expect(row('p6').querySelector('.proposal-row .tag--warn')!.textContent).toBe('未验证')
+    expect(experiment!.querySelector('.tag--done')!.textContent).toBe('已验证')
+    expect(row('p6').querySelector('.proposal-row .tag--warning')!.textContent).toBe('未验证')
     expect(row('p3').querySelector('.proposal-row .tag')).toBeNull()
     const anchor = source!.querySelector<HTMLButtonElement>('.source-anchor')!
     expect([anchor.tagName, anchor.textContent]).toEqual(['BUTTON', 'p.7'])
@@ -219,7 +219,7 @@ describe('ReviewQueue', () => {
       ['BUTTON', '拒绝'], ['BUTTON', '应用'], ['BUTTON', '实验结论未验证 · 去验证'],
     ])
     expect(apply('p6').disabled).toBe(true)
-    expect(decision('p6')[2]!.className).toBe('tag tag--label tag--warn')
+    expect(decision('p6')[2]!.className).toBe('tag tag--label tag--warning')
     act(() => decision('p6')[2]!.click())
     expect(onOpenConclusion).toHaveBeenCalledWith('draft', 'wide')
     expect(decision('p2').map((part) => part.textContent)).toEqual(['拒绝', '应用', '依据已变'])
@@ -228,7 +228,7 @@ describe('ReviewQueue', () => {
     expect(links.openPage).toHaveBeenCalledWith('topics/sd')
     expect(decision('p1').map((part) => part.textContent)).toEqual(['拒绝', '应用'])
     expect(apply('p1').disabled).toBe(false)
-    for (const id of ['p2', 'p6']) expect(row(id).querySelector('.proposal-where .tag--warn'), id).toBeNull()
+    for (const id of ['p2', 'p6']) expect(row(id).querySelector('.proposal-where .tag--warning'), id).toBeNull()
   })
 
   it('「涉及」只列各块写入的页以外的页,没有这样的页就不出这一行', () => {
@@ -313,7 +313,7 @@ describe('ReviewQueue', () => {
   it('已处理的在自己的小标题下列出,同样一块一块,淡下去,末行是结果、处理的日期和原因', () => {
     expect(host.querySelector('.section-heading')!.textContent).toBe('已处理 · 4')
     expect(outcome('p3').map((part) => part.textContent)).toEqual(['已应用', '9月22日'])
-    expect(row('p3').querySelector('.proposal-decision .tag--good')).not.toBeNull()
+    expect(row('p3').querySelector('.proposal-decision .tag--done')).not.toBeNull()
     expect(outcome('p4').map((part) => part.textContent)).toEqual(['已拒绝 · 过期', '9月22日', '依据的页在提案生成之后改过'])
     expect(blocks('p4')).toEqual([
       { kind: '撤回结论', target: 'Speculative decoding', texts: ['removed: 拐点在宽度 6'], rows: [['撤回理由', '重跑后不成立', null]] },

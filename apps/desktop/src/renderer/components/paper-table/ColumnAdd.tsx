@@ -5,6 +5,7 @@ import type { KeptText } from '../../hooks/useDrafts.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ActionPopover } from '../ActionPopover.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
+import { TableDraftHead } from '../Table.js'
 import { IconMulti, IconSelect, IconText } from '../icons.js'
 import { Tooltip } from '../Tooltip.js'
 
@@ -104,7 +105,7 @@ export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType, ke
   const btnRefs = useRef<(HTMLButtonElement | null)[]>([])
   const [type, setType] = useState<PaperColumn['type']>('text')
   const th = (
-    <th className="th-new" ref={cell} data-stuck-fade="top">
+    <TableDraftHead className="th-new" ref={cell}>
       <InlineDraftInput
         className="celledit" ref={input} scopeRef={cell} triggers={triggers}
         placeholder={m.papers.columnAdd.namePlaceholder} onSubmit={(label) => onCreate(label, type)} onCancel={onCancel}
@@ -118,7 +119,7 @@ export function NewColumnHead({ cell, triggers, onCreate, onCancel, pickType, ke
           }
         }}
       />
-    </th>
+    </TableDraftHead>
   )
   if (!pickType) return th
   return (

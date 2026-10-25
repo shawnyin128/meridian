@@ -923,7 +923,7 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
   const afterZoom = (await firstNode.boundingBox())!
   expect(afterZoom.width).toBeGreaterThan(beforeZoom.width)
 
-  await viewport.locator('.graph-zoom-reset').click()
+  await viewport.locator('.zoom-control-reset').click()
   const reset = (await firstNode.boundingBox())!
   const box = (await viewport.boundingBox())!
   await win.mouse.move(box.x + 8, box.y + 8)
@@ -934,7 +934,7 @@ test('科研图节点上下居中且可缩放平移,分支和科研记录在正�
   expect(Math.round(moved.x - reset.x)).toBe(50)
   expect(Math.round(moved.y - reset.y)).toBe(30)
 
-  await viewport.locator('.graph-zoom-reset').click()
+  await viewport.locator('.zoom-control-reset').click()
   const mainWidth = (await detail.locator('.wkmain').boundingBox())!.width
   // An empty section is hidden: root has branches but no records, knee has both.
   await viewport.locator('.rgn[data-node="root"]').click()

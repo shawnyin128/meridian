@@ -16,7 +16,7 @@ const STYLESHEETS = FILES.filter((path) => path.endsWith('.css'))
  */
 const ACCENT_TEXT = [
   '.nav-row.on', '.segmented-control>button[data-state="on"]', '.chip-toggle[data-state="on"]', '.item--selected',
-  '.ptable tbody tr.selected .pt-title', '.mi .ck', '.ring',
+  '.table-row--selected>.table-cell--title', '.mi .ck', '.ring',
 ]
 
 /** Each rule of `path` as its selectors and its declarations, comments dropped. */

@@ -154,9 +154,7 @@ export const PATTERNS = {
   Table: {
     metrics: 'list',
     entries: [
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable'),
-      entry('hand:routes/Wiki.tsx', '.cmp'),
-      entry('hand:routes/Ideas.tsx', '.idea-stats'),
+      entry('shared:Table', 'table.table'),
       entry('shared:Markdown', '.md table'),
     ],
   },
@@ -173,8 +171,7 @@ export const PATTERNS = {
       entry('shared:Item', '.item--row', { not: '.draft-slot', parts: ITEM_PARTS }),
       entry('shared:NavRow', '.nav-row', { not: '.fold-toggle.nav-row' }),
       entry('shared:PickOption', '.mi.rrow', { parts: { title: '.rt', meta: '.rm' } }),
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr', { parts: { title: '.pt-title' } }),
-      entry('hand:routes/Wiki.tsx', '.cmp tbody tr:not(.newrow)'),
+      entry('shared:Table', '.table-row:not(.newrow)', { parts: { title: '.table-cell--title' } }),
       entry('hand:routes/Wiki.tsx', '.wktoc li'),
       entry('hand:components/wiki/WikiClaims.tsx', '.wkclaim-lines li'),
       entry('hand:components/reader/PaperWikiIngest.tsx', '.wiki-ingest-scope > div'),
@@ -227,7 +224,7 @@ export const PATTERNS = {
       entry('hand:components/chat/PaperChat.tsx', '.paper-chat .msgs'),
     ],
   },
-  StatTile: { metrics: 'item', entries: [entry('hand:routes/ResearchOverview.tsx', '.ovstat')] },
+  StatTile: { metrics: 'item', entries: [entry('shared:StatTile', '.stat-tile')] },
   TimelineBar: { metrics: 'item', entries: [entry('hand:components/timeline/TimelineBoard.tsx', '.gbar')] },
   GraphNode: { metrics: 'item', entries: [entry('hand:components/project/ResearchGraph.tsx', '.rgn-box')] },
   ItemTitle: {
@@ -236,7 +233,7 @@ export const PATTERNS = {
       entry('shared:Item', '.item-title'),
       entry('shared:PickOption', '.mi.rrow .rt'),
       entry('hand:components/project/ProjectIdentity.tsx', '.project-identity-name'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pt-title'),
+      entry('shared:Table', '.table-cell--title'),
       entry('hand:routes/Feed.tsx', '.fbody'),
       entry('hand:routes/ResearchOverview.tsx', '.ovpulse-title'),
       entry('hand:components/timeline/TimelineBoard.tsx', '.timeline-item-label'),
@@ -249,7 +246,7 @@ export const PATTERNS = {
       entry('shared:PickOption', '.mi.rrow .rm'),
       entry('hand:components/project/ProjectIdentity.tsx', '.project-identity-topic'),
       entry('hand:components/project/ProjectControl.tsx', '.project-control-text, .project-control-meta'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.pt-dim'),
+      entry('shared:Table', '.table-cell--meta'),
       entry('hand:routes/Wiki.tsx', '.wkcard .wm'),
       entry('hand:routes/ResearchOverview.tsx', '.ovpulse-sub'),
     ],
@@ -269,7 +266,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:RowActions', '.row-actions'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.row-actions-cell'),
+      entry('shared:Table', '.table-actions'),
     ],
   },
   OverflowMenu: { metrics: 'button', entries: [entry('shared:DotsMenu', '.dots')] },
@@ -287,7 +284,7 @@ export const PATTERNS = {
       entry('shared:Item', '.item--selected'),
       entry('shared:NavRow', '.nav-row.on'),
       entry('shared:IconButton', '.icbtn[aria-pressed="true"]'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.ptable tbody tr.selected'),
+      entry('shared:Table', '.table-row--selected'),
     ],
   },
   Tag: {
@@ -342,7 +339,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:Button', '.btn', {
-        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-reset, .graph-zoom-reset',
+        not: '.filter-menu, .sort-menu, .add-action, .choice-picker, .harness-trigger, .paper-abstract-toggle, .reading-summary-all, .zoom-control-reset',
       }),
       entry('hand:components/project/ProjectPlan.tsx', '.din'),
     ],
@@ -385,7 +382,7 @@ export const PATTERNS = {
     metrics: 'button',
     entries: [
       entry('shared:SortMenu', '.sort-menu'),
-      entry('hand:components/paper-table/PaperTable.tsx', '.thsort'),
+      entry('shared:Table', '.table-sort'),
     ],
   },
   Picker: {
@@ -400,8 +397,7 @@ export const PATTERNS = {
   ZoomControl: {
     metrics: 'button',
     entries: [
-      entry('hand:routes/Reader.tsx', '.zoomctl'),
-      entry('hand:components/project/ResearchGraph.tsx', '.graph-view-controls'),
+      entry('shared:ZoomControl', '.zoom-control'),
     ],
   },
   SearchField: { metrics: 'field', entries: [entry('shared:ClearableInput', '.clearable-input')] },

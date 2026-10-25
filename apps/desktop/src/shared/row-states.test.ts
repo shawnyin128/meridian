@@ -23,7 +23,7 @@ type Window = {
 const { document, MouseEvent, getComputedStyle } = globalThis as unknown as Window
 
 const STYLES = [
-  'shell/tokens.css', 'components/Item.css', 'components/List.css', 'components/NavRow.css', 'components/paper-table/PaperTable.css',
+  'shell/tokens.css', 'components/Item.css', 'components/List.css', 'components/NavRow.css', 'components/Table.css',
   'components/project/ResearchGraph.css', 'routes/Settings.css',
   'components/timeline/TimelineBoard.css', 'routes/Ideas.css', 'routes/Reader.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
@@ -36,7 +36,7 @@ const styleOf = (markup: string, shown: string, hovered?: string): Style => {
 }
 
 const HOVER = 'linear-gradient(var(--hover),var(--hover))'
-const TABLE_ROW = (cls: string) => `<table class="ptable"><tbody><tr class="${cls}"><td class="trunc"><span class="ci"><span class="pt-title">EAGLE</span></span></td><td class="pt-dim">2024</td></tr></tbody></table>`
+const TABLE_ROW = (cls: string) => `<table class="table ptable"><tbody><tr class="table-row ${cls}"><td class="table-cell--title pt-title"><span class="table-text table-cut"><button class="table-open">EAGLE</button></span></td><td class="table-cell--meta"><span class="table-text">2024</span></td></tr></tbody></table>`
 
 describe('选中的样子只有一种', () => {
   beforeEach(() => {
@@ -67,10 +67,10 @@ describe('选中的样子只有一种', () => {
   })
 
   it('选中的论文行和侧栏的当前行一个样子:铺浅强调色，标题用强调色的字，左边不画强调色竖条', () => {
-    expect(styleOf(TABLE_ROW('selected'), 'tr').getPropertyValue('--row-bg')).toBe('var(--accent-soft)')
-    expect(styleOf(TABLE_ROW('selected'), '.pt-title').color).toBe('var(--accent-text)')
-    expect(styleOf(TABLE_ROW('selected'), 'td').boxShadow).not.toContain('var(--accent)')
-    expect(styleOf(TABLE_ROW('selected'), '.ci', 'td').boxShadow).not.toContain('var(--accent)')
+    expect(styleOf(TABLE_ROW('table-row--selected'), 'tr').getPropertyValue('--row-bg')).toBe('var(--accent-soft)')
+    expect(styleOf(TABLE_ROW('table-row--selected'), '.pt-title').color).toBe('var(--accent-text)')
+    expect(styleOf(TABLE_ROW('table-row--selected'), 'td').boxShadow).not.toContain('var(--accent)')
+    expect(styleOf(TABLE_ROW('table-row--selected'), '.table-text', 'td').boxShadow).not.toContain('var(--accent)')
   })
 
   it('选中的科研图节点铺选中色，标签用选中色上的强调色，不再描一圈墨色粗边', () => {
@@ -112,9 +112,9 @@ describe('悬停的反馈不被任何状态盖掉', () => {
   })
 
   it('选中的论文行悬停时，浅强调色和悬停色叠在一起', () => {
-    const tr = styleOf(TABLE_ROW('selected'), 'tr', 'td')
+    const tr = styleOf(TABLE_ROW('table-row--selected'), 'tr', 'td')
     expect([tr.getPropertyValue('--row-bg'), tr.getPropertyValue('--row-over')]).toEqual(['var(--accent-soft)', 'var(--hover)'])
-    expect(styleOf(TABLE_ROW('selected'), 'td.pt-dim').backgroundImage).toContain('var(--row-over)')
+    expect(styleOf(TABLE_ROW('table-row--selected'), 'td.table-cell--meta').backgroundImage).toContain('var(--row-over)')
   })
 
   it('进行中、逾期、P0 的时间条悬停时都盖上悬停色', () => {
@@ -147,8 +147,8 @@ describe('论文表行与行之间的分隔线', () => {
   })
 
   it('论文表不合并边框，分隔线由上面一行的格子自己画，吸住的标题格和操作格也是；最后一行下面不画', () => {
-    const row = '<tr><td class="trunc"><span class="ci">EAGLE</span></td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr>'
-    document.body.innerHTML = `<table class="ptable"><tbody>${row}${row}${row}</tbody></table>`
+    const row = '<tr class="table-row"><td class="table-cell--title"><span class="table-text">EAGLE</span></td><td class="table-cell--meta"><span class="table-text">2024</span></td><td class="table-actions"></td></tr>'
+    document.body.innerHTML = `<table class="table ptable"><tbody>${row}${row}${row}</tbody></table>`
     // Chromium leaves part of a collapsed border out of a sticky cell's first paint.
     const table = getComputedStyle(document.querySelector('table'))
     expect([table.borderCollapse, table.borderSpacing]).toEqual(['separate', '0px'])
@@ -162,9 +162,9 @@ describe('论文表行与行之间的分隔线', () => {
   })
 
   it('吸住的表头、标题列和操作列不画细线，自己也从不淡出：没有阴影、没有遮罩，也不变透明', () => {
-    document.body.innerHTML = '<div class="tblwrap"><table class="ptable"><thead><tr><th>标题</th><th>年份</th><th class="th-add"></th></tr></thead>'
-      + '<tbody><tr class="selected"><td class="trunc">EAGLE</td><td class="pt-dim">2024</td><td class="row-actions-cell"></td></tr></tbody></table></div>'
-    const sticky = ['thead th:first-child', 'thead th:nth-child(2)', 'th.th-add', 'tbody td:first-child', 'td.row-actions-cell']
+    document.body.innerHTML = '<div class="table-scroll table-scroll--fill"><table class="table ptable"><thead><tr><th>标题</th><th>年份</th><th class="table-actions"></th></tr></thead>'
+      + '<tbody><tr class="table-row table-row--selected"><td class="table-cell--title"><span class="table-text">EAGLE</span></td><td class="table-cell--meta"><span class="table-text">2024</span></td><td class="table-actions"></td></tr></tbody></table></div>'
+    const sticky = ['thead th:first-child', 'thead th:nth-child(2)', 'th.table-actions', 'tbody td:first-child', 'td.table-actions']
     const look = (selector: string) => {
       const style = getComputedStyle(document.querySelector(selector))
       return [style.boxShadow || 'none', style.getPropertyValue('mask-image') || 'none', style.getPropertyValue('mask') || 'none', style.opacity || '1']
@@ -179,7 +179,7 @@ describe('论文表的行高', () => {
   })
 
   it('论文表的格子高度取表格行高 token，这个 token 就是论文行现在显示的 38px', () => {
-    const cell = styleOf(TABLE_ROW(''), 'td.pt-dim')
+    const cell = styleOf(TABLE_ROW(''), 'td.table-cell--meta')
     expect([cell.height, cell.getPropertyValue('--row-table-h').trim()]).toEqual(['var(--row-table-h)', '38px'])
   })
 })

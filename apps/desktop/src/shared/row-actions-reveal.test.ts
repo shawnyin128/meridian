@@ -26,7 +26,7 @@ const STYLESHEETS = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 const STYLES = [
   'components/Item.css', 'components/List.css', 'components/FieldPickers.css', 'components/IconButton.css', 'components/NavRow.css',
   'routes/Projects.css', 'routes/ProjectDetail.css', 'components/wiki/WikiClaims.css',
-  'components/paper-table/PaperTable.css', 'components/project/ProjectPlan.css', 'routes/shell.css',
+  'components/paper-table/PaperTable.css', 'components/Table.css', 'components/project/ProjectPlan.css', 'routes/shell.css',
 ].map((path) => readFileSync(join(RENDERER, path), 'utf8'))
 
 const SLOT = '<span class="row-actions"><button type="button" class="icbtn sm dots"></button></span>'
@@ -115,9 +115,9 @@ describe('行尾操作槽', () => {
     expect(shown('<button type="button" class="icbtn" aria-pressed="false"></button>')).toBe('0 none')
   })
 
-  it('论文行尾放操作槽的那一格贴在表格右边，表格横向滚动时也看得见', () => {
-    document.body.innerHTML = '<div class="tblwrap"><table class="ptable"><thead><tr><th>标题</th><th class="th-add"></th></tr></thead><tbody><tr data-row-actions=""><td class="pt-title">EAGLE</td><td class="row-actions-cell"><span class="row-actions"></span></td></tr></tbody></table></div>'
-    for (const cell of ['td.row-actions-cell', 'th.th-add']) {
+  it('表格行尾放操作槽的那一格贴在表格右边，表格横向滚动时也看得见', () => {
+    document.body.innerHTML = '<div class="table-scroll table-scroll--fill"><table class="table ptable"><thead><tr><th>标题</th><th class="table-actions"></th></tr></thead><tbody><tr class="table-row" data-row-actions=""><td class="table-cell--title">EAGLE</td><td class="table-actions"><span class="row-actions"></span></td></tr></tbody></table></div>'
+    for (const cell of ['td.table-actions', 'th.table-actions']) {
       const style = getComputedStyle(document.querySelector(cell))
       expect([style.position, style.right], cell).toEqual(['sticky', '0px'])
     }

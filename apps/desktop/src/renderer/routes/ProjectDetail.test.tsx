@@ -79,7 +79,7 @@ describe('attnItems', () => {
       lastProgress: '2026-08-17',
     }), TODAY, sm)).toEqual([
       {
-        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'bad',
+        id: 'conflict', rank: 0, kind: '实验结论冲突', tone: 'warn',
         reason: '2 条实验结论有冲突', action: '检查证据并裁决',
       },
       {

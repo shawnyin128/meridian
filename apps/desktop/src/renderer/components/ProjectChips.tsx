@@ -65,7 +65,7 @@ export function ProjectChips({ paper, onError }: {
   return (
     <>
       {paper.projects.map((linked) => (
-        <span className={tagClass('neutral', 'chip', 'tagchip')} key={linked.id} data-project={linked.id}>
+        <span className={tagClass(undefined, 'chip', 'tagchip')} key={linked.id} data-project={linked.id}>
           <EntityLink kind="project" label={linked.name} onOpen={() => jumpTo('project', linked.id)} />
           <IconButton
             label={m.common.removeLink} size="inline" className="rx"

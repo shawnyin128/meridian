@@ -39,7 +39,7 @@ describe('红色只标逾期、错误和危险', () => {
       ['components/timeline/TimelineBoard.css', '.gnow::after'],
       ['components/timeline/TimelineBoard.css', '.gbar.priority-p0'],
       ['components/FieldPickers.css', '.cd.today'],
-      ['components/Tag.css', '.tag--warn'],
+      ['components/Tag.css', '.tag--warning'],
     ] as const
     expect(marks.map(([path, selector]) => [selector, tokens(bodyOf(path, selector)).filter((t) => RED.test(t))]))
       .toEqual(marks.map(([, selector]) => [selector, []]))
@@ -114,6 +114,7 @@ describe('状态色', () => {
     'components/Button.css': "a danger button's soft fill",
     'components/ActionMenu.css': 'a danger menu item',
     'components/FirstRunChecklist.css': "a finished first-run step's check",
+    'components/StatTile.css': "a stat tile's figure that needs attention",
     'components/arrival.css': 'the flash of a row or anchor a jump has landed on',
   }
 
@@ -122,8 +123,7 @@ describe('状态色', () => {
    * each with that issue. The list only shrinks.
    */
   const PENDING: Record<string, string> = {
-    'components/paper-table/PaperTable.css  .ptable th.column-moving  background': '#567, the drag feedback of a column',
-    'routes/ResearchOverview.css  .ovstat.bad b  color': 'the Overview stat tiles, which the catalog has no row for',
+    'components/Table.css  .table th.table-move-moving  background': '#567, the drag feedback of a column',
   }
 
   /** Every declaration that writes text in --bad, --warn or --good, or lays a --tint-* fill, as `<path>  <selector>  <property>`. */
@@ -185,8 +185,8 @@ describe('强调色', () => {
     'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
     'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
     'components/Switch.css  .switch[data-state="checked"]',
+    'components/Table.css  .table-row--selected', 'components/Table.css  .table-row--selected>.table-cell--title',
     'components/chat/Chat.css  .send', 'components/icons.css  .ring',
-    'components/paper-table/PaperTable.css  .ptable tbody tr.selected', 'components/paper-table/PaperTable.css  .ptable tbody tr.selected .pt-title',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
     'components/timeline/TimelineBoard.css  .gtoday',
   ]
@@ -208,8 +208,8 @@ describe('强调色', () => {
     for (const [path, selector] of [
       ['components/Item.css', '.item--selected'], ['components/ChipToggles.css', '.chip-toggle[data-state="on"]'],
     ] as const) expect(tokens(bodyOf(path, selector)), selector).toEqual(current)
-    expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected'))).toEqual(['--accent-soft'])
-    expect(tokens(bodyOf('components/paper-table/PaperTable.css', '.ptable tbody tr.selected .pt-title'))).toEqual(['--accent-text'])
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected'))).toEqual(['--accent-soft'])
+    expect(tokens(bodyOf('components/Table.css', '.table-row--selected>.table-cell--title'))).toEqual(['--accent-text'])
     expect(tokens(bodyOf('components/SegmentedControl.css', '.segmented-control>button[data-state="on"]'))).toEqual(['--accent-text'])
     for (const [path, selector] of [['components/ActionMenu.css', '.mi .ck'], ['components/icons.css', '.ring']] as const) {
       expect(tokens(bodyOf(path, selector)), selector).toEqual(['--accent-mark'])

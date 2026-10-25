@@ -180,11 +180,11 @@ describe('Ideas', () => {
 
   it('各项目的想法按想法冒出来的项目数：每个项目一行，想法、进行中和已完成三栏，多的在前；点一行打开那个项目', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
-    const rows = [...host.querySelectorAll<HTMLElement>('.idea-stats .idea-stats-row')]
-    expect(host.querySelector('.idea-stats-head')!.textContent).toBe('想法进行中已完成')
+    const rows = [...host.querySelectorAll<HTMLElement>('table.idea-stats tbody tr')]
+    expect(host.querySelector('table.idea-stats thead')!.textContent).toBe('想法进行中已完成')
     expect(rows.map((row) => [...row.children].map((cell) => cell.textContent)))
       .toEqual([['推测解码', '2', '1', '1'], ['已完成实验', '1', '0', '0'], ['搁置项目', '0', '0', '0']])
-    expect(host.querySelector('.idea-stats')!.classList.contains('list--embedded')).toBe(true)
+    expect(host.querySelector('table.idea-stats')!.parentElement!.classList.contains('table-scroll--capped')).toBe(true)
     await act(async () => { rows[0]!.click() })
     expect(api.open).toHaveBeenCalledWith('project', 'project-active')
   })

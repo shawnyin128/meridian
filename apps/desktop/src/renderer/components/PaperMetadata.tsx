@@ -65,7 +65,7 @@ export function ReadStatePicker({ value, onPick }: {
   return (
     <ChoicePicker
       value={value} options={READ_STATES} onPick={onPick} label={(state) => readStateName(m, state)} stopRowActivation
-      className={tagClass('neutral', 'chip', value === READING_PAPER ? 'stchip on' : 'stchip')}
+      className={tagClass(undefined, 'chip', value === READING_PAPER ? 'stchip on' : 'stchip')}
     />
   )
 }

@@ -87,9 +87,9 @@ function ThemePreview({ modules, mode }: { modules: ColourThemeModules; mode: Co
           <div className="theme-preview-title">{sample.title}</div>
           <div className="theme-preview-tags">
             <Tag shape="chip">{sample.topic}</Tag>
-            <Tag tone="bad">{legend.failed}</Tag>
-            <Tag tone="warn">{legend.needsRepair}</Tag>
-            <Tag tone="good">{legend.verified}</Tag>
+            <Tag state="error">{legend.failed}</Tag>
+            <Tag state="warning">{legend.needsRepair}</Tag>
+            <Tag state="done">{legend.verified}</Tag>
           </div>
           <p className="theme-preview-body">{sample.body} <span className="theme-preview-mark">{sample.highlight}</span></p>
           <p className="theme-preview-meta">{sample.meta}</p>
@@ -207,7 +207,7 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
               <NavRow
                 key={key} selected={key === module} data-module={key} onActivate={() => setModule(key)}
                 icon={<span className="theme-module-swatch" style={{ backgroundColor: colours[key] }} />}
-                end={weak.has(key) ? <Tag tone="warn">{t.lowContrast}</Tag> : undefined}
+                end={weak.has(key) ? <Tag state="warning">{t.lowContrast}</Tag> : undefined}
               >
                 <span className="theme-module-name">{t.modules[key]}</span>
               </NavRow>
@@ -258,7 +258,7 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
             </div>
             {error === null ? null : <ServiceError>{error}</ServiceError>}
             <ServiceFoot>
-              {form.outside ? <Tag tone="warn">{t.changedOutside}</Tag> : null}
+              {form.outside ? <Tag state="warning">{t.changedOutside}</Tag> : null}
               <ServiceActions>
                 <CommitActions
                   place="foot" saving={saving} canSave={draft.name.trim() !== '' && (dirty || form.outside)} done={form.saved}
