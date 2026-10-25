@@ -18,7 +18,9 @@ Current shared contracts:
   toolbars, with an optional glyph before its label. While `busy` it keeps its width and shows the
   `RunningRing`, in full colour, in place of its label; its busy label is only its accessible name. It is
   marked `aria-busy` and disabled, so a second press cannot start the action again. Each time `done`
-  turns true it shows the check in place of its label for a moment. Screens render no raw `<button>`.
+  turns true it shows the check in place of its label for a moment. Screens render no raw `<button>`:
+  `scripts/check-screen-elements.test.mjs` checks it, and `RAW_BUTTONS` there lists, with a reason
+  each, the few that are not text buttons (a composite row's open button, a chip's open part, a link).
 - `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
   primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
   size; in a `heading` both are secondary at the regular size, and inside an `item` both are secondary
