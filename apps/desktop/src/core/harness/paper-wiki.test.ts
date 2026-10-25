@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events'
-import { readFileSync } from 'node:fs'
-import { resolve } from 'node:path'
+import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { tmpdir } from 'node:os'
+import { join, resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import type {
@@ -9,7 +10,7 @@ import type {
 import { callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { CliRunError } from './cli/child.js'
-import type { CliCall, CliRunner } from './cli/runner.js'
+import { type CliCall, type CliRunner, createCliRunner } from './cli/runner.js'
 import type { HarnessExecution } from './cost-gate.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
 import type { PaperWikiDraft } from './paper-wiki.js'
@@ -323,6 +324,41 @@ describe('Paper Wiki run on a subscription CLI', () => {
     child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败' } })
     await expect(running).rejects.toMatchObject({ reason: 'model' })
     runner.close()
+  })
+
+  it('logs a failed CLI call\'s exit code and the end of its stderr, with no secret in the line', async () => {
+    const folder = mkdtempSync(join(tmpdir(), 'meridian-cli-log-test-'))
+    try {
+      const claude = join(folder, 'claude')
+      writeFileSync(claude, [
+        `#!${process.execPath}`,
+        "process.stdin.resume()",
+        "process.stdin.on('end', () => {",
+        "  process.stderr.write('starting\\nAuthorization: Bearer sk-ant-oat01-supersecretvalue\\n')",
+        "  process.stderr.write('signed in as researcher@example.org\\nError: usage limit reached\\n')",
+        "  process.exitCode = 1",
+        "})",
+      ].join('\n'))
+      chmodSync(claude, 0o755)
+      const { child, runner, logs } = paperWikiRunner(CLI_MODEL, createCliRunner({
+        binary: async () => claude, environment: { PATH: '/usr/bin:/bin' },
+      }))
+      const running = runner.run(execution())
+      child.ready()
+      await child.frame()
+
+      child.callModel('fails')
+      expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'fails', error: { kind: 'model_error' } })
+      expect(logs).toHaveLength(1)
+      expect(logs[0]).not.toMatch(/sk-ant|supersecret|researcher@/)
+      expect(logs[0]).toMatch(/^claude failed, exit 1: starting \| .* \| Error: usage limit reached$/)
+
+      child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败' } })
+      await expect(running).rejects.toMatchObject({ reason: 'model' })
+      runner.close()
+    } finally {
+      rmSync(folder, { recursive: true, force: true })
+    }
   })
 
   it('stops the CLI call when the user cancels the run, and when the run ends any other way', async () => {

@@ -454,8 +454,12 @@ export function createPaperWikiHarnessRunner(options: {
           signal,
         })
       } catch (cause) {
-        if (cause instanceof CliRunError) throw new HarnessRpcError({ kind: 'model_error', message: cause.message })
-        throw cause
+        if (!(cause instanceof CliRunError)) throw cause
+        if (cause.exitCode !== undefined || cause.stderr !== undefined) {
+          const stderr = cause.stderr === undefined || cause.stderr === '' ? '' : `: ${cause.stderr.replace(/\n/g, ' | ')}`
+          options.onLog?.(`${model.cli} failed, exit ${String(cause.exitCode ?? 'none')}${stderr}`)
+        }
+        throw new HarnessRpcError({ kind: 'model_error', message: cause.message })
       }
       options.onLog?.(usageLine(model.cli, result))
       return { output: result.output }
