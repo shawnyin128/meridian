@@ -565,11 +565,11 @@ registerHandler('project.bindWorkspace', (params) => {
 // instead of reading ~/.ssh/config or starting ssh.
 registerHandler('ssh.hosts', (params) => {
   EmptyParamsSchema.parse(params)
-  return vaultRoot === undefined ? FIXTURE_SSH_HOSTS : sshConfigHosts(join(homedir(), '.ssh', 'config'))
+  return vaultRoot === undefined ? FIXTURE_SSH_HOSTS : sshConfigHosts(homedir())
 })
 registerHandler('ssh.folders', (params) => {
   const { path, ...target } = SshFoldersParamsSchema.parse(params)
-  return vaultRoot === undefined ? sshFolders(target, path, fixtureSsh(path)) : sshFolders(target, path)
+  return vaultRoot === undefined ? sshFolders(target, path, fixtureSsh) : sshFolders(target, path)
 })
 registerHandler('project.update', (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)

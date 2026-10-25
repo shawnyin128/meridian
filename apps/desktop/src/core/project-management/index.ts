@@ -32,4 +32,4 @@ export {
   writeProjectWorkspace,
   writeProjectWorkspaceState,
 } from './workspace.js'
-export type { SshExecutor, SshTarget, WorkspaceAgentIdea, WorkspaceAgentTask } from './workspace.js'
+export type { SshCommand, SshExecutor, SshTarget, WorkspaceAgentIdea, WorkspaceAgentTask } from './workspace.js'
