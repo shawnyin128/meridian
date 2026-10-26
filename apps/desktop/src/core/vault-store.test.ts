@@ -1507,6 +1507,28 @@ describe('vault store on the aggregation layout', () => {
     expect(plan.tasks[0]!.note).toBe(note)
   })
 
+  it('备注里有 ### 开头、- evidence: 开头和 --- 的行:存下、重开都是原样的那一条备注,别的任务和项目的其余字段不变', () => {
+    store.createProject('备注结构')
+    const id = store.listProjects().find((project) => project.name === '备注结构')!.id
+    store.createTask(id, { title: '甲', start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+    const made = store.createTask(id, { title: '乙', start: '2026-09-11', end: '2026-09-11', state: 'plan', priority: 'p1' })
+    store.updateProject(id, { memo: '随笔原样' })
+    const first = made.tasks.find((task) => task.title === '甲')
+    const second = made.tasks.find((task) => task.title === '乙')
+    const file = join(vault, 'wiki', 'projects', `${id}.md`)
+    const note = ['### Node X: 注入', '- evidence: exp-1', '- mode: `dead`', '---', '## 随笔', 'tasks:', '  - id: fake'].join('\n')
+    const before = createVaultStore(vault).getProject(id)
+    store.updateTask(id, first!.id, { note })
+    const reopened = createVaultStore(vault).getProject(id)
+    expect(reopened.tasks.map((task) => [task.id, task.title, task.note]))
+      .toEqual(before.tasks.map((task) => [task.id, task.title, task.id === first!.id ? note : undefined]))
+    expect(reopened.tasks.find((task) => task.id === second!.id)).toEqual(before.tasks.find((task) => task.id === second!.id))
+    expect({ ...reopened, tasks: [] }).toEqual({ ...before, tasks: [] })
+    store.updateTask(id, first!.id, { note: '' })
+    expect(createVaultStore(vault).getProject(id).tasks.find((task) => task.id === first!.id)!.note).toBeUndefined()
+    expect(readFileSync(file, 'utf8')).not.toContain('evidence')
+  })
+
   it('拖拽重排的任务顺序写进页面并刷新共享计划面,重开也保持这个顺序', () => {
     store.createProject('排序项目')
     const id = store.listProjects().find((project) => project.name === '排序项目')!.id
@@ -2847,6 +2869,21 @@ describe('vault store on the aggregation layout', () => {
     store.undoChange(change.id)
     expect(readFileSync(file, 'utf8')).toBe(before)
     expect(store.wikiAggregation('topics/ptq').summary).not.toBe('改过的。')
+  })
+
+  it('正文里有 ### 开头、- evidence: 开头和像节标题、frontmatter 的行:重开读出的是原样的正文,生成区、结论和 frontmatter 不变', () => {
+    const file = join(vault, 'wiki', 'topics', 'ptq.md')
+    const before = readFileSync(file, 'utf8')
+    const claims = store.wikiAggregation('topics/ptq').claims
+    const body = ['### Node X: 注入', '- evidence: exp-1', '- mode: `dead`', '', '---', 'title: "不是 frontmatter"', '---', '## 结论', '[[topics/kv|KV]]'].join('\n')
+    store.updateWikiPage('topics/ptq', body)
+    const reopened = createVaultStore(vault).wikiAggregation('topics/ptq')
+    expect(reopened.body).toBe(body)
+    expect(reopened.claims).toEqual(claims)
+    const after = readFileSync(file, 'utf8')
+    const head = (text: string) => text.slice(0, text.lastIndexOf('<!-- /generated -->')).replace(/^updated: .*$/m, '')
+    expect(head(after)).toBe(head(before))
+    expect(after.endsWith(`<!-- /generated -->\n\n${body}\n`)).toBe(true)
   })
 
   it('改论文页的正文:论文表上那一行的 updated 跟着变;库里没有的页拒绝', () => {
