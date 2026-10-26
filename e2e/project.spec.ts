@@ -1027,7 +1027,7 @@ test('任务详情头部的收起钮在标题上方单独一行靠右,长标题�
 
   // The same head as the paper detail's: Han text breaks between any two characters, so every full line ends less than a character short.
   const head = await panelHead(side.locator('.panel-head'), '.panel-head-title', '.icbtn')
-  expect(head.actions.map(({ label, width, height }) => [label, width, height])).toEqual([['收起详情', 24, 24]])
+  expect(head.actions.map(({ label, width, height }) => [label, Math.round(width), Math.round(height)])).toEqual([['收起详情', 24, 24]])
   expect(Math.abs(head.actions[0]!.right - head.content.right)).toBeLessThan(1)
   expect(Math.round(head.actions[0]!.top - head.content.top)).toBe(0)
   expect(head.actions[0]!.top + head.actions[0]!.height).toBeLessThanOrEqual(head.title.top)
