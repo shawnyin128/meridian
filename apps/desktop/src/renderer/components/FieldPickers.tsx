@@ -129,10 +129,10 @@ export function DotsMenu({
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
  * `placeholder` while `value` matches no option, and with the refused look of a field while
  * `aria-invalid` holds. With `appearance="button"` its trigger is a compact Button showing
- * `children`, for a heading's actions. With `appearance="text"` its trigger is the composer's picker:
- * `children`, or the picked option's label, then a small caret, as text that takes a fill only under
- * the pointer and while its menu is open; while `busy`, as its options are read, it cannot open,
- * keeps its full colour and shows the running ring in place of its caret.
+ * `children`, for a heading's actions. With `appearance="capsule"` its trigger is the composer's
+ * picker: `children`, or the picked option's label, then a small caret, on a neutral capsule whose fill
+ * deepens under the pointer and while its menu is open; while `busy`, as its options are read, it
+ * cannot open, keeps its full colour and shows the running ring in place of its caret.
  * Otherwise the host field supplies the trigger's class, and its
  * content as `children`, which defaults to the picked option's label. Outside the field appearance
  * the trigger is one of the controls of the toolbar it renders in. `after` holds menu items that end
@@ -150,7 +150,7 @@ export function ChoicePicker<T extends string>({
   label?: (option: T) => string
   note?: (option: T) => string | undefined
   className?: string
-  appearance?: 'field' | 'button' | 'text'
+  appearance?: 'field' | 'button' | 'capsule'
   placeholder?: string
   disabled?: boolean
   busy?: boolean
@@ -181,11 +181,11 @@ export function ChoicePicker<T extends string>({
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         >{children ?? label(value)}</Button>
       )
-      : asItem(appearance === 'text'
+      : asItem(appearance === 'capsule'
         ? (
-          <button className="choice-text" aria-label={ariaLabel} disabled={disabled || busy} aria-busy={busy || undefined}>
-            <FadeText className="choice-text-value">{children ?? label(value)}</FadeText>
-            {busy ? <RunningRing /> : <span className="choice-text-caret"><IconChevron /></span>}
+          <button className="choice-capsule" aria-label={ariaLabel} disabled={disabled || busy} aria-busy={busy || undefined}>
+            <FadeText className="choice-capsule-value">{children ?? label(value)}</FadeText>
+            {busy ? <RunningRing /> : <span className="choice-capsule-caret"><IconChevron /></span>}
           </button>
         )
         : (
