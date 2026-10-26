@@ -1,4 +1,4 @@
-import type { Facet, ListParams, ListResult, PaperRow, SortKey } from '../../shared/contract.js'
+import type { Facet, FieldValue, ListParams, ListResult, PaperRow, SortKey } from '../../shared/contract.js'
 import { cellValues } from './columns.js'
 
 /**
@@ -11,6 +11,11 @@ function valuesOf(paper: PaperRow, field: string): string[] {
   if (field === 'topics') return paper.topics
   if (field === 'projects') return paper.projects.map((project) => project.name)
   return cellValues(paper, field)
+}
+
+/** Whether a paper's fields carry every one of the given values. */
+function carriesAll(paper: PaperRow, wanted: readonly FieldValue[]): boolean {
+  return wanted.every(({ field, value }) => valuesOf(paper, field).includes(value))
 }
 
 /** Whether the lowercased needle occurs in a paper's title, short title, author, topic, or linked project name. */
@@ -42,13 +47,14 @@ function compare(a: PaperRow, b: PaperRow, sort: SortKey | undefined, dir: numbe
  * returning them across the contract copies them first.
  */
 export function listPapers(papers: Iterable<PaperRow>, params: ListParams): ListResult {
-  const { page, size, sort, direction, filter, facet } = params
+  const { page, size, sort, direction, filter, facet, filters = [] } = params
   let rows = [...papers]
   if (filter) {
     const needle = filter.toLowerCase()
     rows = rows.filter((r) => matches(r, needle))
   }
-  if (facet) rows = rows.filter((r) => valuesOf(r, facet.field).includes(facet.value))
+  const wanted = facet ? [...filters, facet] : filters
+  rows = rows.filter((r) => carriesAll(r, wanted))
   const dir = direction === 'desc' ? -1 : 1
   rows.sort((a, b) => compare(a, b, sort, dir))
   const start = (page - 1) * size
@@ -61,12 +67,13 @@ export function listPapers(papers: Iterable<PaperRow>, params: ListParams): List
  * of those papers, as VaultStore.facetPapers describes.
  */
 export function facetPapers(
-  papers: Iterable<PaperRow>, field: string, filter?: string,
+  papers: Iterable<PaperRow>, field: string, filter?: string, filters: readonly FieldValue[] = [],
 ): Facet[] {
   const needle = filter?.toLowerCase()
   const byValue = new Map<string, Facet & { newestYear: number | undefined }>()
   for (const paper of papers) {
     if (needle && !matches(paper, needle)) continue
+    if (!carriesAll(paper, filters)) continue
     for (const value of valuesOf(paper, field)) {
       const seen = byValue.get(value)
       if (!seen) {

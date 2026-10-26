@@ -4,7 +4,7 @@ import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
   ChatMessage, ChatMessageFields, ChatModelChoice, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme,
   ColourThemeFile,
-  ConclusionState, ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
+  ConclusionState, ContractMethod, Facet, FieldValue, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
@@ -138,8 +138,8 @@ export const papers = {
       if (rows.length === 0 || ids.length >= total) return ids
     }
   },
-  facets: (field: string, filter?: string) =>
-    call<Facet[]>('papers.facets', { field, ...(filter ? { filter } : {}) }),
+  facets: (field: string, filter?: string, filters: readonly FieldValue[] = []) =>
+    call<Facet[]>('papers.facets', { field, ...(filter ? { filter } : {}), ...(filters.length > 0 ? { filters } : {}) }),
   get: (id: string) => call<PaperRow>('papers.get', { id }),
   update: (id: string, patch: Partial<PaperFields>) =>
     call<RecordedChange>('papers.update', { id, patch }),

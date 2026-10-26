@@ -387,6 +387,54 @@ test('分组加筛选后,索引层计数、值 chip 计数与分页总数三者�
   await expect(win.locator('.pginfo')).toHaveText(`共 ${indexCount} 条`)
 })
 
+test('按项目分组时筛选在读:分组留着,索引只列还有在读论文的项目并只数它们,打开一组只列在读的;清掉筛选分组还在', async ({ win }) => {
+  type Listed = { rows: { id: string; projects: { name: string }[] }[] }
+  const all = [
+    ...(await call<Listed>(win, 'papers.list', { page: 1, size: 200 })).rows,
+    ...(await call<Listed>(win, 'papers.list', { page: 2, size: 200 })).rows,
+  ]
+  expect(all).toHaveLength(PAPERS_TOTAL)
+  const members = (name: string) => all.filter((paper) => paper.projects.some((project) => project.name === name)).length
+  const busiest = [...new Set(all.flatMap((paper) => paper.projects.map((project) => project.name)))]
+    .sort((a, b) => members(b) - members(a))[0]!
+  expect(members(busiest)).toBeGreaterThan(1)
+  const reading = [
+    all.find((paper) => paper.projects.some((project) => project.name === busiest))!,
+    all.find((paper) => paper.projects.length === 0)!,
+  ]
+  for (const paper of reading) await call(win, 'papers.update', { id: paper.id, patch: { readState: READING_PAPER } })
+  const expected = new Map<string, number>()
+  for (const { name } of reading.flatMap((paper) => paper.projects)) expected.set(name, (expected.get(name) ?? 0) + 1)
+  const sorted = (rows: string[][]) => rows.map((row) => row.join(' ')).sort()
+
+  await gotoPapers(win)
+  await firstPage(win)
+  await win.locator('.filters .segmented-control>button', { hasText: '项目' }).click()
+  const projectGroups = await win.locator('.gxrow').count()
+  expect(projectGroups).toBeGreaterThan(expected.size)
+  await win.locator('.filters .read-state-filter').click()
+  await win.locator('.ctxmenu .mi', { hasText: READING_PAPER }).click()
+
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('项目')
+  await expect(win.locator('.gxrow')).toHaveCount(expected.size)
+  const index = await win.locator('.gxrow').evaluateAll((rows) => rows.map((row) => [
+    row.querySelector('.gx-t')!.textContent!, row.querySelector('.n')!.textContent!,
+  ]))
+  expect(sorted(index)).toEqual(sorted([...expected].map(([name, count]) => [name, String(count)])))
+  await expect(win.locator('#crumb .cseg').last()).toHaveText('项目')
+
+  await win.locator('.gxrow').filter({ has: win.getByText(busiest, { exact: true }) }).click()
+  await expect(shown(win, '.desk-head .t')).toHaveText('论文 · 1')
+  await expect(win.locator('.ptable tbody .stchip')).toHaveText([READING_PAPER])
+  await expect(win.locator('#crumb .cseg').last()).toHaveText(busiest)
+
+  await win.locator('.filters .read-state-filter').click()
+  await win.locator('.ctxmenu .mi', { hasText: '全部状态' }).click()
+  await expect(win.locator('.filters .segmented-control>button[aria-checked="true"]')).toHaveText('项目')
+  await expect(shown(win, '.desk-head .t')).toHaveText(`论文 · ${members(busiest)}`)
+  await expect(win.locator('#crumb .cseg').last()).toHaveText(busiest)
+})
+
 test('表内给论文加一个主题后,重新取数确认这一行的主题真的变了', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)

@@ -1045,6 +1045,27 @@ describe('fixture store', () => {
     expect(() => store.updatePaper(id, { custom: { 'du-fa': '通读' } })).toThrow(/没有这个选项/)
   })
 
+  it('阅读状态筛选与分组一起用:分组取值只数筛剩的论文,列表同时满足两者;文本列不能拿来筛', () => {
+    store.setPaperColumns({
+      ...emptyColumns(),
+      custom: [
+        { key: 'du-fa', label: '读法', type: 'select', options: ['精读', '略读'] },
+        { key: 'note', label: '备注', type: 'text', options: [] },
+      ],
+    })
+    const [reading, other] = store.listPapers({ page: 1, size: 2 }).rows.map((row) => row.id)
+    store.updatePaper(reading!, { readState: '在读', custom: { 'du-fa': '精读' } })
+    store.updatePaper(other!, { custom: { 'du-fa': '精读' } })
+    const filters = [{ field: 'readState', value: '在读' }]
+    expect(store.facetPapers('du-fa', undefined, filters))
+      .toEqual([{ value: '精读', count: 1, newestTitle: store.getPaper(reading!).title }])
+    expect(store.listPapers({ page: 1, size: 10, facet: { field: 'du-fa', value: '精读' }, filters })
+      .rows.map((r) => r.id)).toEqual([reading])
+    const byNote = [{ field: 'note', value: 'x' }]
+    expect(() => store.listPapers({ page: 1, size: 10, filters: byNote })).toThrow(/不能按这一列分组/)
+    expect(() => store.facetPapers('du-fa', undefined, byNote)).toThrow(/不能按这一列分组/)
+  })
+
   it('选项改名把填着它的每一篇一起改,只记一条变动,撤销把论文与列都还原', () => {
     store.setPaperColumns({
       ...emptyColumns(),

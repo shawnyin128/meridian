@@ -1318,13 +1318,15 @@ export function createVaultStore(
 
     listPapers(params) {
       if (params.facet) checkGroupKey(params.facet.field, heldColumns())
+      for (const { field } of params.filters ?? []) checkGroupKey(field, heldColumns())
       const { rows, total } = listPapers(linkedRows(), params)
       return { rows: rows.map((row) => structuredClone(row)), total }
     },
 
-    facetPapers(field, filter) {
+    facetPapers(field, filter, filters = []) {
       checkGroupKey(field, heldColumns())
-      return facetPapers(linkedRows(), field, filter)
+      for (const held of filters) checkGroupKey(held.field, heldColumns())
+      return facetPapers(linkedRows(), field, filter, filters)
     },
 
     getPaper(id) {

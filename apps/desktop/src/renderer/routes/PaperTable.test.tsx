@@ -94,6 +94,8 @@ let vaultPaperCount: number | null
 let facetRows: Facet[]
 /** The call papers.facets answers through instead, when a test holds its answer back. */
 let facetCall: Controlled<Facet[]> | null
+/** The arguments of each papers.facets call, in the order the calls were made. */
+let facetParams: { field: string; filter?: string; filters?: unknown }[]
 let openedScreens: [screen: string, id?: string][]
 /** The jump useJump hands the table: the screen another one opened it with, or null. */
 let jumpHere: ScreenJump | null
@@ -109,7 +111,10 @@ let returnedTo: string[]
 vi.mock('../ipc.js', () => ({
   papers: {
     list: (params: ListParams) => { listCallCount += 1; listParams.push(params); return listCall.promise },
-    facets: () => facetCall?.promise ?? Promise.resolve(facetRows),
+    facets: (field: string, filter?: string, filters?: unknown) => {
+      facetParams.push({ field, filter, filters })
+      return facetCall?.promise ?? Promise.resolve(facetRows)
+    },
     get: (id: string) => { gotIds.push(id); return getCall.promise },
     update: (id: string, patch: Record<string, unknown>) => {
       if (throwOnNextUpdate) { const e = throwOnNextUpdate; throwOnNextUpdate = null; throw e }
@@ -247,6 +252,26 @@ async function fromRowMenu(row: Element, item: '重命名' | '删除'): Promise<
 /** The column menu's row of the custom column named `label`. */
 const customRow = (label: string) => [...document.querySelectorAll('.mi.colrow:has(.dots)')].find((row) => row.textContent === label)!
 
+/** The group bar's button named `name`. */
+function groupButton(host: HTMLElement, name: string): HTMLButtonElement {
+  return [...host.querySelectorAll<HTMLButtonElement>('.filters .segmented-control[aria-label="分组字段"] > button')]
+    .find((button) => button.textContent === name)!
+}
+
+/** The name of the group bar's checked button, or undefined when none is checked. */
+function checkedGroup(host: HTMLElement): string | null | undefined {
+  return host.querySelector('.filters .segmented-control[aria-label="分组字段"] > button[aria-checked="true"]')?.textContent
+}
+
+/** Opens the reading-status filter and picks the option named `name`. */
+async function pickReadState(host: HTMLElement, name: string): Promise<void> {
+  await act(async () => {
+    host.querySelector('.filters .read-state-filter')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+  })
+  await act(async () => { press([...document.querySelectorAll<HTMLElement>('.ctxmenu .mi')].find((item) => item.textContent === name)!) })
+  await flush()
+}
+
 /** The text in each column of the table header. */
 function headTexts(host: HTMLElement): string[] {
   return [...host.querySelectorAll('.ptable thead th')].map((th) => th.textContent ?? '')
@@ -330,6 +355,7 @@ describe('PaperTable', () => {
     vaultPaperCount = null
     facetRows = []
     facetCall = null
+    facetParams = []
     openedScreens = []
     jumpHere = null
     gotIds = []
@@ -616,7 +642,7 @@ describe('PaperTable', () => {
     })
     listCall.resolve({ rows: [ROW], total: 3 })
     await flush()
-    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '未读' })
+    expect(listParams.at(-1)?.filters).toEqual([{ field: 'readState', value: '未读' }])
     expect(title()).toBe('论文 · 3')
 
     listCall = controlled()
@@ -625,11 +651,13 @@ describe('PaperTable', () => {
       [...groups.querySelectorAll<HTMLButtonElement>('button')].find((item) => item.textContent === '主题')!.click()
     })
     await flush()
-    expect(title()).toBe('论文 · 10')
+    expect(title()).toBe('论文')
     await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
     listCall.resolve({ rows: [ROW], total: 4 })
     await flush()
-    expect(listParams.at(-1)?.facet).toEqual({ field: 'topics', value: 'speculative decoding' })
+    expect(listParams.at(-1)).toMatchObject({
+      facet: { field: 'topics', value: 'speculative decoding' }, filters: [{ field: 'readState', value: '未读' }],
+    })
     expect(title()).toBe('论文 · 4')
   })
 
@@ -1302,12 +1330,114 @@ describe('PaperTable', () => {
     await act(async () => { press(unread) })
     await flush()
 
-    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '未读' })
+    expect(listParams.at(-1)?.filters).toEqual([{ field: 'readState', value: '未读' }])
+    expect(listParams.at(-1)).not.toHaveProperty('facet')
     expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('未读')
     expect(host.querySelector('.lmore')).toBeNull()
   })
 
-  it('存着稍后阅读的阅读状态处处显示为待读:行里、筛选、分组取值和面包屑,筛选仍按存的值', async () => {
+  it('按项目分组时筛选在读:分组留着,索引只列还有在读论文的组和它们的在读篇数,打开一组只列它的在读论文;清掉筛选分组还在,换分组筛选还在', async () => {
+    const reading = [{ field: 'readState', value: '在读' }]
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics', 'projects', 'readState'] })
+    listCall.resolve({ rows: [ROW], total: 5 })
+    await flush()
+    const index = () => [...host.querySelectorAll('.gxrow')]
+      .map((row) => [row.querySelector('.gx-t')!.textContent, row.querySelector('.n')!.textContent])
+
+    facetRows = [{ value: 'Kernel', count: 3, newestTitle: '一篇论文' }, { value: 'Wide', count: 2, newestTitle: '一篇论文' }]
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    expect(index()).toEqual([['Kernel', '3'], ['Wide', '2']])
+
+    facetRows = [{ value: 'Kernel', count: 1, newestTitle: '一篇论文' }]
+    await pickReadState(host, '在读')
+    expect(checkedGroup(host)).toBe('项目')
+    expect(facetParams.at(-1)).toMatchObject({ field: 'projects', filters: reading })
+    expect(index()).toEqual([['Kernel', '1']])
+    expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('在读')
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目'])
+
+    listCall = controlled()
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    listCall.resolve({ rows: [{ ...ROW, readState: '在读' }], total: 1 })
+    await flush()
+    expect(listParams.at(-1)).toMatchObject({ facet: { field: 'projects', value: 'Kernel' }, filters: reading })
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目', 'Kernel'])
+    expect(host.querySelector('.desk-head .t')?.textContent).toBe('论文 · 1')
+
+    facetRows = [{ value: 'Kernel', count: 3, newestTitle: '一篇论文' }, { value: 'Wide', count: 2, newestTitle: '一篇论文' }]
+    listCall = controlled()
+    await pickReadState(host, '全部状态')
+    listCall.resolve({ rows: [ROW], total: 3 })
+    await flush()
+    expect(checkedGroup(host)).toBe('项目')
+    expect(facetParams.at(-1)).toMatchObject({ field: 'projects', filters: [] })
+    expect(listParams.at(-1)).toMatchObject({ facet: { field: 'projects', value: 'Kernel' } })
+    expect(listParams.at(-1)).not.toHaveProperty('filters')
+    expect(host.querySelector('.filters .read-state-filter.on')).toBeNull()
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目', 'Kernel'])
+    expect(host.querySelector('.desk-head .t')?.textContent).toBe('论文 · 3')
+
+    await pickReadState(host, '在读')
+    await act(async () => { groupButton(host, '主题').click() })
+    await flush()
+    expect(checkedGroup(host)).toBe('主题')
+    expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('在读')
+    expect(facetParams.at(-1)).toMatchObject({ field: 'topics', filters: reading })
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['主题'])
+
+    await act(async () => { groupButton(host, '无').click() })
+    await flush()
+    expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('在读')
+    expect(listParams.at(-1)).toMatchObject({ filters: reading })
+    expect(listParams.at(-1)).not.toHaveProperty('facet')
+    expect(crumbTail).toEqual([])
+  })
+
+  it('分组齿轮里取消阅读状态时,设着的阅读状态筛选随它撤掉,分组不变', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics', 'readState'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await act(async () => { groupButton(host, '主题').click() })
+    await pickReadState(host, '在读')
+    expect(facetParams.at(-1)).toMatchObject({ field: 'topics', filters: [{ field: 'readState', value: '在读' }] })
+
+    const gear = host.querySelector<HTMLButtonElement>('.grpgear')!
+    await act(async () => { gear.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 })) })
+    await act(async () => {
+      press([...document.querySelectorAll<HTMLElement>('[role="menuitemcheckbox"]')].find((el) => el.textContent === '阅读状态')!)
+    })
+    setColumnsCalls[0]!.resolve()
+    await flush()
+    await flush()
+    expect(host.querySelector('.filters .read-state-filter')).toBeNull()
+    expect(checkedGroup(host)).toBe('主题')
+    expect(facetParams.at(-1)).toMatchObject({ field: 'topics', filters: [] })
+  })
+
+  it('导入落地后阅读状态筛选也清掉,新论文留在表里', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    await pickReadState(host, '已读')
+    expect(listParams.at(-1)?.filters).toEqual([{ field: 'readState', value: '已读' }])
+
+    const input = host.querySelector<HTMLInputElement>('.pdfupload-input')!
+    Object.defineProperty(input, 'files', {
+      configurable: true,
+      value: [{ name: '新论文.pdf', arrayBuffer: async () => Uint8Array.from([37, 80, 68, 70, 45]).buffer }],
+    })
+    await act(async () => { input.dispatchEvent(new Event('change', { bubbles: true })) })
+    importCall.resolve({ kind: 'added', paper: { ...ROW, id: 'uploaded', title: '新论文' } })
+    await flush()
+    expect(host.querySelector('.filters .read-state-filter.on')).toBeNull()
+    expect(listParams.at(-1)).not.toHaveProperty('filters')
+  })
+
+  it('存着稍后阅读的阅读状态在行里和筛选里都显示为待读,筛选仍按存的值,不另起分组取值和面包屑', async () => {
     facetRows = [{ value: '稍后阅读', count: 2, newestTitle: '一篇论文' }, { value: '未读', count: 1, newestTitle: '一篇论文' }]
     const host = mount()
     columnsCall.resolve({ hidden: [], custom: [], groups: ['readState'] })
@@ -1324,10 +1454,10 @@ describe('PaperTable', () => {
     await act(async () => { press(items.at(-1)!) })
     await flush()
 
-    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '稍后阅读' })
+    expect(listParams.at(-1)?.filters).toEqual([{ field: 'readState', value: '稍后阅读' }])
     expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('待读')
-    expect([host.querySelector('.gnav .btn')?.textContent, host.querySelector('.gnav .btn .count-badge')?.textContent]).toEqual(['待读2', '2'])
-    expect(crumbTail.map((seg) => seg.text)).toEqual(['阅读状态', '待读'])
+    expect(host.querySelector('.gnav')).toBeNull()
+    expect(crumbTail).toEqual([])
   })
 
   it('英文界面里每个阅读状态都写它的英文名,行里和筛选菜单都是,筛选仍按存的值', async () => {
@@ -1346,7 +1476,7 @@ describe('PaperTable', () => {
     expect(items.map((item) => item.textContent)).toEqual(['All statuses', 'Unread', 'Reading', 'Read', 'To read'])
     await act(async () => { press(items[3]!) })
     await flush()
-    expect(listParams.at(-1)?.facet).toEqual({ field: 'readState', value: '已读' })
+    expect(listParams.at(-1)?.filters).toEqual([{ field: 'readState', value: '已读' }])
     expect(host.querySelector('.filters .read-state-filter.on')?.textContent).toBe('Read')
   })
 
