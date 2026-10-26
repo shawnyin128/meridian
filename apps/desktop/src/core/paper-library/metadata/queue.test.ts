@@ -185,4 +185,68 @@ describe('上传之后的元数据解析', () => {
     expect(batches[0]).toHaveLength(38)
     expect(queue.uploads()).toHaveLength(20)
   })
+
+  describe('配了 Semantic Scholar key 时补全发表信息', () => {
+    /** A queue whose Semantic Scholar lookups answer `found` (or fail with `error`), recording the ids asked; `keyed` says whether a key is saved. */
+    function keyed(facts: Partial<PdfFacts>, options: { keyed?: boolean; error?: Error; found?: Record<string, { venue: string; year?: number }> } = {}) {
+      const store = createFixtureStore(() => '2026-08-25')
+      const asked: string[][] = []
+      const queue = createMetadataQueue({
+        store,
+        probe: async () => ({ title: null, subject: null, keywords: null, firstPage: '', pageCount: 1, ...facts }),
+        provider: { lookup: async () => REMOTE },
+        publications: () => (options.keyed === false ? undefined : {
+          lookup: async (ids) => {
+            asked.push([...ids])
+            if (options.error) throw options.error
+            return new Map(Object.entries(options.found ?? { 'ARXIV:2509.01234': { venue: 'ICLR', year: 2026 } }))
+          },
+        }),
+        onWrite: () => {},
+      })
+      const bytes = minimalPdf({ lines: ['x'] })
+      const paper = store.importPaper('draft-trees.pdf', bytes).paper
+      queue.enqueueUpload(paper.id, 'draft-trees.pdf', bytes)
+      return { store, queue, asked, paper }
+    }
+
+    it('arXiv 补完之后按 ARXIV 编号查一次，会场和年份换成发表的那一个，动态里说两个来源', async () => {
+      const { store, queue, asked, paper } = keyed({ firstPage: 'arXiv:2509.01234v1' })
+      await queue.idle()
+      expect(asked).toEqual([['ARXIV:2509.01234']])
+      expect(store.getPaper(paper.id)).toMatchObject({ title: REMOTE.title, venue: 'ICLR', year: 2026, submitted: REMOTE.submitted })
+      expect(JSON.stringify(store.listFeed()[0]?.body)).toContain('元数据取自 arXiv 和 Semantic Scholar')
+    })
+
+    it('没配 key 时不查 Semantic Scholar，和以前一样只用 arXiv', async () => {
+      const { store, queue, asked, paper } = keyed({ firstPage: 'arXiv:2509.01234v1' }, { keyed: false })
+      await queue.idle()
+      expect(asked).toEqual([])
+      expect(store.getPaper(paper.id)).toMatchObject({ venue: 'arXiv', year: 2025 })
+    })
+
+    it('Semantic Scholar 查不成时，arXiv 的元数据照样写上，动态里只说 arXiv', async () => {
+      const { store, queue, paper } = keyed({ firstPage: 'arXiv:2509.01234v1' }, { error: new TypeError('fetch failed') })
+      await queue.idle()
+      expect(store.getPaper(paper.id)).toMatchObject({ title: REMOTE.title, venue: 'arXiv', year: 2025 })
+      expect(queue.uploads()[0]).toMatchObject({ step: 'done', found: 'arxiv' })
+      expect(JSON.stringify(store.listFeed()[0]?.body)).toContain('元数据取自 arXiv。')
+    })
+
+    it('没有 arXiv 编号的 PDF 只按首页标明的 DOI 去查，不按标题搜', async () => {
+      const { store, queue, asked, paper } = keyed(
+        { title: 'Speculative Serving at Scale', firstPage: 'Proceedings… DOI: 10.1145/3600006.3613165.' },
+        { found: { 'DOI:10.1145/3600006.3613165': { venue: 'SOSP', year: 2023 } } },
+      )
+      await queue.idle()
+      expect(asked).toEqual([['DOI:10.1145/3600006.3613165']])
+      expect(store.getPaper(paper.id)).toMatchObject({ title: 'Speculative Serving at Scale', venue: 'SOSP', year: 2023 })
+    })
+
+    it('既没有 arXiv 编号也没有标明的 DOI 时不查', async () => {
+      const { queue, asked } = keyed({ title: 'Speculative Serving at Scale' })
+      await queue.idle()
+      expect(asked).toEqual([])
+    })
+  })
 })

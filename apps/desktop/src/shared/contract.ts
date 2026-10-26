@@ -540,6 +540,9 @@ export const PapersImportParamsSchema = z.object({
 /** Parses the metadata of paper `id` again, as it was uploaded in this run of the App. */
 export const PapersRetryMetadataParamsSchema = z.object({ id: z.string() }).strict()
 
+/** What filling the papers' publication venue and year from Semantic Scholar came to: how many papers changed. */
+export const PublicationFillResultSchema = z.object({ updated: z.number().int().min(0) }).strict()
+
 export const PaperImportResultSchema = z.object({
   kind: z.enum(['added', 'existing']),
   paper: PaperRowSchema,
@@ -2774,6 +2777,7 @@ export const ExtensionStatusSchema = z.object({
 
 export type PaperRow = z.infer<typeof PaperRowSchema>
 export type MetadataJob = z.infer<typeof MetadataJobSchema>
+export type PublicationFillResult = z.infer<typeof PublicationFillResultSchema>
 export type FetchStatus = z.infer<typeof FetchStatusSchema>
 export type DownloadProgress = z.infer<typeof DownloadProgressSchema>
 export type JobsStatus = z.infer<typeof JobsStatusSchema>
@@ -2990,6 +2994,7 @@ export const CONTRACT_METHODS = [
   'papers.source',
   'papers.import',
   'papers.retryMetadata',
+  'papers.fillPublication',
   'papers.reading',
   'papers.mutateReading',
   'harness.prepare',

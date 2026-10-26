@@ -85,6 +85,13 @@ export const ChatRecordSchema = ChatSessionSchema.omit({ messageCount: true }).e
 
 const TrashBase = TrashEntrySchema.omit({ kind: true, restorable: true })
 
+/**
+ * One `.meridian/metadata-fills.json` entry: the bibliographic fields of paper `paper` the App last
+ * filled from a metadata source, each with the value it wrote, so a later fill may replace those
+ * values and never one the user typed.
+ */
+export const MetadataFillRecordSchema = z.object({ paper: z.string(), fields: z.record(z.string(), z.unknown()) })
+
 /** One `.meridian/paper-readings.json` entry; highlights, notes, remarks, and progress are isolated by paper-page id. */
 export const PaperReadingRecordSchema = PaperReadingSchema
 export type PaperReadingRecord = z.infer<typeof PaperReadingRecordSchema>

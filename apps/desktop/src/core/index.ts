@@ -551,6 +551,10 @@ registerHandler('papers.import', (params) => {
 })
 registerHandler('papers.retryMetadata', (params) =>
   background.retryMetadata(PapersRetryMetadataParamsSchema.parse(params).id))
+registerHandler('papers.fillPublication', async (params) => {
+  EmptyParamsSchema.parse(params)
+  return { updated: await background.fillPublications() }
+})
 registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {

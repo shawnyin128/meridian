@@ -18,10 +18,13 @@ export type { ParsedPaperUpload } from './import.js'
 export {
   arxivIdOf,
   createMetadataQueue,
+  fillPublications,
   laterWithMetadata,
   missingMetadata,
   extractPdfPages,
   probePdf,
+  publicationFill,
+  publicationIdOf,
   remoteMetadata,
   usableTitle,
 } from './metadata/index.js'

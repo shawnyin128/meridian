@@ -77,6 +77,11 @@ export const papers = {
     optionRenamed: 'Option renamed',
     columnTypeChanged: 'Column type changed',
   },
+  publication: {
+    fill: 'Fill publication info',
+    filled: (count: number) => `Filled the publication info of ${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
+    none: 'No new publication info found',
+  },
   upload: {
     tooLarge: 'PDF files cannot be larger than 100 MB',
     alreadyInLibrary: 'This PDF is already in the library',

@@ -13,6 +13,7 @@ import type {
 } from '../shared/contract.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
+import type { Publication } from './net/semantic-metadata.js'
 import type {
   DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
 } from './recommendation/index.js'
@@ -179,6 +180,24 @@ export interface VaultStore {
    * own are empty. Records no change. Throws if no such paper exists.
    */
   fillPaperMetadata(id: string, fill: MetadataFill, replaceTitle: string | null): string[]
+
+  /**
+   * Writes the venue and year of `publication` onto paper `id` where publicationFill allows, given the
+   * values the App last filled into its fields, and returns the names of the fields it wrote, in
+   * MetadataFill's order. Records what it wrote as filled by the App, and records no change. Throws if
+   * no such paper exists.
+   */
+  fillPaperPublication(id: string, publication: Publication): string[]
+
+  /**
+   * Writes `publication` onto paper `id` as fillPaperPublication does, recorded as one change of that
+   * paper when it writes anything, and returns the names of the fields it wrote. Throws if no such
+   * paper exists.
+   */
+  refreshPaperPublication(id: string, publication: Publication): string[]
+
+  /** Returns what fillPaperPublication would write onto paper `id` for `publication`, writing nothing. */
+  publicationFillOf(id: string, publication: Publication): MetadataFill
 
   /** Returns the user's persisted highlights, notes, remark and last page read for one paper. */
   paperReading(id: string): PaperReading
@@ -1065,7 +1084,7 @@ export interface VaultStore {
 
 /**
  * Everything a store implements on its own. The changelog reads, the undo,
- * setPaperTopic and atomically are not among them: withChangelog adds those
+ * setPaperTopic, refreshPaperPublication and atomically are not among them: withChangelog adds those
  * over any of these, so that one implementation records the writes of every
  * store. Here,
  * restoreTrash only has to put the trash entry back; emptying the cells a
@@ -1082,5 +1101,6 @@ export type VaultOps = Omit<
   | 'clearArchivedChanges'
   | 'absorbAgentTasks'
   | 'setPaperTopic'
+  | 'refreshPaperPublication'
   | 'atomically'
 >

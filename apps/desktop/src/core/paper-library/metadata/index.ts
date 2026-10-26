@@ -1,5 +1,6 @@
 export { arxivIdOf, usableTitle } from './detect.js'
-export { laterWithMetadata, missingMetadata, remoteMetadata } from './fill.js'
+export { ARXIV_VENUE, laterWithMetadata, missingMetadata, publicationFill, remoteMetadata } from './fill.js'
+export { fillPublications, publicationIdOf } from './publications.js'
 export { extractPdfPages, probePdf } from './pdf-probe.js'
 export type { ExtractedPdfPage } from './pdf-probe.js'
 export type { PdfFacts, PdfProbe } from './pdf-probe.js'
