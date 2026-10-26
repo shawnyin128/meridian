@@ -200,7 +200,6 @@ export const PATTERNS = {
       entry('hand:components/reader/ReadingRemark.tsx', '.remark-compose'),
       entry('hand:components/wiki/WikiClaims.tsx', '.wkclaim-draft'),
       entry('hand:routes/ProjectDetail.tsx', '.workspace-form'),
-      entry('hand:routes/Ideas.tsx', '.idea-detail-editor'),
     ],
   },
   Message: {

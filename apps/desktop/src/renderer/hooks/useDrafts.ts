@@ -269,6 +269,7 @@ export type TextEdit = {
   editing: boolean
   text: string
   stale: boolean
+  changed: boolean
   start: () => void
   change: (text: string) => void
   drop: () => void
@@ -276,8 +277,9 @@ export type TextEdit = {
 
 /**
  * The edit of stored text `stored`, its draft kept in `drafts` under `target`: `editing` while
- * there is a draft, `text` the draft's text or `stored`, and `stale` when the stored text has
- * changed since the draft started, which the caller must not save. `start` opens a draft of
+ * there is a draft, `text` the draft's text or `stored`, `stale` when the stored text has changed
+ * since the draft started, which the caller must not save, and `changed` when the draft's text
+ * differs from the stored text it started from. `start` opens a draft of
  * `stored`, `change` replaces its text and keeps the stored text it started from, and `drop`
  * forgets it once it is saved or cancelled.
  */
@@ -287,6 +289,7 @@ export function editText(drafts: Drafts<EditDraft>, target: string, stored: stri
     editing: draft !== undefined,
     text: draft?.text ?? stored,
     stale: draft !== undefined && draft.base !== stored,
+    changed: draft !== undefined && draft.text !== draft.base,
     start: () => drafts.set(target, { text: stored, base: stored }),
     change: (text) => drafts.set(target, { text, base: draft?.base ?? stored }),
     drop: () => drafts.drop(target),

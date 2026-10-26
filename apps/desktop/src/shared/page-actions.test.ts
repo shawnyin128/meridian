@@ -214,10 +214,6 @@ const PLACES: Record<string, Place[]> = {
   ],
   restore: [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   close: [{ slot: 'panel head', size: 'nested', variant: 'plain' }],
-  edit: [
-    { slot: 'section heading', size: 'sm', variant: 'plain' },
-    { slot: 'panel head', size: 'sm', variant: 'plain', scope: 'a detail panel edits the idea it shows' },
-  ],
   'overflow menu': [
     { slot: 'row actions', size: 'nested', variant: 'plain' },
     { slot: 'page header', size: 'nested', variant: 'plain', scope: "the Papers page's actions over the whole paper list" },
@@ -251,9 +247,8 @@ const buttonLook = (classes: string[]) => ({
 })
 
 /**
- * The look of a text button: a Button by its size, variant and tone, the buttons of a CommitActions or
- * an EditActions by the size and Save of their place, a raw button by its btn classes, or null for any
- * other element.
+ * The look of a text button: a Button by its size, variant and tone, the buttons of a CommitActions
+ * by the size and Save of their place, a raw button by its btn classes, or null for any other element.
  */
 function textButtonLook(element: Node) {
   const name = nameOf(element)
@@ -261,7 +256,6 @@ function textButtonLook(element: Node) {
     const place = strings(attribute(element, 'place'))[0]
     return { size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }
   }
-  if (name === 'EditActions') return { size: 'sm', variant: 'plain' }
   if (name === 'Button') {
     const words = [...strings(attribute(element, 'variant')), ...strings(attribute(element, 'tone'))]
     return {
@@ -288,7 +282,6 @@ function lookOf(element: Node, source: string, path: string): Look | null {
   if (name === 'AddAction') {
     return { operation: 'add', size: literal('size') ?? 'unsized', variant: (element.children as Node[]).length === 0 ? 'icon' : 'labelled' }
   }
-  if (name === 'EditActions') return { operation: 'edit', size: 'sm', variant: 'plain' }
   if (name === 'CommitActions' && path.startsWith('components/settings/')) {
     const place = literal('place')
     return { operation: 'settings save', size: place === 'foot' ? 'md' : 'sm', variant: place === 'foot' ? 'primary' : 'plain' }

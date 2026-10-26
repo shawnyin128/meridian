@@ -131,7 +131,7 @@ test('在项目页的想法一节就地写下想法：存好就落在草稿那�
   expect(draftAt).toBeGreaterThan(-1)
   const draft = page.locator('.idea-draft')
   await draft.locator('.form-input').fill('项目页写下的想法')
-  await draft.locator('.form-textarea').fill('先在 draft 效率里记下来。')
+  await draft.locator('.form-markdown .cm-content').fill('先在 draft 效率里记下来。')
   await draft.getByRole('button', { name: '保存' }).click()
   await expect(draft).toHaveCount(0)
   const made = await call<{ id: string; title: string; sourceProject?: string; project?: string }[]>(win, 'idea.list', {})
@@ -1310,7 +1310,7 @@ test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', 
   // Click outside the placeholder and remove it
   await side.locator('[aria-label="添加关联"]').click()
   await expect(side.locator('.wkrel .inedit')).toHaveCount(1)
-  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await win.locator('.screenslot:not([hidden]) .wkmain .section-heading', { hasText: '项目随笔' }).click()
   await expect(side.locator('.wkrel .inedit')).toHaveCount(0)
   await expect(pageRow.locator('.tagchip')).toHaveCount(pageChips + 1)
 })
@@ -1369,7 +1369,7 @@ test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里',
 
   // Leaving the edit without a change closes it and leaves the item as it was, page link included.
   await rowAction(chips.first(), '.tagchip-edit')
-  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await win.locator('.screenslot:not([hidden]) .wkmain .section-heading', { hasText: '项目随笔' }).click()
   await expect(wikiRow.locator('.reladd')).toHaveCount(0)
   await expect(chips).toHaveText(before)
   await expect(chips.first()).toHaveAttribute('data-wk', page)
@@ -1473,7 +1473,7 @@ test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc
   // Clicking outside the cell writes it too.
   await edit.click()
   await pin.fill('点外面也写回')
-  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await win.locator('.screenslot:not([hidden]) .wkmain .section-heading', { hasText: '项目随笔' }).click()
   await expect(pin).toHaveCount(0)
   await expect(edit).toHaveText('点外面也写回')
   expect(await focusNow()).toBe('点外面也写回')
@@ -1575,22 +1575,23 @@ test('属性栏焦点格保存后,照旧收起其他正在编辑的东西(随笔
   const pin = side.locator('.metadata-input')
   const memoActions = main.locator('.section-heading', { hasText: '项目随笔' }).locator('button')
 
-  await memoActions.click()
+  await main.locator('.memo [data-line]').first().click({ position: { x: 2, y: 4 } })
   await expect(memoActions).toHaveText(['取消', '保存'])
 
   await edit.click()
   await pin.fill('保存焦点格顺带收起随笔')
   await pin.press('Enter')
-  await expect(memoActions).toHaveText(['编辑'])
+  await expect(memoActions).toHaveCount(0)
+  await expect(main.locator('.memo .cm-editor')).toHaveCount(0)
 })
 
 test('项目随笔边写边渲染:写完「# 标题」回车,标题马上渲染,光标回到那一行又是原文,⌘回车照常存下', async ({ win }) => {
   await gotoProject(win)
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   const memo = main.locator('.memo')
-  await main.locator('.section-heading', { hasText: '项目随笔' }).locator('button', { hasText: '编辑' }).click()
+  await memo.locator('[data-line]').first().click({ position: { x: 2, y: 4 } })
   await expect(memo.locator('.cm-content')).toBeFocused()
-  // The cursor starts in the first paragraph; the display formula further down already renders.
+  // The cursor starts in the first block, where the click landed; the display formula further down already renders.
   await expect(memo.locator('.md-block .katex-display')).toHaveCount(1)
 
   await win.keyboard.press('ControlOrMeta+End')
@@ -1616,7 +1617,7 @@ test('项目随笔里输入法组字时的回车和 ⌘回车归输入法:不换
   await gotoProject(win)
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   const memo = main.locator('.memo')
-  await main.locator('.section-heading', { hasText: '项目随笔' }).locator('button', { hasText: '编辑' }).click()
+  await memo.locator('[data-line]').first().click({ position: { x: 2, y: 4 } })
   await expect(memo.locator('.cm-content')).toBeFocused()
   await win.keyboard.press('ControlOrMeta+End')
   await win.keyboard.press('Enter')

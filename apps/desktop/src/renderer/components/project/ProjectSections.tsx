@@ -8,9 +8,8 @@ import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
 import { IconButton } from '../IconButton.js'
 import { IconTrash } from '../icons.js'
-import { EditActions } from '../EditActions.js'
 import { EmptyState } from '../EmptyState.js'
-import { MarkdownBox } from '../Markdown.js'
+import { MarkdownSection } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
 import { useFormat } from '../../lib/format.js'
 import type { KeptText, TextEdit } from '../../hooks/useDrafts.js'
@@ -134,38 +133,21 @@ export function ProjectAreasField({ projectId, areas, onSave, onRemove, onError 
   )
 }
 
-/**
- * Rendered Markdown and its source editor share one stable project-memo shell. `edit` is the memo's
- * kept edit (see `editText`); a stale one is not saved.
- */
+/** The project memo, edited in place. `edit` is the memo's kept edit (see `editText`). */
 export function ProjectMemo({ edit, onSave, onOpen }: {
   edit: TextEdit
   onSave: (next: string) => void
   onOpen: (id: string) => void
 }) {
   const m = useMessages()
-  const box = useRef<HTMLDivElement>(null)
-  const save = () => {
-    if (edit.stale) return
-    const next = edit.text.trim()
-    edit.drop()
-    onSave(next)
-  }
   return (
-    <>
-      <SectionHeading
-        actions={(
-          <EditActions editing={edit.editing} canSave={!edit.stale} onEdit={edit.start} onCancel={edit.drop} onSave={save} />
-        )}
-      >{m.project.sections.remark}
-      </SectionHeading>
-      <MarkdownBox
-        className="memo" text={edit.text} editing={edit.editing} box={box}
-        live={{ onChange: edit.change }}
-        onCancel={edit.drop} onSave={save} onOpen={onOpen}
-        empty={<EmptyState variant="section" />}
-      />
-    </>
+    <MarkdownSection
+      title={m.project.sections.remark} className="memo" edit={edit} onOpen={onOpen}
+      onSave={(next) => {
+        edit.drop()
+        onSave(next)
+      }}
+    />
   )
 }
 

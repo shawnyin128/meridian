@@ -2,7 +2,8 @@ import type { RefObject } from 'react'
 import { useMessages } from '../../messages/useMessages.js'
 import { DraftForm } from '../DraftForm.js'
 import { FadeText } from '../FadeText.js'
-import { FormInput, FormTextarea } from '../FormControls.js'
+import { FormInput } from '../FormControls.js'
+import { MarkdownField } from '../Markdown.js'
 import './IdeaDraft.css'
 
 /** The title and body of an idea being drafted, as typed. */
@@ -41,10 +42,9 @@ export function IdeaDraft({ source, draft, triggers, onChange, onSave, onCancel 
             placeholder={m.ideas.editor.titlePlaceholder} aria-invalid={invalid(title === '')}
             onChange={(event) => onChange({ ...draft, title: event.target.value })}
           />
-          <FormTextarea
-            value={draft.body} maxLength={20_000} aria-label={m.ideas.bodyLabel}
-            placeholder={m.ideas.editor.bodyPlaceholder} aria-invalid={invalid(body === '')}
-            onChange={(event) => onChange({ ...draft, body: event.target.value })}
+          <MarkdownField
+            text={draft.body} label={m.ideas.bodyLabel} placeholder={m.ideas.editor.bodyPlaceholder}
+            invalid={invalid(body === '')} onChange={(next) => onChange({ ...draft, body: next })}
           />
         </>
       )}

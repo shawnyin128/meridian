@@ -8,10 +8,10 @@ import { FINISHED_PROJECT, SHELVED_PROJECT } from '../../shared/vocabulary.js'
 import { idea as ideaApi, project as projectApi, wiki as wikiApi } from '../ipc.js'
 import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { SortMenu } from '../components/SortMenu.js'
-import { FieldRow, FieldRows, FormInput, FormTextarea } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { ChoicePicker, DotsMenu } from '../components/FieldPickers.js'
-import { EditActions } from '../components/EditActions.js'
+import { InlineField } from '../components/InlineField.js'
+import { MarkdownSection } from '../components/Markdown.js'
 import { Group, GroupedList } from '../components/GroupedList.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
@@ -34,7 +34,7 @@ import {
 } from '../components/PageShell.js'
 import { useEscapeLayer, useJump, useScreenReentry, useVaultRevision } from '../shell/AppShell.js'
 import { BackButton } from '../components/BackButton.js'
-import { useDraft } from '../hooks/useDrafts.js'
+import { useDraft, useDrafts, type Drafts, type TextEdit } from '../hooks/useDrafts.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useTopLevel } from '../hooks/useTopLevel.js'
@@ -44,7 +44,6 @@ import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import { failureOf } from '../lib/failure-label.js'
-import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
 import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
@@ -133,9 +132,37 @@ function IdeaOrigin({ idea, sourceProject, chatDeleted }: { idea: ResearchIdea; 
   )
 }
 
+/** The kept edit of an idea's body: the title and body typed, and those they were typed over, as older Apps keep it too. */
+type IdeaEdit = { title: string; body: string; base: { title: string; body: string } }
+
+/** The target an idea's edit is kept under, with its idea. */
+const EDIT = 'edit'
+
+/**
+ * The edit of `idea`'s body (see `editText`), kept in `drafts` under EDIT in the shape older Apps
+ * read; it is stale once the idea's body has changed since the edit started.
+ */
+function ideaBodyEdit(drafts: Drafts<IdeaEdit>, idea: ResearchIdea): TextEdit {
+  const draft = drafts.get(EDIT)
+  const fresh: IdeaEdit = { title: idea.title, body: idea.body, base: { title: idea.title, body: idea.body } }
+  return {
+    editing: draft !== undefined,
+    text: draft?.body ?? idea.body,
+    stale: draft !== undefined && draft.base.body !== idea.body,
+    changed: draft !== undefined && draft.body !== draft.base.body,
+    start: () => drafts.set(EDIT, fresh),
+    change: (body) => drafts.set(EDIT, { ...(draft ?? fresh), body }),
+    drop: () => drafts.drop(EDIT),
+  }
+}
+
+/** The draft an idea's rename is kept under, with its idea, so it reopens where it was typed. */
+const RENAME = 'rename'
+
 /**
  * Idea cards share the project cards' row-end pattern: clicking the card opens its details, and
- * management actions sit in the "More" menu.
+ * management actions sit in the "More" menu, which starts with Rename, opening the title in place
+ * (see IdeaName). A title an older App kept in the idea's edit (see IdeaEdit) opens that rename.
  */
 function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
   idea: ResearchIdea
@@ -146,9 +173,19 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
   onDelete: () => void
 }) {
   const m = useMessages()
+  const names = useDrafts<string>(['idea', idea.id])
+  const edits = useDrafts<IdeaEdit>(['idea', idea.id])
+  const kept = edits.get(EDIT)
+  // An older App kept a title typed in the detail panel in the idea's edit; it reopens as the rename it now is.
+  useEffect(() => {
+    if (kept === undefined || kept.title === kept.base.title) return
+    if (names.get(RENAME) === undefined) names.set(RENAME, kept.title)
+    if (kept.body === kept.base.body) edits.drop(EDIT)
+    else edits.set(EDIT, { ...kept, title: kept.base.title })
+  }, [kept, names, edits])
   const locked = idea.archived && linked?.status === FINISHED_PROJECT
   return (
-    <DotsMenu label={m.ideas.manage(idea.title)} stopRowActivation>
+    <DotsMenu label={m.ideas.manage(idea.title)} stopRowActivation onRename={() => names.set(RENAME, idea.title)}>
       <MenuItem disabled={!canMove(-1)} onSelect={() => onMove(-1)}>{m.common.moveUp}</MenuItem>
       <MenuItem disabled={!canMove(1)} onSelect={() => onMove(1)}>{m.common.moveDown}</MenuItem>
       <MenuSeparator />
@@ -159,8 +196,26 @@ function IdeaMenu({ idea, linked, onMove, canMove, onArchive, onDelete }: {
   )
 }
 
+/**
+ * An idea's title on its card or row: `children`, the title that opens the idea, at rest, and while
+ * the … menu's rename is open the title's inline field in their place, saved through `onRename`.
+ */
+function IdeaName({ idea, onRename, children }: {
+  idea: ResearchIdea
+  onRename: (title: string) => boolean | Promise<boolean>
+  children: ReactNode
+}) {
+  const m = useMessages()
+  return (
+    <InlineField
+      label={m.ideas.editor.titleLabel} value={idea.title} keep={{ scope: ['idea', idea.id], target: RENAME }}
+      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename} rest={children}
+    />
+  )
+}
+
 /** An idea as a card, title first: what it relates to, then where it came from and when it last changed. */
-function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu, onOpen, reorder }: {
+function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu, onOpen, onRename, reorder }: {
   idea: ResearchIdea
   chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
@@ -168,6 +223,7 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
   selected: boolean
   menu: ReactNode
   onOpen: () => void
+  onRename: (title: string) => Promise<boolean>
   reorder: Reorderable
 }) {
   const m = useMessages()
@@ -177,7 +233,9 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
       data-idea={idea.id} onActivate={onOpen} {...reorder.item}
       title={(
         <>
-          <ItemOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>
+          <IdeaName idea={idea} onRename={onRename}>
+            <ItemOpen><FadeText className="idea-card-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>
+          </IdeaName>
           <IdeaRelationTags idea={idea} projectsById={projectsById} pageTitles={pageTitles} />
         </>
       )}
@@ -199,13 +257,14 @@ function IdeaCard({ idea, chatDeleted, projectsById, pageTitles, selected, menu,
  * A started idea as a row: its title, the project it is carried out in, with that project's status tag
  * while it is shelved, and where it came from.
  */
-function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reorder }: {
+function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, onRename, reorder }: {
   idea: ResearchIdea
   chatDeleted: boolean
   projectsById: ReadonlyMap<string, ProjectSummary>
   selected: boolean
   menu: ReactNode
   onOpen: () => void
+  onRename: (title: string) => Promise<boolean>
   reorder: Reorderable
 }) {
   const m = useMessages()
@@ -213,7 +272,11 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, reor
   return (
     <Item
       composite className="idea-row" selected={selected} data-idea={idea.id} onActivate={onOpen} {...reorder.item}
-      title={<ItemOpen className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>}
+      title={(
+        <IdeaName idea={idea} onRename={onRename}>
+          <ItemOpen className="idea-row-open"><FadeText className="idea-row-title" label={idea.title}>{idea.title}</FadeText></ItemOpen>
+        </IdeaName>
+      )}
       trailing={<TrailingDate date={idea.updated} label={m.ideas.updated} />}
       actions={<DragHandle {...reorder.handle} />} menu={menu}
     >
@@ -244,7 +307,7 @@ function IdeaDetailPanel({
   /** The idea's candidate node as its source project's graph names it, while one is shown; null once that project is gone. */
   candidate: ComponentProps<typeof IdeaNodeCandidate>['node'] | undefined
   onClose: () => void
-  onSave: (title: string, body: string) => Promise<boolean>
+  onSave: (body: string) => Promise<boolean>
   onRelations: (relations: IdeaRelationsValue, removed?: string) => Promise<boolean>
   onProject: (projectId: string | null) => void
   onPromote: () => void
@@ -253,26 +316,16 @@ function IdeaDetailPanel({
   onError: (error: Error) => void
 }) {
   const m = useMessages()
-  // The edit keeps the title and body it started from; once the idea's own have changed it is stale and is not saved.
-  const [edit, setEdit] = useDraft<{ title: string; body: string; base: { title: string; body: string } }>(['idea', idea.id], 'edit')
-  const editing = edit !== null
-  const title = edit?.title ?? idea.title
-  const body = edit?.body ?? idea.body
-  const stale = edit !== null && (edit.base.title !== idea.title || edit.base.body !== idea.body)
+  const body = ideaBodyEdit(useDrafts<IdeaEdit>(['idea', idea.id]), idea)
   const [busy, setBusy] = useState(false)
 
   useEffect(() => { setBusy(false) }, [idea.id])
 
-  const startEditing = () => setEdit({ title: idea.title, body: idea.body, base: { title: idea.title, body: idea.body } })
-  const cancelEditing = () => setEdit(null)
-  const save = () => {
-    const nextTitle = title.trim()
-    const nextBody = body.trim()
-    if (busy || stale || nextTitle === '' || nextBody === '') return
+  const save = (next: string) => {
     setBusy(true)
-    void onSave(nextTitle, nextBody).then((saved) => {
+    void onSave(next).then((saved) => {
       setBusy(false)
-      if (saved) setEdit(null)
+      if (saved) body.drop()
     })
   }
 
@@ -282,34 +335,12 @@ function IdeaDetailPanel({
         idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
         sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
-        actions={(
-          <EditActions
-            editing={editing} saving={busy} canSave={!stale && title.trim() !== '' && body.trim() !== ''}
-            onEdit={startEditing} onCancel={cancelEditing} onSave={save}
+        body={(
+          <MarkdownSection
+            key={idea.id} title={m.project.sections.content} level="group" className="idea-panel-body" edit={body}
+            required saving={busy} onSave={save}
           />
         )}
-        editor={editing
-          ? (
-            <section className="idea-detail-editor">
-              <FieldRows>
-                <FieldRow label={m.ideas.editor.titleLabel}>
-                  <FormInput
-                    autoFocus value={title} maxLength={160}
-                    onChange={(event) => setEdit({ ...edit!, title: event.target.value })}
-                    onKeyDown={commitKeys({ onSave: save, onCancel: cancelEditing })}
-                  />
-                </FieldRow>
-                <FieldRow label={m.ideas.bodyLabel}>
-                  <FormTextarea
-                    value={body} maxLength={20_000}
-                    onChange={(event) => setEdit({ ...edit!, body: event.target.value })}
-                    onKeyDown={commitKeys({ multiline: true, onSave: save, onCancel: cancelEditing })}
-                  />
-                </FieldRow>
-              </FieldRows>
-            </section>
-          )
-          : undefined}
       >
         <IdeaRelations
           idea={idea} projects={projects} pages={pageTitles} onChange={onRelations} onError={onError}
@@ -476,6 +507,7 @@ export function Ideas() {
   const shared = (idea: ResearchIdea) => ({
     idea, chatDeleted: chatDeleted(idea), projectsById, selected: selectedId === idea.id,
     onOpen: () => setSelectedId(idea.id),
+    onRename: (title: string) => write(ideaApi.update(idea.id, { title })),
     reorder: { item: reorder.itemProps(idea.id), handle: reorder.handleProps(idea.id) },
   })
   const card = (idea: ResearchIdea) => <IdeaCard key={idea.id} {...shared(idea)} pageTitles={pageTitles} menu={menuOf(idea)} />
@@ -585,7 +617,7 @@ export function Ideas() {
               onRelations={(relations) => write(ideaApi.update(selected.id, { relations }))}
               onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }))}
               onError={report}
-              onSave={(title, body) => write(ideaApi.update(selected.id, { title, body }))}
+              onSave={(body) => write(ideaApi.update(selected.id, { body }))}
               onProject={(projectId) => void write(ideaApi.update(selected.id, { project: projectId }))}
               onPromote={() => void write(ideaApi.promote(selected.id))}
               onOpen={jumpTo}

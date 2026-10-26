@@ -28,7 +28,5 @@
   .idea-row-work{display:none}
 }
 
-.idea-detail-editor{margin-top:var(--sp-20)}
-.idea-detail-editor .form-textarea{min-height:150px}
 .idea-detail-panel .idea-link-picker{width:100%}
 .idea-missing-project{margin-top:var(--sp-8)}

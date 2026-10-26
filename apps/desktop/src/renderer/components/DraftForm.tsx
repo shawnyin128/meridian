@@ -12,7 +12,7 @@ export type DraftInvalid = (missing: boolean) => true | undefined
 /**
  * The one form drafted in place: a new item, or a change to one, with its fields where it lands and
  * Cancel and Save at its foot. It opens with its first field focused. Enter in a one-line field, or
- * ⌘Enter on macOS and Ctrl+Enter elsewhere in a long text, saves as Save does; Escape cancels; the keys of an input method
+ * ⌘Enter on macOS and Ctrl+Enter elsewhere in a long text (a text area or a Markdown field), saves as Save does; Escape cancels; the keys of an input method
  * composition, and those of a menu opened from a field, are not the draft's. Leaving the draft, by a
  * press outside it or focus moving out of it, neither saves nor cancels, except that it cancels a
  * draft its host calls `empty`; a press on `triggers`, the controls that open the draft, is not
@@ -62,8 +62,9 @@ export function DraftForm({ destination, canSave, onSave, onCancel, empty = fals
     const { target } = event
     // A field's menu is portaled out of the draft, yet its keys still bubble here through React.
     if (!(target instanceof Node) || root.current?.contains(target) !== true) return
-    const field = target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement
-    commitKeys({ multiline: target instanceof HTMLTextAreaElement, onCancel, ...(field ? { onSave: save } : {}) })(event)
+    const long = target instanceof HTMLTextAreaElement || (target instanceof HTMLElement && target.getAttribute('contenteditable') === 'true')
+    const field = long || target instanceof HTMLInputElement
+    commitKeys({ multiline: long, onCancel, ...(field ? { onSave: save } : {}) })(event)
   }
 
   const invalid: DraftInvalid = (missing) => (refused && missing ? true : undefined)

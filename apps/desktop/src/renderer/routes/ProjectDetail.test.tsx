@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, Profiler, type ReactNode } from 'react'
+import { EditorView } from '@codemirror/view'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -496,10 +497,11 @@ describe('project idea panel', () => {
     }
     act(() => {
       type(draft.querySelector('input')!, '项目页写下的想法')
-      type(draft.querySelector('textarea')!, '先记下来。')
+      EditorView.findFromDOM(draft.querySelector<HTMLElement>('.form-markdown .cm-editor')!)!
+        .dispatch({ changes: { from: 0, insert: '先记下来。' }, userEvent: 'input.type' })
     })
     await act(async () => {
-      draft.querySelector('textarea')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
+      draft.querySelector('.form-markdown .cm-content')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
       await Promise.resolve()
     })
     expect(onCreate).toHaveBeenCalledWith('项目页写下的想法', '先记下来。')

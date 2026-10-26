@@ -1,10 +1,10 @@
 // @vitest-environment jsdom
-import { act, useEffect, useRef, useState, type ReactNode } from 'react'
+import { act, useEffect, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TrashEntry } from '../../shared/contract.js'
-import { MarkdownBox } from '../components/Markdown.js'
-import { DraftsProvider } from '../hooks/useDrafts.js'
+import { MarkdownSection } from '../components/Markdown.js'
+import { DraftsProvider, editText, useDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from './language.js'
 import { SHELL_STATE_STORAGE_KEY } from './shell-state.js'
@@ -146,10 +146,11 @@ function Panel({ onClose }: { onClose: () => void }) {
 
 /** A screen with a Markdown editor being edited, a select, and a button. */
 function Editors() {
-  const box = useRef<HTMLDivElement>(null)
+  const edit = editText(useDrafts<EditDraft>(['probe']), 'body', 'a')
+  useEffect(() => { edit.start() }, [])
   return (
     <>
-      <MarkdownBox text="a" editing box={box} onCancel={() => {}} onSave={() => {}} empty={null} />
+      <MarkdownSection title="随笔" edit={edit} onSave={() => {}} />
       <select><option>a</option></select>
       <button type="button">b</button>
     </>
@@ -724,7 +725,7 @@ describe('AppShell "/" shortcut', () => {
   beforeEach(async () => { await mount(<Editors />) })
 
   it('在 Markdown 编辑框和下拉框里按「/」照常输入，焦点不跳到搜索框', () => {
-    const box = host.querySelector<HTMLElement>('.screenslot .md.src')!
+    const box = host.querySelector<HTMLElement>('.screenslot .md.src .cm-content')!
     const select = host.querySelector<HTMLSelectElement>('.screenslot select')!
     for (const editable of [box, select]) {
       editable.focus()

@@ -41,17 +41,11 @@ components/chat/Chat.css:36: .chat-composer .cm-placeholder { overflow }
 components/chat/Chat.css:36: .chat-composer .cm-placeholder { text-overflow }
 components/ideas/IdeaDraft.css:1: .idea-draft-source { color }
 components/ideas/IdeaDraft.css:1: .idea-draft-source { font-size }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { margin }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { margin }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { color }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { color }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { font-size }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { font-size }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { line-height }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { line-height }
-components/ideas/IdeaPanel.css:4: .idea-panel-body { white-space }
 components/ideas/IdeaPanel.css:4: .idea-panel-source { white-space }
-components/ideas/IdeaPanel.css:4: .idea-panel-body { overflow-wrap }
 components/ideas/IdeaPanel.css:4: .idea-panel-source { overflow-wrap }
 components/ideas/IdeaPanel.css:5: .idea-panel-source { font-size }
 components/ideas/IdeaPanel.css:6: .idea-panel-source-gone { margin-left }
@@ -502,9 +496,7 @@ routes/Ideas.css:17: .idea-rows { grid-template-columns }
 routes/Ideas.css:19: .idea-row { display }
 routes/Ideas.css:19: .idea-row { grid-template-columns }
 routes/Ideas.css:19: .idea-row { align-items }
-routes/Ideas.css:31: .idea-detail-editor { margin-top }
-routes/Ideas.css:32: .idea-detail-editor .form-textarea { min-height }
-routes/Ideas.css:34: .idea-missing-project { margin-top }
+routes/Ideas.css:32: .idea-missing-project { margin-top }
 routes/ProjectDetail.css:4: .project-ideas { display }
 routes/ProjectDetail.css:5: .project-idea-row { display }
 routes/ProjectDetail.css:5: .project-idea-row { grid-template-columns }

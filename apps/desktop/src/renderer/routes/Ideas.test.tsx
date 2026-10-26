@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { CallFailure, ProjectSummary, ResearchIdea } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
@@ -110,7 +111,7 @@ vi.mock('../hooks/useVaultWrite.js', () => ({
 }))
 
 const { Ideas } = await import('./Ideas.js')
-const { DraftsProvider } = await import('../hooks/useDrafts.js')
+const { DraftsProvider, keptDraftsKey } = await import('../hooks/useDrafts.js')
 
 describe('Ideas', () => {
   let host: HTMLDivElement
@@ -210,6 +211,13 @@ describe('Ideas', () => {
     field.dispatchEvent(new KeyboardEvent('keydown', { key, metaKey, bubbles: true, cancelable: true }))
   })
   const draft = () => host.querySelector<HTMLElement>('.ideas-list > .grouped-list > .idea-draft-card')
+  /** The draft's body: its Markdown field, the editor in it, and typing into that editor. */
+  const bodyField = () => draft()!.querySelector<HTMLElement>('.form-markdown')!
+  const bodyEditor = () => EditorView.findFromDOM(bodyField().querySelector<HTMLElement>('.cm-editor')!)!
+  const typeBody = (value: string) => {
+    const view = bodyEditor()
+    view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: value }, userEvent: 'input.type' })
+  }
   const openDraft = () => act(async () => {
     [...host.querySelectorAll<HTMLButtonElement>('.desk-head > .page-actions > button')].at(-1)!.click()
   })
@@ -226,7 +234,7 @@ describe('Ideas', () => {
     expect(draft()?.previousElementSibling?.textContent).toBe('未开始 · 1')
     expect(draft()!.nextElementSibling?.getAttribute('data-idea')).toBe('idea-independent')
     expect(document.activeElement).toBe(draft()!.querySelector('input'))
-    expect(draft()!.querySelector('textarea')).not.toBeNull()
+    expect(bodyField().querySelector('.cm-content')).not.toBeNull()
     expect(document.querySelector('[role="dialog"], .idea-dialog')).toBeNull()
   })
 
@@ -261,9 +269,9 @@ describe('Ideas', () => {
       await openDraft()
       act(() => {
         type(draft()!.querySelector('input')!, '按 batch 校准阈值')
-        type(draft()!.querySelector('textarea')!, '先在两个 batch 上试。')
+        typeBody('先在两个 batch 上试。')
       })
-      await press(draft()!.querySelector('textarea')!, 'Enter', true)
+      await press(bodyEditor().contentDOM, 'Enter', true)
       expect(api.create).toHaveBeenCalledWith(undefined, '按 batch 校准阈值', '先在两个 batch 上试。')
       expect(api.update).not.toHaveBeenCalled()
       expect(draft()).toBeNull()
@@ -289,7 +297,7 @@ describe('Ideas', () => {
       await openDraft()
       act(() => {
         type(draft()!.querySelector('input')!, '按 batch 校准阈值')
-        type(draft()!.querySelector('textarea')!, '先在两个 batch 上试。')
+        typeBody('先在两个 batch 上试。')
       })
       const save = [...draft()!.querySelectorAll<HTMLButtonElement>('button')].find((button) => button.textContent === '保存')!
       await act(async () => { save.click() })
@@ -305,16 +313,16 @@ describe('Ideas', () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await openDraft()
     const title = () => draft()!.querySelector('input')!
-    const body = () => draft()!.querySelector('textarea')!
+    const body = bodyField
     const marked = (field: Element) => field.getAttribute('aria-invalid') === 'true'
     act(() => { type(title(), '只有标题') })
-    await press(body(), 'Enter', true)
+    await press(bodyEditor().contentDOM, 'Enter', true)
     expect([marked(title()), marked(body())]).toEqual([false, true])
-    act(() => { type(title(), ''); type(body(), '只有正文') })
+    act(() => { type(title(), ''); typeBody('只有正文') })
     await press(title(), 'Enter')
     expect([marked(title()), marked(body())]).toEqual([true, false])
     const shown = draft()!.cloneNode(true) as HTMLElement
-    shown.querySelectorAll('textarea').forEach((field) => field.remove())
+    shown.querySelectorAll('.form-markdown').forEach((field) => field.remove())
     expect(shown.textContent).toBe('取消保存')
     expect(api.create).not.toHaveBeenCalled()
     act(() => { type(title(), '补上标题') })
@@ -329,8 +337,8 @@ describe('Ideas', () => {
     expect(draft()).toBeNull()
     await openDraft()
     expect(draft()!.querySelector('input')!.value).toBe('')
-    act(() => { type(draft()!.querySelector('textarea')!, '写了一半') })
-    await press(draft()!.querySelector('textarea')!, 'Escape')
+    act(() => { typeBody('写了一半') })
+    await press(bodyEditor().contentDOM, 'Escape')
     expect(draft()).toBeNull()
     expect(api.create).not.toHaveBeenCalled()
   })
@@ -346,9 +354,9 @@ describe('Ideas', () => {
     await outside()
     expect(draft()).toBeNull()
     await openDraft()
-    act(() => { type(draft()!.querySelector('textarea')!, '只写了正文') })
+    act(() => { typeBody('只写了正文') })
     await outside()
-    expect(draft()!.querySelector('textarea')!.value).toBe('只写了正文')
+    expect(bodyEditor().state.doc.toString()).toBe('只写了正文')
     expect([...draft()!.querySelectorAll('[aria-invalid="true"]')]).toEqual([])
     expect(api.create).not.toHaveBeenCalled()
   })
@@ -414,9 +422,9 @@ describe('Ideas', () => {
       card('idea-paused').querySelector('.dots')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
     })
     const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
-    expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 2))
-      .toEqual([['上移', false], ['下移', true]])
-    await act(async () => { items[0]!.click() })
+    expect(items.map((item) => [item.textContent, item.hasAttribute('data-disabled')]).slice(0, 3))
+      .toEqual([['重命名', false], ['上移', false], ['下移', true]])
+    await act(async () => { items[1]!.click() })
     expect(api.reorder).toHaveBeenLastCalledWith(['idea-paused', 'idea-independent', 'idea-completed', 'idea-linked', 'idea-aside'])
   })
 
@@ -478,41 +486,37 @@ describe('Ideas', () => {
     expect(independent.textContent).toContain('9月17日 更新')
 
     await act(async () => { (linked as HTMLElement).click() })
-    // The same card panel as the project page's, with the same head: the title, then the edit and the close, both compact.
+    // The same card panel as the project page's, with the same head: the title, then the close.
     const detail = host.querySelector('.idea-detail-panel')!
     expect([detail.tagName, detail.className, detail.getAttribute('aria-label')])
       .toEqual(['ASIDE', 'side-panel side-panel--card idea-detail-panel', '想法详情'])
     expect(detail.querySelector('.panel-head .panel-head-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
     expect([...detail.querySelectorAll('.panel-head button')].map((item) => [item.textContent || item.getAttribute('aria-label'), item.className]))
-      .toEqual([['编辑', 'btn sm'], ['收起详情', 'icbtn sm panel-close']])
+      .toEqual([['收起详情', 'icbtn sm panel-close']])
     expect([...detail.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
-    const edit = [...detail.querySelectorAll<HTMLButtonElement>('button')]
-      .find((item) => item.textContent === '编辑')!
-    await act(async () => { edit.click() })
-    expect(detail.querySelector('.idea-detail-editor')).not.toBeNull()
+    const content = () => detail.querySelector<HTMLElement>('.idea-panel-body')!
+    const contentButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.section-heading--group')][0]!
+      .querySelectorAll<HTMLButtonElement>('.section-heading-actions .btn')
+    const editor = () => EditorView.findFromDOM(content().querySelector<HTMLElement>('.cm-editor')!)!
+    await act(async () => { content().querySelector('p')!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     expect(document.querySelector('.idea-dialog')).toBeNull()
-    const headButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')]
-      .map((item) => item.textContent)
-    expect(headButtons()).toEqual(['取消', '保存'])
-    expect(detail.querySelector('.idea-detail-editor button')).toBeNull()
-    const titleField = detail.querySelector<HTMLInputElement>('.idea-detail-editor input')!
+    expect([...contentButtons()].map((item) => item.textContent)).toEqual(['取消', '保存'])
+    expect(editor().state.doc.toString()).toBe('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     await act(async () => {
-      titleField.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+      editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
     })
-    expect(detail.querySelector('.idea-detail-editor')).toBeNull()
+    expect(content().querySelector('.cm-editor')).toBeNull()
     expect(api.update).not.toHaveBeenCalled()
+    await act(async () => { content().querySelector('p')!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    act(() => editor().dispatch({ changes: { from: editor().state.doc.length, insert: '\n\n### 要验证\n- evidence: 只是一条' }, userEvent: 'input.type' }))
     await act(async () => {
-      [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')].find((item) => item.textContent === '编辑')!.click()
-    })
-    await act(async () => {
-      detail.querySelector('.idea-detail-editor input')!
-        .dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
     })
     expect(api.update).toHaveBeenCalledWith('idea-linked', {
-      title: '用可学习性信号动态分配 draft model 的蒸馏预算', body: '只对 disagreement 高且可学习的 token 加大蒸馏权重。',
+      body: '只对 disagreement 高且可学习的 token 加大蒸馏权重。\n\n### 要验证\n- evidence: 只是一条',
     })
     api.update.mockClear()
 
@@ -771,12 +775,13 @@ describe('Ideas', () => {
     expect(detail.querySelector('.idea-panel-source')!.textContent).toBe('EAGLE')
   })
 
-  it('改到一半时库里这条想法被别处改过,保存按不动,回车也不写;取消后显示改过的', async () => {
+  it('改到一半时库里这条想法被别处改过,保存按不动,⌘回车也不写;取消后显示改过的', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
     const detail = host.querySelector('.idea-detail-panel')!
-    const head = (label: string) => [...detail.querySelectorAll<HTMLButtonElement>('.panel-head .btn')].find((item) => item.textContent === label)!
-    await act(async () => { head('编辑').click() })
+    const content = () => detail.querySelector<HTMLElement>('.idea-panel-body')!
+    const head = (label: string) => [...detail.querySelectorAll<HTMLButtonElement>('.section-heading-actions .btn')].find((item) => item.textContent === label)!
+    await act(async () => { content().querySelector('p')!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     const held = api.ideas
     try {
       api.ideas = held.map((idea) => (idea.id === 'idea-linked' ? { ...idea, body: '插件改过的正文' } : idea))
@@ -784,7 +789,7 @@ describe('Ideas', () => {
       await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
       expect(head('保存').disabled).toBe(true)
       await act(async () => {
-        detail.querySelector('.idea-detail-editor input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+        content().querySelector('.cm-content')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
       })
       expect(api.update).not.toHaveBeenCalled()
       await act(async () => { head('取消').click() })
@@ -792,6 +797,48 @@ describe('Ideas', () => {
     } finally {
       api.ideas = held
       api.revision = 0
+    }
+  })
+
+  it('改标题走卡片上更多菜单的重命名:标题就地换成输入框,回车只写标题', async () => {
+    await act(async () => { root.render(<DraftsProvider><MessagesProvider><Ideas /></MessagesProvider></DraftsProvider>) })
+    const card = () => host.querySelector<HTMLElement>('[data-idea="idea-independent"]')!
+    await act(async () => {
+      card().querySelector('.dots')!.dispatchEvent(new MouseEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const rename = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')].find((item) => item.textContent === '重命名')!
+    await act(async () => { rename.click() })
+    await vi.waitFor(() => expect(card().querySelector('.metadata-input')).not.toBeNull())
+    const field = card().querySelector<HTMLInputElement>('.metadata-input')!
+    expect(field.value).toBe('独立想法')
+    act(() => { type(field, '改过名的想法') })
+    await press(field, 'Enter')
+    expect(api.update).toHaveBeenCalledWith('idea-independent', { title: '改过名的想法' })
+  })
+
+  it('旧版留下的想法编辑草稿连标题一起留着时,正文回到正文的编辑里,标题回到卡片上的重命名里', async () => {
+    window.localStorage.setItem(keptDraftsKey('/vaults/ideas-test'), JSON.stringify({ format: 1, drafts: [[
+      ['idea', 'idea-independent'], 'edit', {
+        title: '旧版改的标题', body: '旧版改的正文', base: { title: '独立想法', body: '还没有关联项目。' },
+      },
+    ]] }))
+    try {
+      await act(async () => { root.render(<DraftsProvider><MessagesProvider><Ideas /></MessagesProvider></DraftsProvider>) })
+      await vi.waitFor(() => expect(host.querySelector('[data-idea="idea-independent"] .metadata-input')).not.toBeNull())
+      expect(host.querySelector<HTMLInputElement>('[data-idea="idea-independent"] .metadata-input')!.value).toBe('旧版改的标题')
+      const kept = JSON.parse(window.localStorage.getItem(keptDraftsKey('/vaults/ideas-test'))!) as { drafts: unknown[] }
+      expect(kept.drafts).toContainEqual([['idea', 'idea-independent'], 'edit', {
+        title: '独立想法', body: '旧版改的正文', base: { title: '独立想法', body: '还没有关联项目。' },
+      }])
+      expect(api.update).not.toHaveBeenCalled()
+      await press(host.querySelector('[data-idea="idea-independent"] .metadata-input')!, 'Escape')
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-independent"] .item-open')!.click() })
+      const detail = host.querySelector('.idea-detail-panel')!
+      const editor = EditorView.findFromDOM(detail.querySelector<HTMLElement>('.idea-panel-body .cm-editor')!)!
+      expect(editor.state.doc.toString()).toBe('旧版改的正文')
+      expect(api.update).not.toHaveBeenCalled()
+    } finally {
+      window.localStorage.clear()
     }
   })
 })
