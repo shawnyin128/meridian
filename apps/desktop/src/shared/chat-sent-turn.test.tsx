@@ -47,6 +47,7 @@ vi.mock('../renderer/ipc.js', () => ({
     messages: (id: string) => via('chat.messages', () => core.service!.messages(id)),
     cancel: (id: string) => via('chat.cancel', () => core.service!.cancel(id)),
     writing: (id: string) => via('chat.writing', () => core.service!.writing(id)),
+    failure: (id: string) => via('chat.failure', () => core.service!.failure(id)),
     create: vi.fn(), recordAction: vi.fn(),
     model: () => Promise.resolve({ source: 'model-1' }), setModel: () => Promise.resolve({ source: 'model-1' }),
   },
