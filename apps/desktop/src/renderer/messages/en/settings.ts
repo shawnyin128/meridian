@@ -151,6 +151,8 @@ export const settings = {
       defaultModel: 'Default model',
       setDefault: 'Set as default',
       apiSource: (name: string) => `${name} API`,
+      localSource: (name: string) => `${name} (local)`,
+      localService: (port: string) => `Local service · ${port}`,
       confirmDelete: (name: string) => `Delete ${name}?`,
       manage: (name: string) => `Manage “${name}”`,
     },

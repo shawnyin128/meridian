@@ -7,7 +7,7 @@ import { HARNESS_API_EFFORTS } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { errorLabel } from '../../lib/failure-label.js'
-import { profileKey } from '../../lib/model-source.js'
+import { COMPATIBLE_TEMPLATES, compatibleTemplateAt, type CompatibleTemplate, profileKey, trimBaseUrl } from '../../lib/model-source.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ChoicePicker } from '../FieldPickers.js'
 import { FieldRow, FieldRows, FormInput } from '../FormControls.js'
@@ -57,7 +57,7 @@ const PROVIDERS: Record<HarnessModelProvider, {
   },
 }
 
-type CompatibleTemplateId = 'choose' | 'deepseek' | 'openrouter' | 'ollama' | 'lm-studio' | 'custom'
+type CompatibleTemplateId = 'choose' | CompatibleTemplate | 'custom'
 const TEMPLATE_CHOICES: readonly CompatibleTemplateId[] = ['choose', 'deepseek', 'openrouter', 'ollama', 'lm-studio', 'custom']
 const PROVIDER_CHOICES: readonly HarnessModelProvider[] = ['openai', 'anthropic', 'google-gemini', 'openai-compatible']
 const PROVIDER_NAMES: Record<Exclude<HarnessModelProvider, 'openai-compatible'>, string> = {
@@ -75,54 +75,15 @@ const COMPATIBLE_PROTOCOLS: readonly HarnessModelProtocol[] = ['responses', 'cha
 const AUTHENTICATIONS = ['api-key', 'none'] as const
 const NO_EFFORTS: HarnessModelEfforts = { levels: [] }
 
-/** Structural, language-neutral data for each template. Copy comes from the catalog by template id. */
-const COMPATIBLE_TEMPLATES: Record<Exclude<CompatibleTemplateId, 'choose' | 'custom'>, {
-  protocol: Extract<HarnessModelProtocol, 'responses' | 'chat-completions'>
-  protocolLabel: string
-  baseUrl: string
-  authentication: 'api-key' | 'none'
-}> = {
-  deepseek: {
-    protocol: 'chat-completions',
-    protocolLabel: 'Chat Completions API',
-    baseUrl: 'https://api.deepseek.com',
-    authentication: 'api-key',
-  },
-  openrouter: {
-    protocol: 'chat-completions',
-    protocolLabel: 'Chat Completions API',
-    baseUrl: 'https://openrouter.ai/api/v1',
-    authentication: 'api-key',
-  },
-  ollama: {
-    protocol: 'responses',
-    protocolLabel: 'Responses API',
-    baseUrl: 'http://127.0.0.1:11434/v1',
-    authentication: 'none',
-  },
-  'lm-studio': {
-    protocol: 'responses',
-    protocolLabel: 'Responses API',
-    baseUrl: 'http://127.0.0.1:1234/v1',
-    authentication: 'none',
-  },
-}
-
 const compatibleTemplateFor = (
   baseUrl: string,
   protocol: HarnessModelProtocol,
   authentication: 'api-key' | 'none',
 ): CompatibleTemplateId => {
-  const normalized = baseUrl.replace(/\/+$/, '')
-  const match = Object.entries(COMPATIBLE_TEMPLATES).find(([, template]) => (
-    template.baseUrl === normalized
-    && template.protocol === protocol
-    && template.authentication === authentication
-  ))
-  return match?.[0] as CompatibleTemplateId | undefined ?? 'custom'
+  const template = compatibleTemplateAt(baseUrl)
+  return template !== undefined && COMPATIBLE_TEMPLATES[template].protocol === protocol
+    && COMPATIBLE_TEMPLATES[template].authentication === authentication ? template : 'custom'
 }
-
-const normalizeBaseUrl = (value: string) => value.replace(/\/+$/, '')
 
 const profileFor = (
   settings: HarnessModelSettings | null,
@@ -131,7 +92,7 @@ const profileFor = (
 ): HarnessModelProfile | undefined => settings?.profiles.find((profile) => (
   profile.provider === provider
   && (provider !== 'openai-compatible' || baseUrl === undefined
-    || normalizeBaseUrl(profile.baseUrl) === normalizeBaseUrl(baseUrl))
+    || trimBaseUrl(profile.baseUrl) === trimBaseUrl(baseUrl))
 ))
 
 type ConnectionCheckState = { state: 'idle' | 'testing' } | HarnessModelConnectionCheckResult
