@@ -19,7 +19,7 @@ problem, and every issue names the version it ships in.
 
 ## 1. Type label and milestone
 
-Every issue carries exactly one type label and one milestone.
+Every issue carries exactly one type label. The owner gives it a milestone when a version is planned; until then it is in the backlog.
 
 | Label | Use it for | Ships in (version position) | Branch prefix |
 |---|---|---|---|
