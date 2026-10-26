@@ -259,6 +259,24 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     expect(state(2)).toEqual(['high', true, 'true', true])
   })
 
+  it('API 来源用到时才读模型列表：打开它的模型菜单才去读、只读一次；读之前也列着默认模型，强度用服务商的级别，不转圈', async () => {
+    await mount({ source: 'api:anthropic', model: 'claude-opus-5-5' })
+    expect(core.sourceModels).not.toHaveBeenCalled()
+    expect(read()).toEqual(['Anthropic API', 'claude-opus-5-5', '默认'])
+    expect(pickers().map((picker) => picker.disabled)).toEqual([false, false, false])
+
+    open(1)
+    expect(options()).toEqual([['claude-sonnet-5默认', false], ['claude-opus-5-5', true]])
+    await act(async () => { for (let turn = 0; turn < 5; turn += 1) await Promise.resolve() })
+    expect(core.sourceModels).toHaveBeenCalledExactlyOnceWith('api:anthropic')
+    open(2)
+    expect(options()).toEqual([['默认', true], ['low', false], ['medium', false], ['high', false], ['xhigh', false], ['max', false]])
+    expect(core.sourceModels).toHaveBeenCalledTimes(1)
+
+    await mount({ source: 'cli:claude' })
+    expect(core.sourceModels).toHaveBeenLastCalledWith('cli:claude')
+  })
+
   it('全局默认的来源跑不了、别的能跑时，照样是三个选择器，停在这条对话现在用的来源上', async () => {
     const settings = settingsWhere(['api:anthropic', 'api:local', 'cli:claude', 'cli:codex'], 'api:openai')
     await mount({ source: 'api:openai' }, settings)

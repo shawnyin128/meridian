@@ -22,11 +22,12 @@ const providerOfProfile = (profile: string): HarnessModelProvider | undefined =>
 /**
  * What one session keeps of the model sources: each subscription CLI's status, and the models each
  * configured source offers, each read once and kept for the session. `start` reads every configured
- * source in the background; after that a status or a list is read again only through `refresh`, when
- * its source's configuration is added or its connection changes. A read that fails is kept as failed,
- * not retried, its source offering its default model. `sources` gives the configured sources now,
- * `readCli` reads a CLI's status, `readApi` the model IDs an API source lists, and `onLog` hears why
- * a list could not be read.
+ * CLI in the background; an API source, whose read opens its key, is read the first time its models
+ * are asked for. After that a CLI is read again through `refresh`, when its configuration is added or
+ * its connection changes, and an API source's kept list is dropped there instead, to be read when next
+ * asked for. A read that fails is kept as failed, not retried, its source offering its default model.
+ * `sources` gives the configured sources now, `readCli` reads a CLI's status, `readApi` the model IDs
+ * an API source lists, and `onLog` hears why a list could not be read.
  */
 export function createSourceModels(options: {
   sources: () => HarnessModelEntry[]
@@ -79,15 +80,22 @@ export function createSourceModels(options: {
   const entryOf = (id: string) => options.sources().find((entry) => entry.id === id)
 
   return {
-    /** Reads, in the background, the status of every configured CLI and the models of every configured source. */
+    /** Reads, in the background, the status and the models of every configured CLI. */
     start() {
-      for (const entry of options.sources()) void readList(entry)
+      for (const entry of options.sources()) if (entry.source.kind === 'cli') void readList(entry)
     },
-    /** Reads configured source `id`'s status, if it is a CLI, and its models again, now that its configuration changed. */
+    /**
+     * Reads configured CLI `id`'s status and models again, now that its configuration changed, or
+     * drops the models kept for API source `id`, so they are read when next asked for.
+     */
     refresh(id: string) {
       const entry = entryOf(id)
       if (entry === undefined) return
-      if (entry.source.kind === 'cli') void readStatus(entry.source.cli)
+      if (entry.source.kind === 'api') {
+        lists.delete(id)
+        return
+      }
+      void readStatus(entry.source.cli)
       void readList(entry)
     },
     /** The status of subscription CLI `cli`, as kept for the session; read once when none is kept yet. */
