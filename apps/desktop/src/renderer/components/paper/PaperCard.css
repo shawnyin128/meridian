@@ -1,4 +1,4 @@
-.paper-card-citations{font-variant-numeric:tabular-nums}
+.paper-card-citations{font-variant-numeric:tabular-nums;flex:none}
 .paper-card-label{font-size:var(--fs-label);font-weight:var(--fw-label);color:var(--ter);margin-bottom:var(--sp-2)}
 .paper-abstract{font-size:var(--fs-base);color:var(--sec);line-height:var(--lh-ui)}
 .paper-abstract>p{margin:0}

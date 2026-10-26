@@ -17,7 +17,7 @@
  * A group opened from its heading grows through its one grid row from 0fr, as CardTray does, and clips
  * its content only while it grows, so the content's own shadows and overflow show once it is open.
  */
-.collapsible-group-body{display:grid;grid-template-rows:1fr}
+.collapsible-group-body{display:grid;grid-template-columns:minmax(0,1fr);grid-template-rows:1fr}
 .collapsible-group-content{min-height:0}
 .collapsible-group-body.is-opening{animation:collapsible-group-open var(--t-slow) var(--e-out)}
 .collapsible-group-body.is-opening>.collapsible-group-content{animation:collapsible-group-clip var(--t-slow)}
