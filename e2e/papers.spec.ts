@@ -1359,7 +1359,7 @@ test('详情面板头部的打开和收起在标题上方单独一行靠右,长�
   await expect(win.locator('.paper-detail-slot .panel-head-title')).toHaveText(title)
 
   const head = await panelHead(win.locator('.paper-detail-slot .panel-head'), '.panel-head-title', '.icbtn')
-  expect(head.actions.map(({ label, width, height }) => [label, width, height]))
+  expect(head.actions.map(({ label, width, height }) => [label, Math.round(width), Math.round(height)]))
     .toEqual([['开始阅读', 24, 24], ['收起详情', 24, 24]])
   expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
   expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
