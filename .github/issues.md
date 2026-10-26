@@ -9,6 +9,10 @@ problem, and every issue names the version it ships in.
    the backlog.
 2. When a version is planned, the owner decides which issues it includes and sets their milestone
    to that version (`v0.0.15.0`). The milestone's issues are the version's scope.
+   - Only the accounts in `.github/MILESTONE_MANAGERS` create, edit, close or delete milestones, or
+     set an issue's milestone. The milestone-guard workflow undoes anyone else's change.
+   - Everyone else, agents included, proposes a milestone in the issue or the conversation instead
+     of setting it.
 3. Work branches are cut for those issues. Each pull request closes its issue when it merges.
 4. The version is released when its milestone has no open issues. Anything that will not make it
    is moved to the next milestone first. Once the release is published, the milestone is closed.

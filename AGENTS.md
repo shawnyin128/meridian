@@ -51,9 +51,9 @@ points:
    that build.
 
 Once the owner has asked for a change or a release, carry everything between
-these points forward without asking: issues, milestones, branches, pull
-requests, merging after the change review, the version bump, the unpacked build
-and the upgrade smoke.
+these points forward without asking: issues, branches, pull requests, merging
+after the change review, the version bump, the unpacked build and the upgrade
+smoke. Milestones are not among them (see Git).
 
 ## Architecture
 
@@ -353,6 +353,18 @@ on the reviewing machine.
 
 - Branches, versions and releases follow `.github/versioning.md`; issues follow
   `.github/issues.md`; pull requests follow `.github/pull-requests.md`.
+- Milestones are the versions' scope, and only the accounts listed in
+  `.github/MILESTONE_MANAGERS` change them. That covers creating, editing,
+  closing and deleting a milestone, and setting or clearing an issue's milestone.
+  An agent makes a milestone change only when the owner asked for that change;
+  once the owner says to release, closing the released milestone counts as
+  asked. Otherwise the agent names the milestone it suggests in its reply and
+  leaves the issue in the backlog. The milestone-guard workflow undoes changes
+  by unlisted accounts, but agents act through the owner's login, so only this
+  rule stops them. On the owner's machine a local Claude Code hook in
+  `.claude/settings.json` (ignored by git) runs `scripts/milestone-ask.mjs`
+  before every Bash command, and it asks the owner before any command that
+  changes a milestone.
 - Commit messages follow Conventional Commits:
   `<type>(<scope>): <description>`, imperative, lowercase, no trailing period.
 - Stage explicit paths. Do not use `git add -A`, `git stash`, force-push, or
