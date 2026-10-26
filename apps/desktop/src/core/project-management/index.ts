@@ -20,6 +20,7 @@ export {
   PROJECT_PLAN_SCHEMA,
   projectWorkspaceRoot,
   projectWorkspaceSsh,
+  readLocalProjectWorkspace,
   readProjectWorkspace,
   readWorkspaceAgentIdeas,
   readWorkspaceAgentTasks,

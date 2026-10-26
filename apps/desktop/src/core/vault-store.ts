@@ -32,7 +32,7 @@ import {
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
-  readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
+  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
@@ -672,7 +672,7 @@ export function createVaultStore(
    * `graphs` holds it. Throws when the workspace is an SSH one `graphs` does not hold.
    */
   const workspaceGraph = (project: ProjectRecord, graphs: WorkspaceGraphs): ResearchGraph | undefined => {
-    if (project.workspaceSsh === undefined) return readProjectWorkspace(project)?.graph
+    if (project.workspaceSsh === undefined) return readLocalProjectWorkspace(project)?.graph
     if (!graphs.has(project.id)) throw new Error(`项目 ${project.id} 的 SSH 工作区没有先读`)
     return graphs.get(project.id)
   }
@@ -907,9 +907,9 @@ export function createVaultStore(
 
   /** The project detail of `project`, reading its workspace afresh. */
   const detailOf = async (project: ProjectRecord): Promise<ProjectDetail> => {
-    // A write made inside `atomically` queues its workspace sync only once all of it has landed, later
-    // in the same turn; reading in a later turn keeps this read behind that sync.
-    await Promise.resolve()
+    // Inside `atomically` a write queues its workspace sync only once all of it has landed, later in
+    // this turn; reading in a later turn keeps this read behind that sync.
+    if (syncing !== undefined) await Promise.resolve()
     const workspace = await readProjectWorkspace(project)
     if (project.workspaceSsh !== undefined) remoteRead.set(project.id, workspace)
     return detailWith(project, workspace)
@@ -968,18 +968,19 @@ export function createVaultStore(
   /** `op` made one write by atomically. */
   const atomic = <A extends unknown[], R>(op: (...args: A) => R) => (...args: A): R => atomically(() => op(...args))
 
-  /** Refreshes the App-owned workspace projection without making project edits depend on transport health. */
+  /**
+   * Refreshes the App-owned workspace projection without making project edits depend on transport
+   * health: a local workspace at once, an SSH one in the project's turn, after the call returns.
+   */
   const syncProjectWorkspace = (project: ProjectRecord): void => {
     if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) return
     if (syncing !== undefined) {
       syncing.add(project.id)
       return
     }
-    try {
-      writeProjectWorkspaceState(project, ideas)
-    } catch (error) {
+    writeProjectWorkspaceState(project, ideas).catch((error: unknown) => {
       console.warn(`项目工作区同步失败：${error instanceof Error ? error.message : String(error)}`)
-    }
+    })
   }
 
   /**
@@ -1569,7 +1570,7 @@ export function createVaultStore(
 
     listProjects() {
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
-        const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
+        const workspace = readLocalProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
         const records = [...p.events, ...workspace?.events ?? []]
         return {
@@ -1605,7 +1606,7 @@ export function createVaultStore(
     overviewProjects() {
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
         // Overview never initiates SSH; reading graph and events from a local workspace is cheap enough to match the project page.
-        const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
+        const workspace = readLocalProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
         const events = [...p.events, ...(workspace?.events ?? [])]
         return {
@@ -1674,7 +1675,7 @@ export function createVaultStore(
 
     heldProject(id) {
       const project = shownProject(id)
-      return detailWith(project, project.workspaceSsh === undefined ? readProjectWorkspace(project) : remoteRead.get(id))
+      return detailWith(project, project.workspaceSsh === undefined ? readLocalProjectWorkspace(project) : remoteRead.get(id))
     },
 
     hasProject(id) {
@@ -1702,8 +1703,16 @@ export function createVaultStore(
         delete next.workspaceRoot
       }
       // The first connection must complete the protocol; do not persist a broken connection on failure.
-      writeProjectWorkspaceState(next, ideas)
-      return writeProject(next, ['workspaceRoot', 'workspaceSsh'], false)
+      return writeProjectWorkspaceState(next, ideas).then(() => {
+        const current = projectOf(id)
+        const bound: ProjectRecord = { ...current }
+        delete bound.workspaceRoot
+        delete bound.workspaceSsh
+        if (next.workspaceRoot !== undefined) bound.workspaceRoot = next.workspaceRoot
+        if (next.workspaceSsh !== undefined) bound.workspaceSsh = next.workspaceSsh
+        // A write that landed while the workspace was connected is synced again with the binding.
+        return writeProject(bound, ['workspaceRoot', 'workspaceSsh'], current !== project)
+      })
     },
 
     updateProject(id, patch) {
