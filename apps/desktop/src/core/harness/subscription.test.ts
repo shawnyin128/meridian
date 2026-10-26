@@ -3,7 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import type { CliDiscovery } from './cli/discovery.js'
-import { listCliModels, subscriptionStatus } from './subscription.js'
+import { followCliState, listCliModels, subscriptionStatus } from './subscription.js'
 
 /** A stand-in for CLI discovery that answers `found` and records which CLI it was asked for. */
 const discovery = (found: CliDiscovery) => vi.fn(async () => found)
@@ -160,5 +160,37 @@ describe('the models a subscription CLI accepts', () => {
     await expect(listCliModels('codex', codex.binary, { PATH: '/usr/bin:/bin' })).resolves.toEqual({ models: [], efforts: {} })
     expect(log).toHaveBeenCalledOnce()
     log.mockRestore()
+  })
+})
+
+describe('a run\'s own check of a CLI', () => {
+  const signedIn: CliDiscovery = { cli: 'claude', installed: true, binary: '/bin/claude', version: '2.1.280', missingFlags: [], signIn: 'subscription' }
+  const status = (signIn: 'subscription' | 'signed-out') => Promise.resolve({ state: 'found' as const, version: '2.1.280', signIn, models: ['opus'], efforts: {} })
+  /** The run's discovery, made to follow the kept status `kept`, and the CLIs whose kept status it had read again. */
+  const following = (found: CliDiscovery, kept: ReturnType<typeof status> | null) => {
+    const refresh = vi.fn()
+    return { discover: followCliState(discovery(found), () => kept, refresh), refresh }
+  }
+
+  it('has the kept status read again when the run finds the CLI signed in, signed out or gone unlike it, and answers what it found', async () => {
+    const cases = [
+      following(signedIn, status('signed-out')), following({ ...signedIn, signIn: 'signed-out' }, status('subscription')),
+      following({ cli: 'claude', installed: false }, status('subscription')),
+    ]
+    for (const { discover } of cases) await discover('claude')
+    await Promise.resolve()
+
+    expect(cases.map(({ refresh }) => refresh.mock.calls)).toEqual([[['claude']], [['claude']], [['claude']]])
+    expect(await following(signedIn, status('signed-out')).discover('claude')).toBe(signedIn)
+  })
+
+  it('leaves the kept status alone while the run finds the CLI as it says, or when no status is kept', async () => {
+    const same = following(signedIn, status('subscription'))
+    const none = following(signedIn, null)
+    await same.discover('claude')
+    await none.discover('claude')
+    await Promise.resolve()
+
+    expect([same.refresh.mock.calls, none.refresh.mock.calls]).toEqual([[], []])
   })
 })

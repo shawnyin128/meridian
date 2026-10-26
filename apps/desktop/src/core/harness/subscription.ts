@@ -41,6 +41,31 @@ export async function subscriptionStatus(cli: HarnessCli, { discover, listModels
   return { state: 'found', version: found.version, signIn: found.signIn, ...await listModels(cli, found.binary) }
 }
 
+/** What `status` says of its CLI: missing, unsupported, or found and signed in one way. */
+const stateOf = (status: HarnessSubscriptionStatus) => (status.state === 'found' ? `found:${status.signIn}` : status.state)
+/** What discovery `found` says of its CLI, in the terms of `stateOf`. */
+const discoveredState = (found: CliDiscovery) => (!found.installed ? 'missing'
+  : found.missingFlags.length > 0 ? 'unsupported' : `found:${found.signIn}`)
+
+/**
+ * `discover`, which also has `refresh` read a CLI's kept status again whenever what it finds differs
+ * from that status, as `kept` gives it, in whether the CLI is installed, supported and how it is
+ * signed in, or when that status could not be read; `kept` gives null for a CLI whose status is not
+ * kept. A run's own check then corrects what Settings and the pickers show of a sign-in that changed
+ * outside the App.
+ */
+export function followCliState(
+  discover: (cli: HarnessCli) => Promise<CliDiscovery>,
+  kept: (cli: HarnessCli) => Promise<HarnessSubscriptionStatus> | null,
+  refresh: (cli: HarnessCli) => void,
+): (cli: HarnessCli) => Promise<CliDiscovery> {
+  return async (cli) => {
+    const found = await discover(cli)
+    void kept(cli)?.then((status) => { if (stateOf(status) !== discoveredState(found)) refresh(cli) }, () => refresh(cli))
+    return found
+  }
+}
+
 /**
  * The reasoning levels a Codex catalog entry `held` names that a run can use, in its order, with its
  * default when that is one of them, or null when it names none.
