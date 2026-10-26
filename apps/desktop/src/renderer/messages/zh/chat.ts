@@ -38,6 +38,7 @@ export const chat = {
       answerUnreadable: '模型的回答读不出来',
       serviceStopped: 'AI 服务停了',
       chatTooLong: '对话太长，或这次请求模型不支持',
+      internalError: 'AI 服务内部出错',
       noModel: '还没有连上模型',
       serviceError: 'AI 服务出了错',
       rateLimited: '模型服务请求过多（429），请稍后重新确认任务',

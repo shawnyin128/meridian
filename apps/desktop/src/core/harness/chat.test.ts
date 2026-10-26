@@ -109,7 +109,7 @@ describe('chat failures in plain words', () => {
     expect(said(harness('model_error', '模型服务请求超时'))).toEqual([true, '模型服务请求超时'])
     expect(said(harness('harness_gone', 'Harness process is not available'))).toEqual([true, 'AI 服务停了'])
     expect(said(harness('internal', 'Traceback (most recent call last)'))).toEqual([true, 'AI 服务出了错'])
-    expect(said(harness('bad_request', 'Harness callback is not allowed: x'))).toEqual([true, '对话太长，或这次请求模型不支持'])
+    expect(said(harness('bad_request', 'Harness callback is not allowed: x'))).toEqual([true, 'AI 服务内部出错'])
   })
 
   it('fails an answer that failed validation as malformed output, in the Harness\'s words', () => {
@@ -160,6 +160,28 @@ describe('model connection check', () => {
     await runner.checkConnection()
 
     expect(asked).toEqual([{ source: 'cli:codex' }, undefined])
+    runner.close()
+  })
+
+  it('reports a Harness that rejects the check\'s request as a failed check with its detail, not as an incomplete configuration', async () => {
+    const child = new FakeHarness()
+    const runner = createChatHarnessRunner({
+      store: {} as VaultStore,
+      model: { runtime: async () => ({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }) } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+
+    const checking = runner.checkConnection()
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'error', id: request['id'], ok: false, error: { kind: 'bad_request', message: 'model connection check has unknown fields: x' } })
+
+    await expect(checking).resolves.toEqual({
+      state: 'failed', reason: 'unknown', detail: 'model connection check has unknown fields: x', modelCalls: 0, maxOutputTokens: 1,
+    })
     runner.close()
   })
 

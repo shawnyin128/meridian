@@ -169,6 +169,7 @@ describe('ChatMessageView', () => {
     ['生成失败：模型的回答读不出来', 'Generation failed: The model’s answer could not be read'],
     ['生成失败：AI 服务停了', 'Generation failed: The AI service stopped'],
     ['生成失败：对话太长，或这次请求模型不支持', 'Generation failed: The chat is too long, or the model does not support this request'],
+    ['生成失败：AI 服务内部出错', 'Generation failed: The AI service ran into an internal error'],
     ['生成失败：还没有连上模型', 'Generation failed: No model is connected yet'],
     ['生成失败：AI 服务出了错', 'Generation failed: The AI service ran into an error'],
     ['生成失败：模型服务请求过多（429），请稍后重新确认任务', 'Generation failed: Too many requests to the model service (429). Confirm the task again later'],

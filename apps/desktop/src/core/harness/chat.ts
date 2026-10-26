@@ -136,7 +136,7 @@ function failedConnectionCheck(
     ? 'timeout' as const
     : cause instanceof HarnessRpcError && cause.kind === 'harness_gone'
       ? 'unavailable' as const
-      : cause instanceof HarnessRpcError && ['bad_request', 'no_model'].includes(cause.kind)
+      : cause instanceof HarnessRpcError && cause.kind === 'no_model'
         ? 'configuration' as const
         : 'unknown' as const
   return {
@@ -234,7 +234,7 @@ export function chatHarnessError(cause: unknown): Error {
   }
   if (cause.kind === 'cancelled') return new ChatFailure('已停止生成', { cause })
   if (cause.kind === 'harness_gone') return new ChatFailure('AI 服务停了', { cause })
-  if (cause.kind === 'bad_request') return new ChatFailure('对话太长，或这次请求模型不支持', { cause })
+  if (cause.kind === 'bad_request') return new ChatFailure('AI 服务内部出错', { cause })
   if (cause.kind === 'no_model') return new ChatFailure('还没有连上模型', { cause })
   if (cause.kind === 'model_error' && cause.detail === 'structured_output') {
     return new CallError('malformed-output', cause.message, { cause })
