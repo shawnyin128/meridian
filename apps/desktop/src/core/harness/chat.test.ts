@@ -145,6 +145,32 @@ describe('model connection check', () => {
     expect(checked).toEqual([{ source: 'cli', cli: 'codex', model: 'gpt-6-luna' }])
     runner.close()
   })
+
+  it('checks an API model at the provider\'s own default effort, whatever effort its profile sets', async () => {
+    const child = new FakeHarness()
+    const model = {
+      provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1',
+      authentication: 'api-key', apiKey: 'sk-test', effort: 'xhigh',
+    }
+    const runner = createChatHarnessRunner({
+      store: {} as VaultStore,
+      model: { runtime: async () => model } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+
+    const checking = runner.checkConnection()
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { state: 'connected', modelCalls: 1, maxOutputTokens: 1 } })
+
+    await expect(checking).resolves.toMatchObject({ state: 'connected' })
+    expect(request).toMatchObject({ method: 'model.check', params: { model: { provider: 'openai', model: 'gpt-6.1' } } })
+    expect((request['params'] as { model: object }).model).not.toHaveProperty('effort')
+    runner.close()
+  })
 })
 
 class FakeHarness extends EventEmitter implements HarnessChild {
@@ -387,6 +413,21 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
+  it('makes the turn\'s CLI call at the reasoning effort the model sets', async () => {
+    const calls: CliChatCall[] = []
+    const { child, runner, chat, close } = chatRunner({ source: 'cli', cli: 'claude', model: 'opus', effort: 'max' }, async (call) => {
+      calls.push(call)
+      return { answer: 'Yes.', durationMs: 1_000 }
+    })
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    await child.answerTurn('Why?')
+    await expect(answering).resolves.toBe('Yes.')
+
+    expect(calls).toEqual([expect.objectContaining({ cli: 'claude', model: 'opus', effort: 'max' })])
+    close()
+  })
+
   it('passes on the configured model at once, the model the CLI names, and the answer as far as the CLI has written it', async () => {
     const { child, runner, chat, close } = chatRunner(CLI_MODEL, async (call) => {
       call.onModel?.('claude-opus-5-5[1m]')
@@ -499,6 +540,25 @@ describe('a chat turn on a subscription CLI', () => {
     controller.abort()
     await expect(answering).rejects.toMatchObject({ name: 'CallError', reason: 'cancelled' })
     expect(signals[0]!.aborted).toBe(true)
+    close()
+  })
+
+  it.each([
+    ['at the provider\'s own default', undefined, { maxOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 120 }],
+    ['at the high effort', 'high', { maxOutputTokens: 34_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+  ])('sends a turn on an API model %s the output cap and timeout its effort gives', async (_, effort, limits) => {
+    const model: HarnessRuntimeModel = {
+      provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5',
+      authentication: 'api-key', apiKey: 'sk-ant-test', ...(effort === undefined ? {} : { effort }),
+    }
+    const { child, runner, chat, close } = chatRunner(model, vi.fn<CliChatRunner>())
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Because.' } })
+
+    await expect(answering).resolves.toBe('Because.')
+    expect(request).toMatchObject({ method: 'chat.answer', params: { limits } })
     close()
   })
 

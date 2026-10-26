@@ -92,7 +92,8 @@ describe('Harness cost gate', () => {
     expect(receipt.state).toBe('demo-complete')
     expect(run).toHaveBeenCalledTimes(1)
     expect(run).toHaveBeenCalledWith(expect.objectContaining({
-      limits: { maxOutputTokens: 6000, maxModelCalls: 1 },
+      limits: { maxOutputTokens: 6000, maxModelCalls: 1, timeoutSeconds: 120 },
+      requestTimeoutMs: 120_000,
       signal: expect.any(AbortSignal),
     }))
     await expect(costGate.start({
@@ -284,6 +285,75 @@ describe('Harness cost gate', () => {
     const codex = costGate.prepare('p1')
     model = { provider: 'Anthropic', name: 'claude-api', configured: true, billable: true }
     await expect(start(codex)).rejects.toMatchObject({ reason: 'changed' })
+    expect(run).not.toHaveBeenCalled()
+  })
+
+  it.each([
+    ['minimal', 10_000], ['low', 14_000], ['medium', 26_000], ['high', 38_000], ['xhigh', 62_000], ['max', 62_000],
+  ])('raises the output cap of an API run at the %s effort by its reasoning allowance, shows it in the plan and gives the call ten minutes', async (effort, cap) => {
+    const run = vi.fn(async () => ({ state: 'demo-complete' as const, message: 'done' }))
+    const costGate = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model: { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true, effort },
+      run,
+      applyWiki: vi.fn(),
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+
+    const plan = costGate.prepare('p1')
+    await costGate.start({ planId: plan.id, scopeDigest: plan.scopeDigest, acknowledgeCost: true })
+
+    expect(plan.outputLimit).toBe(cap)
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({
+      limits: { maxOutputTokens: cap, maxModelCalls: 1, timeoutSeconds: 600 }, requestTimeoutMs: 720_000,
+    }))
+  })
+
+  it.each([
+    ['an API run at the provider\'s own default', { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true }],
+    ['an API run at the none effort', { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true, effort: 'none' }],
+    ['a CLI run at an effort', { provider: 'Claude 订阅', name: 'opus', configured: true, billable: false, cli: 'claude' as const, effort: 'max' }],
+  ])('keeps the output cap and the two-minute call of %s, with no cap in the plan', async (_, model) => {
+    const run = vi.fn(async () => ({ state: 'demo-complete' as const, message: 'done' }))
+    const costGate = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model,
+      run,
+      applyWiki: vi.fn(),
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+
+    const plan = costGate.prepare('p1')
+    await costGate.start({ planId: plan.id, scopeDigest: plan.scopeDigest, acknowledgeCost: true })
+
+    expect(plan).not.toHaveProperty('outputLimit')
+    expect(run).toHaveBeenCalledWith(expect.objectContaining({
+      limits: { maxOutputTokens: 6000, maxModelCalls: 1, timeoutSeconds: 120 }, requestTimeoutMs: 120_000,
+    }))
+  })
+
+  it('refuses a plan shown at one effort once the run would ask for another', async () => {
+    let model: HarnessModel = { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true, effort: 'low' }
+    const run = vi.fn(async () => ({ state: 'demo-complete' as const, message: 'done' }))
+    const costGate = createHarnessCostGate({
+      paper: () => structuredClone(paper),
+      reading: () => structuredClone(reading),
+      wiki: () => structuredClone(wiki),
+      model: () => model,
+      run,
+      applyWiki: vi.fn(),
+      now: () => new Date('2026-09-17T12:00:00.000Z'),
+    })
+
+    const shown = costGate.prepare('p1')
+    model = { ...model, effort: 'max' }
+
+    await expect(costGate.start({ planId: shown.id, scopeDigest: shown.scopeDigest, acknowledgeCost: true }))
+      .rejects.toMatchObject({ reason: 'changed' })
     expect(run).not.toHaveBeenCalled()
   })
 

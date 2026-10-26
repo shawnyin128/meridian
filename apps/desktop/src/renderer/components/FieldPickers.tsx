@@ -124,7 +124,8 @@ export function DotsMenu({
 }
 
 /**
- * The one single-value picker: a menu of `options` with the picked one marked. With
+ * The one single-value picker: a menu of `options` with the picked one marked, each followed by
+ * the trailing mark `note` gives it, if any. With
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
  * `placeholder` while `value` matches no option, and with the refused look of a field while
  * `aria-invalid` holds. With `appearance="button"` its trigger is a compact Button showing
@@ -133,13 +134,14 @@ export function DotsMenu({
  * the trigger is one of the controls of the toolbar it renders in.
  */
 export function ChoicePicker<T extends string>({
-  value, options, onPick, label = (option) => option, className, appearance, placeholder = '',
+  value, options, onPick, label = (option) => option, note, className, appearance, placeholder = '',
   disabled = false, 'aria-label': ariaLabel, 'aria-invalid': invalid, stopRowActivation = false, children,
 }: {
   value: T
   options: readonly T[]
   onPick: (next: T) => void
   label?: (option: T) => string
+  note?: (option: T) => string | undefined
   className?: string
   appearance?: 'field' | 'button'
   placeholder?: string
@@ -181,11 +183,14 @@ export function ChoicePicker<T extends string>({
       {...(appearance === 'field' ? { contentClassName: 'choice-picker-menu', scrolls: true } : {})}
     >
       <MenuRadioGroup value={value}>
-        {options.map((option) => (
-          <MenuRadioItem key={option} value={option} onSelect={() => onPick(option)}>
-            {label(option)}
-          </MenuRadioItem>
-        ))}
+        {options.map((option) => {
+          const mark = note?.(option)
+          return (
+            <MenuRadioItem key={option} value={option} onSelect={() => onPick(option)}>
+              {label(option)}{mark === undefined ? null : <span className="mi-key">{mark}</span>}
+            </MenuRadioItem>
+          )
+        })}
       </MenuRadioGroup>
     </ActionMenu>
   )

@@ -784,6 +784,8 @@ settings.model.fields.authLabel label
 settings.model.fields.authNoneOption label
 settings.model.fields.baseUrlAria aria
 settings.model.fields.baseUrlLabel label
+settings.model.fields.effortDefault label
+settings.model.fields.effortLabel label
 settings.model.fields.modelIdAria aria
 settings.model.fields.modelIdLabel label
 settings.model.fields.protocolAria aria
@@ -1056,6 +1058,7 @@ wiki.harness.freeNote state
 wiki.harness.modelLabel label
 wiki.harness.noOutputLimit state
 wiki.harness.outputLimitLabel label
+wiki.harness.outputTokens state
 wiki.harness.personalContentLabel label
 wiki.harness.personalContentSummary state
 wiki.harness.planNote.claude state

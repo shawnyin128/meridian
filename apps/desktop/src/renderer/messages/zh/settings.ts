@@ -186,6 +186,8 @@ export const settings = {
       modelIdAria: '模型名称',
       apiKeyLabel: 'API Key',
       apiKeyAria: '模型 API Key',
+      effortLabel: '推理强度',
+      effortDefault: '默认',
     },
     configured: '已配置',
     notConfigured: '未配置',

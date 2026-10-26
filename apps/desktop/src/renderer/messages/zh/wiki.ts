@@ -1,3 +1,4 @@
+import { formatNumber } from '../../lib/number.js'
 /** wiki screen copy. */
 export const wiki = {
   removeFromPage: '从这一页移出',
@@ -198,6 +199,7 @@ export const wiki = {
     modelLabel: '模型',
     outputLimitLabel: '输出上限',
     noOutputLimit: '不限',
+    outputTokens: (count: number) => `${formatNumber('zh', count)} 个 token`,
   },
   claims: {
     heading: '结论',

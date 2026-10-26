@@ -5,12 +5,13 @@ import type {
   HarnessModelSettings, HarnessModelSettingsUpdate, HarnessSubscriptionSettings, HarnessUpdateSubscriptionParams,
 } from '../../shared/contract.js'
 import {
-  HarnessCliSchema, HarnessModelSettingsUpdateSchema, HarnessSubscriptionModelSchema,
-  HarnessUpdateSubscriptionParamsSchema,
+  HARNESS_API_EFFORTS, HarnessCliSchema, HarnessEffortSchema, HarnessModelSettingsUpdateSchema,
+  HarnessSubscriptionModelSchema, HarnessUpdateSubscriptionParamsSchema,
 } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import { writeJson } from '../vault/writer.js'
 import type { CredentialVault } from './credential-vault.js'
+import { CLAUDE_EFFORTS, CODEX_UNUSABLE_EFFORTS } from './subscription.js'
 
 export const HARNESS_MODEL_CONFIG_FILENAME = 'harness-model.json'
 const CONFIG_VERSION = 'meridian.harness-model.v5'
@@ -24,6 +25,16 @@ const CREDENTIAL_STORAGE = 'electron-safe-storage.v1'
 export const HARNESS_SUBSCRIPTION_FILENAME = 'harness-subscription.json'
 const SUBSCRIPTION_VERSION = 'meridian.harness-subscription.v1'
 const SUBSCRIPTION_LABELS: Record<HarnessCli, string> = { claude: 'Claude 订阅', codex: 'ChatGPT 订阅' }
+export const HARNESS_MODEL_OPTIONS_FILENAME = 'harness-model-options.json'
+const OPTIONS_VERSION = 'meridian.harness-model-options.v1'
+/**
+ * The reasoning efforts each CLI accepts from Settings: Claude Code's --effort levels, and for Codex,
+ * whose catalog names its levels, any level word a run can use.
+ */
+const CLI_EFFORTS: Record<HarnessCli, (effort: string) => boolean> = {
+  claude: (effort) => (CLAUDE_EFFORTS as readonly string[]).includes(effort),
+  codex: (effort) => HarnessEffortSchema.safeParse(effort).success && !CODEX_UNUSABLE_EFFORTS.has(effort),
+}
 
 const PROVIDERS: Record<HarnessModelProvider, {
   baseUrl: string
@@ -70,7 +81,7 @@ type PrivateModelConfig = {
   profiles: PrivateModelProfile[]
 }
 
-type SubscriptionChoice = Omit<HarnessSubscriptionSettings, 'error'>
+type SubscriptionChoice = Omit<HarnessSubscriptionSettings, 'error' | 'efforts'>
 
 type SubscriptionRecord = {
   schemaVersion: typeof SUBSCRIPTION_VERSION
@@ -79,6 +90,26 @@ type SubscriptionRecord = {
 }
 
 const noSubscription = (): SubscriptionChoice => ({ active: null, models: { claude: '', codex: '' } })
+
+/** Where a reasoning effort is kept in the options file: under an API profile's key or a CLI's name. */
+type EffortSection = 'profiles' | 'clis'
+
+/**
+ * The reasoning efforts the options file holds: by API profile key and by CLI, with why each entry
+ * this version cannot read failed, by `<section>/<key>`, and the file as read, keys it does not know
+ * included.
+ */
+type StoredEfforts = {
+  profiles: Record<string, string>
+  clis: Partial<Record<HarnessCli, string>>
+  unreadable: Record<string, CallFailure>
+  raw: Record<string, unknown>
+}
+
+const noEfforts = (): StoredEfforts => ({ profiles: {}, clis: {}, unreadable: {}, raw: {} })
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
 
 type LoadedConfig = {
   value: PrivateModelConfig
@@ -94,6 +125,8 @@ type HarnessApiModel = {
   model: string
   authentication: 'api-key' | 'none'
   apiKey?: string
+  /** The reasoning effort the run asks for; without it the provider's own default applies. */
+  effort?: string
 }
 
 /** The model a Harness run uses: an API provider, or the user's own signed-in CLI. */
@@ -153,7 +186,7 @@ const publicProfile = (profile: PrivateModelProfile): HarnessModelProfile => {
 }
 
 /** Persist only public connection data and OS-encrypted credential envelopes. */
-function persist(configHome: string, file: string, value: PrivateModelConfig | SubscriptionRecord): void {
+function persist(configHome: string, file: string, value: PrivateModelConfig | SubscriptionRecord | Record<string, unknown>): void {
   mkdirSync(configHome, { recursive: true, mode: 0o700 })
   if (process.platform !== 'win32') chmodSync(configHome, 0o700)
   writeJson(file, value, join(configHome, '.tmp'))
@@ -164,16 +197,28 @@ function persist(configHome: string, file: string, value: PrivateModelConfig | S
 export async function createHarnessModelConfig(configHome: string, vault: CredentialVault) {
   const file = join(configHome, HARNESS_MODEL_CONFIG_FILENAME)
   const subscriptionFile = join(configHome, HARNESS_SUBSCRIPTION_FILENAME)
+  const optionsFile = join(configHome, HARNESS_MODEL_OPTIONS_FILENAME)
   let value = defaults()
   let loadError: CallFailure | undefined
   let subscription = noSubscription()
   let subscriptionError: CallFailure | undefined
   let subscriptionRevision = 0
+  let efforts = noEfforts()
+  let effortsError: CallFailure | undefined
   try {
     subscription = readSubscriptionChoice(subscriptionFile)
   } catch (error) {
     console.error(`[harness] ${error instanceof Error ? error.message : String(error)}`)
     subscriptionError = callFailure(error)
+  }
+  try {
+    efforts = readEfforts(optionsFile)
+    for (const [entry, failure] of Object.entries(efforts.unreadable)) {
+      console.error(`[harness] 推理强度配置 ${entry} 读不出来（${failure}）`)
+    }
+  } catch (error) {
+    console.error(`[harness] ${error instanceof Error ? error.message : String(error)}`)
+    effortsError = callFailure(error)
   }
   try {
     const loaded = readPrivateConfig(file)
@@ -208,13 +253,50 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     loadError = callFailure(error)
   }
 
+  /** Why the effort kept under `key` of `section` cannot be read, if it cannot. */
+  const effortFailure = (section: EffortSection, key: string) => effortsError ?? efforts.unreadable[`${section}/${key}`]
+
+  /** The effort kept under `key` of `section`; throws when it cannot be read. */
+  const effortOf = (section: EffortSection, key: string): string | undefined => {
+    const failure = effortFailure(section, key)
+    if (failure !== undefined) throw new CallError(failure, '推理强度配置读不出来')
+    return section === 'profiles' ? efforts.profiles[key] : efforts.clis[key as HarnessCli]
+  }
+
+  /** Keeps `effort` under `key` of `section`, or none, in the options file, leaving every key this version does not know as it is. */
+  const keepEffort = (section: EffortSection, key: string, effort: string | undefined) => {
+    const kept = section === 'profiles' ? efforts.profiles[key] : efforts.clis[key as HarnessCli]
+    if (kept === effort && effortFailure(section, key) === undefined) return
+    const held: Record<string, unknown> = isRecord(efforts.raw[section]) ? { ...efforts.raw[section] } : {}
+    const entry: Record<string, unknown> = isRecord(held[key]) ? { ...held[key] } : {}
+    if (effort === undefined) delete entry['effort']
+    else entry['effort'] = effort
+    if (Object.keys(entry).length === 0) delete held[key]
+    else held[key] = entry
+    const next = { ...efforts.raw, schemaVersion: OPTIONS_VERSION, [section]: held }
+    persist(configHome, optionsFile, next)
+    efforts = parseEfforts(next)
+    effortsError = undefined
+  }
+
+  const profileWithEffort = (profile: PrivateModelProfile): HarnessModelProfile => {
+    const effort = efforts.profiles[profileKey(profile.provider, profile.baseUrl)]
+    return { ...publicProfile(profile), ...(effort === undefined ? {} : { effort }) }
+  }
+
   const publicSettings = (): HarnessModelSettings => {
-    const current = publicProfile(activeProfile(value))
+    const current = profileWithEffort(activeProfile(value))
+    const effortError = effortsError ?? Object.values(efforts.unreadable)[0]
     return {
       ...current,
-      profiles: value.profiles.map(publicProfile),
-      subscription: { ...subscription, ...(subscriptionError === undefined ? {} : { error: subscriptionError }) },
+      profiles: value.profiles.map(profileWithEffort),
+      subscription: {
+        ...subscription,
+        efforts: { ...efforts.clis },
+        ...(subscriptionError === undefined ? {} : { error: subscriptionError }),
+      },
       ...(loadError === undefined ? {} : { error: loadError }),
+      ...(effortError === undefined ? {} : { effortError }),
     }
   }
 
@@ -273,14 +355,21 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       }
       loadError = undefined
       persist(configHome, file, value)
+      keepEffort('profiles', nextKey, next.effort)
       if (subscription.active !== null || subscriptionError !== undefined) choose({ ...subscription, active: null })
       return publicSettings()
     },
     /** A number that changes each time the subscription choice is saved. */
     subscriptionRevision: () => subscriptionRevision,
-    /** Makes subscription CLI `cli` the model source, running `model`; the API profiles stay as they are. */
+    /**
+     * Makes subscription CLI `cli` the model source, running `model` at reasoning effort `effort`, or
+     * at the CLI's own default without one; the API profiles stay as they are. Throws `invalid` for
+     * an effort the CLI does not take.
+     */
     updateSubscription(input: HarnessUpdateSubscriptionParams): HarnessModelSettings {
-      const { cli, model } = HarnessUpdateSubscriptionParamsSchema.parse(input)
+      const { cli, model, effort } = HarnessUpdateSubscriptionParamsSchema.parse(input)
+      if (effort !== undefined && !CLI_EFFORTS[cli](effort)) throw new CallError('invalid', `${cli} 不接受推理强度 ${effort}`)
+      keepEffort('clis', cli, effort)
       choose({ active: cli, models: { ...subscription.models, [cli]: model } })
       return publicSettings()
     },
@@ -290,9 +379,13 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       }
       if (subscription.active !== null) {
         const model = subscription.models[subscription.active]
-        return { source: 'cli', cli: subscription.active, ...(model === '' ? {} : { model }) }
+        const effort = effortOf('clis', subscription.active)
+        return {
+          source: 'cli', cli: subscription.active, ...(model === '' ? {} : { model }), ...(effort === undefined ? {} : { effort }),
+        }
       }
       const current = activeProfile(value)
+      const effort = effortOf('profiles', profileKey(current.provider, current.baseUrl))
       let apiKey: string | undefined
       if (current.credential !== undefined) {
         const credential = current.credential
@@ -322,14 +415,16 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         model: current.model,
         authentication: current.authentication,
         ...(apiKey === undefined ? {} : { apiKey }),
+        ...(effort === undefined ? {} : { effort }),
       }
     },
     planModel() {
       const cli = subscription.active
       if (cli !== null) {
+        const effort = efforts.clis[cli]
         return {
           provider: SUBSCRIPTION_LABELS[cli], name: subscription.models[cli] || '默认模型', configured: true, billable: false,
-          cli,
+          cli, ...(effort === undefined ? {} : { effort }),
         }
       }
       const settings = publicSettings()
@@ -338,6 +433,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         name: settings.model || '未配置',
         configured: settings.configured && subscriptionError === undefined,
         billable: !isLocalNoAuth(settings),
+        ...(settings.effort === undefined ? {} : { effort: settings.effort }),
       }
     },
   }
@@ -492,3 +588,61 @@ function readSubscriptionChoice(file: string): SubscriptionChoice {
 }
 
 export type HarnessModelConfig = Awaited<ReturnType<typeof createHarnessModelConfig>>
+
+/**
+ * The reasoning efforts options file content `raw` holds. Keys, profiles of providers and CLIs this
+ * version does not know are ignored; an entry whose effort this version cannot pass on is set aside
+ * with why: `newer-version` for a level word its provider or CLI does not take here, `invalid` for
+ * anything else. Throws for a section that is not an object.
+ */
+function parseEfforts(raw: Record<string, unknown>): StoredEfforts {
+  const stored: StoredEfforts = { ...noEfforts(), raw }
+  const entries = (section: EffortSection) => {
+    const held = raw[section] ?? {}
+    if (!isRecord(held)) throw new Error(`${section} 不是对象`)
+    return Object.entries(held)
+  }
+  /** The effort `entry` keeps, if any, or why it cannot be read when it is malformed or `accepts` refuses it. */
+  const effortIn = (entry: unknown, accepts: (effort: string) => boolean): { effort?: string } | { failure: CallFailure } => {
+    if (!isRecord(entry)) return { failure: 'invalid' }
+    const effort = entry['effort']
+    if (effort === undefined) return {}
+    if (!HarnessEffortSchema.safeParse(effort).success) return { failure: 'invalid' }
+    return accepts(effort as string) ? { effort: effort as string } : { failure: 'newer-version' }
+  }
+  for (const [key, entry] of entries('profiles')) {
+    const levels = (HARNESS_API_EFFORTS as Partial<Record<string, readonly string[]>>)[key.split(':')[0]!]
+    if (levels === undefined) continue
+    const read = effortIn(entry, (effort) => levels.includes(effort))
+    if ('failure' in read) stored.unreadable[`profiles/${key}`] = read.failure
+    else if (read.effort !== undefined) stored.profiles[key] = read.effort
+  }
+  for (const [key, entry] of entries('clis')) {
+    if (!HarnessCliSchema.safeParse(key).success) continue
+    const cli = key as HarnessCli
+    const read = effortIn(entry, CLI_EFFORTS[cli])
+    if ('failure' in read) stored.unreadable[`clis/${key}`] = read.failure
+    else if (read.effort !== undefined) stored.clis[cli] = read.effort
+  }
+  return stored
+}
+
+/**
+ * Reads the reasoning efforts in options file `file`, or none when there is none. Throws
+ * `newer-version` for a schema version this version does not know, and `invalid` for a file it
+ * cannot read otherwise.
+ */
+function readEfforts(file: string): StoredEfforts {
+  if (!existsSync(file)) return noEfforts()
+  try {
+    const parsed: unknown = JSON.parse(readFileSync(file, 'utf8'))
+    if (!isRecord(parsed)) throw new Error('不是对象')
+    if (parsed['schemaVersion'] !== OPTIONS_VERSION) throw new CallError('newer-version', '版本不受支持')
+    return parseEfforts(parsed)
+  } catch (error) {
+    throw new CallError(
+      callFailure(error) === 'newer-version' ? 'newer-version' : 'invalid',
+      `推理强度配置无效：${error instanceof Error ? error.message : String(error)}`, { cause: error },
+    )
+  }
+}

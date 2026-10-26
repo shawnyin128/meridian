@@ -642,6 +642,9 @@ export const CallRejectionSchema = z.object({ reason: CallFailureSchema }).stric
 /** The subscription CLIs a model call can run on: Claude Code (`claude`) and Codex CLI (`codex`). */
 export const HarnessCliSchema = z.enum(['claude', 'codex'])
 
+/** A reasoning effort level, as a provider or CLI names it, such as `low` or `xhigh`. */
+export const HarnessEffortSchema = z.string().regex(/^[a-z][a-z0-9-]{0,31}$/)
+
 /**
  * A cost-bearing Harness action. Core prepares this plan without a model call; the renderer must
  * show its exact scope and selected model before it can exchange the one-time plan for a run.
@@ -664,14 +667,20 @@ export const HarnessPlanSchema = z.object({
     hasRemark: z.boolean(),
     existingWikiChars: z.number().int().min(0),
   }).strict(),
-  /** `cli` names the subscription CLI a run on the user's plan runs on, instead of an API. */
+  /**
+   * `cli` names the subscription CLI a run on the user's plan runs on, instead of an API; `effort`
+   * is the reasoning effort the run asks for, absent for the provider's or CLI's own default.
+   */
   model: z.object({
     provider: z.string().min(1),
     name: z.string().min(1),
     configured: z.boolean(),
     billable: z.boolean(),
     cli: HarnessCliSchema.optional(),
+    effort: HarnessEffortSchema.optional(),
   }).strict(),
+  /** The output cap of a run on an API model at a reasoning effort, raised by the reasoning it may spend; absent otherwise. */
+  outputLimit: z.number().int().positive().optional(),
   expiresAt: IsoTimestamp,
 }).strict()
 
@@ -869,13 +878,27 @@ export const HarnessModelProtocolSchema = z.enum([
 ])
 
 /**
+ * The reasoning efforts each API provider's LangChain integration passes on, lowest first: OpenAI's
+ * `reasoning.effort` (the `openai` SDK's `ReasoningEffort`), Anthropic's `output_config.effort`
+ * (langchain-anthropic's `reasoning_effort`) and Gemini's `thinking_level` (langchain-google-genai's
+ * `reasoning_effort`). An OpenAI-compatible service is offered none.
+ */
+export const HARNESS_API_EFFORTS: Readonly<Record<z.infer<typeof HarnessModelProviderSchema>, readonly string[]>> = {
+  openai: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'],
+  anthropic: ['low', 'medium', 'high', 'xhigh', 'max'],
+  'google-gemini': ['minimal', 'low', 'medium', 'high'],
+  'openai-compatible': [],
+}
+
+/**
  * A model that runs on the user's own signed-in CLI instead of an API key. `model` names the CLI's
- * model for the call; without it the CLI uses its own default.
+ * model for the call and `effort` its reasoning effort; without them the CLI uses its own defaults.
  */
 export const HarnessCliModelSchema = z.object({
   source: z.literal('cli'),
   cli: HarnessCliSchema,
   model: z.string().trim().min(1).max(200).optional(),
+  effort: HarnessEffortSchema.optional(),
 }).strict()
 
 /** The model a subscription CLI runs, passed to its model option; '' runs the CLI's own default. */
@@ -884,19 +907,28 @@ export const HarnessSubscriptionModelSchema = z.string().trim().max(200)
 
 /**
  * The subscription choice: `active` is the CLI that runs the model features, or null while the
- * active API profile does, and `models` holds the model each CLI runs.
+ * active API profile does, `models` holds the model each CLI runs and `efforts` the reasoning effort
+ * each runs at, absent for the CLI's own default.
  */
 export const HarnessSubscriptionSettingsSchema = z.object({
   active: HarnessCliSchema.nullable(),
   models: z.object({ claude: HarnessSubscriptionModelSchema, codex: HarnessSubscriptionModelSchema }).strict(),
+  efforts: z.object({ claude: HarnessEffortSchema.optional(), codex: HarnessEffortSchema.optional() }).strict(),
   /** Why the saved choice could not be loaded; no model source is set up until a choice is saved again. */
   error: CallFailureSchema.optional(),
 }).strict()
 
-/** Makes subscription CLI `cli` the model source, running `model`. */
+/** Makes subscription CLI `cli` the model source, running `model` at reasoning effort `effort`, or at its own default without one. */
 export const HarnessUpdateSubscriptionParamsSchema = z.object({
   cli: HarnessCliSchema,
   model: HarnessSubscriptionModelSchema,
+  effort: HarnessEffortSchema.optional(),
+}).strict()
+
+/** The reasoning efforts a model accepts, lowest first, and the one it runs at by default when its CLI names it. */
+export const HarnessModelEffortsSchema = z.object({
+  levels: z.array(HarnessEffortSchema).max(20),
+  default: HarnessEffortSchema.optional(),
 }).strict()
 
 export const HarnessSubscriptionStatusParamsSchema = z.object({ cli: HarnessCliSchema }).strict()
@@ -905,7 +937,9 @@ export const HarnessSubscriptionStatusParamsSchema = z.object({ cli: HarnessCliS
  * What Core finds of one subscription CLI on this machine: not installed; installed in `version`
  * (null when it cannot be read) but unsupported, lacking options Meridian runs it with; or
  * installed, signed in with a subscription, in another way such as an API key, not at all, or in a
- * way that cannot be read, and accepting `models` besides its own default.
+ * way that cannot be read, and accepting `models` besides its own default. `efforts` holds the
+ * reasoning efforts each model accepts, by model, `''` standing for the CLI's own default model and
+ * any model it does not list.
  */
 export const HarnessSubscriptionStatusSchema = z.discriminatedUnion('state', [
   z.object({ state: z.literal('missing') }).strict(),
@@ -915,6 +949,7 @@ export const HarnessSubscriptionStatusSchema = z.discriminatedUnion('state', [
     version: z.string().min(1).max(100).nullable(),
     signIn: z.enum(['subscription', 'other', 'signed-out', 'unknown']),
     models: z.array(z.string().min(1).max(200)).max(50),
+    efforts: z.record(z.string().max(200), HarnessModelEffortsSchema),
   }).strict(),
 ])
 
@@ -927,6 +962,8 @@ export const HarnessModelProfileSchema = z.object({
   apiKeyConfigured: z.boolean(),
   apiKeyLastFour: z.string().min(1).max(4).optional(),
   configured: z.boolean(),
+  /** The reasoning effort runs on this profile ask for, absent for the provider's own default. */
+  effort: HarnessEffortSchema.optional(),
 }).strict()
 
 export const HarnessModelSettingsSchema = HarnessModelProfileSchema.extend({
@@ -934,6 +971,8 @@ export const HarnessModelSettingsSchema = HarnessModelProfileSchema.extend({
   subscription: HarnessSubscriptionSettingsSchema,
   /** Why the saved model configuration could not be loaded as it was. */
   error: CallFailureSchema.optional(),
+  /** Why a saved reasoning effort could not be loaded; runs on its profile or CLI refuse until one is saved again. */
+  effortError: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessModelConnectionFailureSchema = z.enum([
@@ -993,9 +1032,14 @@ export const HarnessModelSettingsUpdateSchema = z.object({
   authentication: z.enum(['api-key', 'none']),
   apiKey: z.string().trim().min(1).max(20_000).optional(),
   clearApiKey: z.boolean().optional(),
+  /** The reasoning effort the profile's runs ask for; without it they run at the provider's own default. */
+  effort: HarnessEffortSchema.optional(),
 }).strict()
   .refine((value) => !(value.apiKey !== undefined && value.clearApiKey === true), {
     message: '不能同时设置和清除 API Key',
+  })
+  .refine((value) => value.effort === undefined || HARNESS_API_EFFORTS[value.provider].includes(value.effort), {
+    path: ['effort'], message: '这个模型服务不接受这一推理强度',
   })
   .superRefine((value, context) => {
     const officialProviders: Partial<Record<z.infer<typeof HarnessModelProviderSchema>, {
@@ -2628,6 +2672,7 @@ export type HarnessCliModel = z.infer<typeof HarnessCliModelSchema>
 export type HarnessSubscriptionSettings = z.infer<typeof HarnessSubscriptionSettingsSchema>
 export type HarnessUpdateSubscriptionParams = z.infer<typeof HarnessUpdateSubscriptionParamsSchema>
 export type HarnessSubscriptionStatus = z.infer<typeof HarnessSubscriptionStatusSchema>
+export type HarnessModelEfforts = z.infer<typeof HarnessModelEffortsSchema>
 export type ProjectDetail = z.infer<typeof ProjectDetailSchema>
 export type ProjectSummary = z.infer<typeof ProjectSummarySchema>
 export type ProjectOverview = z.infer<typeof ProjectOverviewSchema>
