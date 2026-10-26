@@ -976,6 +976,7 @@ trash.kinds.idea label
 trash.kinds.inbox label
 trash.kinds.later label
 trash.kinds.paper label
+trash.kinds.page label
 trash.kinds.project label
 trash.paperTaken tooltip
 trash.projectGone tooltip
@@ -1070,6 +1071,8 @@ wiki.claims.resolve action
 wiki.claims.retract action
 wiki.claims.revise action
 wiki.columnSettings label
+wiki.merge.done notice
+wiki.mergeInto action
 wiki.groundsLabel label
 wiki.harness.billableNote state
 wiki.harness.confirmTitle label
@@ -1133,6 +1136,7 @@ wiki.proposals.addPaper content
 wiki.proposals.changeColumns notice
 wiki.proposals.createUnder content
 wiki.proposals.editMetadata content
+wiki.proposals.rename content
 wiki.proposals.moveOut notice
 wiki.proposals.moveOutPaper notice
 wiki.proposals.placeUnder content

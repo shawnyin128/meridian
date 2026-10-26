@@ -115,6 +115,8 @@ import {
   WikiApplyParamsSchema,
   WikiBacklinksParamsSchema,
   WikiDecideParamsSchema,
+  WikiDeleteParamsSchema,
+  WikiMergeParamsSchema,
   WikiPaperParamsSchema,
   WikiProposalsParamsSchema,
   WikiProposeParamsSchema,
@@ -909,6 +911,16 @@ registerHandler('wiki.backlinks', (params) =>
 registerHandler('wiki.update', (params) => {
   const { id, body } = WikiUpdateParamsSchema.parse(params)
   return store.updateWikiPage(id, body)
+})
+registerHandler('wiki.delete', (params) => {
+  const { id } = WikiDeleteParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.deleteWikiPage(id))
+  return { change }
+})
+registerHandler('wiki.merge', (params) => {
+  const { from, into, shown } = WikiMergeParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.mergeWikiPages(from, into, shown))
+  return { change }
 })
 registerHandler('trash.list', (params) => {
   EmptyParamsSchema.parse(params)

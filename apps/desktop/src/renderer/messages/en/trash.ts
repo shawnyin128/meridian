@@ -6,7 +6,7 @@ export const trash = {
   title: 'Trash',
   kinds: {
     inbox: 'Inmail', later: 'Read later', paper: 'Papers', project: 'Projects', idea: 'Ideas', chat: 'Chats',
-    attachment: 'Attachments',
+    attachment: 'Attachments', page: 'Wiki pages',
   },
   autoClear: (days: number) => `Deletes automatically in ${days} ${pluralEn(days, { one: 'day', other: 'days' })}`,
   daysLeft: (days: number) => `${days} ${pluralEn(days, { one: 'day', other: 'days' })}`,

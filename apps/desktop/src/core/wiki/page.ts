@@ -103,6 +103,41 @@ export function removeMembership(file: string, target: string, staging: string):
 }
 
 /**
+ * Points the membership in `from` on the paper page at `file` at `into` instead, rewriting only the
+ * value on that item's `- in:` line; its cells and every other byte of the page are untouched. Throws
+ * if the page carries no such membership, or its `memberships` is written some way this cannot edit
+ * line by line.
+ */
+export function moveMembership(file: string, from: string, into: string, staging: string): void {
+  const held = membershipsOf(file).items.get(from)
+  if (!held) throw new Error(`这一页不属于 ${from}：${file}`)
+  const page = rowsOf(file)
+  const line = page.rows[held[0]]!.replace(/^(\s*- in: )(["']?)[^"'\s]+\2/, (_, head: string, quote: string) => `${head}${quote}${into}${quote}`)
+  spliceLines(file, held[0], held[0] + 1, [line], staging)
+}
+
+/**
+ * Rewrites the page at `file` line by line through `rewrite`, which hears each line without its line
+ * ending and whether it stands in the frontmatter or in the body. The body is what follows the last
+ * generated region, or the frontmatter when the page has none; the lines of generated regions are
+ * left to their refill. Only the lines `rewrite` changes are written, each keeping its line ending.
+ * Throws if the page holds no closed frontmatter.
+ */
+export function rewriteLines(
+  file: string, rewrite: (line: string, part: 'front' | 'body') => string, staging: string,
+): void {
+  const page = rowsOf(file)
+  const regionsEnd = page.bare.lastIndexOf(GENERATED_CLOSE)
+  const bodyFrom = (regionsEnd < 0 ? page.close : regionsEnd) + 1
+  page.bare.forEach((line, at) => {
+    const part = at > 0 && at < page.close ? 'front' : at >= bodyFrom ? 'body' : null
+    if (part === null) return
+    const next = rewrite(line, part)
+    if (next !== line) spliceLines(file, at, at + 1, withCrOf(page.rows[at]!, [next]), staging)
+  })
+}
+
+/**
  * Writes `claim` onto the aggregation page at `file` in the block layout of write protocol §2.4 (one key
  * per line, fields in the record's own order): replacing the lines of the claim with the same id when the
  * page carries one, appending after the last claim when it does not, opening a `claims` block just above
@@ -174,6 +209,11 @@ export function setColumns(file: string, columns: { key: string; label: string }
 /** Replaces the `parents` block of the aggregation page at `file`; `[]` when empty. */
 export function setParents(file: string, parents: string[], staging: string): void {
   writeKey(file, 'parents', parents, staging, ['columns', 'split_on', 'updated'])
+}
+
+/** Replaces the `aliases` block of the aggregation page at `file`; `[]` when empty. */
+export function setAliases(file: string, aliases: string[], staging: string): void {
+  writeKey(file, 'aliases', aliases, staging, ['parents', 'columns', 'split_on', 'updated'])
 }
 
 /** Update user-maintained aggregation name and split basis; id, kind, and derived fields never use this path. */

@@ -8,6 +8,8 @@ export const wiki = {
   paperKind: 'Paper',
   autoColumn: 'Automatic',
   columnSettings: 'Column settings',
+  mergeInto: 'Merge into…',
+  merge: { done: 'Merged' },
   aggregation: {
     parentCount: (n: number) => `${n} ${pluralEn(n, { one: 'parent', other: 'parents' })}`,
     cardFooter: (children: number | null, members: number, updated: string) =>
@@ -29,6 +31,7 @@ export const wiki = {
     addPaper: (paper: string, parent: string) => `Add ${paper} to ${parent}`,
     moveOutPaper: (paper: string, parent: string) => `Remove ${paper} from ${parent}`,
     editMetadata: (title: string) => `Edit ${title}'s metadata`,
+    rename: (from: string, to: string) => `Rename ${from} to ${to}`,
   },
   title: 'Wiki',
   subdivisionsHeading: (kind: string) => `${kind} subpages`,

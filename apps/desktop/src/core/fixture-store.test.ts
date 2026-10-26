@@ -2373,6 +2373,11 @@ describe('fixture store', () => {
         ops: [{ op: 'appendEntry', page: 'topics/ptq', section: '未解决', date: EPOCH, text: '一条' }],
       }),
       'wiki.update': () => store.updateWikiPage('topics/ptq', '## 问题\n改过的。'),
+      'wiki.delete': () => store.deleteWikiPage('topics/qat'),
+      'wiki.merge': () => store.mergeWikiPages('topics/ptq-weight-activation', 'topics/ptq-weight-only', {
+        from: store.wikiCards().find((c) => c.id === 'topics/ptq-weight-activation')!,
+        into: store.wikiCards().find((c) => c.id === 'topics/ptq-weight-only')!,
+      }),
       'wiki.signals': () => store.wikiSignals(),
       'wiki.backlinks': () => store.wikiBacklinks('topics/ptq'),
       'trash.list': () => store.listTrash(),

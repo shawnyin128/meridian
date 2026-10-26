@@ -1,12 +1,12 @@
-import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { basename, isAbsolute, join } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { basename, dirname, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, InboxStream, PaperColumns, PaperImportResult,
   PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
   ResearchIdea, Task, TaskFields,
-  WikiSignal,
+  WikiAggregationCard, WikiSignal,
 } from '../shared/contract.js'
 import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
@@ -67,9 +67,9 @@ import { NO_WORKSPACE_GRAPHS, type MetadataFill, type VaultOps, type VaultStore,
 import {
   appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp, experimentProjects,
   entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
-  isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
-  readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
-  setClaim, setColumns, setMembership, setParents, setUpdated, topicPages, touchedPages, wikiAggregation, wikiCards,
+  isClaimOp, isPaper, labelledLink, labelOf, mergePlan, moveMembership, pageVersion, projectClaims, projectDisputes,
+  readWikiData, readWikiPage, relabelled, removeClaim, removeMembership, rewriteLines, setAggregationMetadata, setAliases,
+  setBody, setBodyAndTrust, setClaim, setColumns, setMembership, setParents, setUpdated, topicPages, touchedPages, wikiAggregation, wikiCards,
   wikiBacklinks, wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
@@ -85,6 +85,9 @@ type Scanned = { id: string; file: string; front: Frontmatter; body: string }
 
 /** Vault ID prefix used by page readers and writers to recognize project pages. */
 const PROJECT_PATH = `${PROJECTS_DIR}/`
+
+/** The Wiki page id of `wiki/<id>.md`, the vault-relative path a page's trash record keeps. */
+const trashedPageId = (page: string): string => page.slice('wiki/'.length, -'.md'.length)
 
 /**
  * Stores the half of application state that is not compiled knowledge: chats,
@@ -493,7 +496,7 @@ export function createVaultStore(
     inbox = save('inbox', next)
     const ids = new Set(removed.map((entry) => entry.id))
     const kept = trash.filter((item) => item.kind !== 'inbox' || !ids.has(item.entryId))
-    if (kept.length !== trash.length) trash = save('trash', kept)
+    if (kept.length !== trash.length) trash = saveTrash(kept)
   }
   // Another App version may have written queue records this one cannot read; keep those as written.
   const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
@@ -639,6 +642,101 @@ export function createVaultStore(
   }
 
   /**
+   * Refills the generated regions of each aggregation `ids` names from `data`. A page written before
+   * the claims region existed gains it only once it holds a claim.
+   */
+  const refill = (data: WikiData, ids: string[]): void => {
+    const names = projectNames()
+    for (const id of ids) {
+      const claims = (data.pages[id] as WikiAggregationRecord).fm.claims ?? []
+      fillGenerated(wikiFile(id), {
+        children: generatedChildren(data, id), table: generatedTable(data, id),
+        ...(claims.length === 0 && generatedMissing(wikiFile(id)).includes('claims')
+          ? {} : { claims: generatedClaims(data, id, names) }),
+      }, staging)
+    }
+  }
+
+  /** The id of every aggregation in the Wiki as it stands. */
+  const aggregationIds = (): string[] => Object.keys(wikiData.pages).filter((id) => !isPaper(wikiData.pages[id]!))
+
+  /** The page id of every paper with a membership in Wiki page `id`. */
+  const memberPapers = (id: string): string[] => Object.keys(wikiData.pages).filter((other) => {
+    const page = wikiData.pages[other]!
+    return isPaper(page) && (page.fm.memberships ?? []).some((m) => m.in === id)
+  })
+
+  /** The other aggregations directly under aggregation `id`, in id order. */
+  const subpagesOf = (id: string): string[] => aggregationIds().sort()
+    .filter((other) => ((wikiData.pages[other] as WikiAggregationRecord).fm.parents ?? []).includes(id))
+
+  /** The parents subpage `child` of aggregation `id` takes once `id` is deleted: `id` gives way to its own parents. */
+  const parentsAfterDelete = (id: string, child: string): string[] => {
+    const up = (wikiData.pages[id] as WikiAggregationRecord).fm.parents ?? []
+    const held = (wikiData.pages[child] as WikiAggregationRecord).fm.parents ?? []
+    return [...new Set(held.flatMap((p) => (p === id ? up : [p])))].filter((p) => p !== child)
+  }
+
+  /**
+   * What merging aggregation `from` into `into` writes: the text after the merge of every page it
+   * changes, worked out on copies in a scratch folder under the staging folder (which opening the
+   * vault clears). Writes nothing in the vault. Throws as mergeWikiPages does, but for `changed`.
+   */
+  const mergeOutcome = (from: string, into: string): { id: string; after: string }[] => {
+    checkReadable(from)
+    checkReadable(into)
+    const plan = mergePlan(wikiData, from, into)
+    for (const id of aggregationIds()) checkGenerated(wikiFile(id))
+    const day = today()
+    const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const relation = new RegExp(`^(\\s*(?:- )?page: )(["']?)${escaped}\\2(\\s*)$`)
+    const rewrite = (id: string) => (line: string, part: 'front' | 'body'): string => (part === 'body'
+      ? plan.rewriteLink(line)
+      : id.startsWith(PROJECT_PATH) ? line.replace(relation, (_, head: string, quote: string, tail: string) => `${head}${quote}${into}${quote}${tail}`) : line)
+    const projects = [...projectById.keys()].sort().map((pid) => `${PROJECT_PATH}${pid}`)
+      .filter((id) => readFileSync(wikiFile(id), 'utf8').split('\n').some((line) => {
+        const bare = line.replace(/\r$/, '')
+        return rewrite(id)(bare, 'front') !== bare || rewrite(id)(bare, 'body') !== bare
+      }))
+    const stamped = [into, ...plan.members.map((m) => m.paper), ...plan.children.map((c) => c.page), ...plan.claims.map((c) => c.page)]
+    const ids = [...new Set([...stamped, ...plan.links, ...projects])]
+    mkdirSync(staging, { recursive: true })
+    const scratch = mkdtempSync(join(staging, 'merge-'))
+    try {
+      const at = (id: string): string => join(scratch, `${id}.md`)
+      const work = join(scratch, '.staging')
+      for (const id of ids) {
+        mkdirSync(dirname(at(id)), { recursive: true })
+        copyFileSync(wikiFile(id), at(id))
+      }
+      const target = wikiData.pages[into] as WikiAggregationRecord
+      const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
+      const fields = plan.intoFields
+      if (!same(target.fm.aliases ?? [], fields.aliases)) setAliases(at(into), fields.aliases, work)
+      if (!same(target.fm.parents ?? [], fields.parents)) setParents(at(into), fields.parents, work)
+      if (!same(target.fm.columns ?? [], fields.columns)) setColumns(at(into), fields.columns, work)
+      const held = new Map((target.fm.claims ?? []).map((c) => [c.id, c]))
+      for (const claim of fields.claims) if (!same(held.get(claim.id), claim)) setClaim(at(into), claim, work)
+      if (fields.body !== null) setBody(at(into), fields.body, work)
+      for (const { paper, cells } of plan.members) {
+        if (cells === null) moveMembership(at(paper), from, into, work)
+        else {
+          setMembership(at(paper), { in: into, cells }, work)
+          removeMembership(at(paper), from, work)
+        }
+      }
+      for (const { page, parents } of plan.children) setParents(at(page), parents, work)
+      for (const { page, claim } of plan.claims) setClaim(at(page), claim, work)
+      for (const id of ids) rewriteLines(at(id), rewrite(id), work)
+      for (const id of ids) if (!id.startsWith(PROJECT_PATH)) setUpdated(at(id), day, work)
+      return ids.map((id) => ({ id, after: readFileSync(at(id), 'utf8') }))
+        .filter((t) => t.after !== readFileSync(wikiFile(t.id), 'utf8'))
+    } finally {
+      rmSync(scratch, { recursive: true, force: true })
+    }
+  }
+
+  /**
    * Rereads wiki structure after a write, recomputes table rows for the affected paper pages, and
    * rewrites the Wiki signals file.
    */
@@ -737,7 +835,8 @@ export function createVaultStore(
       ],
     })),
     trashed: new Map(trash.flatMap((item) => (item.kind === 'paper'
-      ? [[`${PAPER_PAGE}${basename(item.page, '.md')}`, item.title] as const] : []))),
+      ? [[`${PAPER_PAGE}${basename(item.page, '.md')}`, item.title] as const]
+      : item.kind === 'page' ? [[trashedPageId(item.page), item.title] as const] : []))),
     missingRegions: Object.keys(wikiData.pages).sort()
       .filter((id) => !isPaper(wikiData.pages[id]!) && generatedMissing(wikiFile(id)).some((name) => name !== 'claims')),
   })
@@ -1183,7 +1282,7 @@ export function createVaultStore(
    * Callers save the trash without the record first, so a record never outlives its page.
    */
   const discard = (item: TrashRecord): void => {
-    if (item.kind === 'paper' || item.kind === 'project') removePage(trashPage(item.id))
+    if (item.kind === 'paper' || item.kind === 'project' || item.kind === 'page') removePage(trashPage(item.id))
   }
 
   /** Permanently removes expired trash records and their stored content. */
@@ -1191,12 +1290,12 @@ export function createVaultStore(
     const cutoff = nowMs() - TRASH_RETENTION_DAYS * 86_400_000
     const expired = trash.filter((item) => item.deletedAt <= cutoff)
     if (expired.length === 0) return
-    trash = save('trash', trash.filter((item) => item.deletedAt > cutoff))
+    trash = saveTrash(trash.filter((item) => item.deletedAt > cutoff))
     for (const item of expired) discard(item)
   }
 
   /** Throws, before anything is written, when a page already stands where the page `item` holds goes back. */
-  const checkPlaceFree = (item: Extract<TrashRecord, { kind: 'paper' | 'project' }>): void => {
+  const checkPlaceFree = (item: Extract<TrashRecord, { kind: 'paper' | 'project' | 'page' }>): void => {
     if (existsSync(join(root, item.page))) throw new CallError('refused', `原来的位置已经被另一页占了，恢复会盖掉它：${item.page}`)
   }
 
@@ -1204,9 +1303,58 @@ export function createVaultStore(
   const paperChatNow = (item: Extract<TrashRecord, { kind: 'chat' }>): ChatRecord | undefined =>
     (item.chat.paperId === undefined ? undefined : chats.find((held) => held.paperId === item.chat.paperId))
 
+  /**
+   * Sets each idea `moves` names, while it still relates to the pages `from`, to relate to the pages
+   * `to` instead, its other fields untouched, and refreshes the workspace of each project those ideas
+   * are carried out in.
+   */
+  const relateIdeas = (moves: { id: string; from: string[]; to: string[] }[]): void => {
+    const changed = new Set<string>()
+    const next = ideas.map((idea) => {
+      const move = moves.find((m) => m.id === idea.id)
+      if (move === undefined || JSON.stringify(idea.relations?.pages ?? []) !== JSON.stringify(move.from)) return idea
+      changed.add(idea.id)
+      return { ...idea, relations: { projects: idea.relations?.projects ?? [], ...idea.relations, pages: move.to } }
+    })
+    if (changed.size === 0) return
+    ideas = save('ideas', next)
+    for (const idea of next) {
+      if (!changed.has(idea.id) || idea.project === undefined) continue
+      const project = projectById.get(idea.project)
+      if (project !== undefined) syncProjectWorkspace(project)
+    }
+  }
+
+  /** Puts the ideas the merge that trashed page record `item` repointed back on the pages they related to before it. */
+  const putIdeasBack = (item: Extract<TrashRecord, { kind: 'page' }>): void =>
+    relateIdeas((item.ideas ?? []).map(({ id, before, after }) => ({ id, from: after, to: before })))
+
+  /**
+   * Whether trash record `item` holds a Wiki page that is back where it was deleted from by some other
+   * way, such as an older App's undo: the page there carries the same version as the one the trash
+   * keeps, generated regions and `updated` aside.
+   */
+  const returned = (item: TrashRecord): boolean => {
+    if (item.kind !== 'page' || !existsSync(join(root, item.page)) || !existsSync(trashPage(item.id))) return false
+    const version = (file: string) => JSON.stringify(pageVersion(readFileSync(file, 'utf8')))
+    return version(join(root, item.page)) === version(trashPage(item.id))
+  }
+
+  /**
+   * Writes `rows` as the trash and returns them, leaving out each Wiki page record whose page is back
+   * (see returned), whose kept page it then removes. Throws, leaving the file as it stood, when it
+   * cannot be written.
+   */
+  const saveTrash = (rows: TrashRecord[]): TrashRecord[] => {
+    const back = rows.filter(returned)
+    const kept = save('trash', rows.filter((item) => !back.includes(item)))
+    for (const item of back) discard(item)
+    return kept
+  }
+
   /** Adds a record to trash with the most recently deleted item first. */
   const toTrash = (item: TrashRecord): void => {
-    trash = save('trash', [item, ...trash])
+    trash = saveTrash([item, ...trash])
   }
 
   const managed = isGitManaged(root)
@@ -2562,6 +2710,11 @@ export function createVaultStore(
           setParents(wikiFile(op.page), op.parents, staging)
           setUpdated(wikiFile(op.page), day, staging)
         } else if (op.op === 'setAggregationMetadata') {
+          const [from, to] = [labelledLink(op.page, data.pages[op.page]!.fm.title), labelledLink(op.page, op.title)]
+          for (const id of relabelled(data, op.page, op.title)) {
+            rewriteLines(wikiFile(id), (line, part) => (part === 'body' ? line.replaceAll(from, to) : line), staging)
+            setUpdated(wikiFile(id), day, staging)
+          }
           setAggregationMetadata(wikiFile(op.page), { title: op.title, splitOn: op.splitOn }, staging)
           setUpdated(wikiFile(op.page), day, staging)
         } else if (op.op === 'setColumns') {
@@ -2587,17 +2740,10 @@ export function createVaultStore(
         }
         if (changed) setUpdated(wikiFile(id), day, staging)
       }
-      const names = projectNames()
-      for (const id of refilled(proposal, data, next)) {
-        const claims = (next.pages[id] as WikiAggregationRecord).fm.claims ?? []
-        fillGenerated(wikiFile(id), {
-          children: generatedChildren(next, id), table: generatedTable(next, id),
-          // A page written before claims existed gains the claims region only once it holds a claim.
-          ...(claims.length === 0 && generatedMissing(wikiFile(id)).includes('claims')
-            ? {} : { claims: generatedClaims(next, id, names) }),
-        }, staging)
-      }
-      rereadWiki(touchedPages(proposal, data))
+      refill(next, refilled(proposal, data, next))
+      // A paper's row names the aggregations it belongs to, so a rename rereads every member.
+      const renamed = proposal.ops.flatMap((op) => (op.op === 'setAggregationMetadata' ? memberPapers(op.page) : []))
+      rereadWiki([...touchedPages(proposal, data), ...renamed])
     }),
 
     checkProposal(ops, by, graphs = NO_WORKSPACE_GRAPHS) {
@@ -2673,6 +2819,65 @@ export function createVaultStore(
       rereadWiki([id])
     }),
 
+    deleteWikiPage: atomic((id) => {
+      checkReadable(id)
+      const page = wikiData.pages[id]
+      if (page === undefined || isPaper(page)) throw new CallError('not-found', `wiki 聚合不存在：${id}`)
+      const rest = aggregationIds().filter((other) => other !== id)
+      for (const other of rest) checkGenerated(wikiFile(other))
+      const day = today()
+      for (const child of subpagesOf(id)) {
+        setParents(wikiFile(child), parentsAfterDelete(id, child), staging)
+        setUpdated(wikiFile(child), day, staging)
+      }
+      const members = memberPapers(id)
+      const entry = nextId('trash')
+      movePage(wikiFile(id), trashPage(entry))
+      toTrash({ id: entry, kind: 'page', title: page.fm.title, deletedAt: nowMs(), page: `wiki/${id}.md` })
+      rereadWiki(members)
+      refill(wikiData, rest)
+    }),
+
+    wikiDeletePages(id) {
+      const children = subpagesOf(id)
+      return [id, ...children, ...aggregationIds().sort().filter((other) => other !== id && !children.includes(other))]
+    },
+
+    mergeWikiPages: atomic((from, into, shown) => {
+      const texts = mergeOutcome(from, into)
+      const repointed = ideas.flatMap((idea) => {
+        const before = idea.relations?.pages ?? []
+        if (!before.includes(from)) return []
+        return [{ id: idea.id, before, after: [...new Set(before.map((p) => (p === from ? into : p)))] }]
+      })
+      const cards = wikiCards(wikiData)
+      const unchanged = (id: string, card: WikiAggregationCard): boolean =>
+        JSON.stringify(cards.find((c) => c.id === id)) === JSON.stringify(card)
+      if (!unchanged(from, shown.from) || !unchanged(into, shown.into)) {
+        throw new CallError('changed', `「${labelOf(wikiData, from)}」或「${labelOf(wikiData, into)}」在你挑合并目标之后改过，没有合并。再挑一次`)
+      }
+      for (const { id, after } of texts) replacePage(wikiFile(id), after, staging)
+      const entry = nextId('trash')
+      movePage(wikiFile(from), trashPage(entry))
+      toTrash({
+        id: entry, kind: 'page', title: labelOf(wikiData, from), deletedAt: nowMs(), page: `wiki/${from}.md`,
+        ...(repointed.length === 0 ? {} : { ideas: repointed }),
+      })
+      relateIdeas(repointed.map(({ id, before, after }) => ({ id, from: before, to: after })))
+      for (const { id } of texts) {
+        if (!id.startsWith(PROJECT_PATH)) continue
+        const pid = id.slice(PROJECT_PATH.length)
+        projectById.set(pid, readProjectPage(projectFile(pid), pid))
+      }
+      rereadWiki(texts.map((t) => t.id))
+      refill(wikiData, aggregationIds())
+    }),
+
+    wikiMergePages(from, into) {
+      const written = [...mergeOutcome(from, into).map((t) => t.id), from]
+      return [...written, ...aggregationIds().sort().filter((id) => !written.includes(id))]
+    },
+
     applyPaperWikiDraft: atomic((id, body) => {
       checkBody(id, body)
       checkReadable(id)
@@ -2700,27 +2905,38 @@ export function createVaultStore(
       for (const { path, text } of pages) {
         const file = wikiFile(path)
         if (text === null) removePage(file)
-        else replacePage(file, text, staging)
+        else {
+          replacePage(file, text, staging)
+          // A page put back where it was deleted from no longer waits in the trash.
+          const held = trash.find((item) => item.kind === 'page' && item.page === `wiki/${path}.md`)
+          if (held !== undefined) {
+            trash = saveTrash(trash.filter((item) => item !== held))
+            discard(held)
+            if (held.kind === 'page') putIdeasBack(held)
+          }
+        }
         if (!path.startsWith(PROJECT_PATH)) continue
         const id = path.slice(PROJECT_PATH.length)
         if (text === null) projectById.delete(id)
         else projectById.set(id, readProjectPage(file, id))
       }
-      rereadWiki(pages.map((p) => p.path))
+      // A paper's row names the aggregations it belongs to, so each aggregation put back rereads its members.
+      const paths = pages.map((p) => p.path)
+      rereadWiki([...paths, ...paths.flatMap(memberPapers)])
     }),
 
     listTrash() {
       dropExpired()
       // An attachment cannot return after its project is deleted, nor a paper while another page stands where its page goes back,
       // nor a paper chat while its paper's chat holds messages.
-      return trash.map((item) => ({
+      return trash.filter((item) => !returned(item)).map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
           : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
-          : item.kind !== 'paper' || !existsSync(join(root, item.page)),
+          : (item.kind !== 'paper' && item.kind !== 'page') || !existsSync(join(root, item.page)),
       }))
     },
 
@@ -2751,6 +2967,12 @@ export function createVaultStore(
         const restored = readProjectPage(back, projectId)
         projectById.set(projectId, restored)
         if (restored.status === FINISHED_PROJECT) archiveIdeasForProject(projectId)
+      } else if (item.kind === 'page') {
+        checkPlaceFree(item)
+        movePage(trashPage(id), join(root, item.page))
+        rereadWiki(memberPapers(trashedPageId(item.page)))
+        refill(wikiData, aggregationIds())
+        putIdeasBack(item)
       } else if (item.kind === 'inbox') {
         inbox = save('inbox', inbox.map((entry) => {
           if (entry.id !== item.entryId) return entry
@@ -2789,20 +3011,20 @@ export function createVaultStore(
           ['attachments'],
         )
       }
-      trash = save('trash', trash.filter((entry) => entry !== item))
+      trash = saveTrash(trash.filter((entry) => entry !== item))
     }),
 
     purgeTrash(id) {
       dropExpired()
       const item = trash.find((entry) => entry.id === id)
       if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
-      trash = save('trash', trash.filter((entry) => entry !== item))
+      trash = saveTrash(trash.filter((entry) => entry !== item))
       discard(item)
     },
 
     clearTrash() {
       const cleared = trash
-      trash = save('trash', [])
+      trash = saveTrash([])
       for (const item of cleared) discard(item)
     },
 

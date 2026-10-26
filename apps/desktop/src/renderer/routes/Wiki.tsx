@@ -24,7 +24,9 @@ import { IconButton } from '../components/IconButton.js'
 import { IconCross, IconGear, IconTrash } from '../components/icons.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import { InlineMetadataField } from '../components/InlineField.js'
+import { InlineField, InlineMetadataField } from '../components/InlineField.js'
+import { DotsMenu } from '../components/FieldPickers.js'
+import { MenuItem, MenuSeparator } from '../components/ActionMenu.js'
 import { Property, PropertyList } from '../components/PropertyList.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
@@ -80,24 +82,77 @@ const PROJECT_PAGE = 'projects/'
 /** One entry of the Back stack: the previous Wiki page and how far it was scrolled, or the screen that jumped here. */
 type Step = { place: Place; scroll: number } | { origin: ScreenKey }
 
+/** The drafts a card's rename and its merge target pick are kept under, with its page, so they reopen where they were typed. */
+const RENAME = 'rename'
+const MERGE = 'merge'
+
+/**
+ * What a card's … menu does: renames the page to the name typed in place, merges it into the page
+ * picked in place from `suggestMerge`'s candidates, or moves it to the trash. `onError` hears a
+ * failed candidate lookup.
+ */
+type CardActions = {
+  onRename: (title: string) => boolean | Promise<boolean>
+  suggestMerge: (query: string) => Promise<PickHit[]>
+  onMerge: (hit: PickHit) => boolean | Promise<boolean>
+  onDelete: () => void
+  onError: (e: Error) => void
+}
+
 /**
  * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
  * the first line of its summary, and a last line with its subpage count, paper count and update date.
- * The title is the card's button; a click anywhere else on the card opens it too.
+ * The title is the card's button; a click anywhere else on the card opens it too. With `actions` the
+ * card has the … menu: Rename turns the title into its inline field, Merge into… into a pick of the
+ * page to merge into, both in place, and Delete moves the page to the trash.
  */
-function AggregationCard({ card, onOpen, onRemove, pending }: {
-  card: WikiAggregationCard; onOpen: () => void; onRemove?: () => void; pending?: boolean
+function AggregationCard({ card, onOpen, onRemove, pending, actions }: {
+  card: WikiAggregationCard; onOpen: () => void; onRemove?: () => void; pending?: boolean; actions?: CardActions
 }) {
   const fmt = useFormat()
   const m = useMessages()
   const summary = useRef<HTMLDivElement>(null)
   const summaryCut = useClipped(summary, card.summary, true)
+  const kept = useDrafts<string>(['wiki', card.id])
+  const element = useRef<HTMLElement>(null)
+  // Merge into… opens its pick once the menu has let go of focus, as Rename opens its field.
+  const mergeAsked = useRef(false)
+  const merging = actions !== undefined && kept.get(MERGE) !== undefined
+  const name = <ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>
   return (
     <Item
-      density="card" className="wkcard" data-wk={card.id} onActivate={onOpen}
+      density="card" className="wkcard" data-wk={card.id} onActivate={onOpen} elementRef={element}
       leading={<Tag className="wkind">{card.kindLabel}</Tag>}
-      title={<ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>}
+      title={actions === undefined ? name : merging
+        ? (
+          <PickRow
+            row={element} triggers={[]} allowNew={false} placeholder={m.wiki.kindNamePlaceholder(card.kindLabel)}
+            suggest={actions.suggestMerge} onPick={actions.onMerge} onNew={() => false}
+            onCancel={() => kept.drop(MERGE)} onError={actions.onError} kept={{ drafts: kept, target: MERGE }}
+          />
+        )
+        : (
+          <InlineField
+            label={m.wiki.nameFieldLabel} value={card.title} keep={{ scope: ['wiki', card.id], target: RENAME }}
+            normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={actions.onRename} rest={name}
+          />
+        )}
       tags={card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
+      menu={actions === undefined ? undefined : (
+        <DotsMenu
+          stopRowActivation onRename={() => kept.set(RENAME, card.title)}
+          onCloseAutoFocus={(event) => {
+            if (!mergeAsked.current) return
+            mergeAsked.current = false
+            event.preventDefault()
+            kept.set(MERGE, '')
+          }}
+        >
+          <MenuItem onSelect={() => { mergeAsked.current = true }}>{m.wiki.mergeInto}</MenuItem>
+          <MenuSeparator />
+          <MenuItem className="mi danger" onSelect={actions.onDelete}>{m.common.delete}</MenuItem>
+        </DotsMenu>
+      )}
       actions={onRemove === undefined
         ? undefined
         : (
@@ -119,10 +174,14 @@ function AggregationCard({ card, onOpen, onRemove, pending }: {
 
 /**
  * The demo's paperCard; a click opens this paper's page, and its title is the card's button. The title
- * takes up to two lines, and the year, venue and topics one.
+ * takes up to two lines, and the year, venue and topics one. Its … menu renames the paper, its title
+ * turning into its inline field in place, and deletes it through `onDelete`, the paper list's delete.
  */
-function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
+function PaperCard({ paper, onOpen, onRename, onDelete }: {
+  paper: PaperRow; onOpen: () => void; onRename: (title: string) => boolean | Promise<boolean>; onDelete: () => void
+}) {
   const m = useMessages()
+  const kept = useDrafts<string>(['wiki', `${PAPER_PAGE}${paper.id}`])
   const title = useRef<HTMLSpanElement>(null)
   const titleCut = useClipped(title, paper.title, true)
   const line = [`${paper.year ?? ''} ${paper.venue}`.trim(), paper.topics.join(' / ')]
@@ -132,9 +191,21 @@ function PaperCard({ paper, onOpen }: { paper: PaperRow; onOpen: () => void }) {
       density="card" className="wkcard wkcard--paper" data-wk={`${PAPER_PAGE}${paper.id}`} onActivate={onOpen}
       leading={<Tag className="wkind">{m.wiki.paperKind}</Tag>}
       title={(
-        <Tooltip label={plainTitle(paper.title)} whenClipped>
-          <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>
-        </Tooltip>
+        <InlineField
+          label={m.wiki.titleLabel} value={paper.title} keep={{ scope: ['wiki', `${PAPER_PAGE}${paper.id}`], target: RENAME }}
+          normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename}
+          rest={(
+            <Tooltip label={plainTitle(paper.title)} whenClipped>
+              <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>
+            </Tooltip>
+          )}
+        />
+      )}
+      menu={(
+        <DotsMenu stopRowActivation onRename={() => kept.set(RENAME, paper.title)}>
+          <MenuSeparator />
+          <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
+        </DotsMenu>
       )}
     >
       <FadeText className="wm" label={line}>{line}</FadeText>
@@ -640,6 +711,38 @@ export function Wiki() {
     })
   }
 
+  /** The cards Merge into… last offered, by page id, so a pick hands Core the card it showed. */
+  const offered = useRef(new Map<string, WikiAggregationCard>())
+
+  /**
+   * The … menu of `card`: Rename writes the new title, keeping how the page is split; Merge into…
+   * offers the other pages of its kind whose title holds what is typed, every one of them while
+   * nothing is, and merges into the one picked at once, with the two cards as they showed; Delete
+   * moves the page to the trash. Merge and Delete offer Undo on their notice.
+   */
+  const cardActions = (card: WikiAggregationCard): CardActions => ({
+    onRename: (title) => wiki.aggregation(card.id).then((held) => propose(
+      m.wiki.proposals.rename(card.title, title),
+      [{ op: 'setAggregationMetadata', page: card.id, title, splitOn: held.splitOn ?? null }],
+    ), (e: Error) => {
+      report(e)
+      return false
+    }),
+    suggestMerge: async (query) => {
+      const q = query.toLowerCase()
+      const found = (await wiki.cards())
+        .filter((c) => c.kind === card.kind && c.id !== card.id && c.title.toLowerCase().includes(q))
+      offered.current = new Map(found.map((c) => [c.id, c]))
+      return found.map((c) => ({ id: c.id, title: c.title, meta: m.project.identity.paperCount(c.memberCount) }))
+    },
+    onMerge: (hit) => write(
+      wiki.merge(card.id, hit.id, { from: card, into: offered.current.get(hit.id)! }),
+      { note: m.wiki.merge.done, action: undo.change },
+    ),
+    onDelete: () => { void write(wiki.delete(card.id), { note: m.common.trashed, action: undo.change }) },
+    onError: report,
+  })
+
   /**
    * Adds a column, named at the end of the header row, to this page. A column here is only a name;
    * nothing else about it can be configured after it is created.
@@ -773,7 +876,7 @@ export function Wiki() {
                 >
                   {pageItems(shownAgg.children, childSection(childrenKey)).map((c) => (
                     <AggregationCard
-                      key={c.id} card={c} pending={pending}
+                      key={c.id} card={c} pending={pending} actions={cardActions(c)}
                       onOpen={() => go(c.id)} onRemove={() => unmount(c)}
                     />
                   ))}
@@ -1069,12 +1172,18 @@ export function Wiki() {
                 const paging = section(k.key)
                 return roots.length === 0 ? null : (
                   <PagedSection key={k.key} heading={k.label} total={roots.length} paging={paging} className="wkgrid">
-                    {pageItems(roots, paging).map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
+                    {pageItems(roots, paging).map((c) => <AggregationCard key={c.id} card={c} actions={cardActions(c)} onOpen={() => go(c.id)} />)}
                   </PagedSection>
                 )
               })}
               <PagedSection heading={m.project.sections.papers} total={total} paging={section(PAPERS_SECTION)} className="wkgrid">
-                {rows.map((p) => <PaperCard key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)} />)}
+                {rows.map((p) => (
+                  <PaperCard
+                    key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)}
+                    onRename={(title) => write(papers.update(p.id, { title }))}
+                    onDelete={() => { void write(papers.delete(p.id), { note: m.common.trashed, action: undo.change }) }}
+                  />
+                ))}
               </PagedSection>
             </>
           )

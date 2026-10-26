@@ -412,6 +412,11 @@ export const wiki = {
   cards: () => call<WikiAggregationCard[]>('wiki.cards', {}),
   apply: (proposal: Proposal) => call<RecordedChange>('wiki.apply', { proposal }),
   update: (id: string, body: string) => call<void>('wiki.update', { id, body }),
+  /** Moves aggregation page `id` into the trash. */
+  delete: (id: string) => call<RecordedChange>('wiki.delete', { id }),
+  /** Merges aggregation `from` into `into`; `shown` holds the two pages' cards as the screen showed them. */
+  merge: (from: string, into: string, shown: { from: WikiAggregationCard; into: WikiAggregationCard }) =>
+    call<RecordedChange>('wiki.merge', { from, into, shown }),
   /** The review queue, newest first; every status when `status` is absent. */
   proposals: (status?: ProposalStatus) =>
     call<WikiProposal[]>('wiki.proposals', status === undefined ? {} : { status }),

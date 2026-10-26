@@ -1669,7 +1669,7 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat', 'page']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),
@@ -2066,6 +2066,19 @@ export const WikiBacklinksParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Updates wiki body Markdown only; frontmatter and generated regions do not pass through this input. */
 export const WikiUpdateParamsSchema = z.object({ id: z.string(), body: z.string() }).strict()
+
+/** Moves the aggregation page `id` into the trash; its subpages move up under its own parents. */
+export const WikiDeleteParamsSchema = z.object({ id: z.string() }).strict()
+
+/**
+ * Merges the aggregation `from` into the aggregation `into`. `shown` is the two pages' cards as the
+ * screen showed them when the target was picked; Core refuses with `changed` unless both still look so.
+ */
+export const WikiMergeParamsSchema = z.object({
+  from: z.string(),
+  into: z.string(),
+  shown: z.object({ from: WikiAggregationCardSchema, into: WikiAggregationCardSchema }).strict(),
+}).strict()
 
 /**
  * One proposal operation. All variants are writes: create aggregation, set or
@@ -3089,6 +3102,8 @@ export const CONTRACT_METHODS = [
   'wiki.cards',
   'wiki.apply',
   'wiki.update',
+  'wiki.delete',
+  'wiki.merge',
   'wiki.propose',
   'wiki.proposals',
   'wiki.decide',

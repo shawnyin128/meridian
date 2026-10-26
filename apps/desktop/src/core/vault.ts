@@ -835,6 +835,36 @@ export interface VaultStore {
   updateWikiPage(id: string, body: string): void
 
   /**
+   * Moves the Wiki aggregation page with the given id into the trash, moves each of its subpages up
+   * under its own parents (to the top level when it has none), and refills the generated regions of
+   * every aggregation left. Every other reference to the page stays as written, so restoring its
+   * trash entry brings it back. Throws if no such aggregation exists or this version cannot read it
+   * or one of its subpages.
+   */
+  deleteWikiPage(id: string): void
+
+  /**
+   * Returns the id of every page deleteWikiPage(`id`) would write, in this order: the page, its
+   * subpages, then every other aggregation, whose generated regions it refills.
+   */
+  wikiDeletePages(id: string): string[]
+
+  /**
+   * Merges aggregation `from` into `into`, `from` going into the trash, and refills the generated
+   * regions of every aggregation. Throws a `changed` CallError, writing nothing, unless the cards of
+   * both pages still look as `shown` holds them; and throws if either is not an aggregation this
+   * version can read, they are one page or of different kinds, an aggregation lacks its generated
+   * regions, or the merge would make a cycle.
+   */
+  mergeWikiPages(from: string, into: string, shown: { from: WikiAggregationCard; into: WikiAggregationCard }): void
+
+  /**
+   * Returns the id of every page mergeWikiPages(`from`, `into`) would write: the pages it changes and
+   * `from`, then every other aggregation, whose generated regions it refills.
+   */
+  wikiMergePages(from: string, into: string): string[]
+
+  /**
    * Applies a Harness paper-wiki proposal: replaces the paper page's body the way updateWikiPage does
    * and, in that same write, sets `validation_state` to `text_converged` and `trust_state` to
    * `source_grounded_text` — the two keys retrieval requires before it will surface the page. Stamps

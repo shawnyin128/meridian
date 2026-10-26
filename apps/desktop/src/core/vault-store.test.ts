@@ -3332,4 +3332,165 @@ describe('vault store on the aggregation layout', () => {
       expect(saved.find((row) => row['id'] === 'change-902')).toEqual(garbage)
     })
   })
+
+  describe('Wiki 卡片的更多菜单：改名、合并、删除', () => {
+    /** Every Markdown file under the vault's `wiki/`, by path, with its text. */
+    const pages = (): Record<string, string> => Object.fromEntries(
+      (readdirSync(join(vault, 'wiki'), { recursive: true, encoding: 'utf8' }) as string[])
+        .filter((name) => name.endsWith('.md')).sort()
+        .map((name) => [name, readFileSync(join(vault, 'wiki', name), 'utf8')]),
+    )
+    const file = (id: string) => join(vault, 'wiki', `${id}.md`)
+    const WO = 'topics/ptq-weight-only'
+    const WA = 'topics/ptq-weight-activation'
+
+    it('改名：正文里标签写着旧名的链接跟着改成新名，别的标签不动；论文表里的主题名跟着变；撤销逐字节还原', () => {
+      store.updateWikiPage('papers/2306.00978', `见 [[${WO}|Weight-only PTQ]] 和 [[${WO}|仅权重]]，还有 [[${WO}]]。`)
+      const before = pages()
+      store.applyProposal({
+        source: 'user', title: '改名',
+        ops: [{ op: 'setAggregationMetadata', page: WO, title: 'W-only PTQ', splitOn: null }],
+      })
+      expect(store.wikiPaper('papers/2306.00978').body).toBe(`见 [[${WO}|W-only PTQ]] 和 [[${WO}|仅权重]]，还有 [[${WO}]]。`)
+      expect(store.getPaper('2210.17323').topics).toContain('W-only PTQ')
+      expect(store.getPaper('2210.17323').topics).not.toContain('Weight-only PTQ')
+      store.undoChange(store.listChanges()[0]!.id)
+      expect(pages()).toEqual(before)
+      expect(store.getPaper('2210.17323').topics).toContain('Weight-only PTQ')
+    })
+
+    it('删掉一页：页进垃圾桶，下面的细分挂到它的上级下，成员的归属原样留着；记一条变动，撤销逐字节还原，垃圾桶里那一条也没了', async () => {
+      const before = pages()
+      store.deleteWikiPage('topics/ptq')
+      expect(existsSync(file('topics/ptq'))).toBe(false)
+      expect(store.listTrash()[0]).toMatchObject({ kind: 'page', title: 'PTQ', restorable: true })
+      expect((await store.wikiAggregation(WO)).parents.map((p) => p.id)).toEqual(['topics/quantization'])
+      expect((await store.wikiAggregation('topics/kv-cache-quantization')).parents.map((p) => p.id))
+        .toEqual(['topics/quantization', 'topics/long-context-inference'])
+      expect((await store.wikiAggregation('topics/quantization')).children.map((c) => c.id))
+        .toEqual(expect.arrayContaining([WO, WA, 'topics/kv-cache-quantization']))
+      expect(readFileSync(file('topics/quantization'), 'utf8')).not.toContain('[[topics/ptq|')
+      expect(store.listChanges()[0]).toMatchObject({
+        title: 'Wiki · 「PTQ」· 删掉', undoable: true,
+        diff: ['- topics/ptq', ...['topics/kv-cache-quantization', WA, WO].map((child) => `~ ${child} 属于上一级`)],
+      })
+      store.undoChange(store.listChanges()[0]!.id)
+      expect(pages()).toEqual(before)
+      expect(store.listTrash().filter((entry) => entry.kind === 'page')).toEqual([])
+    })
+
+    it('删掉的页被别的途径放回原处（例如 0.0.21.4 撤销）：垃圾桶不再列它，下次写垃圾桶时那一条连同存的页一起去掉，不记变动', () => {
+      store.deleteWikiPage('topics/qat')
+      const entry = store.listTrash()[0]!
+      const held = join(vault, '.meridian', 'trash', `${entry.id}.md`)
+      // What an older App's undo does: the page text comes back, and a later refill may rewrite its generated regions.
+      writeFileSync(file('topics/qat'), readFileSync(held, 'utf8').replace('## 子聚合\n(无)', '## 子聚合\n(改过的生成区)'))
+      const changes = store.listChanges().length
+      const reopened = createVaultStore(vault, () => '2026-09-10')
+      expect(reopened.listTrash().filter((item) => item.kind === 'page')).toEqual([])
+      reopened.deleteWikiPage('topics/ptq-weight-only')
+      const stored = JSON.parse(readFileSync(join(vault, '.meridian', 'trash.json'), 'utf8')) as { id: string }[]
+      expect(stored.map((item) => item.id)).not.toContain(entry.id)
+      expect(existsSync(held)).toBe(false)
+      expect(reopened.listChanges().length).toBe(changes + 1)
+    })
+
+    it('原处是另一页（不是放回来的那一页）时，垃圾桶照样列着它，恢复不了', () => {
+      store.deleteWikiPage('topics/qat')
+      writeFileSync(file('topics/qat'), '---\nkind: topic\ntitle: 别的\n---\n')
+      expect(createVaultStore(vault, () => '2026-09-10').listTrash().filter((item) => item.kind === 'page')).toEqual([
+        expect.objectContaining({ title: 'QAT', restorable: false }),
+      ])
+    })
+
+    it('从垃圾桶恢复删掉的页：回到原处，上级页的细分里又有它；原处被另一页占着时恢复不了，那一页一个字节不动', async () => {
+      const held = readFileSync(file('topics/qat'), 'utf8')
+      store.deleteWikiPage('topics/qat')
+      const entry = store.listTrash()[0]!
+      store.restoreTrash(entry.id)
+      expect(readFileSync(file('topics/qat'), 'utf8')).toBe(held)
+      expect((await store.wikiAggregation('topics/quantization')).children.map((c) => c.id)).toContain('topics/qat')
+      store.deleteWikiPage('topics/qat')
+      writeFileSync(file('topics/qat'), '---\nkind: topic\ntitle: 别的\n---\n')
+      expect(store.listTrash()[0]).toMatchObject({ kind: 'page', restorable: false })
+      expect(() => store.restoreTrash(store.listTrash()[0]!.id)).toThrow(/占/)
+      expect(readFileSync(file('topics/qat'), 'utf8')).toBe('---\nkind: topic\ntitle: 别的\n---\n')
+    })
+
+    /** The cards of `from` and `into` as the Wiki shows them now. */
+    const shown = (from: string, into: string) => {
+      const cards = store.wikiCards()
+      return { from: cards.find((c) => c.id === from)!, into: cards.find((c) => c.id === into)! }
+    }
+
+    it('合并：挑了目标就合并，不再确认；成员、列、结论、链接和项目关联都到了留下的那一页，被并的页进垃圾桶；撤销是一条，逐字节还原', async () => {
+      const project = store.createProject('量化实验')
+      await store.createRelation(project, { group: 'Wiki', text: '权重激活', page: WA })
+      store.updateWikiPage('papers/2306.00978', `对照 [[${WA}|W-A]] 与 [[${WA}#^rotation-kv]]。`)
+      const both = store.createIdea(undefined, '旋转加平滑', '把两种变换叠起来试。')
+      store.updateIdea(both.id, { relations: { projects: [], pages: [WA, WO] } })
+      const one = store.createIdea(undefined, '激活量化的校准', '少量样本够不够。')
+      store.updateIdea(one.id, { relations: { projects: [], pages: [WA, 'topics/qat'] } })
+      const ideasBefore = readFileSync(join(vault, '.meridian', 'ideas.json'), 'utf8')
+      const relations = (id: string) => store.listIdeas().find((idea) => idea.id === id)!.relations!.pages
+      const before = pages()
+      const changes = store.listChanges().length
+      store.mergeWikiPages(WA, WO, shown(WA, WO))
+      expect([relations(both.id), relations(one.id)]).toEqual([[WO], [WO, 'topics/qat']])
+      const record = (JSON.parse(readFileSync(join(vault, '.meridian', 'trash.json'), 'utf8')) as { kind: string; ideas?: unknown }[])
+        .find((item) => item.kind === 'page')!
+      expect(record.ideas).toEqual(expect.arrayContaining([
+        { id: both.id, before: [WA, WO], after: [WO] }, { id: one.id, before: [WA, 'topics/qat'], after: [WO, 'topics/qat'] },
+      ]))
+      expect(existsSync(file(WA))).toBe(false)
+      expect(store.listTrash()[0]).toMatchObject({ kind: 'page', title: 'Weight-activation PTQ' })
+      const kept = await store.wikiAggregation(WO)
+      expect(kept.rows.map((r) => r.paper.id)).toEqual(expect.arrayContaining(['papers/2211.10438', 'papers/2308.13137', 'papers/2405.16406']))
+      expect(kept.columns.map((c) => c.key)).toEqual(['bits', 'needs_calib', 'backprop', 'claim', 'transform_where', 'learned'])
+      expect(kept.claims.map((c) => c.id)).toContain('rotation-kv')
+      expect(kept.body).toContain('## 并自「Weight-activation PTQ」')
+      expect(store.wikiPaper('papers/2308.13137').memberships.filter((ms) => ms.aggregation.id === WO)).toHaveLength(1)
+      expect((await store.wikiAggregation('topics/kv-cache-quantization')).claims.find((c) => c.id === 'per-channel-keys')!.conflicts[0]!.against)
+        .toEqual({ kind: 'claim', ref: `${WO}#rotation-kv` })
+      expect(store.wikiPaper('papers/2306.00978').body).toBe(`对照 [[${WO}|W-A]] 与 [[${WO}#^rotation-kv]]。`)
+      expect(readFileSync(file(`projects/${project}`), 'utf8')).toContain(`page: "${WO}"`)
+      expect((await store.getProject(project)).relations.flatMap((g) => g.items).map((item) => item.page)).toContain(WO)
+      expect(store.listChanges().length).toBe(changes + 1)
+      store.undoChange(store.listChanges()[0]!.id)
+      expect(pages()).toEqual(before)
+      expect(store.listTrash().filter((entry) => entry.kind === 'page')).toEqual([])
+      expect(readFileSync(join(vault, '.meridian', 'ideas.json'), 'utf8')).toBe(ideasBefore)
+    })
+
+    it('合并后从垃圾桶恢复被并的页：想法的关联也回到它身上；之后又改过关联的想法不动', () => {
+      const moved = store.createIdea(undefined, '旋转加平滑', '把两种变换叠起来试。')
+      store.updateIdea(moved.id, { relations: { projects: [], pages: [WA] } })
+      const edited = store.createIdea(undefined, '激活量化的校准', '少量样本够不够。')
+      store.updateIdea(edited.id, { relations: { projects: [], pages: [WA] } })
+      store.mergeWikiPages(WA, WO, shown(WA, WO))
+      store.updateIdea(edited.id, { relations: { projects: [], pages: [WO, 'topics/qat'] } })
+      store.restoreTrash(store.listTrash()[0]!.id)
+      const relations = (id: string) => store.listIdeas().find((idea) => idea.id === id)!.relations!.pages
+      expect(relations(moved.id)).toEqual([WA])
+      expect(relations(edited.id)).toEqual([WO, 'topics/qat'])
+    })
+
+    it('合并：两张卡片在挑目标时显示的样子之后有一页变了，就拒绝合并，什么都不写', () => {
+      const held = shown(WA, WO)
+      store.updateWikiPage(WA, '## 问题\n改过了。')
+      const edited = pages()
+      expect(() => store.mergeWikiPages(WA, WO, held)).toThrow(expect.objectContaining({ reason: 'changed' }))
+      expect(() => store.mergeWikiPages(WA, WO, { ...shown(WA, WO), into: { ...held.into, memberCount: 99 } }))
+        .toThrow(expect.objectContaining({ reason: 'changed' }))
+      expect(pages()).toEqual(edited)
+    })
+
+    it('合并：并进自己或并进另一种页时拒绝，什么都不写；上级并进自己的细分可以', () => {
+      const before = pages()
+      expect(() => store.mergeWikiPages('topics/ptq', 'topics/ptq', shown('topics/ptq', 'topics/ptq'))).toThrow(/自己/)
+      expect(() => store.mergeWikiPages('topics/ptq', 'methods/rotation', shown('topics/ptq', 'methods/rotation'))).toThrow(/同一种/)
+      expect(pages()).toEqual(before)
+      expect(() => store.mergeWikiPages('topics/quantization', 'topics/ptq', shown('topics/quantization', 'topics/ptq'))).not.toThrow()
+    })
+  })
 })

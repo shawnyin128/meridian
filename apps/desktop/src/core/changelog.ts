@@ -998,6 +998,25 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       return wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', () => ops.updateWikiPage(id, body), [`~ ${id}`])
     },
 
+    deleteWikiPage(id) {
+      const card = ops.wikiCards().find((held) => held.id === id)
+      const paths = ops.wikiDeletePages(id)
+      return wrote(
+        { kind: 'pages', id: paths.join('\n'), paths }, `Wiki · 「${card?.title}」· 删掉`, 'snapshot', () => ops.deleteWikiPage(id),
+        [`- ${id}`, ...paths.slice(1, 1 + (card?.childCount ?? 0)).map((child) => `~ ${child} 属于上一级`)],
+      )
+    },
+
+    mergeWikiPages(from, into, shown) {
+      const cards = ops.wikiCards()
+      const names = [from, into].map((id) => cards.find((card) => card.id === id)?.title)
+      const paths = ops.wikiMergePages(from, into)
+      return wrote(
+        { kind: 'pages', id: paths.join('\n'), paths }, `Wiki · 把「${names[0]}」合并到「${names[1]}」`, 'snapshot',
+        () => ops.mergeWikiPages(from, into, shown), [`~ ${from} 并入 ${into}`],
+      )
+    },
+
     applyPaperWikiDraft(id, body) {
       // Recorded as an applied queue proposal is: titled by its card's first line, under the chip of an ingest.
       const target: ChangeTarget = { kind: 'pages', id, paths: [id] }
