@@ -75,6 +75,20 @@ describe('SegmentedControl', () => {
     expect(segments()[1]!.getAttribute('aria-checked')).toBe('true')
   })
 
+  it('reports the picked segment chosen again, and not a pick of another segment', () => {
+    const onReselect = vi.fn()
+    const onChange = vi.fn()
+    act(() => root.render(
+      <SegmentedControl label="时间尺度" value="week" options={OPTIONS} onChange={onChange} onReselect={onReselect} />,
+    ))
+    act(() => segments()[1]!.click())
+    act(() => segments()[1]!.click())
+    expect(onReselect).toHaveBeenCalledTimes(2)
+    act(() => segments()[2]!.click())
+    expect(onReselect).toHaveBeenCalledTimes(2)
+    expect(onChange).toHaveBeenCalledExactlyOnceWith('month')
+  })
+
   it('is one Tab stop that lands on the picked segment, and arrow keys move focus between segments', async () => {
     act(() => root.render(<Scale />))
     const group = host.querySelector<HTMLElement>('.segmented-control')!

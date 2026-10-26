@@ -119,6 +119,7 @@ Current shared contracts:
   name is renamed, `editor`, the field, takes the label's place. A row that opens nothing is the fold toggle
   of its group. `indent`, `sub` and `dim` are its looks under a group.
   While Meridian is not the active app, the current row's accent turns to the neutral selected look.
+  Activating the selected row again calls its `onReselect`.
 - `NavSection`: a titled section of a navigation list whose 24px heading folds the rows under it.
 - `NavPane`: the sidebar's pane: its surface, width, collapse, the rows that scroll and the rows pinned
   under them, which keep the same room for the scrollbar so every row ends at one edge.
@@ -127,7 +128,10 @@ Current shared contracts:
   `ScreenSlot` keeps a screen mounted while it is hidden.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, whose label is in `--accent-text`,
-  radio-group semantics, and one Tab stop with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+  radio-group semantics, and one Tab stop with arrow keys inside. Picking the picked segment again calls its
+  `onReselect`, which `TabbedSection` passes on: with `useTopLevel` (`hooks/`), a switch chosen again takes a
+  view that was drilled into back to its top level, scrolled to the top, and does nothing otherwise. The
+  `.fchip` and `.segbtn` pill rows are retired.
 - `TabbedSection`: the one section whose content switches between peer tabs: its heading, its `SegmentedControl`
   first in the heading's actions slot and then the section's own actions, and the picked tab's panel. A tab with
   nothing shows its sentence as the section `EmptyState`; that state and every row of the list a tab shows are

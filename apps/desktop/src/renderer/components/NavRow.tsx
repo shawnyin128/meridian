@@ -27,6 +27,8 @@ type NavRowProps = {
   /** Greys the text of a row whose destination is paused. */
   dim?: boolean
   selected?: boolean
+  /** Called instead of `onActivate` when the selected row is activated again. */
+  onReselect?: (() => void) | undefined
   /** Classes that only name the row. */
   className?: string
   id?: string
@@ -43,11 +45,12 @@ type NavRowProps = {
  * right after its label; `editor` takes the label's place while the row's name is edited in place. A row without `onActivate` opens nothing: the whole row is the fold toggle of
  * its group, its caret after its text. `selected` marks the row whose destination is shown, whose
  * accent turns to the neutral selected look while Meridian is not the active app. In a toolbar the
- * row's buttons are controls of the toolbar.
+ * row's buttons are controls of the toolbar. Activating the selected row again calls `onReselect`, which
+ * takes what it shows back to its top level (useTopLevel).
  */
 export function NavRow({
-  children, icon, count, end, actions, editor, indent = 0, sub = false, dim = false, selected = false, className, onActivate, fold, id,
-  ...data
+  children, icon, count, end, actions, editor, indent = 0, sub = false, dim = false, selected = false, className, onActivate,
+  onReselect, fold, id, ...data
 }: NavRowProps) {
   const asItem = useToolbarItem()
   const classes = (...own: string[]) => [...own, indent === 0 ? '' : `nav-row--indent-${indent}`, sub ? 'nav-row--sub' : '',
@@ -66,13 +69,14 @@ export function NavRow({
       </FoldToggle>
     )
   }
+  const activate = selected && onReselect !== undefined ? onReselect : onActivate
   if (actions === undefined && fold === undefined) {
     return asItem(
-      <button type="button" className={classes('nav-row')} id={id} onClick={onActivate} {...data}>{glyph}{children}{tail}</button>,
+      <button type="button" className={classes('nav-row')} id={id} onClick={activate} {...data}>{glyph}{children}{tail}</button>,
     )
   }
   return (
-    <div className={classes('nav-row', actions === undefined ? '' : 'nav-row--actions')} id={id} onClick={onActivate} {...data}>
+    <div className={classes('nav-row', actions === undefined ? '' : 'nav-row--actions')} id={id} onClick={activate} {...data}>
       {editor === undefined
         ? asItem(<button type="button" className="nav-row-label">{glyph}{children}</button>)
         : <span className="nav-row-label">{glyph}{editor}</span>}

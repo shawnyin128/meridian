@@ -40,7 +40,7 @@ function renderPlan(tab: 'task' | 'ms', options: {
         projectId="p1" project={{ tasks, milestones }} tab={tab} today="2026-09-16"
         creating={creating} flashId={flashId} selectedTaskId={null}
         listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
-        onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+        onTab={vi.fn()} onReselectTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
         onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
         onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
         onUpdateMilestone={vi.fn()}
@@ -107,7 +107,7 @@ describe('ProjectPlan', () => {
           projectId="p1" project={{ tasks: [task, rangeTask, doneTask], milestones: [] }} tab="task" today="2026-09-16"
           creating={null} flashId={null} selectedTaskId={null}
           listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
-          onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+          onTab={vi.fn()} onReselectTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
           onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
           onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={onReorderTasks} onOpenTask={vi.fn()}
           onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
@@ -166,7 +166,7 @@ describe('ProjectPlan', () => {
           projectId="p1" project={{ tasks: [task], milestones: [milestone] }} tab={tab} today="2026-09-16"
           creating={creating} flashId={null} selectedTaskId={null}
           listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
-          onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+          onTab={vi.fn()} onReselectTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
           onCreating={onCreating} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
           onUpdateTask={vi.fn()} onDeleteTask={vi.fn()} onReorderTasks={vi.fn()} onOpenTask={vi.fn()}
           onUpdateMilestone={vi.fn()} onDeleteMilestone={vi.fn()} onHoverMilestone={vi.fn()}
@@ -263,7 +263,7 @@ describe('ProjectPlan', () => {
               projectId="p1" project={{ tasks: [task], milestones: [milestone] }} tab={tab} today="2026-09-16"
               creating={null} flashId={null} selectedTaskId={null}
               listRef={createRef()} draftRef={createRef()} addRef={createRef()} timelineAddRef={createRef()}
-              onTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
+              onTab={vi.fn()} onReselectTab={vi.fn()} onDiscardOpenEdits={vi.fn()} onStartTask={vi.fn()} onStartMilestone={vi.fn()}
               onCreating={vi.fn()} onCancelCreate={vi.fn()} onCreateTask={vi.fn()} onCreateMilestone={vi.fn()}
               onUpdateTask={onUpdateTask} onDeleteTask={onDeleteTask} onReorderTasks={vi.fn()} onOpenTask={onOpenTask}
               onUpdateMilestone={onUpdateMilestone} onDeleteMilestone={onDeleteMilestone} onHoverMilestone={vi.fn()}

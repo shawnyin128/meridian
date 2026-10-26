@@ -353,7 +353,7 @@ function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
 export function ProjectPlan({
   projectId, project, tab, today, creating, flashId, selectedTaskId,
   listRef, draftRef, addRef, timelineAddRef,
-  onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCreating, onCancelCreate,
+  onTab, onReselectTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCreating, onCancelCreate,
   onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
 }: {
@@ -373,6 +373,8 @@ export function ProjectPlan({
   addRef: RefObject<HTMLButtonElement | null>
   timelineAddRef: RefObject<HTMLButtonElement | null>
   onTab: (tab: PlanTab) => void
+  /** Called when the current tab is picked again. */
+  onReselectTab: () => void
   onDiscardOpenEdits: () => void
   onStartTask: () => void
   onStartMilestone: (date: string) => void
@@ -416,7 +418,7 @@ export function ProjectPlan({
     <section className="project-plan">
       <TabbedSection
         heading={m.project.sections.plan} label={m.project.plan.viewLabel} value={tab} panelRef={listRef}
-        onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
+        onChange={(value) => { onTab(value); onDiscardOpenEdits() }} onReselect={onReselectTab}
         actions={(
           <AddAction
             size="compact" ref={addRef}

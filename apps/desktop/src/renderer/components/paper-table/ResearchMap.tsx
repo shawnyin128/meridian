@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo } from 'react'
 import type { PaperRow, ReadState } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ContextMenu, ContextMenuItem } from '../ContextMenu.js'
@@ -32,10 +32,19 @@ type MapEntry = {
   papers: { paper: PaperRow; chips: { key: string; text: string }[] }[]
 }
 
-export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, onRate, onPickReadState }: {
+/**
+ * The research map: the groups the papers form, and the papers of the picked group beside them.
+ * `selectedId` is the picked group; while it is null, or names no group, the first group shows.
+ * `onSelect` picks a group, and gets null when the picked group goes away.
+ */
+export function ResearchMap({
+  rows, total, loading, selectedId, onSelect, onOpenPaper, onReadPaper, onRate, onPickReadState,
+}: {
   rows: PaperRow[]
   total: number
   loading: boolean
+  selectedId: string | null
+  onSelect: (id: string | null) => void
   onOpenPaper: (paper: PaperRow) => void
   onReadPaper: (paper: PaperRow) => void
   onRate: (paper: PaperRow, rating: number | null) => void
@@ -43,7 +52,6 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
 }) {
   const m = useMessages()
   const map = useMemo(() => buildResearchMap(rows), [rows])
-  const [selectedId, setSelectedId] = useState<string | null>(null)
 
   const entries = useMemo(() => {
     const groups = map.groups.map<MapEntry>((group) => ({
@@ -70,13 +78,13 @@ export function ResearchMap({ rows, total, loading, onOpenPaper, onReadPaper, on
   const selected = entries.all.find((entry) => entry.id === selectedId) ?? entries.groups[0]
 
   useEffect(() => {
-    if (selectedId !== null && !entries.all.some((entry) => entry.id === selectedId)) setSelectedId(null)
-  }, [entries, selectedId])
+    if (selectedId !== null && !entries.all.some((entry) => entry.id === selectedId)) onSelect(null)
+  }, [entries, selectedId, onSelect])
 
   const entryRow = (entry: MapEntry) => (
     <Item
       key={entry.id} className="research-map-group" lines={2} selected={selected?.id === entry.id}
-      aria-pressed={selected?.id === entry.id} onActivate={() => setSelectedId(entry.id)}
+      aria-pressed={selected?.id === entry.id} onActivate={() => onSelect(entry.id)}
       title={<FadeText className="research-map-group-name" label={entry.label}>{entry.label}</FadeText>}
       meta={(
         <>

@@ -83,6 +83,8 @@ export function Settings() {
   const [switchingBackup, setSwitchingBackup] = useState<string | null>(null)
   const [deletingBackup, setDeletingBackup] = useState<string | null>(null)
   /** The theme the theme editor shows in place of the columns: a custom theme, or null for a new one. */
+  // How many times the shown category was chosen again; its pane goes back to its top level on each.
+  const [reselected, setReselected] = useState(0)
   const [editingTheme, setEditingTheme] = useState<{ theme: ColourTheme | null } | null>(null)
   const [themeDirty, setThemeDirty] = useState(false)
   /** Where leaving the theme editor with unsaved edits goes once confirmed: back to Appearance, or out of Settings. */
@@ -356,7 +358,7 @@ export function Settings() {
     ),
     model: (
       <>
-        <ModelSettings onCopy={copyText('model')} />
+        <ModelSettings onCopy={copyText('model')} reselected={reselected} />
       </>
     ),
     extensions: (
@@ -455,7 +457,7 @@ export function Settings() {
               {visibleCategories.map((c) => (
                 <NavRow
                   key={c} indent={SUB_CATEGORIES.has(c) ? 1 : 0} sub={SUB_CATEGORIES.has(c)} selected={c === current}
-                  data-setcat={c} onActivate={() => setCurrent(c)}
+                  data-setcat={c} onActivate={() => setCurrent(c)} onReselect={() => setReselected((n) => n + 1)}
                 >{m.settings.categories[SETTINGS_CATEGORY_LABEL[c]]}</NavRow>
               ))}
             </SplitNav>

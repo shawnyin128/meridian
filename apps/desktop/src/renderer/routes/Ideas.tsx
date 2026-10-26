@@ -37,6 +37,7 @@ import { BackButton } from '../components/BackButton.js'
 import { useDraft } from '../hooks/useDrafts.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
+import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
@@ -394,8 +395,10 @@ export function Ideas() {
     })
   }, [load, report, revision])
   // Clicking the sidebar while this screen is shown lands on the plain list: an open detail closes.
+  const body = useRef<HTMLDivElement>(null)
+  const toList = useTopLevel(selectedId !== null, () => setSelectedId(null), body)
   const reentry = useScreenReentry()
-  useEffect(() => { setSelectedId(null) }, [reentry])
+  useEffect(toList, [reentry, toList])
   useEffect(() => {
     if (jump === null || jump.seq === consumedJump.current) return
     consumedJump.current = jump.seq
@@ -508,7 +511,7 @@ export function Ideas() {
         <PageTitle count={current.length}>{m.ideas.title}</PageTitle>
       </PageHeader>
       <PageError error={error} />
-      <PageBody className="ideas-body">
+      <PageBody ref={body} className="ideas-body">
         <SplitPage columns="rail">
           <SplitColumn>
             <div className="ideas-list">
