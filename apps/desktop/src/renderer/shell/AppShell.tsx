@@ -924,6 +924,7 @@ export function AppShell({ screens, settings }: {
           }}>
             {m.shell.titlebar.checkUpdates}
           </MenuItem>
+          <MenuItem onSelect={appMenu.revealLogs}>{m.shell.titlebar.logs}</MenuItem>
           <MenuItem onSelect={() => { wantDialog.current = 'about' }}>{m.shell.titlebar.about}</MenuItem>
         </ActionMenu>
         <AboutDialog open={aboutOpen} onOpenChange={setAboutOpen} />

@@ -6,8 +6,9 @@ from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from functools import cache
+from io import TextIOWrapper
 from threading import Event, Lock
-from typing import TextIO
+from typing import TextIO, cast
 
 from .protocol import (
     CAPABILITIES,
@@ -347,5 +348,10 @@ class JsonLineServer:
 
 
 def run_stdio() -> None:
-    """Run the production UTF-8 stdio transport."""
+    """Run the production stdio transport in UTF-8, whatever the system's code page."""
+    # A frozen sidecar ignores PYTHONIOENCODING, so on Windows its streams would take the ANSI
+    # code page.
+    streams = ((sys.stdin, "strict"), (sys.stdout, "strict"), (sys.stderr, "backslashreplace"))
+    for stream, errors in streams:
+        cast(TextIOWrapper, stream).reconfigure(encoding="utf-8", errors=errors)
     JsonLineServer().serve(sys.stdin, sys.stdout)

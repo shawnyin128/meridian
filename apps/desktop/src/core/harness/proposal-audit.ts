@@ -127,7 +127,7 @@ function readEvents(file: string): HarnessProposalAuditEvent[] {
     try {
       return [parseEvent(line, index)]
     } catch (error) {
-      console.error(`[harness] 跳过读不了的提案审计记录：${error instanceof Error ? error.message : String(error)}`)
+      console.error(`[harness] an unreadable proposal audit record is skipped: ${error instanceof Error ? error.message : String(error)}`)
       return []
     }
   })

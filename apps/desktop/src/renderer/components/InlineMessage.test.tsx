@@ -34,6 +34,16 @@ describe('InlineMessage', () => {
       + '<div class="inline-message-action"><button type="button" class="btn sm">重启</button></div></div>')
   })
 
+  it('with its action at the text, marks itself so the action follows the text', () => {
+    const html = renderToStaticMarkup(
+      <InlineMessage tone="error" variant="line" actionAt="text" action={<button type="button" className="btn sm">重试</button>}>
+        生成失败
+      </InlineMessage>,
+    )
+    expect(html).toBe('<div class="inline-message inline-message--line inline-message--error inline-message--action-at-text" role="alert">'
+      + '<div class="inline-message-text">生成失败</div><div class="inline-message-action"><button type="button" class="btn sm">重试</button></div></div>')
+  })
+
   it('puts its progress line first, under the lead, the text and the action', () => {
     const html = renderToStaticMarkup(
       <InlineMessage tone="info" variant="box" progress={{ percent: 40, label: '正在下载 0.0.20.0' }}>正在下载 0.0.20.0</InlineMessage>,

@@ -232,7 +232,7 @@ describe('Harness model configuration', () => {
     const config = await createHarnessModelConfig(root, unavailable)
     expect(config.settings()).toMatchObject({ configured: false, apiKeyConfigured: false })
     expect(config.settings().error).toBe('key-unsaved')
-    expect(log).toHaveBeenCalledWith(expect.stringContaining('已从明文配置移除'))
+    expect(log).toHaveBeenCalledWith(expect.stringContaining('removed from the plain-text configuration'))
     log.mockRestore()
     expect(readFileSync(file, 'utf8')).not.toContain('legacy-secret')
   })

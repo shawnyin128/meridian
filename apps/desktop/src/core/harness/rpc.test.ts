@@ -54,7 +54,7 @@ describe('Harness RPC', () => {
     const result = rpc.request('paper-wiki.run', {})
     ready(child, 'meridian.harness.v2')
 
-    await expect(result).rejects.toMatchObject({ kind: 'bad_request' })
+    await expect(result).rejects.toMatchObject({ kind: 'bad_request', step: 'start' })
     expect(child.kill).toHaveBeenCalledOnce()
     expect(child.stdin.readableLength).toBe(0)
   })
@@ -68,9 +68,41 @@ describe('Harness RPC', () => {
     await expect(result).rejects.toMatchObject({
       kind: 'bad_request',
       message: 'Harness is missing required capabilities: chat',
+      step: 'start',
     })
     expect(child.kill).toHaveBeenCalledOnce()
     expect(child.stdin.readableLength).toBe(0)
+  })
+
+  it('names a Harness that exits before it is ready a start failure, and one that exits in a request a request failure', async () => {
+    const early = new FakeHarness()
+    const before = createHarnessRpc({ launch: () => early }).request('chat.answer', {})
+    early.emit('exit', 1, null)
+    await expect(before).rejects.toMatchObject({ kind: 'harness_gone', step: 'start' })
+
+    const late = new FakeHarness()
+    const after = createHarnessRpc({ launch: () => late }).request('chat.answer', {})
+    ready(late)
+    await nextFrame(late.stdin)
+    late.emit('exit', 1, null)
+    await expect(after).rejects.toMatchObject({ kind: 'harness_gone', step: 'request' })
+  })
+
+  it('logs a callback it refuses and the text of a callback that failed, which Harness never gets', async () => {
+    const child = new FakeHarness()
+    const onLog = vi.fn()
+    const rpc = createHarnessRpc({
+      launch: () => child, onLog, callbacks: { 'papers.get': () => { throw new Error('no paper p9') } },
+    })
+    void rpc.request('paper-wiki.run', {}).catch(() => {})
+    ready(child)
+    await nextFrame(child.stdin)
+    child.send({ type: 'callback', id: 1, callbackId: 'a', method: 'wiki.write', params: {} })
+    await nextFrame(child.stdin)
+    child.send({ type: 'callback', id: 1, callbackId: 'b', method: 'papers.get', params: {} })
+    expect(await nextFrame(child.stdin)).toMatchObject({ error: { kind: 'internal', message: 'Core read callback failed' } })
+    expect(onLog.mock.calls).toEqual([['refused Harness callback wiki.write'], ['Harness callback papers.get failed: no paper p9']])
+    rpc.close()
   })
 
   it('allows only registered read callbacks and returns their result to Harness', async () => {

@@ -991,6 +991,13 @@ export interface VaultStore {
   appendChatMessages(id: string, messages: ChatMessageFields[]): void
 
   /**
+   * Puts the given message, under an id unused by that session, in place of the status line the
+   * session with the given id ends with, or appends it when the session ends with another message.
+   * Throws if no such session exists.
+   */
+  replaceChatStatus(id: string, message: ChatMessageFields): void
+
+  /**
    * Returns user-authored research ideas. Ideas reorderIdeas names come first, in its order;
    * every other idea falls back to most recently updated first.
    */

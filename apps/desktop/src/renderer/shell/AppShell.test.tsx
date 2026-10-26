@@ -30,6 +30,7 @@ const fixture = vi.hoisted(() => ({
   /** What Main hands the page from a menu item or a swipe, once the shell has subscribed to it. */
   appCommand: null as ((command: string) => void) | null,
   menuStates: [] as { sidebarHidden: boolean; reading: boolean }[],
+  revealLogs: vi.fn(),
   createChat: vi.fn(() => new Promise(() => {})),
   undoChange: vi.fn<(id: string) => Promise<void>>(async () => { fixture.undone?.() }),
   /** What undoing a change brings back on the page, as the refetch after it does. */
@@ -56,7 +57,7 @@ vi.mock('../ipc.js', () => ({
       return () => { fixture.appCommand = null }
     },
     setMenuState: (state: { sidebarHidden: boolean; reading: boolean }) => { fixture.menuStates.push(state) },
-    setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(),
+    setTitleBarTheme: vi.fn(), toggleMaximize: vi.fn(), revealLogs: fixture.revealLogs,
   },
   appUpdates: { check: vi.fn(), status: () => new Promise(() => {}), onChange: () => () => {}, install: vi.fn() },
   changelog: { list: none, undo: fixture.undoChange },
@@ -810,6 +811,16 @@ describe('AppShell command palette', () => {
     await mount()
     expect(openMenu().slice(0, 2)).toEqual(['设置…Ctrl+,', '命令面板…Ctrl+Shift+P'])
     fixture.platform = 'darwin'
+  })
+
+  it('opens the logs folder from 显示日志 in the App menu', async () => {
+    await mount()
+    act(() => {
+      document.querySelector('.appbtn')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const item = [...document.querySelectorAll<HTMLElement>('[data-appmenu] .mi')].find((mi) => mi.textContent === '显示日志')!
+    act(() => { item.click() })
+    expect(fixture.revealLogs).toHaveBeenCalledTimes(1)
   })
 
   it('runs a new project, a PDF import, Settings and the sidebar screens from its commands', async () => {

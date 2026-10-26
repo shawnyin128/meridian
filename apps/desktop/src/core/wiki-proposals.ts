@@ -337,7 +337,7 @@ export function createWikiProposals({ store, pdf, now }: {
           }
         } catch (error) {
           const cause = error instanceof Error ? error.message : String(error)
-          console.error(`[wiki] 提案 ${r.id} 读不出来，其余照常列出：${cause}`)
+          console.error(`[wiki] proposal ${r.id} cannot be read, the others are listed: ${cause}`)
           return { ...r, proposal: null, notice: cause, pages: [], staleNow: false, titles: {}, claimTexts: {} }
         }
       })

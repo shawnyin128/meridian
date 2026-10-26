@@ -502,7 +502,7 @@ export function createVaultStore(
     if (parsed.success) proposals.push(parsed.data)
     else {
       unreadProposals.push(held)
-      console.error(`[wiki] 提案队列第 ${at + 1} 条这个版本读不了，原样保留（可能要更新 App）：${parsed.error.message}`)
+      console.error(`[wiki] proposal queue record ${at + 1} cannot be read by this version and is kept as it is (the App may need an update): ${parsed.error.message}`)
     }
   }
   const inboxDir = join(meridian, 'proposal-inbox')
@@ -525,7 +525,7 @@ export function createVaultStore(
       projectById.set(id, readProjectPage(join(projectDir, name), id))
     } catch (err) {
       unreadableProjects.add(id)
-      console.error(`[project] ${join(projectDir, name)} 这个版本读不了，没有读进来（可能要更新 App）：${err instanceof Error ? err.message : String(err)}`)
+      console.error(`[project] ${join(projectDir, name)} cannot be read by this version and is skipped (the App may need an update): ${err instanceof Error ? err.message : String(err)}`)
     }
   }
 
@@ -925,7 +925,7 @@ export function createVaultStore(
     try {
       writeProjectWorkspaceState(project, ideas)
     } catch (error) {
-      console.warn(`项目工作区同步失败：${error instanceof Error ? error.message : String(error)}`)
+      console.warn(`[project] workspace sync failed: ${error instanceof Error ? error.message : String(error)}`)
     }
   }
 
@@ -1121,7 +1121,7 @@ export function createVaultStore(
     save('feed', feed)
   }
 
-  console.info(`vault ${root}:${managed ? '' : '不'}在 git 管理之下`)
+  console.info(`vault ${root}: ${managed ? 'under' : 'not under'} git`)
   if (state.gitManaged !== managed) {
     note([
       { kind: 'text', text: '这个库' },
@@ -1249,7 +1249,7 @@ export function createVaultStore(
     const disabled = DiscoveryPreferencesRecordSchema.shape.disabledIntentIds.safeParse(fields['disabledIntentIds'])
     for (const [key, read] of [['coreIntentId', core], ['disabledIntentIds', disabled]] as const) {
       if (!read.success) {
-        console.error(`[vault] ${stateFile} 里项目 ${projectId} 的 ${key} 这个版本读不了，按没有设置读（可能要更新 App）：${read.error.message}`)
+        console.error(`[vault] ${stateFile}: ${key} of project ${projectId} cannot be read by this version and reads as unset (the App may need an update): ${read.error.message}`)
       }
     }
     return { coreIntentId: core.data ?? null, disabledIntentIds: disabled.data ?? [] }
@@ -2686,6 +2686,13 @@ export function createVaultStore(
           : { title: naming.runs.map((r) => r.text).join('').slice(0, CHAT_TITLE_CHARS), named: true }),
         messages: [...chat.messages, ...added],
       }
+      chats = save('chats', chats.map((c) => (c.id === id ? next : c)))
+    },
+
+    replaceChatStatus(id, message) {
+      const chat = chatOf(id)
+      const kept = chat.messages.at(-1)?.role === 'status' ? chat.messages.slice(0, -1) : chat.messages
+      const next: ChatRecord = { ...chat, messages: [...kept, { ...structuredClone(message), id: nextId('msg') }] }
       chats = save('chats', chats.map((c) => (c.id === id ? next : c)))
     },
 

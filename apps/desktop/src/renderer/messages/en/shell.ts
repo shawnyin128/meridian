@@ -54,7 +54,7 @@ export const shell = {
     manageChat: (title: string) => `Manage chat: ${title}`,
     archive: 'Archive',
   },
-  titlebar: { settings: 'Settings…', palette: 'Command palette…', checkUpdates: 'Check for updates…', about: 'About Meridian' },
+  titlebar: { settings: 'Settings…', palette: 'Command palette…', checkUpdates: 'Check for updates…', logs: 'Show logs', about: 'About Meridian' },
   about: { releases: 'Release notes', version: (version: string) => `Version ${version}` },
   bootFailure: {
     title: "The library won't open",

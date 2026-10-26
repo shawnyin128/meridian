@@ -12,19 +12,22 @@ export type InlineMessageTone = 'error' | 'warning' | 'info' | 'done'
  * alert, every other tone a status.
  * @param lead A mark before the text, such as an icon or the running ring.
  * @param action The one control that acts on the message, after the text.
+ * @param actionAt Where `action` sits: at the message's `end`, the default, or right after the `text`.
  * @param progress Fills the message's own surface from the left up to `percent`, under everything else.
  * @param className Placement only; the message's colours, type, padding and surface are its own.
  */
-export function InlineMessage({ tone, variant, lead, action, progress, className, children, ...rest }: {
+export function InlineMessage({ tone, variant, lead, action, actionAt = 'end', progress, className, children, ...rest }: {
   tone: InlineMessageTone
   variant: 'box' | 'line'
   lead?: ReactNode
   action?: ReactNode
+  actionAt?: 'end' | 'text'
   progress?: { percent: number; label: string } | undefined
   className?: string | undefined
   children: ReactNode
 } & Omit<HTMLAttributes<HTMLDivElement>, 'role' | 'className' | 'children'>) {
   const classes = ['inline-message', `inline-message--${variant}`, `inline-message--${tone}`,
+    actionAt === 'text' ? 'inline-message--action-at-text' : '',
     progress === undefined ? '' : 'progress-host', className ?? ''].filter(Boolean).join(' ')
   return (
     <div className={classes} role={tone === 'error' ? 'alert' : 'status'} {...rest}>

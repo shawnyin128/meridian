@@ -288,7 +288,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         persist(configHome, file, value)
       } catch (cause) {
         persist(configHome, file, value)
-        console.error(`[harness] 旧 API Key 已从明文配置移除：${cause instanceof Error ? cause.message : String(cause)}`)
+        console.error(`[harness] an old API key was removed from the plain-text configuration: ${cause instanceof Error ? cause.message : String(cause)}`)
         loadError = callFailure(cause)
       }
     } else if (loaded.migrated === true) {
@@ -319,7 +319,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
   try {
     list = readModelList(listFile) ?? migratedList()
     for (const slot of list.slots) {
-      if ('failure' in slot) console.error(`[harness] 模型列表里有一项读不出来（${slot.failure}）`)
+      if ('failure' in slot) console.error(`[harness] an entry of the model list cannot be read (${slot.failure})`)
     }
   } catch (error) {
     console.error(`[harness] ${error instanceof Error ? error.message : String(error)}`)
@@ -582,7 +582,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         : list.slots.map((slot) => ('entry' in slot && slot.entry.id === id ? { ...slot, entry } : slot)),
       defaultModel: id,
     }
-    console.error(`[harness] 采用了旧版 App 选的模型 ${entry.model || entry.id}`)
+    console.error(`[harness] took the model an older App chose: ${entry.model || entry.id}`)
     commit()
   }
 

@@ -31,6 +31,11 @@ function reasonIn(status: Status, reason: string): string {
   return reason
 }
 
+/** The reason of the failed turn whose status line is stored as `text`, in `m`'s language; null for any other line. */
+export function failedReason(text: string, m: Catalog): string | null {
+  return text.startsWith(FAILED) ? reasonIn(m.chat.status, text.slice(FAILED.length)) : null
+}
+
 /**
  * What the status line stored as `text` says in `m`'s language. A line an App wrote reads in that
  * language; a failed turn whose reason no App wrote keeps the reason as stored; any other text is

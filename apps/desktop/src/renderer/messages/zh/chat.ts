@@ -25,6 +25,10 @@ export const chat = {
   paperChatWidth: '论文对话宽度',
   askAboutPaper: '向当前论文提问',
   actionDone: '已记入科研记录',
+  failure: {
+    summary: '生成失败',
+    steps: { start: '启动 AI 服务', request: 'AI 服务处理请求', cli: '运行订阅 CLI', core: 'App 内部' },
+  },
   // A chat's status lines are stored in these Chinese words whatever the App's language, and are read
   // back by matching them (status-lines.ts): each text stays exactly what an App once stored.
   status: {
@@ -38,6 +42,7 @@ export const chat = {
       answerUnreadable: '模型的回答读不出来',
       serviceStopped: 'AI 服务停了',
       chatTooLong: '对话太长，或这次请求模型不支持',
+      internalError: 'AI 服务内部出错',
       noModel: '还没有连上模型',
       serviceError: 'AI 服务出了错',
       rateLimited: '模型服务请求过多（429），请稍后重新确认任务',

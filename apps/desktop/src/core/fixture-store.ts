@@ -2075,6 +2075,13 @@ export function createFixtureStore(
       chats = chats.map((c) => (c.id === id ? next : c))
     },
 
+    replaceChatStatus(id, message) {
+      const chat = chatOf(id)
+      const kept = chat.messages.at(-1)?.role === 'status' ? chat.messages.slice(0, -1) : chat.messages
+      const next: ChatRecord = { ...chat, messages: [...kept, { ...structuredClone(message), id: nextId('msg') }] }
+      chats = chats.map((c) => (c.id === id ? next : c))
+    },
+
     listIdeas() {
       for (const project of projectById.values()) {
         const root = project.workspace?.kind === 'local' ? project.workspace.root : undefined

@@ -47,11 +47,17 @@ chat.paperChatWidth aria
 chat.quotePrefix content
 chat.recordedNote content
 chat.saveIdeaLabel action
+chat.failure.steps.cli label
+chat.failure.steps.core label
+chat.failure.steps.request label
+chat.failure.steps.start label
+chat.failure.summary failure
 chat.status.failed content
 chat.status.reasons.answerUnreadable content
 chat.status.reasons.authRefused content
 chat.status.reasons.callFailed content
 chat.status.reasons.chatTooLong content
+chat.status.reasons.internalError content
 chat.status.reasons.contextTooLarge content
 chat.status.reasons.credentialsFailed content
 chat.status.reasons.credentialsTimedOut content
@@ -932,6 +938,7 @@ shell.sidebar.toggle action
 shell.sidebar.toggleGroup action
 shell.titlebar.about action
 shell.titlebar.checkUpdates action
+shell.titlebar.logs action
 shell.titlebar.palette action
 shell.titlebar.settings action
 shell.update.available state
