@@ -50,7 +50,6 @@ const NOT_CREATING: Record<string, string> = {
   'shell/CommandPalette.tsx <ModalDialog>': 'runs a command',
   'routes/Settings.tsx <ModalDialog>': 'holds Settings',
   'routes/ProjectDetail.tsx <ModalDialog> m.project.workspace.dialogTitle': 'connects the project to a workspace',
-  'components/wiki/MergeReview.tsx <ModalDialog> m.wiki.merge.title': 'confirms a Wiki merge after showing every line it writes',
 }
 
 describe('新建就地起草', () => {

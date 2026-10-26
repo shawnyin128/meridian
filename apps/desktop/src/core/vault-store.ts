@@ -1,5 +1,4 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { createHash } from 'node:crypto'
 import { basename, dirname, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
@@ -7,7 +6,7 @@ import type {
   PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
   ResearchIdea, Task, TaskFields,
-  WikiMergePreview, WikiSignal,
+  WikiAggregationCard, WikiSignal,
 } from '../shared/contract.js'
 import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
@@ -64,7 +63,7 @@ import {
 } from './vault/writer.js'
 import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import {
-  appendEntry, applyProposal, changedLines, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp,
+  appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp,
   entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
   isClaimOp, isPaper, labelledLink, labelOf, mergePlan, moveMembership, pageVersion, projectClaims, projectDisputes,
   readWikiData, readWikiPage, relabelled, removeClaim, removeMembership, rewriteLines, setAggregationMetadata, setAliases,
@@ -676,14 +675,11 @@ export function createVaultStore(
   }
 
   /**
-   * What merging aggregation `from` into `into` writes: the text now and after of every page it changes,
-   * worked out on copies in a scratch folder under the staging folder (which opening the vault clears),
-   * and the preview those texts make, fingerprinted. Writes nothing in the vault. Throws as
-   * previewWikiMerge does.
+   * What merging aggregation `from` into `into` writes: the text after the merge of every page it
+   * changes, worked out on copies in a scratch folder under the staging folder (which opening the
+   * vault clears). Writes nothing in the vault. Throws as mergeWikiPages does, but for `changed`.
    */
-  const mergeOutcome = (from: string, into: string): {
-    texts: { id: string; after: string }[]; preview: WikiMergePreview
-  } => {
+  const mergeOutcome = (from: string, into: string): { id: string; after: string }[] => {
     checkReadable(from)
     checkReadable(into)
     const plan = mergePlan(wikiData, from, into)
@@ -730,16 +726,8 @@ export function createVaultStore(
       for (const { page, claim } of plan.claims) setClaim(at(page), claim, work)
       for (const id of ids) rewriteLines(at(id), rewrite(id), work)
       for (const id of ids) if (!id.startsWith(PROJECT_PATH)) setUpdated(at(id), day, work)
-      const texts = ids.map((id) => ({ id, before: readFileSync(wikiFile(id), 'utf8'), after: readFileSync(at(id), 'utf8') }))
-        .filter((t) => t.before !== t.after)
-      const nameOf = (id: string): string => (id.startsWith(PROJECT_PATH)
-        ? projectById.get(id.slice(PROJECT_PATH.length))!.name : labelOf(wikiData, id))
-      const pages = [
-        ...texts.map((t) => ({ id: t.id, title: nameOf(t.id), lines: changedLines(t.before, t.after) })),
-        { id: from, title: nameOf(from), lines: [`- ${from} 移入垃圾桶`] },
-      ]
-      const fingerprint = createHash('sha256').update(JSON.stringify(pages), 'utf8').digest('hex').slice(0, 16)
-      return { texts: texts.map(({ id, after }) => ({ id, after })), preview: { pages, fingerprint } }
+      return ids.map((id) => ({ id, after: readFileSync(at(id), 'utf8') }))
+        .filter((t) => t.after !== readFileSync(wikiFile(t.id), 'utf8'))
     } finally {
       rmSync(scratch, { recursive: true, force: true })
     }
@@ -2629,14 +2617,13 @@ export function createVaultStore(
       return [id, ...children, ...aggregationIds().sort().filter((other) => other !== id && !children.includes(other))]
     },
 
-    previewWikiMerge(from, into) {
-      return mergeOutcome(from, into).preview
-    },
-
-    mergeWikiPages: atomic((from, into, fingerprint) => {
-      const { texts, preview } = mergeOutcome(from, into)
-      if (preview.fingerprint !== fingerprint) {
-        throw new CallError('changed', `「${labelOf(wikiData, from)}」或「${labelOf(wikiData, into)}」在你看过合并内容之后改过，没有合并。再打开一次合并，看过再确认`)
+    mergeWikiPages: atomic((from, into, shown) => {
+      const texts = mergeOutcome(from, into)
+      const cards = wikiCards(wikiData)
+      const unchanged = (id: string, card: WikiAggregationCard): boolean =>
+        JSON.stringify(cards.find((c) => c.id === id)) === JSON.stringify(card)
+      if (!unchanged(from, shown.from) || !unchanged(into, shown.into)) {
+        throw new CallError('changed', `「${labelOf(wikiData, from)}」或「${labelOf(wikiData, into)}」在你挑合并目标之后改过，没有合并。再挑一次`)
       }
       for (const { id, after } of texts) replacePage(wikiFile(id), after, staging)
       const entry = nextId('trash')
@@ -2652,7 +2639,7 @@ export function createVaultStore(
     }),
 
     wikiMergePages(from, into) {
-      const written = mergeOutcome(from, into).preview.pages.map((p) => p.id)
+      const written = [...mergeOutcome(from, into).map((t) => t.id), from]
       return [...written, ...aggregationIds().sort().filter((id) => !written.includes(id))]
     },
 

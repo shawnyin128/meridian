@@ -241,6 +241,8 @@ body{margin:0;background:var(--desktop);color:var(--ink);font-family:var(--sans)
  * defaults or from a screen's own styles no longer shows.
  */
 :focus-visible{outline:var(--ring-width) solid var(--ring);outline-offset:var(--ring-offset)}
+/* A control a list handed the focus to after a pointer action draws no ring (useNeighbourFocus). */
+[data-quiet-focus]:focus-visible{outline:0}
 :is(input:where(:not([type="color"])),textarea,select,[contenteditable="true"]):focus,
 :is(input:where(:not([type="color"])),textarea,select,[contenteditable="true"]):focus-visible{
   outline:0;outline-offset:0;border-color:var(--sep-strong);box-shadow:none

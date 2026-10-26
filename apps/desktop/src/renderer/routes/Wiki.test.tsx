@@ -44,7 +44,6 @@ const fixture = vi.hoisted(() => ({
   deletePage: vi.fn(),
   deletePaper: vi.fn(),
   updatePaper: vi.fn(),
-  mergePreview: vi.fn(),
   merge: vi.fn(),
 }))
 
@@ -100,7 +99,6 @@ vi.mock('../ipc.js', () => ({
       ? Promise.resolve(fixture.cards ?? [card('topics/sd', '推测解码')]) : Promise.reject(fixture.cardsError)),
     apply: fixture.apply,
     delete: fixture.deletePage,
-    mergePreview: fixture.mergePreview,
     merge: fixture.merge,
   },
   changelog: { undo: fixture.undo },
@@ -146,7 +144,6 @@ describe('Wiki keyboard reach', () => {
     fixture.open.mockReset()
     fixture.cards = null
     for (const mock of [fixture.deletePage, fixture.deletePaper, fixture.updatePaper, fixture.merge]) mock.mockReset().mockResolvedValue({ change: 'c-1' })
-    fixture.mergePreview.mockReset()
     document.body.innerHTML = ''
     host = document.createElement('div')
     document.body.append(host)
@@ -206,31 +203,18 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.writes.at(-1)!.opts!.note).toBe('已移入垃圾桶')
   })
 
-  it('合并到…：在卡片上挑出要并进的那一页，先看要改的每一行，确认时带上看过的那份指纹', async () => {
-    fixture.cards = [card('topics/sd', '推测解码'), card('topics/dup', '投机采样'), { ...card('methods/m', '树'), kind: 'method' }]
-    fixture.mergePreview.mockResolvedValue({
-      pages: [
-        { id: 'topics/dup', title: '投机采样', lines: ['- title: 投机采样', '+ aliases:'] },
-        { id: 'topics/sd', title: '推测解码', lines: ['- topics/sd 移入垃圾桶'] },
-      ],
-      fingerprint: 'fp-1',
-    })
+  it('合并到…：在卡片上挑出要并进的那一页就合并，不弹确认；带上两张卡片当时的样子，通知带撤销', async () => {
+    const dup = card('topics/dup', '投机采样')
+    fixture.cards = [card('topics/sd', '推测解码'), dup, { ...card('methods/m', '树'), kind: 'method' }]
     await choose(await cardMenu('topics/sd'), '合并到…')
     await act(async () => { await new Promise((ok) => setTimeout(ok, 0)) })
     const hits = [...document.querySelectorAll<HTMLElement>('.pickhits .rrow')]
     expect(hits.map((hit) => hit.textContent)).toEqual([expect.stringContaining('投机采样')])
     await act(async () => { hits[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
-    expect(fixture.mergePreview).toHaveBeenCalledWith('topics/sd', 'topics/dup')
-    const dialog = document.querySelector<HTMLElement>('[role="dialog"]')!
-    expect([...dialog.querySelectorAll('.diff > div')].map((line) => line.textContent))
-      .toEqual(['- title: 投机采样', '+ aliases:', '- topics/sd 移入垃圾桶'])
-    expect(fixture.merge).not.toHaveBeenCalled()
-    await act(async () => {
-      [...dialog.querySelectorAll<HTMLElement>('button')].find((button) => button.textContent === '合并')!.click()
-      await Promise.resolve()
-    })
-    expect(fixture.merge).toHaveBeenCalledWith('topics/sd', 'topics/dup', 'fp-1')
+    expect(document.querySelector('[role="dialog"], [role="alertdialog"]')).toBeNull()
+    expect(fixture.merge).toHaveBeenCalledWith('topics/sd', 'topics/dup', { from: HOME.roots[0], into: dup })
     expect(fixture.writes.at(-1)!.opts!.note).toBe('已合并')
+    expect(fixture.writes.at(-1)!.opts!.action!({ change: 'c-1' } as never).label).toBe('撤销')
   })
 
   it('首页不给没有卡片的种类留一个空标题', () => {

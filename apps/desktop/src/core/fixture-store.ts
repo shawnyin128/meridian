@@ -1,4 +1,3 @@
-import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
@@ -15,7 +14,7 @@ import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
   Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry, InboxStream,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation,
-  ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch, WikiMergePreview,
+  ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch, WikiAggregationCard,
 } from '../shared/contract.js'
 import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
@@ -58,7 +57,7 @@ import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
 import {
-  applyProposal, changedLines, checkBody, conclusionClaims, describeOp, mergedMemberships, mergePlan, projectClaims, projectDisputes, HUMAN, isPaper,
+  applyProposal, checkBody, conclusionClaims, describeOp, mergedMemberships, mergePlan, projectClaims, projectDisputes, HUMAN, isPaper,
   pageVersion, recordText, touchedPages,
   wikiAggregation, wikiBacklinks, wikiCards, wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
@@ -625,11 +624,10 @@ export function createFixtureStore(
 
   /**
    * The Wiki and the projects as merging aggregation `from` into `into` leaves them (see mergePlan),
-   * and the preview of that merge: each changed page's lines as recordText writes it, a project's as
-   * its JSON, fingerprinted.
+   * and the id of every page that merge writes, `from` last.
    */
   const mergeOutcome = (from: string, into: string): {
-    next: WikiData; projects: FixtureProject[]; preview: WikiMergePreview
+    next: WikiData; projects: FixtureProject[]; written: string[]
   } => {
     const plan = mergePlan(wiki, from, into)
     const day = today()
@@ -661,18 +659,12 @@ export function createFixtureStore(
         relations: project.relations.map((g) => ({ ...g, items: g.items.map((item) => (item.page === from ? { ...item, page: into } : item)) })),
       }]
     })
-    const shown = [
-      ...Object.keys(pages).sort().filter((id) => pages[id] !== wiki.pages[id]).map((id) => ({
-        id, title: pages[id]!.fm.title, lines: changedLines(recordText(wiki.pages[id]!), recordText(pages[id]!)),
-      })),
-      ...projects.map((project) => ({
-        id: `${PROJECT_PATH}${project.id}`, title: project.name,
-        lines: changedLines(JSON.stringify(projectById.get(project.id), null, 1), JSON.stringify(project, null, 1)),
-      })),
-      { id: from, title: wiki.pages[from]!.fm.title, lines: [`- ${from} 移入垃圾桶`] },
+    const written = [
+      ...Object.keys(pages).sort().filter((id) => pages[id] !== wiki.pages[id]),
+      ...projects.map((project) => `${PROJECT_PATH}${project.id}`),
+      from,
     ]
-    const fingerprint = createHash('sha256').update(JSON.stringify(shown), 'utf8').digest('hex').slice(0, 16)
-    return { next: { ...wiki, pages }, projects, preview: { pages: shown, fingerprint } }
+    return { next: { ...wiki, pages }, projects, written }
   }
 
   /**
@@ -1951,13 +1943,14 @@ export function createFixtureStore(
       return [id, ...children, ...aggregationIds().filter((other) => other !== id && !children.includes(other))]
     },
 
-    previewWikiMerge(from, into) {
-      return mergeOutcome(from, into).preview
-    },
-
-    mergeWikiPages(from, into, fingerprint) {
-      const { next, projects, preview } = mergeOutcome(from, into)
-      if (preview.fingerprint !== fingerprint) throw new CallError('changed', `「${from}」或「${into}」在你看过合并内容之后改过，没有合并`)
+    mergeWikiPages(from, into, shown) {
+      const { next, projects } = mergeOutcome(from, into)
+      const cards = wikiCards(wiki)
+      const unchanged = (id: string, card: WikiAggregationCard): boolean =>
+        JSON.stringify(cards.find((c) => c.id === id)) === JSON.stringify(card)
+      if (!unchanged(from, shown.from) || !unchanged(into, shown.into)) {
+        throw new CallError('changed', `「${from}」或「${into}」在你挑合并目标之后改过，没有合并`)
+      }
       const page = wiki.pages[from] as WikiAggregationRecord
       rederiveRows(wiki, next)
       wiki = next
@@ -1966,7 +1959,7 @@ export function createFixtureStore(
     },
 
     wikiMergePages(from, into) {
-      const written = mergeOutcome(from, into).preview.pages.map((p) => p.id)
+      const { written } = mergeOutcome(from, into)
       return [...written, ...aggregationIds().filter((id) => !written.includes(id))]
     },
 

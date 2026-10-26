@@ -5,7 +5,7 @@ export type { ClaimWorld } from './apply.js'
 export { wikiBacklinks } from './backlinks.js'
 export type { BacklinkContext } from './backlinks.js'
 export { generatedChildren, generatedClaims, generatedTable } from './generated.js'
-export { changedLines, mergedHeading, mergedMemberships, mergePlan } from './merge.js'
+export { mergedMemberships, mergePlan } from './merge.js'
 export type { MergePlan } from './merge.js'
 export {
   checkBody,

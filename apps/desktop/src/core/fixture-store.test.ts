@@ -2358,9 +2358,10 @@ describe('fixture store', () => {
       }),
       'wiki.update': () => store.updateWikiPage('topics/ptq', '## 问题\n改过的。'),
       'wiki.delete': () => store.deleteWikiPage('topics/qat'),
-      'wiki.mergePreview': () => store.previewWikiMerge('topics/ptq-weight-activation', 'topics/ptq-weight-only'),
-      'wiki.merge': () => store.mergeWikiPages('topics/ptq-weight-activation', 'topics/ptq-weight-only',
-        store.previewWikiMerge('topics/ptq-weight-activation', 'topics/ptq-weight-only').fingerprint),
+      'wiki.merge': () => store.mergeWikiPages('topics/ptq-weight-activation', 'topics/ptq-weight-only', {
+        from: store.wikiCards().find((c) => c.id === 'topics/ptq-weight-activation')!,
+        into: store.wikiCards().find((c) => c.id === 'topics/ptq-weight-only')!,
+      }),
       'wiki.signals': () => store.wikiSignals(),
       'wiki.backlinks': () => store.wikiBacklinks('topics/ptq'),
       'trash.list': () => store.listTrash(),

@@ -6,12 +6,7 @@ export const wiki = {
   autoColumn: '自动',
   columnSettings: '列设置',
   mergeInto: '合并到…',
-  merge: {
-    title: (from: string, into: string) => `把「${from}」合并到「${into}」`,
-    confirm: '合并',
-    merging: '正在合并',
-    done: '已合并',
-  },
+  merge: { done: '已合并' },
   aggregation: {
     parentCount: (n: number) => `${n} 个上级`,
     cardFooter: (children: number | null, members: number, updated: string) =>

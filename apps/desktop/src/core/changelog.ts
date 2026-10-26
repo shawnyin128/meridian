@@ -983,12 +983,12 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       )
     },
 
-    mergeWikiPages(from, into, fingerprint) {
+    mergeWikiPages(from, into, shown) {
       const names = [ops.wikiAggregation(from).title, ops.wikiAggregation(into).title]
       const paths = ops.wikiMergePages(from, into)
       return wrote(
         { kind: 'pages', id: paths.join('\n'), paths }, `Wiki · 把「${names[0]}」合并到「${names[1]}」`, 'snapshot',
-        () => ops.mergeWikiPages(from, into, fingerprint), [`~ ${from} 并入 ${into}`],
+        () => ops.mergeWikiPages(from, into, shown), [`~ ${from} 并入 ${into}`],
       )
     },
 

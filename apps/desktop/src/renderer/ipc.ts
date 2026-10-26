@@ -24,7 +24,7 @@ import type {
   ProjectSummary,
   RelationFields, SearchHit, SshFolders, SshFoldersParams, TaskFields, TaskPatch, TrashEntry, TrashedEntry, Watch, WatchFields,
   WatchSuggestionParams, WatchSuggestionResult, WikiAggregation,
-  WikiAggregationCard, WikiBacklink, WikiHome, WikiMergePreview, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
+  WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
 } from '../shared/contract.js'
 import { CallError } from './call-error.js'
 
@@ -406,10 +406,9 @@ export const wiki = {
   update: (id: string, body: string) => call<void>('wiki.update', { id, body }),
   /** Moves aggregation page `id` into the trash. */
   delete: (id: string) => call<RecordedChange>('wiki.delete', { id }),
-  /** Everything merging aggregation `from` into `into` would write, writing nothing. */
-  mergePreview: (from: string, into: string) => call<WikiMergePreview>('wiki.mergePreview', { from, into }),
-  /** Merges `from` into `into` as the preview fingerprinted `fingerprint` showed it. */
-  merge: (from: string, into: string, fingerprint: string) => call<RecordedChange>('wiki.merge', { from, into, fingerprint }),
+  /** Merges aggregation `from` into `into`; `shown` holds the two pages' cards as the screen showed them. */
+  merge: (from: string, into: string, shown: { from: WikiAggregationCard; into: WikiAggregationCard }) =>
+    call<RecordedChange>('wiki.merge', { from, into, shown }),
   /** The review queue, newest first; every status when `status` is absent. */
   proposals: (status?: ProposalStatus) =>
     call<WikiProposal[]>('wiki.proposals', status === undefined ? {} : { status }),

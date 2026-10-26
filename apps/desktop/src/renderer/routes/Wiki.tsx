@@ -2,7 +2,7 @@ import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, use
 import type { ReactNode, RefObject } from 'react'
 import type {
   PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiBacklink, WikiCell, WikiColumn,
-  WikiHome, WikiMergePreview, WikiPaper, WikiProposal, WikiRef, WikiSignal,
+  WikiHome, WikiPaper, WikiProposal, WikiRef, WikiSignal,
 } from '../../shared/contract.js'
 import { PAPER_PAGE } from '../../shared/vocabulary.js'
 import { papers, project, wiki } from '../ipc.js'
@@ -43,7 +43,6 @@ import { PaperUnderstanding } from '../components/paper/PaperUnderstanding.js'
 import { PaperText } from '../components/paper/PaperText.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { RailLinks, type RailLink } from '../components/wiki/RailLinks.js'
-import { MergeReview } from '../components/wiki/MergeReview.js'
 import { ReviewQueue } from '../components/wiki/ReviewQueue.js'
 import { WikiBacklinks } from '../components/wiki/WikiBacklinks.js'
 import { WikiClaims, type ClaimLinks } from '../components/wiki/WikiClaims.js'
@@ -458,9 +457,6 @@ export function Wiki() {
   usePruneDrafts(['wiki'], wikiPageIds)
   const [saving, setSaving] = useState(false)
   const [pending, setPending] = useState(false)
-  /** The merge waiting for its confirmation: the page merged, the page it goes into, and what it writes. */
-  const [merge, setMerge] = useState<{ from: WikiAggregationCard; into: PickHit; preview: WikiMergePreview } | null>(null)
-  const [merging, setMerging] = useState(false)
   // A page keeps its open add row, the new column's name and the column settings being typed as drafts.
   const adds = useDrafts<string>(['wiki', place ?? ''])
   const [columnsDraft, setColumnsDraft] = useDraft<{ rows: WikiColumn[]; base: WikiColumn[] }>(['wiki', place ?? ''], 'columns')
@@ -705,10 +701,14 @@ export function Wiki() {
     })
   }
 
+  /** The cards Merge into… last offered, by page id, so a pick hands Core the card it showed. */
+  const offered = useRef(new Map<string, WikiAggregationCard>())
+
   /**
    * The … menu of `card`: Rename writes the new title, keeping how the page is split; Merge into…
    * offers the other pages of its kind whose title holds what is typed, every one of them while
-   * nothing is; Delete moves the page to the trash, with Undo on its notice.
+   * nothing is, and merges into the one picked at once, with the two cards as they showed; Delete
+   * moves the page to the trash. Merge and Delete offer Undo on their notice.
    */
   const cardActions = (card: WikiAggregationCard): CardActions => ({
     onRename: (title) => wiki.aggregation(card.id).then((held) => propose(
@@ -720,17 +720,15 @@ export function Wiki() {
     }),
     suggestMerge: async (query) => {
       const q = query.toLowerCase()
-      return (await wiki.cards())
+      const found = (await wiki.cards())
         .filter((c) => c.kind === card.kind && c.id !== card.id && c.title.toLowerCase().includes(q))
-        .map((c) => ({ id: c.id, title: c.title, meta: m.project.identity.paperCount(c.memberCount) }))
+      offered.current = new Map(found.map((c) => [c.id, c]))
+      return found.map((c) => ({ id: c.id, title: c.title, meta: m.project.identity.paperCount(c.memberCount) }))
     },
-    onMerge: (hit) => wiki.mergePreview(card.id, hit.id).then((preview) => {
-      setMerge({ from: card, into: hit, preview })
-      return true
-    }, (e: Error) => {
-      report(e)
-      return false
-    }),
+    onMerge: (hit) => write(
+      wiki.merge(card.id, hit.id, { from: card, into: offered.current.get(hit.id)! }),
+      { note: m.wiki.merge.done, action: undo.change },
+    ),
     onDelete: () => { void write(wiki.delete(card.id), { note: m.common.trashed, action: undo.change }) },
     onError: report,
   })
@@ -1212,19 +1210,6 @@ export function Wiki() {
           )
           : null}
       </PageBody>
-
-      {merge === null ? null : (
-        <MergeReview
-          from={merge.from.title} into={merge.into.title} preview={merge.preview} merging={merging}
-          onCancel={() => setMerge(null)}
-          onMerge={() => {
-            setMerging(true)
-            void write(wiki.merge(merge.from.id, merge.into.id, merge.preview.fingerprint), {
-              note: m.wiki.merge.done, action: undo.change,
-            }).then((written) => { if (written) setMerge(null) }).finally(() => setMerging(false))
-          }}
-        />
-      )}
 
       {place === null
         ? (

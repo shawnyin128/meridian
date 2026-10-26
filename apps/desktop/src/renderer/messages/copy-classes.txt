@@ -1065,10 +1065,7 @@ wiki.claims.resolve action
 wiki.claims.retract action
 wiki.claims.revise action
 wiki.columnSettings label
-wiki.merge.confirm action
 wiki.merge.done notice
-wiki.merge.merging aria
-wiki.merge.title label
 wiki.mergeInto action
 wiki.groundsLabel label
 wiki.harness.billableNote state

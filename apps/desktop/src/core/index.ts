@@ -115,7 +115,6 @@ import {
   WikiDecideParamsSchema,
   WikiDeleteParamsSchema,
   WikiMergeParamsSchema,
-  WikiMergePreviewParamsSchema,
   WikiPaperParamsSchema,
   WikiProposalsParamsSchema,
   WikiProposeParamsSchema,
@@ -907,13 +906,9 @@ registerHandler('wiki.delete', (params) => {
   const { change } = recordChange(store, () => store.deleteWikiPage(id))
   return { change }
 })
-registerHandler('wiki.mergePreview', (params) => {
-  const { from, into } = WikiMergePreviewParamsSchema.parse(params)
-  return store.previewWikiMerge(from, into)
-})
 registerHandler('wiki.merge', (params) => {
-  const { from, into, fingerprint } = WikiMergeParamsSchema.parse(params)
-  const { change } = recordChange(store, () => store.mergeWikiPages(from, into, fingerprint))
+  const { from, into, shown } = WikiMergeParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.mergeWikiPages(from, into, shown))
   return { change }
 })
 registerHandler('trash.list', (params) => {

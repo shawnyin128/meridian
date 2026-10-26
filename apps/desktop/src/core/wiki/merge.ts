@@ -35,7 +35,7 @@ export type MergePlan = {
 const CLAIM_ID_MAX = 64
 
 /** The heading the body of a merged page is appended under on the page it is merged into. */
-export const mergedHeading = (title: string): string => `## 并自「${title}」`
+const mergedHeading = (title: string): string => `## 并自「${title}」`
 
 /** Whether following parents upward from `from` reaches `target`. */
 function reaches(data: WikiData, from: string, target: string, seen = new Set<string>()): boolean {
@@ -162,36 +162,4 @@ export function mergedMemberships(
   return cells === null
     ? held.map((m) => (m.in === plan.from ? { ...m, in: plan.into } : m))
     : held.filter((m) => m.in !== plan.from).map((m) => (m.in === plan.into ? { ...m, cells } : m))
-}
-
-/**
- * Returns the lines that differ between page texts `before` and `after`, in page order, line endings
- * dropped: `- <line>` for a line `before` holds that `after` does not, `+ <line>` for one `after` adds.
- * Lines both hold, in the same order, are left out.
- */
-export function changedLines(before: string, after: string): string[] {
-  const a = before.replace(/\r\n/g, '\n').split('\n')
-  const b = after.replace(/\r\n/g, '\n').split('\n')
-  // Longest common subsequence table, filled from the ends.
-  const common: number[][] = Array.from({ length: a.length + 1 }, () => new Array<number>(b.length + 1).fill(0))
-  for (let i = a.length - 1; i >= 0; i -= 1) {
-    for (let j = b.length - 1; j >= 0; j -= 1) {
-      common[i]![j] = a[i] === b[j] ? common[i + 1]![j + 1]! + 1 : Math.max(common[i + 1]![j]!, common[i]![j + 1]!)
-    }
-  }
-  const out: string[] = []
-  let [i, j] = [0, 0]
-  while (i < a.length || j < b.length) {
-    if (i < a.length && j < b.length && a[i] === b[j]) {
-      i += 1
-      j += 1
-    } else if (i < a.length && (j === b.length || common[i + 1]![j]! >= common[i]![j + 1]!)) {
-      out.push(`- ${a[i]}`)
-      i += 1
-    } else {
-      out.push(`+ ${b[j]}`)
-      j += 1
-    }
-  }
-  return out
 }

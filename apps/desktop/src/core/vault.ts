@@ -9,7 +9,7 @@ import type {
   ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
   RelationFields, ResearchIdea, SearchHit,
   TaskFields, TaskPatch, TrashEntry, Watch, WatchFields, WikiAggregation, WikiAggregationCard, WikiHome,
-  WikiBacklink, WikiMergePreview, WikiPaper, WikiSignal,
+  WikiBacklink, WikiPaper, WikiSignal,
 } from '../shared/contract.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
@@ -804,23 +804,17 @@ export interface VaultStore {
   wikiDeletePages(id: string): string[]
 
   /**
-   * Returns everything merging aggregation `from` into `into` would write (WikiMergePreview), writing
-   * nothing. Throws if either is not an aggregation this version can read, they are one page or of
-   * different kinds, an aggregation lacks its generated regions, or the merge would make a cycle.
+   * Merges aggregation `from` into `into`, `from` going into the trash, and refills the generated
+   * regions of every aggregation. Throws a `changed` CallError, writing nothing, unless the cards of
+   * both pages still look as `shown` holds them; and throws if either is not an aggregation this
+   * version can read, they are one page or of different kinds, an aggregation lacks its generated
+   * regions, or the merge would make a cycle.
    */
-  previewWikiMerge(from: string, into: string): WikiMergePreview
+  mergeWikiPages(from: string, into: string, shown: { from: WikiAggregationCard; into: WikiAggregationCard }): void
 
   /**
-   * Merges aggregation `from` into `into` as previewWikiMerge shows it, `from` going into the trash,
-   * and refills the generated regions of every aggregation. Throws a `changed` CallError, writing
-   * nothing, unless the preview as it stands now carries `fingerprint`, and throws as
-   * previewWikiMerge does.
-   */
-  mergeWikiPages(from: string, into: string, fingerprint: string): void
-
-  /**
-   * Returns the id of every page mergeWikiPages(`from`, `into`) would write: the pages its preview
-   * lists, then every other aggregation, whose generated regions it refills.
+   * Returns the id of every page mergeWikiPages(`from`, `into`) would write: the pages it changes and
+   * `from`, then every other aggregation, whose generated regions it refills.
    */
   wikiMergePages(from: string, into: string): string[]
 

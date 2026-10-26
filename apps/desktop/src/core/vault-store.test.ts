@@ -3206,28 +3206,19 @@ describe('vault store on the aggregation layout', () => {
       expect(readFileSync(file('topics/qat'), 'utf8')).toBe('---\nkind: topic\ntitle: 别的\n---\n')
     })
 
-    it('合并：预览列出每一页要改的行；按预览合并后成员、列、结论、链接和项目关联都到了留下的那一页，被并的页进垃圾桶；撤销是一条，逐字节还原', () => {
+    /** The cards of `from` and `into` as the Wiki shows them now. */
+    const shown = (from: string, into: string) => {
+      const cards = store.wikiCards()
+      return { from: cards.find((c) => c.id === from)!, into: cards.find((c) => c.id === into)! }
+    }
+
+    it('合并：挑了目标就合并，不再确认；成员、列、结论、链接和项目关联都到了留下的那一页，被并的页进垃圾桶；撤销是一条，逐字节还原', () => {
       const project = store.createProject('量化实验')
       store.createRelation(project, { group: 'Wiki', text: '权重激活', page: WA })
       store.updateWikiPage('papers/2306.00978', `对照 [[${WA}|W-A]] 与 [[${WA}#^rotation-kv]]。`)
       const before = pages()
-      const preview = store.previewWikiMerge(WA, WO)
-      expect(pages()).toEqual(before)
-      expect(preview.pages.map((p) => p.id)).toEqual(expect.arrayContaining([
-        WO, WA, 'papers/2308.13137', 'papers/2211.10438', 'topics/kv-cache-quantization', 'papers/2306.00978', `projects/${project}`,
-      ]))
-      const lines = (id: string) => preview.pages.find((p) => p.id === id)!.lines
-      expect(lines(WA)).toEqual([`- ${WA} 移入垃圾桶`])
-      expect(lines('papers/2306.00978')).toContain(`+ 对照 [[${WO}|W-A]] 与 [[${WO}#^rotation-kv]]。`)
-      expect(lines(`projects/${project}`).some((line) => line.startsWith('+') && line.includes(`page: "${WO}"`))).toBe(true)
-
-      store.updateWikiPage(WA, '## 问题\n改过了。')
-      const edited = pages()
-      expect(() => store.mergeWikiPages(WA, WO, preview.fingerprint)).toThrow(expect.objectContaining({ reason: 'changed' }))
-      expect(pages()).toEqual(edited)
-
       const changes = store.listChanges().length
-      store.mergeWikiPages(WA, WO, store.previewWikiMerge(WA, WO).fingerprint)
+      store.mergeWikiPages(WA, WO, shown(WA, WO))
       expect(existsSync(file(WA))).toBe(false)
       expect(store.listTrash()[0]).toMatchObject({ kind: 'page', title: 'Weight-activation PTQ' })
       const kept = store.wikiAggregation(WO)
@@ -3239,19 +3230,30 @@ describe('vault store on the aggregation layout', () => {
       expect(store.wikiAggregation('topics/kv-cache-quantization').claims.find((c) => c.id === 'per-channel-keys')!.conflicts[0]!.against)
         .toEqual({ kind: 'claim', ref: `${WO}#rotation-kv` })
       expect(store.wikiPaper('papers/2306.00978').body).toBe(`对照 [[${WO}|W-A]] 与 [[${WO}#^rotation-kv]]。`)
+      expect(readFileSync(file(`projects/${project}`), 'utf8')).toContain(`page: "${WO}"`)
       expect(store.getProject(project).relations.flatMap((g) => g.items).map((item) => item.page)).toContain(WO)
       expect(store.listChanges().length).toBe(changes + 1)
       store.undoChange(store.listChanges()[0]!.id)
-      expect(pages()).toEqual(edited)
+      expect(pages()).toEqual(before)
       expect(store.listTrash().filter((entry) => entry.kind === 'page')).toEqual([])
+    })
+
+    it('合并：两张卡片在挑目标时显示的样子之后有一页变了，就拒绝合并，什么都不写', () => {
+      const held = shown(WA, WO)
+      store.updateWikiPage(WA, '## 问题\n改过了。')
+      const edited = pages()
+      expect(() => store.mergeWikiPages(WA, WO, held)).toThrow(expect.objectContaining({ reason: 'changed' }))
+      expect(() => store.mergeWikiPages(WA, WO, { ...shown(WA, WO), into: { ...held.into, memberCount: 99 } }))
+        .toThrow(expect.objectContaining({ reason: 'changed' }))
+      expect(pages()).toEqual(edited)
     })
 
     it('合并：并进自己或并进另一种页时拒绝，什么都不写；上级并进自己的细分可以', () => {
       const before = pages()
-      expect(() => store.previewWikiMerge('topics/quantization', 'topics/ptq')).not.toThrow()
-      expect(() => store.previewWikiMerge('topics/ptq', 'topics/ptq')).toThrow(/自己/)
-      expect(() => store.previewWikiMerge('topics/ptq', 'methods/rotation')).toThrow(/同一种/)
+      expect(() => store.mergeWikiPages('topics/ptq', 'topics/ptq', shown('topics/ptq', 'topics/ptq'))).toThrow(/自己/)
+      expect(() => store.mergeWikiPages('topics/ptq', 'methods/rotation', shown('topics/ptq', 'methods/rotation'))).toThrow(/同一种/)
       expect(pages()).toEqual(before)
+      expect(() => store.mergeWikiPages('topics/quantization', 'topics/ptq', shown('topics/quantization', 'topics/ptq'))).not.toThrow()
     })
   })
 })

@@ -9,12 +9,7 @@ export const wiki = {
   autoColumn: 'Automatic',
   columnSettings: 'Column settings',
   mergeInto: 'Merge into…',
-  merge: {
-    title: (from: string, into: string) => `Merge “${from}” into “${into}”`,
-    confirm: 'Merge',
-    merging: 'Merging',
-    done: 'Merged',
-  },
+  merge: { done: 'Merged' },
   aggregation: {
     parentCount: (n: number) => `${n} ${pluralEn(n, { one: 'parent', other: 'parents' })}`,
     cardFooter: (children: number | null, members: number, updated: string) =>
