@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type {
-  ChatAnswerModel, HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult,
+  ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { extractPdfPages } from '../paper-library/index.js'
@@ -230,8 +230,8 @@ export function chatHarnessError(cause: unknown): Error {
 export function createChatHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
-  /** The connection check of a subscription CLI, which makes no model call. */
-  checkCli: (cli: HarnessCli) => Promise<HarnessModelConnectionCheckResult>
+  /** The connection check of a subscription CLI's model, which makes one model call once the CLI is ready. */
+  checkCli: (model: HarnessCliModel) => Promise<HarnessModelConnectionCheckResult>
   cli: CliChatRunner
   sessions: CliChatSessions
   launch?: () => HarnessChild
@@ -381,7 +381,7 @@ export function createChatHarnessRunner(options: {
       } catch (cause) {
         return failedConnectionCheck(cause, [], 0)
       }
-      if ('source' in model) return options.checkCli(model.cli)
+      if ('source' in model) return options.checkCli(model)
       const secrets = model.apiKey === undefined ? [] : [model.apiKey]
       try {
         const result = HarnessModelConnectionCheckResultSchema.parse(await rpc.request('model.check', {

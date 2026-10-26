@@ -758,14 +758,15 @@ settings.model.clearKeyPending state
 settings.model.configured state
 settings.model.connection.action action
 settings.model.connection.connected state
-settings.model.connection.connectedNoModelCall state
 settings.model.connection.detailLabel label
 settings.model.connection.failures.authentication failure
 settings.model.connection.failures.cli-missing failure
+settings.model.connection.failures.cli-model-unavailable failure
 settings.model.connection.failures.cli-sign-in-unknown failure
 settings.model.connection.failures.cli-signed-out failure
 settings.model.connection.failures.cli-timeout failure
 settings.model.connection.failures.cli-unsupported failure
+settings.model.connection.failures.cli-usage-limit failure
 settings.model.connection.failures.configuration failure
 settings.model.connection.failures.model-or-endpoint failure
 settings.model.connection.failures.provider failure
@@ -773,6 +774,7 @@ settings.model.connection.failures.rate-limit failure
 settings.model.connection.failures.timeout failure
 settings.model.connection.failures.unavailable failure
 settings.model.connection.failures.unknown failure
+settings.model.connection.subscriptionConnected state
 settings.model.connection.testing aria
 settings.model.connection.unexpectedDetail failure
 settings.model.fields.apiKeyAria aria

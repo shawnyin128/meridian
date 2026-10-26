@@ -128,21 +128,21 @@ describe('chat failures in plain words', () => {
 })
 
 describe('model connection check', () => {
-  it('checks a subscription CLI with its own check, without the Harness or a model call', async () => {
-    const checked: string[] = []
+  it('checks a subscription CLI\'s model with the CLI\'s own check, without the Harness', async () => {
+    const checked: unknown[] = []
     const runner = createChatHarnessRunner({
       store: {} as VaultStore,
-      model: { runtime: async () => ({ source: 'cli', cli: 'codex' }) } as unknown as HarnessModelConfig,
-      checkCli: async (cli) => {
-        checked.push(cli)
-        return { state: 'connected', modelCalls: 0, maxOutputTokens: 1 }
+      model: { runtime: async () => ({ source: 'cli', cli: 'codex', model: 'gpt-6-luna' }) } as unknown as HarnessModelConfig,
+      checkCli: async (model) => {
+        checked.push(model)
+        return { state: 'connected', modelCalls: 1 }
       },
       cli: vi.fn<CliChatRunner>(),
       sessions: {} as CliChatSessions,
     })
 
-    await expect(runner.checkConnection()).resolves.toEqual({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 })
-    expect(checked).toEqual(['codex'])
+    await expect(runner.checkConnection()).resolves.toEqual({ state: 'connected', modelCalls: 1 })
+    expect(checked).toEqual([{ source: 'cli', cli: 'codex', model: 'gpt-6-luna' }])
     runner.close()
   })
 })

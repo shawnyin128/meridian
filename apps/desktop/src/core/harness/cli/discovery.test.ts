@@ -2,9 +2,11 @@ import { chmodSync, existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, wr
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { checkCliConnection, discoverCli, resolveCliBinary } from './discovery.js'
+import type { HarnessCli } from '../../../shared/contract.js'
+import { CliRunError, type CliFailureKind } from './child.js'
+import { checkCliConnection, type DiscoveryOptions, discoverCli, resolveCliBinary } from './discovery.js'
 import { chatTurnFlags } from './chat-turn.js'
-import { runnerFlags } from './runner.js'
+import { type CliCall, type CliRunner, runnerFlags } from './runner.js'
 
 /**
  * Answers `--version`, `--help` (`exec --help` for Codex), `auth status --json` (Claude) and
@@ -73,6 +75,21 @@ function machine(answers: { version?: string; help?: string; status?: string; st
     : []
   return { root, home, environment, options, calls }
 }
+
+/** A stand-in runner that answers each call with a one-word output, or fails it with `failure`, recording every call. */
+function standInRunner(failure?: CliRunError) {
+  const calls: CliCall[] = []
+  const run: CliRunner = async (call) => {
+    calls.push(call)
+    if (failure !== undefined) throw failure
+    return { output: { word: 'ok' }, usage: { inputTokens: 18_204, cachedInputTokens: 0, outputTokens: 5 }, turns: 1, durationMs: 4_200 }
+  }
+  return { run, calls }
+}
+
+/** The connection check of `cli`, with `model` when given, its model call made through `run`. */
+const check = (cli: HarnessCli, options: DiscoveryOptions & { onLog?: (line: string) => void }, run = standInRunner().run, model?: string) =>
+  checkCliConnection({ source: 'cli', cli, ...(model === undefined ? {} : { model }) }, { ...options, run })
 
 describe('subscription CLI discovery', () => {
   it('finds a CLI through the user\'s login shell when the App has no PATH', async () => {
@@ -150,12 +167,11 @@ describe('subscription CLI discovery', () => {
     ] as const) {
       const unreadable = machine({ version: '9.9.9\n', status })
       executable(join(unreadable.home, '.local', 'bin', cli), STAND_IN)
-      results.push(await checkCliConnection(cli, { ...unreadable.options, onLog: (line) => logs.push(line) }))
+      results.push(await check(cli, { ...unreadable.options, onLog: (line) => logs.push(line) }))
     }
 
     expect(results).toEqual(['claude', 'claude', 'codex'].map((cli) => ({
-      state: 'failed', reason: 'cli-sign-in-unknown', detail: `读不出 ${cli} 的登录状态`, version: '9.9.9',
-      modelCalls: 0, maxOutputTokens: 1,
+      state: 'failed', reason: 'cli-sign-in-unknown', detail: `读不出 ${cli} 的登录状态`, version: '9.9.9', modelCalls: 0,
     })))
     expect(logs).toEqual([
       'claude 9.9.9: its sign-in status is in no form Meridian reads: stdout 2 lines of text, stderr 0 lines, exit 0',
@@ -166,58 +182,90 @@ describe('subscription CLI discovery', () => {
     expect(logs.join('\n')).not.toMatch(/researcher|sk-ant|secret|claude\.ai|Logged|ChatGPT as/)
   })
 
-  it('checks the connection from installation, the flags its help lists and sign-in, with no model call, naming the CLI problem', async () => {
+  it('checks installation, the flags its help lists and sign-in before any model call, naming the CLI problem', async () => {
+    const runner = standInRunner()
     const missing = machine()
-    await expect(checkCliConnection('claude', missing.options)).resolves.toEqual({
-      state: 'failed', reason: 'cli-missing', detail: '没有找到 claude 命令', modelCalls: 0, maxOutputTokens: 1,
+    await expect(check('claude', missing.options, runner.run)).resolves.toEqual({
+      state: 'failed', reason: 'cli-missing', detail: '没有找到 claude 命令', modelCalls: 0,
     })
 
     const logs: string[] = []
     const old = machine({ version: '2.0.9 (Claude Code)\n', help: FULL_HELP.replace(/^ {2}--json-schema .*$/m, '') })
     executable(join(old.home, '.local', 'bin', 'claude'), STAND_IN)
-    const unsupported = await checkCliConnection('claude', { ...old.options, onLog: (line) => logs.push(line) })
+    const unsupported = await check('claude', { ...old.options, onLog: (line) => logs.push(line) })
     expect(unsupported).toMatchObject({ state: 'failed', reason: 'cli-unsupported', version: '2.0.9', modelCalls: 0 })
     expect(JSON.stringify(unsupported)).not.toContain('json-schema')
     expect(logs).toEqual([expect.stringContaining('--json-schema')])
     const noStreaming = machine({ help: FULL_HELP.replace(/^ {2}--include-partial-messages .*$/m, '') })
     executable(join(noStreaming.home, '.local', 'bin', 'claude'), STAND_IN)
-    await expect(checkCliConnection('claude', noStreaming.options)).resolves.toMatchObject({
+    await expect(check('claude', noStreaming.options)).resolves.toMatchObject({
       state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
     })
     const variantHelp = machine({
       help: `${FULL_HELP.replace(/^ {2}--system-prompt-file .*$/m, '')}\n  --bare    Provide context via: --system-prompt[-file], --mcp-config`,
     })
     executable(join(variantHelp.home, '.local', 'bin', 'claude'), STAND_IN)
-    await expect(checkCliConnection('claude', variantHelp.options)).resolves.toMatchObject({ state: 'connected' })
+    await expect(check('claude', variantHelp.options)).resolves.toMatchObject({ state: 'connected' })
     const noVariant = machine({ help: FULL_HELP.replace(/^ {2}--system-prompt-file .*$/m, '') })
     executable(join(noVariant.home, '.local', 'bin', 'claude'), STAND_IN)
-    await expect(checkCliConnection('claude', noVariant.options)).resolves.toMatchObject({ reason: 'cli-unsupported' })
+    await expect(check('claude', noVariant.options)).resolves.toMatchObject({ reason: 'cli-unsupported' })
     for (const [cli, flag] of [['claude', '--resume'], ['codex', 'resume']] as const) {
       const noResume = machine({ help: FULL_HELP.replace(new RegExp(`^ {2}${flag} .*$`, 'm'), '') })
       executable(join(noResume.home, '.local', 'bin', cli), STAND_IN)
-      await expect(checkCliConnection(cli, noResume.options)).resolves.toMatchObject({
+      await expect(check(cli, noResume.options)).resolves.toMatchObject({
         state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
       })
     }
 
     const apiKey = machine({ status: JSON.stringify({ loggedIn: true, authMethod: 'api_key' }) })
     executable(join(apiKey.home, '.local', 'bin', 'claude'), STAND_IN)
-    await expect(checkCliConnection('claude', apiKey.options)).resolves.toMatchObject({
+    await expect(check('claude', apiKey.options)).resolves.toMatchObject({
       state: 'failed', reason: 'cli-signed-out', detail: 'claude 没有用 Claude 订阅登录', modelCalls: 0,
     })
 
     const signedOut = machine({ status: JSON.stringify({ loggedIn: false }) })
     executable(join(signedOut.home, '.local', 'bin', 'claude'), STAND_IN)
-    await expect(checkCliConnection('claude', signedOut.options)).resolves.toMatchObject({
+    await expect(check('claude', signedOut.options, runner.run)).resolves.toMatchObject({
       state: 'failed', reason: 'cli-signed-out', detail: 'claude 还没有登录', modelCalls: 0,
     })
+    expect(runner.calls).toEqual([])
+  })
 
+  it('once the CLI is ready makes one model call through the runner, on the chosen model or the CLI\'s default, and keeps nothing of its answer', async () => {
     const signedIn = machine({ version: '0.0.1 (Claude Code)\n' })
     executable(join(signedIn.home, '.local', 'bin', 'claude'), STAND_IN)
-    await expect(checkCliConnection('claude', signedIn.options)).resolves.toEqual({
-      state: 'connected', version: '0.0.1', modelCalls: 0, maxOutputTokens: 1,
+    const runner = standInRunner()
+    const logs: string[] = []
+
+    await expect(check('claude', { ...signedIn.options, onLog: (line) => logs.push(line) }, runner.run)).resolves.toEqual({
+      state: 'connected', version: '0.0.1', modelCalls: 1,
     })
-    expect(signedIn.calls().map((call) => call.argv)).toEqual([['--version'], ['--help'], ['auth', 'status', '--json']])
+    await check('claude', signedIn.options, runner.run, 'opus')
+
+    expect(signedIn.calls().map((call) => call.argv).slice(0, 3)).toEqual([['--version'], ['--help'], ['auth', 'status', '--json']])
+    expect(runner.calls.map((call) => [call.cli, call.model, call.lookup])).toEqual([['claude', undefined, undefined], ['claude', 'opus', undefined]])
+    expect(runner.calls[0]!.prompt.length + runner.calls[0]!.system.length).toBeLessThan(200)
+    expect(runner.calls[0]!.schema).toEqual({
+      type: 'object', properties: { word: { type: 'string', maxLength: 40 } }, required: ['word'], additionalProperties: false,
+    })
+    expect(logs).toEqual(['claude: 4.2 s, 1 turns, 18204 input tokens (0 cached), 5 output tokens'])
+  })
+
+  it.each([
+    ['model-unavailable', 'cli-model-unavailable', 1],
+    ['usage-limit', 'cli-usage-limit', 1],
+    ['timeout', 'cli-timeout', 1],
+    ['failed', 'unknown', 1],
+    ['signed-out', 'cli-signed-out', 0],
+    ['unavailable', 'cli-missing', 0],
+  ] as const)('a model call that fails as %s fails the check as %s, in the CLI\'s words', async (kind: CliFailureKind, reason, modelCalls) => {
+    const signedIn = machine({ status: 'Logged in using ChatGPT\n' })
+    executable(join(signedIn.home, '.local', 'bin', 'codex'), STAND_IN)
+    const failure = new CliRunError(kind, `codex 运行失败：${kind}`)
+
+    await expect(check('codex', signedIn.options, standInRunner(failure).run, 'gpt-9')).resolves.toEqual({
+      state: 'failed', reason, detail: `codex 运行失败：${kind}`, version: '2.1.280', modelCalls,
+    })
   })
 
   it('fails the check of a CLI that does not answer in time as a CLI timeout, and ends it', async () => {
@@ -228,7 +276,7 @@ require('node:fs').writeFileSync(${JSON.stringify(pidFile)}, String(process.pid)
 setInterval(() => {}, 1000)
 `)
 
-    await expect(checkCliConnection('claude', { ...slow.options, probeTimeoutMs: 300 })).resolves.toMatchObject({
+    await expect(check('claude', { ...slow.options, probeTimeoutMs: 300 })).resolves.toMatchObject({
       state: 'failed', reason: 'cli-timeout', modelCalls: 0,
     })
     const pid = Number(readFileSync(pidFile, 'utf8'))

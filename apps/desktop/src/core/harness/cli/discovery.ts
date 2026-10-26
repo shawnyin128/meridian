@@ -1,14 +1,38 @@
 import { accessSync, constants, existsSync, readdirSync, statSync } from 'node:fs'
 import { homedir, userInfo } from 'node:os'
 import { basename, isAbsolute, join } from 'node:path'
-import type { HarnessCli, HarnessModelConnectionCheckResult } from '../../../shared/contract.js'
-import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild } from './child.js'
+import type {
+  HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult, HarnessModelConnectionFailure,
+} from '../../../shared/contract.js'
+import { cliUsageLine } from '../cli-call.js'
+import { type ChildOutcome, cliEnvironment, type CliFailureKind, CliRunError, inTemporaryFolder, runChild } from './child.js'
 import { chatTurnFlags } from './chat-turn.js'
-import { CLI_CALL_FAILURES, readiness } from './failure.js'
-import { runnerFlags } from './runner.js'
+import { readiness } from './failure.js'
+import { type CliRunner, runnerFlags } from './runner.js'
 
 const SYSTEM_FOLDERS = ['/opt/homebrew/bin', '/usr/local/bin'] as const
 const PROBE_TIMEOUT_MS = 10_000
+/** The connection check's one model call: a fixed prompt asking for one word, whose answer is discarded. */
+const CHECK_CALL = {
+  system: 'You answer connection checks. Reply with one word.',
+  prompt: 'Reply with the word ok.',
+  schema: { type: 'object', properties: { word: { type: 'string', maxLength: 40 } }, required: ['word'], additionalProperties: false },
+  timeoutMs: 2 * 60_000,
+}
+/** The reason a connection check fails with when its CLI, or its model call, failed as `kind`. */
+const CHECK_FAILURES = {
+  unavailable: 'cli-missing',
+  unsupported: 'cli-unsupported',
+  'signed-out': 'cli-signed-out',
+  'sign-in-unknown': 'cli-sign-in-unknown',
+  'usage-limit': 'cli-usage-limit',
+  'model-unavailable': 'cli-model-unavailable',
+  timeout: 'cli-timeout',
+  cancelled: 'unknown',
+  failed: 'unknown',
+} as const satisfies Record<CliFailureKind, HarnessModelConnectionFailure>
+/** The kinds a call fails with before its CLI starts, so the check made no model call. */
+const BEFORE_CALL: ReadonlySet<CliFailureKind> = new Set(['unavailable', 'unsupported', 'signed-out', 'sign-in-unknown'])
 /** A top-level key of a status output that may appear in the log: a plain field name. */
 const SHAPE_KEY = /^[A-Za-z_][\w-]{0,40}$/
 /**
@@ -205,36 +229,47 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
 }
 
 /**
- * The connection check of a subscription CLI: connected when `cli` is installed, its help lists
- * every flag the runner and a chat turn pass, and it is signed in with the user's subscription;
- * otherwise failed for the CLI problem a call would fail with. Reports the CLI's version when it has
- * one, and logs through `onLog` which flags an unsupported CLI lacks. Makes no model call.
+ * The connection check of subscription CLI `model.cli`: when it is installed, its help lists every
+ * flag the runner and a chat turn pass, and it is signed in with the user's subscription, one model
+ * call through `run` on `model.model`, or the CLI's own default, with a fixed prompt asking for one
+ * word, whose answer is discarded. Connected when that call completes; otherwise failed for the CLI
+ * problem or the model call's failure, in their words, with whether a model call was made. Reports
+ * the CLI's version when it has one, and logs through `onLog` which flags an unsupported CLI lacks and
+ * the call's time and tokens.
  */
 export async function checkCliConnection(
-  cli: HarnessCli,
-  options: DiscoveryOptions = {},
+  model: HarnessCliModel,
+  options: DiscoveryOptions & { onLog?: (line: string) => void; run: CliRunner },
 ): Promise<HarnessModelConnectionCheckResult> {
+  const { cli } = model
   let version: string | null = null
-  const failed = (
-    reason: 'cli-missing' | 'cli-unsupported' | 'cli-signed-out' | 'cli-sign-in-unknown' | 'cli-timeout', detail: string,
-  ) => ({
-    state: 'failed' as const, reason, detail, ...(version === null ? {} : { version }),
-    modelCalls: 0 as const, maxOutputTokens: 1 as const,
+  const failed = (kind: CliFailureKind, detail: string) => ({
+    state: 'failed' as const, reason: CHECK_FAILURES[kind], detail, ...(version === null ? {} : { version }),
+    modelCalls: BEFORE_CALL.has(kind) ? 0 as const : 1 as const,
   })
   let found: CliDiscovery
   try {
     found = await discoverCli(cli, options)
   } catch (cause) {
     if (!(cause instanceof CliRunError)) throw cause
-    return failed(cause.kind === 'timeout' ? 'cli-timeout' : 'cli-missing', cause.message)
+    return { ...failed(cause.kind === 'timeout' ? 'timeout' : 'unavailable', cause.message), modelCalls: 0 }
   }
   if (found.installed) version = found.version
   const ready = readiness(found)
-  if ('binary' in ready) {
-    return { state: 'connected', ...(version === null ? {} : { version }), modelCalls: 0, maxOutputTokens: 1 }
+  if (!('binary' in ready)) {
+    if (found.installed && ready.kind === 'unsupported') {
+      options.onLog?.(`${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
+    }
+    return failed(ready.kind, ready.message)
   }
-  if (found.installed && ready.kind === 'unsupported') {
-    options.onLog?.(`${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
+  try {
+    const result = await options.run({
+      cli, ...(model.model === undefined ? {} : { model: model.model }), ...CHECK_CALL, signal: new AbortController().signal,
+    })
+    options.onLog?.(cliUsageLine(cli, result))
+  } catch (cause) {
+    if (!(cause instanceof CliRunError)) throw cause
+    return failed(cause.kind, cause.message)
   }
-  return failed(CLI_CALL_FAILURES[ready.kind], ready.message)
+  return { state: 'connected', ...(version === null ? {} : { version }), modelCalls: 1 }
 }
