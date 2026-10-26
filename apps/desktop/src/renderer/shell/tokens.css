@@ -33,7 +33,8 @@
   /*
    * Accent text on --accent-soft, the one selected look (the current sidebar row, a list's selected row
    * or card): the accent moved 30% toward --ink, so it keeps 4.5:1 there in both themes, a hovered row
-   * included. A selected segment's label takes it too.
+   * included. A selected segment's label and a picked small control's text take it too, on the
+   * neutral --selected and --selected-strong fills, where dark lifts it further to keep 4.5:1.
    */
   --accent-text:color-mix(in srgb,var(--accent) 70%,var(--ink));
   /* An accent mark, a check mark or the running ring: the accent, which keeps 3:1 on every surface and on hovered and selected rows. */
@@ -169,7 +170,7 @@
   --desktop:#040b14; --window:#07111f; --content:#0d1b2d; --sidebar:rgba(9,21,38,.85);
   --ink:#f5f7fb; --sec:#aab6c8; --ter:#94a0b2;
   --sep:#20324c; --sep2:rgba(32,50,76,.6);
-  --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff;
+  --accent:#558cff; --accent-soft:rgba(85,140,255,.12); --on-accent:#ffffff; --accent-text:#8fb5ff;
   --card:#12213a; --raised:#12213a; --field:#16263f; --hover:rgba(245,247,251,.05);
   --chip:rgba(245,247,251,.08); --track:rgba(0,0,0,.45);
   --good:#30d158; --warn:#ffd60a; --bad:#ff453a; --hl:rgba(255,214,10,.35);

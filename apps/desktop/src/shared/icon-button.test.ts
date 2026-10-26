@@ -120,9 +120,9 @@ describe('图标按钮', () => {
     expect(getComputedStyle(document.querySelector('button')).opacity).toBe('1')
   })
 
-  it('按下的开关是选中的样子：--selected 的底配 --on-selected 的图标', () => {
+  it('按下的开关是小控件选中的样子：--selected 的底配强调色的图标', () => {
     expect(new Set(Object.values(each((button) => `${button.backgroundColor} ${button.color}`, 'aria-pressed="true"'))))
-      .toEqual(new Set(['var(--selected) var(--on-selected)']))
+      .toEqual(new Set(['var(--selected) var(--accent-text)']))
   })
 
   it('圆形的图标按钮是中性底的圆，图标用正文色；按下时仍是选中的样子', () => {

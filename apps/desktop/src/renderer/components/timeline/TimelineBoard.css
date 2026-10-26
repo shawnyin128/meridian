@@ -44,7 +44,7 @@
 .gbar.clipl{border-top-left-radius:0;border-bottom-left-radius:0;border-left:0}
 .gbar.dim:not(:hover){opacity:.45}
 .gbar.plan{background-color:transparent;border-style:dashed;border-color:var(--sep-strong);color:var(--sec)}
-.gbar.active{border-color:color-mix(in srgb,var(--ink) 42%,var(--sep));background-color:var(--selected)}
+.gbar.active{border-color:color-mix(in srgb,var(--accent-mark) 42%,var(--sep));background-color:var(--accent-soft);color:var(--accent-text)}
 .gbar.overdue{box-shadow:inset 3px 0 var(--bad)}
 .gbar.priority-p0{font-weight:var(--fw-semibold)}
 /* A one-day bar narrower than its title keeps the title's box empty and draws the title beside the bar. */

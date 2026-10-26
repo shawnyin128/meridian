@@ -12,7 +12,7 @@
 .btn.danger{background-color:var(--tint-bad);color:var(--bad-text)}
 .btn.pri.danger{background-color:var(--bad-solid);color:var(--on-accent)}
 .btn.ghost.danger{background-color:transparent}
-.btn:not(.danger)[aria-pressed="true"]{background-color:var(--selected);color:var(--on-selected)}
+.btn:not(.danger)[aria-pressed="true"]{background-color:var(--selected);color:var(--accent-text)}
 :where(.btn):hover{box-shadow:inset 0 0 0 100vmax var(--hover)}
 :where(.btn.ghost:not(.danger)):hover{color:var(--ink)}
 :where(.btn.pri):hover{box-shadow:inset 0 0 0 100vmax var(--hover-solid)}

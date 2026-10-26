@@ -296,6 +296,8 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
   /** A list's selected row or card, on the canvas, a card or a floating layer, at rest and hovered. */
   const selectedRow = (['--content', '--card', '--raised'] as const)
     .flatMap((surface) => [[surface, '--accent-soft'], [surface, '--accent-soft', '--hover']] as const)
+  /** A picked small control on every surface: a pressed toggle, a picked day or tab, and a current page or applied filter. */
+  const pickedControl = SURFACES.slice(0, 4).flatMap((ground) => [[...ground, '--selected'], [...ground, '--selected-strong']] as const)
   /**
    * Where an accent mark (a check mark, the running ring, a progress line) sits: every surface, hovered,
    * a selected or current row, and a progress line's track on a card, a floating layer or a message box.
@@ -315,7 +317,7 @@ function contrastChecks(mode: ColourMode): ContrastCheck[] {
     ...over('accent', '--on-accent', [['--accent']], MARK),
     ...over('accent', '--on-accent', solid('--accent-solid')),
     ...over('accent', '--accent-solid', [['--content'], ['--card'], ['--window']], MARK),
-    ...over('accent', '--accent-text', [...current, ...selectedRow]),
+    ...over('accent', '--accent-text', [...current, ...selectedRow, ...pickedControl]),
     ...over('accent', '--accent-mark', marked, MARK),
     ...over('error', '--bad', [['--content'], ['--card']], MARK),
     ...over('error', '--on-accent', solid('--bad-solid')),

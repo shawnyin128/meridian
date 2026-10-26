@@ -13,10 +13,10 @@
   border-radius:var(--r-card);background-color:var(--field);box-shadow:inset 0 0 0 1px var(--sep2);
   transition:background-color var(--t-fast) var(--e-out),box-shadow var(--t-fast) var(--e-out)}
 .appearance-choice:hover .appearance-preview{box-shadow:inset 0 0 0 1px var(--sep-strong)}
-/* The selected look of rows, cards and graph nodes; see Item.css. */
-.appearance-choice[aria-checked="true"] .appearance-preview{background-color:var(--selected)}
+/* The selected look of rows, cards and graph nodes, the accent soft fill with accent text; see Item.css. */
+.appearance-choice[aria-checked="true"] .appearance-preview{background-color:var(--accent-soft)}
 .appearance-label{display:block;margin-top:var(--sp-8);font-size:var(--fs-sm);font-weight:var(--fw-medium);color:var(--sec)}
-.appearance-choice[aria-checked="true"] .appearance-label{color:var(--on-selected)}
+.appearance-choice[aria-checked="true"] .appearance-label{color:var(--accent-text)}
 /* The theme radios share the grid with the card that creates a theme, which takes a preview's size. */
 .appearance-radios{display:contents}
 /* A custom theme's … menu sits at the end of its name's line. */

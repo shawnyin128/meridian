@@ -36,7 +36,7 @@ const lookOf = async (row: Locator) => {
   })
 }
 
-/** The neutral selected look, --selected and --on-selected, the look of a pressed toggle. */
+/** The neutral selected look, --selected and --on-selected. */
 const neutralOf = (win: Page) => win.evaluate(() => {
   const probe = document.createElement('div')
   probe.style.backgroundColor = 'var(--selected)'

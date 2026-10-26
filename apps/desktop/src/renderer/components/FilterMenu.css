@@ -2,7 +2,7 @@
 .filter-menu-group{display:inline-flex;align-items:center;gap:var(--sp-6);min-width:0}
 .filter-menu-label{color:var(--ter);font-size:var(--fs-sm);white-space:nowrap}
 /* An applied filter looks pressed; solid accent is kept for primary actions. */
-.filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--on-selected)}
+.filter-menu.on{background-color:var(--selected-strong);border-color:transparent;color:var(--accent-text)}
 /*
  * The button keeps room for every label it can show: all of them lie in one grid cell and only the
  * shown one paints, so picking an option never changes its width or moves the toolbar.

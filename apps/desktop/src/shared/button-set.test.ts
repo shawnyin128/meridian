@@ -218,13 +218,13 @@ describe('按钮组', () => {
     })
   })
 
-  it('按下的开关按钮是选中的样子：--selected 的底配 --on-selected 的字', () => {
+  it('按下的开关按钮是小控件选中的样子：--selected 的底配强调色的字', () => {
     document.body.innerHTML = '<button type="button" class="btn ghost sm" aria-pressed="true">历史项目</button><button type="button" class="btn ghost sm" aria-pressed="false">历史项目</button>'
     const [on, off] = ['[aria-pressed="true"]', '[aria-pressed="false"]'].map((selector) => {
       const style = getComputedStyle(document.querySelector(selector))
       return `${style.backgroundColor} ${style.color}`
     })
-    expect([on, off]).toEqual(['var(--selected) var(--on-selected)', `${TRANSPARENT} var(--sec)`])
+    expect([on, off]).toEqual(['var(--selected) var(--accent-text)', `${TRANSPARENT} var(--sec)`])
   })
 
   it('只有 Button 写按钮组的类：别的组件和屏幕不借 btn 类画按钮', () => {
