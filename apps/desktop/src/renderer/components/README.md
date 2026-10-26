@@ -13,12 +13,15 @@ Current shared contracts:
   name a new milestone and a diamond to rename or delete one, at the click; Enter or Space on a lane
   opens it on today's date.
 - `InlineField`: the one in-place edit of a value, a name included: the rail values, the paper title and
-  metadata, the plan's task and milestone names, a project's name on its card or row, and, with `cell`, a
-  paper table text cell that its table opens. At rest the value's hover fill reaches past its text by the
+  metadata, the plan's task and milestone names, a project's name on its card or row, a chat's name on its
+  sidebar row, and, with `cell`, a paper table text cell that its table opens. At rest the value's hover fill reaches past its text by the
   inline field's padding, so the field's text starts where the value's was; Enter, focus leaving or a press
-  outside saves, Escape cancels, and what is typed is kept as a draft. A rename starts from a click on the
-  name, or, where the name's click opens its item, from the item's rename command (the … menu's 重命名, a
-  task's pencil); it never opens a popover.
+  outside saves, Escape cancels, a value its `validate` refuses keeps the field open and marked invalid, and
+  what is typed is kept as a draft. A rename starts from a click on the name, or, where the name's click
+  opens its item, from the item's rename command (the … menu's 重命名, a task's pencil); it never opens a
+  popover. The one page title that renames by a click is the chat page's (`TitleField`).
+- `TitleField`: that click-to-rename title, an `InlineField` at the title's own size, on one line that
+  fades where it does not fit; `PageTitle` takes it through `rename`.
 - `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
   `regular` (30px) in the page header bar and at dialog, popover and form feet and `compact` (24px) in
   section, group and panel headings, inside rows and cards, and in toolbars, with an optional glyph before
@@ -112,8 +115,9 @@ Current shared contracts:
   `scripts/check-screen-elements.test.mjs` checks it.
 - `NavRow`: the one row of a navigation list, the sidebar's, the Settings categories' and the theme
   editor's modules, at one height: a glyph slot, the text, and a count or a state at its end. It is a
-  button, or, when it holds controls of its own or a fold caret, a div whose label is the button; a row that
-  opens nothing is the fold toggle of its group. `indent`, `sub` and `dim` are its looks under a group.
+  button, or, when it holds controls of its own or a fold caret, a div whose label is the button; while its
+  name is renamed, `editor`, the field, takes the label's place. A row that opens nothing is the fold toggle
+  of its group. `indent`, `sub` and `dim` are its looks under a group.
   While Meridian is not the active app, the current row's accent turns to the neutral selected look.
 - `NavSection`: a titled section of a navigation list whose 24px heading folds the rows under it.
 - `NavPane`: the sidebar's pane: its surface, width, collapse, the rows that scroll and the rows pinned

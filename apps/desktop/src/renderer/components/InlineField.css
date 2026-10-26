@@ -10,3 +10,7 @@
 .metadata-editable:hover{background:var(--field);color:var(--ink)}
 .pv.metadata-editable{cursor:pointer}
 .form-control.metadata-input.multiline{display:block;field-sizing:content;resize:none;overflow:hidden;white-space:pre-wrap;overflow-wrap:anywhere}
+/* A page title being renamed is as wide as its text, up to the room it has, and stays on one line. */
+.metadata-field--title{display:flex;width:auto;min-width:0}
+.metadata-field--title>.metadata-editable{display:flex;width:auto;max-width:calc(100% + 2 * var(--sp-6));white-space:nowrap}
+.metadata-field--title>.form-input.form-control-inline{field-sizing:content;min-width:8ch;max-width:calc(100% + 2 * (var(--sp-6) + 1px))}

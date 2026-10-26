@@ -47,6 +47,13 @@ describe('NavRow', () => {
     host.remove()
   })
 
+  it('puts the field its name is renamed in where its label button was, so no field sits inside a button', () => {
+    expect(renderToStaticMarkup(
+      <NavRow icon={<svg />} className="chat-row" actions={<button type="button">…</button>} editor={<input aria-label="对话名称" />} onActivate={noop}>讨论</NavRow>,
+    )).toBe('<div class="nav-row nav-row--actions chat-row"><span class="nav-row-label"><span class="nav-row-icon"><svg></svg></span>'
+      + '<input aria-label="对话名称"/></span><button type="button">…</button></div>')
+  })
+
   it('puts the fold of the group under a row right after its label, and its count at its end', () => {
     const markup = renderToStaticMarkup(
       <NavRow

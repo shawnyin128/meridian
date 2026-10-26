@@ -36,7 +36,7 @@ const core = <T>(win: Page, method: string, params: unknown) =>
   win.evaluate(([m, p]) => (window as unknown as MeridianWindow).meridian.call(m as string, p),
     [method, params] as const) as Promise<T>
 
-type Session = { id: string; title: string; archived: boolean; messageCount: number }
+type Session = { id: string; title: string; archived: boolean; messageCount: number; paperId?: string }
 
 /** Opens the chat at index `at` in the sidebar's Chats group, waiting first for the fetched list to render. */
 async function gotoChat(win: Page, at = 0): Promise<void> {
@@ -299,18 +299,19 @@ test('把讨论整理成可回看的想法', async ({ win }) => {
   await expect(win.locator('#qaConcl')).toHaveCount(0)
 })
 
-test('会话行的更多菜单是真菜单:触发器报 menu,归档之后是删除,下键高亮归档,回车归档且不进那条会话', async ({ win }) => {
+test('会话行的更多菜单是真菜单:触发器报 menu,重命名、归档之后是删除,下键两次高亮归档,回车归档且不进那条会话', async ({ win }) => {
   await win.locator('#chatList .chat-row').first().waitFor()
-  const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
+  const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived && s.paperId === undefined)!
   const row = win.locator(`#chatList [data-chat="${target.id}"]`)
 
   await row.hover()
   await expect(row.locator('.dots')).toHaveAttribute('aria-haspopup', 'menu')
   await row.locator('.dots').click()
   const items = win.locator('[role="menu"] [role="menuitem"]')
-  await expect(items).toHaveText(['归档', '删除'])
+  await expect(items).toHaveText(['重命名', '归档', '删除'])
   await win.keyboard.press('ArrowDown')
-  await expect(items.first()).toHaveAttribute('data-highlighted', '')
+  await win.keyboard.press('ArrowDown')
+  await expect(items.nth(1)).toHaveAttribute('data-highlighted', '')
   await win.keyboard.press('Enter')
 
   await expect(row).toHaveCount(0)

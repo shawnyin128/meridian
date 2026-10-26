@@ -156,7 +156,7 @@ describe('每个屏幕只有一个主操作', () => {
         screen="feed" onNavigate={vi.fn()} onJump={vi.fn()} paperCount={0} changeCount={0} projectCount={0}
         trashCount={0} wikiCount={0} ideaCount={0} inboxScope="all" inboxMode="watch" onOpenInbox={vi.fn()}
         watches={[]} inboxWatches={[]} discoveryCount={0} discoveryProjects={[]} laterCount={0} chats={[]}
-        chatId={null} onOpenChat={vi.fn()} onNewChat={vi.fn()} onArchiveChat={vi.fn()} onDeleteChat={vi.fn()}
+        chatId={null} onOpenChat={vi.fn()} onNewChat={vi.fn()} onRenameChat={vi.fn()} onArchiveChat={vi.fn()} onDeleteChat={vi.fn()}
         grip={{ label: '侧栏宽度', value: 232, min: 180, max: 360, onResize: vi.fn(), onReset: vi.fn() }} collapsed={false} hidden={false}
       />,
     )
@@ -170,7 +170,7 @@ describe('每个屏幕只有一个主操作', () => {
         screen="feed" onNavigate={vi.fn()} onJump={vi.fn()} paperCount={0} changeCount={0} projectCount={0}
         trashCount={0} wikiCount={0} ideaCount={0} inboxScope="all" inboxMode="watch" onOpenInbox={vi.fn()}
         watches={[]} inboxWatches={[]} discoveryCount={0} discoveryProjects={[]} laterCount={0} chats={[]}
-        chatId={null} onOpenChat={vi.fn()} onNewChat={vi.fn()} onArchiveChat={vi.fn()} onDeleteChat={vi.fn()}
+        chatId={null} onOpenChat={vi.fn()} onNewChat={vi.fn()} onRenameChat={vi.fn()} onArchiveChat={vi.fn()} onDeleteChat={vi.fn()}
         grip={{ label: '侧栏宽度', value: 232, min: 180, max: 360, onResize: vi.fn(), onReset: vi.fn() }} collapsed={false} hidden={false}
       />,
     )

@@ -1032,6 +1032,13 @@ export interface VaultStore {
   setChatArchived(id: string, archived: boolean): void
 
   /**
+   * Gives the session with the given id the title `title` and returns it; a message
+   * sent to it from then on no longer names it. Throws if no such session exists, and
+   * refuses a paper's reading chat, which is named after its paper.
+   */
+  renameChat(id: string, title: string): ChatSession
+
+  /**
    * Moves the session with the given id, with its messages, into the trash;
    * restoring its trash entry puts it back where it stood in the list, archived
    * or not, and bound to its paper. Ideas saved from it keep naming it. Throws

@@ -125,6 +125,7 @@ const ChatSessionContext = createContext<{
   id: string | null
   title: string | null
   archived: boolean
+  paper: boolean
   select: (id: string) => void
   remove: (id: string) => void
 } | null>(null)
@@ -320,6 +321,7 @@ export function useInboxMode(): InboxMode {
  * sidebar's chat list picks it, so like the current screen it is shell navigation state; `select`
  * makes another chat the current one. `archived` tells whether the chat is archived: an archived chat
  * is not in the sidebar list and opens only from Settings, so the screen has to show that it is.
+ * `paper` tells whether it is a paper's reading chat, which is named after its paper.
  * `remove` deletes a chat into the trash, with Undo in the notice, and when it is the current one
  * leaves for the Feed, as archiving it from the sidebar does.
  */
@@ -327,6 +329,7 @@ export function useChatSession(): {
   id: string | null
   title: string | null
   archived: boolean
+  paper: boolean
   select: (id: string) => void
   remove: (id: string) => void
 } {
@@ -717,6 +720,14 @@ export function AppShell({ screens, settings }: {
     }).catch((e: unknown) => notify.refusal(errorLabel(m, e)))
   }
 
+  const renameChat = (id: string, title: string) => chat.rename(id, title).then(() => {
+    bump()
+    return true
+  }, (e: unknown) => {
+    notify.refusal(errorLabel(m, e))
+    return false
+  })
+
   // The demo's archive: archive a chat and, if it is the open one, go to the Feed. Unarchiving happens
   // in Settings and does not come through here.
   const archiveChat = (id: string) => {
@@ -786,6 +797,7 @@ export function AppShell({ screens, settings }: {
       id: chatId,
       title: open?.title ?? null,
       archived: open?.archived ?? false,
+      paper: open?.paperId !== undefined,
       select: setChatId,
       remove: deleteChat,
     }
@@ -945,7 +957,7 @@ export function AppShell({ screens, settings }: {
           inboxWatches={inboxWatches} discoveryCount={discoveryCount} discoveryProjects={discoveryProjects}
           laterCount={laterCount}
           chats={chats} chatId={screen === 'chat' ? chatId : null} onOpenChat={openChat}
-          onNewChat={newChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}
+          onNewChat={newChat} onRenameChat={renameChat} onArchiveChat={archiveChat} onDeleteChat={deleteChat}
           grip={sidebarGrip} collapsed={hidden} hidden={screen === 'reader'}
         />
         {hidden ? (

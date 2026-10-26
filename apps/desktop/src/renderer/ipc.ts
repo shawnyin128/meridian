@@ -310,6 +310,8 @@ export const chat = {
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>
     call<void>('chat.setArchived', { id, archived }),
+  /** Gives the chat the title `title`; the chat's first message no longer names it. */
+  rename: (id: string, title: string) => call<ChatSession>('chat.rename', { id, title }),
   delete: (id: string) => call<TrashedEntry>('chat.delete', { id }),
 }
 

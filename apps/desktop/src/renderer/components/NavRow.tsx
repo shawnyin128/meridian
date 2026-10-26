@@ -18,6 +18,8 @@ type NavRowProps = {
   end?: ReactNode
   /** The row's own controls at its end, such as a "More" menu; each stops its click from reaching the row. */
   actions?: ReactNode
+  /** The field the row's text is edited in, shown in the text's place while the name is renamed; only a row with `actions` takes one. */
+  editor?: ReactNode
   /** How far the row sits in: 1 under a top row, 2 under that. */
   indent?: 0 | 1 | 2
   /** The smaller text of a row that lists one item of a group, such as one watch. */
@@ -38,13 +40,13 @@ type NavRowProps = {
  * it holds: `icon`, the text, and `count` or `end` at its end. A row is one button, activated by a
  * click, Enter or Space. A row with `actions` or `fold` stays a div whose button is its label; a pointer
  * click anywhere else on it activates it too. `fold` puts the caret that folds the group under the row
- * right after its label. A row without `onActivate` opens nothing: the whole row is the fold toggle of
+ * right after its label; `editor` takes the label's place while the row's name is edited in place. A row without `onActivate` opens nothing: the whole row is the fold toggle of
  * its group, its caret after its text. `selected` marks the row whose destination is shown, whose
  * accent turns to the neutral selected look while Meridian is not the active app. In a toolbar the
  * row's buttons are controls of the toolbar.
  */
 export function NavRow({
-  children, icon, count, end, actions, indent = 0, sub = false, dim = false, selected = false, className, onActivate, fold, id,
+  children, icon, count, end, actions, editor, indent = 0, sub = false, dim = false, selected = false, className, onActivate, fold, id,
   ...data
 }: NavRowProps) {
   const asItem = useToolbarItem()
@@ -71,7 +73,9 @@ export function NavRow({
   }
   return (
     <div className={classes('nav-row', actions === undefined ? '' : 'nav-row--actions')} id={id} onClick={onActivate} {...data}>
-      {asItem(<button type="button" className="nav-row-label">{glyph}{children}</button>)}
+      {editor === undefined
+        ? asItem(<button type="button" className="nav-row-label">{glyph}{children}</button>)
+        : <span className="nav-row-label">{glyph}{editor}</span>}
       {fold === undefined ? null : <FoldToggle variant="caret" {...fold} />}
       {tail}
       {actions}
