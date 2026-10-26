@@ -58,8 +58,6 @@ export const common = {
   sshFolders: { up: '上层文件夹', path: '文件夹路径' },
   pager: {
     total: (n: number) => `共 ${n} 条`,
-    perPage: '每页条数',
-    perPageOption: (n: number) => `${n} / 页`,
     page: (n: number) => `第 ${n} 页`,
     previous: '上一页',
     next: '下一页',

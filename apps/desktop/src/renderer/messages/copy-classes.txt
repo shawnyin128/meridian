@@ -145,8 +145,6 @@ common.open action
 common.overdue state
 common.pager.next action
 common.pager.page aria
-common.pager.perPage aria
-common.pager.perPageOption label
 common.pager.previous action
 common.pager.total state
 common.panel.close action

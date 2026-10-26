@@ -7,8 +7,11 @@
 .list--embedded{background:transparent;border:0;border-radius:0}
 /* Rows are divided where two meet, never above the first or below the last. */
 .list>.item--row+.item--row{border-top:1px solid var(--sep2)}
-/* A grid lays its cards out in as many columns of the card width as fit, the item gap apart. */
-.list--grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:var(--item-gap)}
+/*
+ * A grid lays its cards out in as many columns of the card width as fit, the item gap apart. A grid
+ * held taller than its cards, as a paged section's last page is, keeps its rows at the top.
+ */
+.list--grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(var(--cardw),1fr));gap:var(--item-gap);align-content:start}
 .list--grid>.item--card+.item--card{margin-top:0}
 /*
  * List sets the height from the first five rendered rows. A list that scrolls clips, so it keeps the

@@ -1,6 +1,5 @@
-import { useCallback, useLayoutEffect, useRef } from 'react'
+import { useCallback, useRef } from 'react'
 import type { CSSProperties, HTMLAttributes, ReactNode } from 'react'
-import { scrollParent, useNearEnd } from '../hooks/useListPaging.js'
 import { useNeighbourFocus } from '../hooks/useNeighbourFocus.js'
 import { useRowCap } from '../hooks/useRowCap.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -16,37 +15,12 @@ const listItems = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>(
 const ownItems = (list: HTMLElement) => listItems(list).filter((item) => item.getClientRects().length > 0)
 
 /**
- * How many of `list`'s items fit the room the area that scrolls it shows from the list's top down,
- * with that area scrolled to its top, or its whole visible height when less than half of it is left
- * there: as many rows of the measured item height as fit, times the grid's columns. Null while the
- * list holds no items or lies on a hidden screen.
- */
-function fitCount(list: HTMLElement): number | null {
-  const items = ownItems(list)
-  const area = scrollParent(list.parentElement)
-  if (items.length === 0 || area === null || area.clientHeight === 0) return null
-  const areaStyle = getComputedStyle(area)
-  const padTop = parseFloat(areaStyle.paddingTop)
-  const visible = area.clientHeight - padTop - parseFloat(areaStyle.paddingBottom)
-  const top = list.getBoundingClientRect().top - area.getBoundingClientRect().top + area.scrollTop - padTop
-  const room = visible - top >= visible / 2 ? visible - top : visible
-  const listStyle = getComputedStyle(list)
-  const columns = listStyle.display === 'grid' ? listStyle.gridTemplateColumns.split(' ').length : 1
-  const gap = listStyle.display === 'grid' ? parseFloat(listStyle.rowGap) || 0 : 0
-  const height = Math.max(...items.slice(0, columns + 1).map((item) => item.getBoundingClientRect().height))
-  return Math.max(1, Math.floor((room + gap) / (height + gap))) * columns
-}
-
-/**
  * The one container of `Item`s: its outline or the dividers between its rows, the grid of its cards,
  * and how many rows it shows before it scrolls inside itself. When the item that holds the keyboard
- * focus goes away, a neighbouring item takes it (useNeighbourFocus). A list of `rows="all"` with
- * `onFit` reports, after every render and whenever it or the area that scrolls it changes size, how
- * many items fill the room that area shows (fitCount); with `onEnd` it calls that whenever its last
- * item comes within one screen of that area's visible end.
+ * focus goes away, a neighbouring item takes it (useNeighbourFocus).
  */
 export function List({
-  children, className = '', variant = 'card', rows, grid = false, nested = false, flush = false, style, onFit, onEnd, ...props
+  children, className = '', variant = 'card', rows, grid = false, nested = false, flush = false, style, ...props
 }: {
   children: ReactNode
   className?: string
@@ -67,8 +41,6 @@ export function List({
   /** The list lies in a surface that clips at its edges, so it keeps no ring room of its own there. */
   flush?: boolean
   style?: CSSProperties
-  onFit?: ((items: number) => void) | undefined
-  onEnd?: (() => void) | undefined
 } & Omit<HTMLAttributes<HTMLDivElement>, 'children' | 'className' | 'style'>) {
   const fade = useScrollFade('y')
   const rowLimit = rows === 'all' || rows === 'fill'
@@ -77,24 +49,6 @@ export function List({
   const list = useRef<HTMLDivElement | null>(null)
   const cap = useRowCap(list, ownItems, rowLimit)
   const keepFocus = useNeighbourFocus(listItems)
-  useNearEnd(list, ownItems, onEnd)
-  const fit = useRef(onFit)
-  fit.current = onFit
-  const fits = onFit !== undefined
-  useLayoutEffect(() => {
-    const node = list.current
-    if (!fits || node === null) return undefined
-    const measure = () => {
-      const count = fitCount(node)
-      if (count !== null) fit.current?.(count)
-    }
-    measure()
-    const observer = new ResizeObserver(measure)
-    observer.observe(node)
-    const area = scrollParent(node.parentElement)
-    if (area !== null) observer.observe(area)
-    return () => observer.disconnect()
-  })
   const listRef = useCallback((node: HTMLDivElement | null) => {
     list.current = node
     fade(node)

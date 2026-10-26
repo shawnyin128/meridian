@@ -281,6 +281,8 @@ Current shared contracts:
   `SectionHeading` (and with it `Group`) and `CardTray` show it through their `count`; no message or screen
   writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
+- `PagedSection`: one section of a stack of card grids, each with its own `Pager`, that `useStackPaging`
+  sizes together to fill the area that scrolls them.
 - `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
   topic editor of a paper, used by both the paper table and the detail panel.
 - `ChipList`: the one list of removable chips. Each chip's name opens what it names, and its pencil and

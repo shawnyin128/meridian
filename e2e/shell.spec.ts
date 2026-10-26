@@ -1,4 +1,4 @@
-import { expect, gotoPapers, gotoProject, popupMenus, test, type MeridianWindow } from './app.js'
+import { expect, fittedPage, gotoPapers, gotoProject, popupMenus, test, type MeridianWindow } from './app.js'
 
 /** How far to drag the Title column wider than its default 300px. */
 const COLUMN_DRAG = 60
@@ -177,7 +177,7 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   // `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
-  await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
+  await fittedPage(win)
 
   const titles = () => win.locator('.ptable tbody tr td.pt-title').allInnerTexts()
   const byYear = await titles()

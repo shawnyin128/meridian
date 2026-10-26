@@ -61,12 +61,18 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   expect(await shown(win).locator('.section-heading').allTextContents())
     .toEqual([...kinds.map((k) => k.label), '论文'])
 
-  // One grid per aggregation kind, holding only its root pages, with footer counts from the contract.
-  for (const [at, kind] of kinds.entries()) {
-    const cards = shown(win).locator('.wkgrid').nth(at).locator('.wkcard')
+  // One grid per aggregation kind, holding only its root pages, the first page of them when it pages,
+  // with footer counts from the contract.
+  for (const kind of kinds) {
+    const grid = shown(win).locator(`.wkgrid[data-stack-section="${kind.key}"]`)
+    const cards = grid.locator('.wkcard')
     const roots = home.roots.filter((c) => c.kind === kind.key)
-    expect(await cards.locator('.tt').allTextContents()).toEqual(roots.map((c) => c.title))
-    expect(await cards.locator('.wf').allTextContents()).toEqual(roots.map(foot))
+    const count = await cards.count()
+    expect(count).toBeGreaterThan(0)
+    expect(await cards.locator('.tt').allTextContents()).toEqual(roots.slice(0, count).map((c) => c.title))
+    expect(await cards.locator('.wf').allTextContents()).toEqual(roots.slice(0, count).map(foot))
+    if (count < roots.length) await expect(grid.locator('+ .pagebar .pginfo')).toHaveText(`共 ${roots.length} 条`)
+    else await expect(grid.locator('+ .pagebar')).toHaveCount(0)
   }
 
   // The centering rule applies to direct children: the grid is centered, not flush against the padding.
@@ -74,8 +80,55 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   const body = (await shown(win).locator('.desk-body').boundingBox())!
   expect(grid.x).toBeGreaterThan(body.x + 24)
 
-  // Papers are paginated, and the pager's total is the number of papers in the whole vault.
-  await expect(shown(win).locator('.pginfo')).toHaveText(`共 ${await paperTotal(win)} 条`)
+  // Papers page in their own section, and its pager's total is the number of papers in the whole vault.
+  await expect(shown(win).locator('.wkgrid[data-stack-section="papers"] + .pagebar .pginfo')).toHaveText(`共 ${await paperTotal(win)} 条`)
+  await expect(shown(win).locator('.desk-foot .pagebar')).toHaveCount(0)
+})
+
+test.describe('窗口改变高度时的 Wiki 首页', () => {
+  // The rows refit only after the resized window repaints, so the window shows; see `showWindow` in app.ts.
+  test.use({ showWindow: true })
+
+  test('首页的主题、方法与论文各自翻页,几节一起填满一屏;翻一节不动别的节,也不挪下面的节', async ({ win, app }) => {
+    await gotoWiki(win)
+    const body = shown(win).locator('.desk-body')
+    await shown(win).locator('.wkgrid[data-stack-section="papers"] .wkcard').first().waitFor()
+    const layout = () => body.evaluate((el) => {
+      const grids = [...el.querySelectorAll<HTMLElement>('.list[data-stack-section]')]
+      const end = (grid: HTMLElement) => (grid.nextElementSibling?.classList.contains('pagebar') ? grid.nextElementSibling : grid)
+      const card = grids.at(-1)!.querySelector('.item')!.getBoundingClientRect().height
+      const style = getComputedStyle(el)
+      return {
+        scrolls: el.scrollHeight > el.clientHeight,
+        // What the body shows below the last section, which must be less than one more row of cards.
+        left: el.getBoundingClientRect().top + el.clientHeight - parseFloat(style.paddingBottom) - end(grids.at(-1)!).getBoundingClientRect().bottom,
+        card,
+        tops: grids.map((grid) => Math.round(grid.getBoundingClientRect().top)),
+        firsts: grids.map((grid) => grid.querySelector('.item')?.getAttribute('data-wk')),
+      }
+    })
+    for (const height of [900, 1117]) {
+      await app.evaluate(({ BrowserWindow }, h) => BrowserWindow.getAllWindows()[0]!.setContentSize(1440, h), height)
+      await expect.poll(async () => (await layout()).scrolls).toBe(false)
+      const at = await layout()
+      console.log(`Wiki 首页 1440×${height}:各节卡片 ${JSON.stringify(at.firsts)},最后一节下面空 ${Math.round(at.left)}px`)
+      expect(at.left).toBeLessThan(at.card + 24)
+    }
+
+    // Page the uppermost section that pages: only its cards change, and no section below it moves,
+    // even when its last page holds fewer cards.
+    const paged = shown(win).locator('.list[data-stack-section]:has(+ .pagebar)').first()
+    const key = await paged.getAttribute('data-stack-section')
+    const before = await layout()
+    const at = (await shown(win).locator('.list[data-stack-section]').evaluateAll((grids) => grids.map((g) => g.getAttribute('data-stack-section')))).indexOf(key)
+    const last = Number(await paged.locator('+ .pagebar .pgbtn').last().innerText())
+    await paged.locator('+ .pagebar .pgbtn', { hasText: new RegExp(`^${last}$`) }).click()
+    await expect(paged.locator('+ .pagebar .pgbtn.on')).toHaveText(String(last))
+    const after = await layout()
+    expect(after.firsts.filter((_, i) => i !== at)).toEqual(before.firsts.filter((_, i) => i !== at))
+    expect(after.firsts[at]).not.toBe(before.firsts[at])
+    expect(after.tops).toEqual(before.tops)
+  })
 })
 
 test('实体类型标签是中性的标签底:聚合和论文同一种底色', async ({ win }) => {
@@ -229,14 +282,21 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   await gotoWiki(win)
   const cards = shown(win).locator('.wkgrid').last().locator('.wkcard')
   await cards.first().waitFor()
-  // The home page shows 12 papers per page by default, sorted by title, and the arXiv-numbered fixtures
-  // with a year and venue are not on the first page; the largest page size is sure to include one.
-  await shown(win).locator('.pagebar .segmented-control>button', { hasText: '48 / 页' }).click()
-  await expect(cards).toHaveCount(48)
-  const ids = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-wk')!))
+  // The home page sorts papers by title, and the arXiv-numbered fixtures with a year and venue are not
+  // on the first page; turn the papers' pages until one shows.
   // arXiv-numbered papers come from fixtures with a year and venue, so both rows have a value to compare.
-  const id = ids.find((wk) => /^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length)))!
-  expect(id).toBeDefined()
+  const arxiv = (wk: string) => /^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length))
+  let id: string | undefined
+  for (let turn = 0; id === undefined; turn++) {
+    expect(turn, '翻完了论文的每一页也没有 arXiv 编号的论文').toBeLessThan(100)
+    const before = await cards.first().getAttribute('data-wk')
+    const ids = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-wk')!))
+    id = ids.find(arxiv)
+    if (id === undefined) {
+      await shown(win).locator('.wkgrid[data-stack-section="papers"] + .pagebar [aria-label="下一页"]').click()
+      await expect(cards.first()).not.toHaveAttribute('data-wk', before!)
+    }
+  }
   const paper = await call<{ title: string; year?: number; venue: string }>(win, 'wiki.paper', { id })
   expect(paper.year).toBeDefined()
   expect(paper.venue).not.toBe('')

@@ -129,11 +129,6 @@ export const vault = {
 
 export const papers = {
   list: (params: ListParams) => call<ListResult>('papers.list', params),
-  /** The first `pages` pages of `size` papers `params` lists, as one result. */
-  listFirst: async (params: Omit<ListParams, 'page' | 'size'>, pages: number, size: number): Promise<ListResult> => {
-    const read = await Promise.all(Array.from({ length: pages }, (_, at) => call<ListResult>('papers.list', { ...params, page: at + 1, size })))
-    return { rows: read.flatMap((result) => result.rows), total: read.at(-1)!.total }
-  },
   /** The id of every paper in the vault, read page by page. */
   allIds: async (): Promise<string[]> => {
     const ids: string[] = []

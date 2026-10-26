@@ -29,7 +29,7 @@ import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } fr
 import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
-import { listFill, useListPaging } from '../../hooks/useListPaging.js'
+import { useListPaging } from '../../hooks/useListPaging.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useDragReorder, type ReorderDrag } from '../../hooks/useDragReorder.js'
@@ -321,14 +321,13 @@ export function PaperTable() {
 
   useEffect(() => {
     if (view !== 'table' || !listed) return
-    const params: Omit<ListParams, 'page' | 'size'> = {
-      sort, direction,
+    const params: ListParams = {
+      page: shownPage, size, sort, direction,
       ...(filter ? { filter } : {}),
       ...(sel === null || group === 'none' ? {} : { facet: { field: group, value: sel } }),
       ...(filters.length === 0 ? {} : { filters }),
     }
-    const read = listFill() === 'scroll' ? papers.listFirst(params, shownPage, size) : papers.list({ ...params, page: shownPage, size })
-    return load('rows', read, (r) => {
+    return load('rows', papers.list(params), (r) => {
       setRows(r.rows)
       setTotal(r.total)
     })
@@ -819,8 +818,7 @@ export function PaperTable() {
   const paperTable = (
     <Table
       className="ptable" columns={tableColumns}
-      onFit={listFill() === 'pages' ? paging.fit : undefined}
-      onEnd={listFill() === 'scroll' && shownPage * size < total ? paging.more : undefined}
+      onFit={paging.fit}
       draft={newCol
         ? (
           <NewColumnHead
@@ -1022,7 +1020,7 @@ export function PaperTable() {
         </div>
       </PageBody>
 
-      {view === 'table' && listed && listFill() === 'pages'
+      {view === 'table' && listed
         ? (
           <Pager
             total={total} page={shownPage} size={size} onPage={setPage}

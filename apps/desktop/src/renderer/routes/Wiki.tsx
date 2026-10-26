@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
   PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiBacklink, WikiCell, WikiColumn,
@@ -30,11 +30,11 @@ import { Property, PropertyList } from '../components/PropertyList.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
-import { Pager } from '../components/Pager.js'
+import { PagedSection } from '../components/PagedSection.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
-import { listFill, useListPaging } from '../hooks/useListPaging.js'
+import { pageItems, useStackPaging } from '../hooks/useListPaging.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -62,8 +62,10 @@ import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
 import './Wiki.css'
 
-/** Paper cards a page holds until the grid has measured how many fit. */
+/** Cards a page of a home section holds until the section has measured how many fit. */
 const FIRST_PAGE_SIZE = 12
+/** The key of the home's papers section, beside the aggregation kinds' keys. */
+const PAPERS_SECTION = 'papers'
 
 /** The page shown: null is the Wiki home, REVIEW the review queue, TIDY the tidying list, any other value a page id. */
 type Place = string | null
@@ -335,7 +337,8 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
 
 /**
  * Wiki: two kinds of aggregation over a base of papers. The home shows one grid of root cards per
- * kind, then the paginated papers; an aggregation card opens its aggregation page, and a paper card
+ * kind, then the papers, each section paging on its own and all of them sized together to fill the
+ * window; an aggregation card opens its aggregation page, and a paper card
  * or a paper comparison row title opens that paper's page. An aggregation page has fixed sections
  * (subpages, paper comparison) under its title, then a Markdown body that can be edited in place. A
  * paper page has only the user's reading notes and the body. The contents list in the right rail
@@ -361,8 +364,6 @@ export function Wiki() {
   const [home, setHome] = useState<WikiHome | null>(null)
   const [rows, setRows] = useState<PaperRow[]>([])
   const [total, setTotal] = useState(0)
-  const paging = useListPaging(FIRST_PAGE_SIZE)
-  const { page, size, setPage } = paging
   const [agg, setAgg] = useState<WikiAggregation | null>(null)
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
@@ -376,6 +377,12 @@ export function Wiki() {
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
+  const homeKinds = home?.kinds.flatMap((k) => {
+    const count = home.roots.filter((c) => c.kind === k.key).length
+    return count === 0 ? [] : [{ key: k.key, total: count }]
+  }) ?? []
+  const section = useStackPaging(body, [...homeKinds, { key: PAPERS_SECTION, total }], FIRST_PAGE_SIZE)
+  const { page, size } = section(PAPERS_SECTION)
   /** The step a Back returned to, until its page shows its content and gets its scroll offset back. */
   const returning = useRef<{ place: Place; scroll: number } | null>(null)
   const { error, failure, load, report } = useScreenLoad(['reading'])
@@ -453,7 +460,7 @@ export function Wiki() {
 
   useEffect(() => load('home', wiki.home(), setHome), [revision, load])
 
-  useEffect(() => load('papers', listFill() === 'scroll' ? papers.listFirst({}, page, size) : papers.list({ page, size }), (r) => {
+  useEffect(() => load('papers', papers.list({ page, size }), (r) => {
     setRows(r.rows)
     setTotal(r.total)
   }), [page, size, revision, load])
@@ -1084,34 +1091,20 @@ export function Wiki() {
             <>
               {home.kinds.map((k) => {
                 const roots = home.roots.filter((c) => c.kind === k.key)
+                const paging = section(k.key)
                 return roots.length === 0 ? null : (
-                  <Fragment key={k.key}>
-                    <SectionHeading>{k.label}</SectionHeading>
-                    <List variant="embedded" rows="all" grid className="wkgrid">
-                      {roots.map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
-                    </List>
-                  </Fragment>
+                  <PagedSection key={k.key} heading={k.label} total={roots.length} paging={paging} className="wkgrid">
+                    {pageItems(roots, paging).map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
+                  </PagedSection>
                 )
               })}
-
-              <SectionHeading>{m.project.sections.papers}</SectionHeading>
-              <List
-                variant="embedded" rows="all" grid className="wkgrid"
-                onFit={listFill() === 'pages' ? paging.fit : undefined}
-                onEnd={listFill() === 'scroll' && page * size < total ? paging.more : undefined}
-              >
+              <PagedSection heading={m.project.sections.papers} total={total} paging={section(PAPERS_SECTION)} className="wkgrid">
                 {rows.map((p) => <PaperCard key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)} />)}
-              </List>
+              </PagedSection>
             </>
           )
           : null}
       </PageBody>
-
-      {place === null && listFill() === 'pages'
-        ? (
-          <Pager total={total} page={page} size={size} onPage={setPage} />
-        )
-        : null}
 
     </PageShell>
   )

@@ -449,15 +449,114 @@ describe('PaperTable', () => {
     clicked.mockRestore()
   })
 
-  it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {
-    const host = mount()
-    columnsCall.resolve(EMPTY_COLUMNS)
-    listCall.resolve({ rows: [ROW], total: 51 })
-    await flush()
+  /**
+   * Lays the table out as a browser would for these tests: its scroll box `box.height` px high, its
+   * header 30 px and each body row `box.row` px, 38 at first. Resizing the box calls the box's resize
+   * observers.
+   */
+  function layOutTable() {
+    const box = { height: 0, row: 38 }
+    const observers: (() => void)[] = []
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private readonly callback: () => void) {}
+      observe() { observers.push(this.callback) }
+      disconnect() { observers.splice(observers.indexOf(this.callback), 1) }
+    })
+    const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('table-scroll') ? box.height : 0
+    })
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const tall = this.tagName === 'THEAD' ? 30 : this.tagName === 'TR' && this.parentElement?.tagName === 'TBODY' ? box.row : 0
+      return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: tall, width: 0, height: tall, toJSON: () => ({}) } as DOMRect
+    })
+    return {
+      box,
+      resize: async (to: number) => {
+        box.height = to
+        await act(async () => { for (const observer of [...observers]) observer() })
+        await flush()
+      },
+      restore: () => { height.mockRestore(); rect.mockRestore() },
+    }
+  }
 
-    expect(listParams[0]).toMatchObject({ page: 1, size: 20 })
-    expect([...host.querySelectorAll('.pagebar .segmented-control>button')].map((button) => button.textContent))
-      .toEqual(['20 / 页', '30 / 页', '50 / 页'])
+  it('一页的行数是表格框在表头下放得下的行数，没有每页条数的选择', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 15 * 38 + 10
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: [ROW], total: 200 })
+      await flush()
+
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 15 })
+      expect(host.querySelector('.pagebar .segmented-control')).toBeNull()
+      expect([...host.querySelectorAll('.pager .pgbtn')].map((button) => button.textContent)).toEqual(['1', '2', '14'])
+    } finally { layout.restore() }
+  })
+
+  it('窗口改变高度时重算每页行数，所选那页的第一篇论文一直留在显示的页上', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 15 * 38 + 10
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: [ROW], total: 200 })
+      await flush()
+      for (let turn = 0; turn < 2; turn++) {
+        await act(async () => { host.querySelector<HTMLButtonElement>('.pager [aria-label="下一页"]')!.click() })
+        await flush()
+      }
+      // Page 3 of 15 rows starts at the 31st paper.
+      expect(listParams.at(-1)).toMatchObject({ page: 3, size: 15 })
+
+      await layout.resize(30 + 10 * 38 + 5)
+      expect(listParams.at(-1)).toMatchObject({ page: 4, size: 10 })
+      await layout.resize(30 + 7 * 38)
+      expect(listParams.at(-1)).toMatchObject({ page: 5, size: 7 })
+      await layout.resize(30 + 15 * 38 + 10)
+      expect(listParams.at(-1)).toMatchObject({ page: 3, size: 15 })
+      expect(host.querySelector('.pager .pgbtn.on')!.textContent).toBe('3')
+    } finally { layout.restore() }
+  })
+
+  it('某一页的行高出零点几像素时那页让出最后一行，翻回别的页也不再变回去', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 24 * 38 + 1
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: Array.from({ length: 30 }, (_, at) => ({ ...ROW, id: `p${at}` })), total: 200 })
+      await flush()
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 24 })
+
+      // The next page lays its rows out 38.078 px high: 24 of them no longer fit the box.
+      layout.box.row = 38.078
+      await act(async () => { host.querySelector<HTMLButtonElement>('.pager [aria-label="下一页"]')!.click() })
+      await flush()
+      expect(listParams.at(-1)).toMatchObject({ size: 23 })
+
+      layout.box.row = 38
+      await act(async () => { host.querySelector<HTMLButtonElement>('.pager [aria-label="上一页"]')!.click() })
+      await flush()
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 23 })
+    } finally { layout.restore() }
+  })
+
+  it('一页放得下全部论文时不显示翻页条', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 25 * 38
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: [ROW], total: 22 })
+      await flush()
+
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 25 })
+      expect(host.querySelector('.pagebar')).toBeNull()
+      await layout.resize(30 + 21 * 38)
+      expect(host.querySelector('.pagebar')).not.toBeNull()
+    } finally { layout.restore() }
   })
 
   it('视图切换、搜索、分组与阅读状态筛选同在页面工具栏里，和稍后阅读的分组一个位置', async () => {
