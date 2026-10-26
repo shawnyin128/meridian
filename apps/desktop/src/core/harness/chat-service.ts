@@ -64,6 +64,7 @@ export function createChatService(options: {
           if (running.get(id) === controller && model !== undefined) written.set(id, { text: so, model })
         },
       })
+      if (controller.signal.aborted) return { id, state: 'cancelled' }
       options.store.appendChatMessages(id, [answerMessage(answered, model)])
       return { id, state: 'complete' }
     } catch (cause) {
@@ -100,12 +101,18 @@ export function createChatService(options: {
       }
       return answer(id, textOf(question.runs))
     },
-    /** Stops the reply being generated in `id`; from then on the chat no longer counts as generating. */
+    /**
+     * Stops the reply being generated in `id` and keeps the text it had written so far as its answer,
+     * with the model writing it; a reply that had written no text leaves no answer. From then on the
+     * chat no longer counts as generating.
+     */
     cancel(id: string) {
       const controller = running.get(id)
       if (controller === undefined) return { id, cancelled: false }
+      const so = written.get(id)
       controller.abort()
       stopped(id)
+      if (so !== undefined && so.text.trim() !== '') options.store.appendChatMessages(id, [answerMessage(so.text, so.model)])
       return { id, cancelled: true }
     },
     /** Stops the reply chat `id` is generating, if any, then moves the chat into the trash; throws when there is no such chat. */

@@ -8,7 +8,7 @@ import { EditorView, keymap, placeholder as placeholderText } from '@codemirror/
 import type { ChatRun } from '../../../shared/contract.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { sendsMessage } from '../../lib/chat.js'
-import { composing } from '../../lib/keyboard.js'
+import { commitKeys, composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { GenerationControl } from '../GenerationControl.js'
 import { ModelStatusTag } from '../ModelStatusTag.js'
@@ -59,7 +59,8 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
 
 /**
  * The one chat composer, in the Chat screen and the reader's paper chat: a CodeMirror editor over
- * `draft` with its own undo history, the shared model status (see ModelStatusTag) and the send control. Enter sends, Shift+Enter
+ * `draft` with its own undo history, the shared model status (see ModelStatusTag) and the send control,
+ * which stops the turn while `running`, as Escape anywhere in the composer does. Enter sends, Shift+Enter
  * breaks the line, and an Enter that confirms an input method's composition belongs to the input
  * method. With `mentions`, typing `@` anywhere opens the picker of the candidates matching what
  * follows it up to the caret; picking one puts it in as a pill, which the caret steps over and a
@@ -154,7 +155,7 @@ export function ChatComposer({
         open={hits.length > 0} onOpenChange={(open) => { if (!open) setDismissed(true) }}
         size="tall" contentId="cRes" side="top" align="center" sideOffset={6}
         anchor={(
-          <div className="cbox">
+          <div className="cbox" onKeyDown={commitKeys(running ? { onCancel: onStop } : {})}>
             <div
               className="chat-composer" ref={host}
               // Capturing the keys the composer acts on keeps the editor from acting on them too.
