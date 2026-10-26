@@ -1,5 +1,5 @@
 export {
-  applyProposal, describeOp, entryLine, HUMAN, isClaimOp, namedPages, normalizeQuote, touchedPages,
+  applyProposal, describeOp, entryLine, experimentProjects, HUMAN, isClaimOp, namedPages, normalizeQuote, touchedPages,
 } from './apply.js'
 export type { ClaimWorld } from './apply.js'
 export { wikiBacklinks } from './backlinks.js'

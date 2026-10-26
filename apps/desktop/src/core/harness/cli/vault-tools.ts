@@ -172,7 +172,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
     }),
     tool('wiki_page', 'Read a Wiki page', 'Read one Wiki page of the vault: an aggregation page such as a topic or a '
       + 'method, or a paper\'s page (papers/<id>).', WikiPageArgs,
-    ({ id }) => {
+    async ({ id }) => {
       if (id.startsWith(PAPER_PAGE)) {
         if (!store.hasPaper(id.slice(PAPER_PAGE.length))) return refuse(`The vault has no Wiki page ${id}.`)
         const page = store.wikiPaper(id)
@@ -182,7 +182,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
         })
       }
       if (!store.wikiCards().some((card) => card.id === id)) return refuse(`The vault has no Wiki page ${id}.`)
-      const page = store.wikiAggregation(id)
+      const page = await store.wikiAggregation(id)
       return answer({
         id, kind: page.kindLabel, title: page.title, summary: clip(page.summary, ITEM_CHARS),
         claims: page.claims.slice(0, 20).map((claim) => clip(claim.text, ITEM_CHARS)), body: clip(page.body, BODY_CHARS),
@@ -190,9 +190,9 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
     }),
     tool('project_summary', 'Read a project summary', 'Read the summary of one project in the vault: its state, focus, '
       + 'milestones, experiment conclusions, newest research records and papers.', ProjectSummaryArgs,
-    ({ id }) => {
+    async ({ id }) => {
       if (!store.hasProject(id)) return refuse(`The vault has no project ${id}.`)
-      const project = store.getProject(id)
+      const project = await store.getProject(id)
       return answer({
         id, name: project.name, status: project.status, priority: project.priority, topics: projectTopics(project),
         focus: clip(project.focus, ITEM_CHARS), ...(project.block === undefined ? {} : { block: clip(project.block, ITEM_CHARS) }),

@@ -55,7 +55,7 @@ import {
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
-import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
+import { NO_WORKSPACE_GRAPHS, type MetadataFill, type VaultOps, type VaultStore } from './vault.js'
 import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
 import {
@@ -274,6 +274,22 @@ export function createFixtureStore(
   const conclusionsOf = (project: FixtureProject) => projectConclusions(
     project, project.graph, projectClaims(wiki, project.id), projectDisputes(wiki, project.id),
   )
+
+  /** Project `id` for its detail. Throws when there is none, or its research graph has an edge to a node it does not hold. */
+  const shownProject = (id: string): FixtureProject => {
+    const project = projectById.get(id)
+    if (!project) throw new CallError('not-found', `项目不存在：${id}`)
+    const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
+    for (const [from, to] of project.graph.edges) {
+      if (!nodeIds.has(from) || !nodeIds.has(to)) {
+        throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
+      }
+    }
+    return project
+  }
+
+  /** The detail of `project` as the store's project methods settle to. */
+  const shownDetail = (project: FixtureProject): Promise<ProjectDetail> => Promise.resolve(detailOf(project))
 
   const detailOf = (project: FixtureProject): ProjectDetail => {
     const paperTitles = Object.fromEntries(project.papers.flatMap((id) => {
@@ -600,7 +616,7 @@ export function createFixtureStore(
     (item.chat.paperId === undefined ? undefined : chats.find((held) => held.paperId === item.chat.paperId))
 
   /** Append a research record dated with vault today, optionally linked to a research-graph node. */
-  const appendEvent = (projectId: string, text: string, node?: string): ProjectDetail => {
+  const appendEvent = (projectId: string, text: string, node?: string): Promise<ProjectDetail> => {
     const project = projectById.get(projectId)
     if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
     checkOneLine(text)
@@ -618,7 +634,7 @@ export function createFixtureStore(
       ],
     }
     projectById.set(projectId, nextProject)
-    return detailOf(nextProject)
+    return shownDetail(nextProject)
   }
 
   // Seeded fixture changes predate undo support and are historical records without restoration data.
@@ -852,6 +868,7 @@ export function createFixtureStore(
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, structuredClone(project[key])]))
       projectById.set(project.id, { ...held, ...fields, ...storedTopics(chosen, held, index) })
       if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
+      return Promise.resolve()
     },
 
     deletePaper(id) {
@@ -1050,15 +1067,11 @@ export function createFixtureStore(
     },
 
     getProject(id) {
-      const project = projectById.get(id)
-      if (!project) throw new CallError('not-found', `项目不存在：${id}`)
-      const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
-      for (const [from, to] of project.graph.edges) {
-        if (!nodeIds.has(from) || !nodeIds.has(to)) {
-          throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
-        }
-      }
-      return detailOf(project)
+      return shownDetail(shownProject(id))
+    },
+
+    heldProject(id) {
+      return detailOf(shownProject(id))
     },
 
     hasProject(id) {
@@ -1085,7 +1098,7 @@ export function createFixtureStore(
         }
       }
       projectById.set(id, next)
-      return detailOf(next)
+      return shownDetail(next)
     },
 
     updateProject(id, patch) {
@@ -1104,7 +1117,7 @@ export function createFixtureStore(
       }
       projectById.set(id, next)
       if (next.status === FINISHED_PROJECT) archiveIdeasForProject(id)
-      return detailOf(next)
+      return shownDetail(next)
     },
 
     deleteProject(id) {
@@ -1125,7 +1138,7 @@ export function createFixtureStore(
       const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
       const nextProject = { ...project, tasks: [made, ...project.tasks] }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     agentTaskRequests() {
@@ -1152,7 +1165,7 @@ export function createFixtureStore(
       checkSpan(nextTask)
       const nextProject = { ...project, tasks: project.tasks.map((t) => (t.id === taskId ? nextTask : t)) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteTask(projectId, taskId) {
@@ -1161,7 +1174,7 @@ export function createFixtureStore(
       if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
       const nextProject = { ...project, tasks: project.tasks.filter((t) => t.id !== taskId) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     reorderTasks(projectId, order) {
@@ -1173,10 +1186,10 @@ export function createFixtureStore(
       }
       const nextProject = { ...project, tasks: order.map((id) => byId.get(id)!) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
-    setTaskNode(projectId, taskId, nodeId) {
+    async setTaskNode(projectId, taskId, nodeId) {
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
@@ -1186,7 +1199,7 @@ export function createFixtureStore(
       const nextProject: FixtureProject = { ...project, taskNodes }
       if (Object.keys(taskNodes).length === 0) delete nextProject.taskNodes
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createMilestone(projectId, milestone) {
@@ -1197,7 +1210,7 @@ export function createFixtureStore(
         milestones: [{ ...milestone, id: nextId('ms') }, ...project.milestones],
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     updateMilestone(projectId, milestoneId, patch) {
@@ -1211,7 +1224,7 @@ export function createFixtureStore(
         milestones: project.milestones.map((m) => (m.id === milestoneId ? nextMilestone : m)),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteMilestone(projectId, milestoneId) {
@@ -1225,7 +1238,7 @@ export function createFixtureStore(
         milestones: project.milestones.filter((m) => m.id !== milestoneId),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createRelation(projectId, { group, ...fields }) {
@@ -1239,7 +1252,7 @@ export function createFixtureStore(
         : [...project.relations, { group, items: [item] }]
       const nextProject = { ...project, relations }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteRelation(projectId, relationId) {
@@ -1253,7 +1266,7 @@ export function createFixtureStore(
         relations: project.relations.map((r) => ({ ...r, items: r.items.filter((i) => i.id !== relationId) })),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     updateRelation(projectId, relationId, relation) {
@@ -1268,7 +1281,7 @@ export function createFixtureStore(
         relations: project.relations.map((r) => ({ ...r, items: r.items.map((i) => (i.id === relationId ? item : i)) })),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     addPaper(projectId, paperId) {
@@ -1278,7 +1291,7 @@ export function createFixtureStore(
       if (project.papers.includes(paperId)) throw new CallError('refused', `已经关联过这篇论文：${paperId}`)
       const nextProject = { ...project, papers: [paperId, ...project.papers] }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     removePaper(projectId, paperId) {
@@ -1287,7 +1300,7 @@ export function createFixtureStore(
       if (!project.papers.includes(paperId)) throw new CallError('not-found', `项目没有关联这篇论文：${paperId}`)
       const nextProject = { ...project, papers: project.papers.filter((id) => id !== paperId) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     moveRelation(projectId, id, index) {
@@ -1295,7 +1308,7 @@ export function createFixtureStore(
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       const commit = (nextProject: typeof project) => {
         projectById.set(projectId, nextProject)
-        return detailOf(nextProject)
+        return shownDetail(nextProject)
       }
       const moved = <T,>(list: T[], at: number): T[] => {
         const target = Math.max(0, Math.min(index, list.length - 1))
@@ -1322,7 +1335,7 @@ export function createFixtureStore(
         attachments: [{ ...attachment, id: nextId('att') }, ...project.attachments],
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteAttachment(projectId, attachmentId) {
@@ -1340,7 +1353,7 @@ export function createFixtureStore(
         id: nextId('trash'), kind: 'attachment', title: attachment.name,
         deletedAt: nowMs(), projectId, attachment, position,
       }, ...trash]
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createEvent(projectId, text, node) {
@@ -1364,7 +1377,7 @@ export function createFixtureStore(
         },
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     updateNode(projectId, nodeId, patch) {
@@ -1383,7 +1396,7 @@ export function createFixtureStore(
         },
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteNode(projectId, nodeId) {
@@ -1405,7 +1418,7 @@ export function createFixtureStore(
           ? updateResearchIdea(idea, { node: null }, today())
           : idea
       ))
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createConclusion(projectId, text, { chat, paper }) {
@@ -1423,7 +1436,7 @@ export function createFixtureStore(
       }
       const nextProject = { ...project, conclusionList: [...project.conclusionList, item] }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     setConclusionState(projectId, conclusionId, state) {
@@ -1439,7 +1452,7 @@ export function createFixtureStore(
         )),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     verifyConclusion(projectId, node, fingerprint) {
@@ -1454,7 +1467,7 @@ export function createFixtureStore(
         verifiedConclusions: [...(project.verifiedConclusions ?? []).filter((v) => v.node !== node), entry],
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     unverifyConclusion(projectId, node) {
@@ -1465,7 +1478,7 @@ export function createFixtureStore(
       if (rest.length === 0) delete nextProject.verifiedConclusions
       else nextProject.verifiedConclusions = rest
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteConclusion(projectId, conclusionId) {
@@ -1479,7 +1492,7 @@ export function createFixtureStore(
         conclusionList: project.conclusionList.filter((conclusion) => conclusion.id !== conclusionId),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     listInbox(params = {}) {
@@ -1816,8 +1829,12 @@ export function createFixtureStore(
       return wikiHome(wiki)
     },
 
-    wikiAggregation(id) {
+    async wikiAggregation(id) {
       return wikiAggregation(wiki, id, versionOf(id)!, projectNames(), pointName)
+    },
+
+    readWorkspaceGraphs() {
+      return Promise.resolve(NO_WORKSPACE_GRAPHS)
     },
 
     wikiPaper(id) {
@@ -2063,7 +2080,7 @@ export function createFixtureStore(
         }
       }
       feedEvents = seen
-      return feedNewestFirst(feed, today())
+      return Promise.resolve(feedNewestFirst(feed, today()))
     },
 
     appendFeed({ source, body }) {

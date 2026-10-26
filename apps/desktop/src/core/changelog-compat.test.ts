@@ -6,7 +6,7 @@ import { readRecord } from './vault/stored-records.js'
 
 /** A project change record shaped the way 0.0.13 wrote it: graphs carried `activePath`, not `activeNodes`. */
 function legacyProjectRecord(): Record<string, unknown> {
-  const project = createFixtureStore(() => '2026-08-25').getProject('draft') as unknown as Record<string, unknown>
+  const project = createFixtureStore(() => '2026-08-25').heldProject('draft') as unknown as Record<string, unknown>
   const graph = { ...(project['graph'] as Record<string, unknown>) }
   delete graph['activeNodes']
   return {
@@ -47,14 +47,14 @@ describe('reading change logs older versions wrote', () => {
     expect(record).toMatchObject({ title: 'Wiki · 宽树实验的结论', restore: { kind: 'pages' } })
   })
 
-  it('这个版本记下的几个领域的项目快照,0.0.16.1 的项目形状照样读得出,只是不认识 topics', () => {
+  it('这个版本记下的几个领域的项目快照,0.0.16.1 的项目形状照样读得出,只是不认识 topics', async () => {
     let saved: ChangeRecord[] = []
     const store = withChangelog(createFixtureStore(() => '2026-08-25'), {
       load: () => saved, save: (rows) => { saved = rows }, nextId: () => `change-${saved.length + 1}`,
       atomically: (write) => write(),
     })
-    store.updateProject('draft', { topics: ['speculative decoding', 'KV cache'] })
-    store.updateProject('draft', { focus: '改过的焦点' })
+    await store.updateProject('draft', { topics: ['speculative decoding', 'KV cache'] })
+    await store.updateProject('draft', { focus: '改过的焦点' })
     const snapshot = JSON.parse(JSON.stringify(saved[0]!.restore)) as { project: Record<string, unknown> }
     expect(snapshot.project['topics']).toEqual(['speculative decoding', 'KV cache'])
     // 0.0.16.1's project shape is this version's without `topics`.

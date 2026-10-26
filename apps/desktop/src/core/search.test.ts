@@ -75,15 +75,15 @@ describe('全局搜索', () => {
     }])
   })
 
-  it('想法、任务、Wiki 正文与稍后阅读里的论文都搜得到,各带打开它要的目标', () => {
+  it('想法、任务、Wiki 正文与稍后阅读里的论文都搜得到,各带打开它要的目标', async () => {
     const chat = store.createChat('显存讨论', true)
     const idea = store.createIdea(chat.id, 'KV 显存预算按层分配', '浅层少给，深层多给。')
     store.createProject('压缩实验')
     const project = store.listProjects().find((p) => p.name === '压缩实验')!.id
-    const task = store.createTask(project, {
+    const task = (await store.createTask(project, {
       title: '跑 2bit 基线', start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1',
       note: '## 要求\n- 先测**显存**峰值，再测吞吐',
-    }).tasks[0]!
+    })).tasks[0]!
 
     expect(store.search('显存')).toEqual([
       { kind: 'chat', target: chat.id, title: '对话：显存讨论', meta: '对话' },
@@ -126,9 +126,9 @@ describe('全局搜索', () => {
     expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · 未分主题' })
   })
 
-  it('项目有几个主题时,搜索结果的说明按次序全列出来', () => {
+  it('项目有几个主题时,搜索结果的说明按次序全列出来', async () => {
     const id = store.createProject('压缩实验')
-    store.updateProject(id, { topics: ['KV cache', '量化'] })
+    await store.updateProject(id, { topics: ['KV cache', '量化'] })
     expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · KV cache、量化' })
   })
 
@@ -212,13 +212,13 @@ describe('全局搜索的耗时', () => {
 
   afterEach(() => { rmSync(vault, { recursive: true, force: true }) })
 
-  it('500 篇论文、各带笔记与高亮的库里,短词、长句、中文与搜不到的词每次都在预算内返回', () => {
+  it('500 篇论文、各带笔记与高亮的库里,短词、长句、中文与搜不到的词每次都在预算内返回', async () => {
     const store = createVaultStore(vault)
     for (let n = 0; n < 5; n += 1) {
       store.createProject(`Project ${n}`)
       const id = store.listProjects().find((p) => p.name === `Project ${n}`)!.id
       for (let t = 0; t < 10; t += 1) {
-        store.createTask(id, {
+        await store.createTask(id, {
           title: `Task ${t} ${sentence(t, 3)}`, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1',
           note: sentence(n + t, 12),
         })

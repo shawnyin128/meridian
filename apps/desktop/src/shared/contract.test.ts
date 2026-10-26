@@ -1214,7 +1214,7 @@ describe('contract schemas', () => {
     for (const row of papers) WikiPaperSchema.parse(wikiPaper(data, `papers/${row.id}`, version))
   })
 
-  it('项目里那几处 wiki 跳转的目标都指向真的聚合页', () => {
+  it('项目里那几处 wiki 跳转的目标都指向真的聚合页', async () => {
     const data = wikiFixture as WikiData
     const ids = new Set(wikiCards(data).map((card) => card.id))
     const targets = projects.flatMap((p) => [
@@ -1225,7 +1225,7 @@ describe('contract schemas', () => {
     expect(targets.length).toBeGreaterThan(0)
     for (const target of targets) expect(ids.has(target)).toBe(true)
     const store = createFixtureStore()
-    for (const project of projects) ProjectDetailSchema.parse(store.getProject(project.id))
+    for (const project of projects) ProjectDetailSchema.parse(await store.getProject(project.id))
   })
 
   it('发送收的是用户写下的各段：引用是 @ 加一行名字和它点名的项目、论文或 Wiki 页，整句不能只有空白，也不能超过两万字', () => {

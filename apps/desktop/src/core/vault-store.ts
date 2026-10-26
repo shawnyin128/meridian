@@ -33,7 +33,7 @@ import {
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
-  readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
+  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, servedTopics, storedTopics, titledTopics, topicPinsOf, topicScopeOf, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
@@ -63,9 +63,9 @@ import { readRecord, readStoredList, withUnknownFields, type StoredList } from '
 import {
   movePage, removePage, replacePage, writeAtomically, writeImmutable, writeJson, writePage,
 } from './vault/writer.js'
-import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
+import { NO_WORKSPACE_GRAPHS, type MetadataFill, type VaultOps, type VaultStore, type WorkspaceGraphs } from './vault.js'
 import {
-  appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp,
+  appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp, experimentProjects,
   entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
   isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
@@ -670,22 +670,48 @@ export function createVaultStore(
   const projectNames = (): Record<string, string> =>
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
 
-  /** The label of a project's node (workspace nodes included) or the text of its legacy conclusion. */
-  const pointName: PointName = (id, point) => {
+  /**
+   * The research graph `project`'s workspace holds: a local workspace's as it stands, an SSH one's as
+   * `graphs` holds it. Throws when the workspace is an SSH one `graphs` does not hold.
+   */
+  const workspaceGraph = (project: ProjectRecord, graphs: WorkspaceGraphs): ResearchGraph | undefined => {
+    if (project.workspaceSsh === undefined) return readLocalProjectWorkspace(project)?.graph
+    if (!graphs.has(project.id)) throw new Error(`项目 ${project.id} 的 SSH 工作区没有先读`)
+    return graphs.get(project.id)
+  }
+
+  /** Reads afresh the SSH workspace of each of `ids` that has one; see VaultStore.readWorkspaceGraphs. */
+  const readWorkspaceGraphs = async (ids: readonly string[]): Promise<WorkspaceGraphs> => {
+    const bound = ids.flatMap((id) => {
+      const project = projectById.get(id)
+      return project?.workspaceSsh === undefined ? [] : [project]
+    })
+    return new Map(await Promise.all(bound.map(async (project) => {
+      const workspace = await readProjectWorkspace(project)
+      remoteRead.set(project.id, workspace)
+      return [project.id, workspace?.graph] as const
+    })))
+  }
+
+  /** The label of a project's node (workspace nodes included, SSH ones from `graphs`) or the text of its legacy conclusion. */
+  const pointName = (graphs: WorkspaceGraphs): PointName => (id, point) => {
     const project = projectById.get(id)
     if (project === undefined) return undefined
-    const nodes = [...project.graph.nodes, ...readProjectWorkspace(project)?.graph?.nodes ?? []]
+    const nodes = [...project.graph.nodes, ...workspaceGraph(project, graphs)?.nodes ?? []]
     return nodes.find((n) => n.id === point)?.label ?? project.conclusionList.find((c) => c.id === point)?.text
   }
 
-  /** The claim-validation world for producer `by`: the vault's projects (with workspace nodes) and reading records. */
-  const worldOf = (by: string, requireVerified = true): ClaimWorld => ({
+  /**
+   * The claim-validation world for producer `by`: the vault's projects (with workspace nodes, SSH ones
+   * from `graphs`) and reading records.
+   */
+  const worldOf = (by: string, graphs: WorkspaceGraphs, requireVerified = true): ClaimWorld => ({
     by,
     requireVerified,
     project: (id) => {
       const project = projectById.get(id)
       if (project === undefined) return undefined
-      const workspace = readProjectWorkspace(project)?.graph
+      const workspace = workspaceGraph(project, graphs)
       const graph = workspace ?? project.graph
       return {
         nodes: [...project.graph.nodes, ...workspace?.nodes ?? []].map((n) => n.id),
@@ -839,8 +865,26 @@ export function createVaultStore(
   const conclusionsOf = (project: ProjectRecord, graph: ResearchGraph): ProjectConclusion[] =>
     projectConclusions(project, graph, projectClaims(wikiData, project.id), projectDisputes(wikiData, project.id))
 
-  /** Builds the cross-boundary project detail, deriving paper counts and titles from current vault state. */
-  const detailOf = (project: ProjectRecord): ProjectDetail => {
+  /** Project `id` for its detail. Throws when there is none, or its research graph has an edge to a node it does not hold. */
+  const shownProject = (id: string): ProjectRecord => {
+    const project = projectOf(id)
+    const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
+    for (const [from, to] of project.graph.edges) {
+      if (!nodeIds.has(from) || !nodeIds.has(to)) {
+        throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
+      }
+    }
+    return project
+  }
+
+  /** The events a project's workspace holds. */
+  type WorkspaceEvents = NonNullable<ProjectDetail['workspace']>['events']
+
+  /** Each SSH-bound project's workspace as its latest read found it, by project id. */
+  const remoteRead = new Map<string, ProjectDetail['workspace']>()
+
+  /** The cross-boundary project detail of `project` with `workspace`, deriving paper counts and titles from current vault state. */
+  const detailWith = (project: ProjectRecord, workspace: ProjectDetail['workspace']): ProjectDetail => {
     const stored: Omit<ProjectRecord, 'created'> & { created?: string } = structuredClone(project)
     delete stored.created
     delete stored.workspaceRoot
@@ -852,7 +896,6 @@ export function createVaultStore(
       const paper = papers.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
     }))
-    const workspace = readProjectWorkspace(project)
     const claims = conclusionClaims(wikiData, project.id)
     const conclusions = conclusionsOf(project, workspace?.graph ?? project.graph)
     return {
@@ -866,6 +909,16 @@ export function createVaultStore(
       ...(workspace === undefined ? {} : { workspace }),
       ...lastProgressOf(changes, project.id, [...project.events, ...workspace?.events ?? []]),
     }
+  }
+
+  /** The project detail of `project`, reading its workspace afresh. */
+  const detailOf = async (project: ProjectRecord): Promise<ProjectDetail> => {
+    // Inside `atomically` a write queues its workspace sync only once all of it has landed, later in
+    // this turn; reading in a later turn keeps this read behind that sync.
+    if (syncing !== undefined) await Promise.resolve()
+    const workspace = await readProjectWorkspace(project)
+    if (project.workspaceSsh !== undefined) remoteRead.set(project.id, workspace)
+    return detailWith(project, workspace)
   }
 
   /** Returns projects in canonical order rather than directory scan or trash-restoration order. */
@@ -940,18 +993,19 @@ export function createVaultStore(
   /** `op` made one write by atomically. */
   const atomic = <A extends unknown[], R>(op: (...args: A) => R) => (...args: A): R => atomically(() => op(...args))
 
-  /** Refreshes the App-owned workspace projection without making project edits depend on transport health. */
+  /**
+   * Refreshes the App-owned workspace projection without making project edits depend on transport
+   * health: a local workspace at once, an SSH one in the project's turn, after the call returns.
+   */
   const syncProjectWorkspace = (project: ProjectRecord): void => {
     if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) return
     if (syncing !== undefined) {
       syncing.add(project.id)
       return
     }
-    try {
-      writeProjectWorkspaceState(project, ideas)
-    } catch (error) {
+    writeProjectWorkspaceState(project, ideas).catch((error: unknown) => {
       console.warn(`[project] workspace sync failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
+    })
   }
 
   /**
@@ -993,16 +1047,24 @@ export function createVaultStore(
    * entries, each once. The first pass only marks existing events as seen, so an existing history does
    * not flood the feed; workspaces are read at most once a minute because an SSH binding means a round trip.
    */
-  const absorbWorkspaceEvents = atomic((): void => {
+  const absorbWorkspaceEvents = async (): Promise<void> => {
     const at = now().getTime()
     if (at - eventsReadAt < WORKSPACE_EVENT_READ_MS) return
     eventsReadAt = at
+    const bound = projects().filter((project) => project.workspaceRoot !== undefined || project.workspaceSsh !== undefined)
+    takeWorkspaceEvents(await Promise.all(bound.map(async (project) => ({
+      project, events: (await readProjectWorkspace(project))?.events ?? [],
+    }))))
+  }
+
+  /** The Lab entries absorbWorkspaceEvents writes for `read`, each project's workspace events as read; a project gone meanwhile is left out. */
+  const takeWorkspaceEvents = atomic((read: { project: ProjectRecord; events: WorkspaceEvents }[]): void => {
     const first = state.feedEvents === undefined
     const seen = new Set(state.feedEvents ?? [])
     const fresh: { project: ProjectRecord; text: string }[] = []
-    for (const project of projects()) {
-      if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) continue
-      for (const event of readProjectWorkspace(project)?.events ?? []) {
+    for (const { project, events } of read) {
+      if (!projectById.has(project.id)) continue
+      for (const event of events) {
         const key = `${project.id}:${event.date}:${event.text}`
         if (seen.has(key)) continue
         seen.add(key)
@@ -1027,28 +1089,41 @@ export function createVaultStore(
     return [...papers.values()].map((row) => withProjectLinks(row, held))
   }
 
-  /** The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask). */
-  const createTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail => {
+  /**
+   * The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask):
+   * writes it at once and returns the project as written.
+   */
+  const addTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectRecord => {
     const project = projectOf(projectId)
     checkSpan(task)
     const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
-    return writeProject({ ...project, tasks: [made, ...project.tasks] }, ['tasks'])
+    const next = { ...project, tasks: [made, ...project.tasks] }
+    landProject(next, ['tasks'])
+    return next
   }
 
   /**
-   * Writes only the modified project fields to its page, archiving the project's ideas when it is
-   * finished, and returns the updated detail. Throws when any of it cannot be written, leaving the page,
-   * the ideas and the record held as they stood and the workspace unsynced.
+   * Writes only the modified project fields to its page and archives the project's ideas when it is
+   * finished, at once. Throws when any of it cannot be written, leaving the page, the ideas and the
+   * record held as they stood and the workspace unsynced.
    */
-  const writeProject = (
-    project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
-  ): ProjectDetail => {
+  const landProject = (project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true): void => {
     atomically(() => {
       writeProjectFields(projectFile(project.id), project, fields, staging)
       projectById.set(project.id, project)
       if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
     })
     if (syncWorkspace) syncProjectWorkspace(project)
+  }
+
+  /**
+   * Writes the project as landProject does, at once, and returns the updated detail. Throws as
+   * landProject does.
+   */
+  const writeProject = (
+    project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
+  ): Promise<ProjectDetail> => {
+    landProject(project, fields, syncWorkspace)
     return detailOf(project)
   }
 
@@ -1082,7 +1157,7 @@ export function createVaultStore(
   })
 
   /** Appends a dated project research-log entry, optionally linked to a research-graph node. */
-  const appendEvent = (projectId: string, text: string, node?: string): ProjectDetail => {
+  const appendEvent = (projectId: string, text: string, node?: string): Promise<ProjectDetail> => {
     const project = projectOf(projectId)
     checkOneLine(text)
     if (node !== undefined && !project.graph.nodes.some((item) => item.id === node)) {
@@ -1547,7 +1622,7 @@ export function createVaultStore(
 
     listProjects() {
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
-        const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
+        const workspace = readLocalProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
         const records = [...p.events, ...workspace?.events ?? []]
         return {
@@ -1582,7 +1657,7 @@ export function createVaultStore(
     overviewProjects() {
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
         // Overview never initiates SSH; reading graph and events from a local workspace is cheap enough to match the project page.
-        const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
+        const workspace = readLocalProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
         const events = [...p.events, ...(workspace?.events ?? [])]
         return {
@@ -1664,7 +1739,7 @@ export function createVaultStore(
         const pins = unpinned(project).pins.flatMap(({ page, title }) => (page === null ? [] : [{ page, title }]))
         if (JSON.stringify(pins) === JSON.stringify(project.topicPins ?? [])) return []
         // A workspace never holds the pins, so pinning leaves bound workspaces as they are.
-        writeProject({ ...project, topicPins: pins.length === 0 ? undefined : pins }, ['topicPins'], false)
+        landProject({ ...project, topicPins: pins.length === 0 ? undefined : pins }, ['topicPins'], false)
         return [project.id]
       })
       return { pages: wikiCards(wikiData).map((card) => card.id).filter((id) => !before.has(id)), projects: written }
@@ -1678,18 +1753,16 @@ export function createVaultStore(
         ? titledTopics(titles, index)
         : titles.map((title, at) => ({ title, page: project.topicPages![at] ?? null }))
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, project[key]]))
-      writeProject({ ...held, ...fields, ...storedTopics(chosen, held, index) }, [...PROJECT_FIELDS, 'topicPins'])
+      return writeProject({ ...held, ...fields, ...storedTopics(chosen, held, index) }, [...PROJECT_FIELDS, 'topicPins']).then(() => {})
     },
 
     getProject(id) {
-      const project = projectOf(id)
-      const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
-      for (const [from, to] of project.graph.edges) {
-        if (!nodeIds.has(from) || !nodeIds.has(to)) {
-          throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
-        }
-      }
-      return detailOf(project)
+      return detailOf(shownProject(id))
+    },
+
+    heldProject(id) {
+      const project = shownProject(id)
+      return detailWith(project, project.workspaceSsh === undefined ? readLocalProjectWorkspace(project) : remoteRead.get(id))
     },
 
     hasProject(id) {
@@ -1717,8 +1790,16 @@ export function createVaultStore(
         delete next.workspaceRoot
       }
       // The first connection must complete the protocol; do not persist a broken connection on failure.
-      writeProjectWorkspaceState(next, ideas)
-      return writeProject(next, ['workspaceRoot', 'workspaceSsh'], false)
+      return writeProjectWorkspaceState(next, ideas).then(() => {
+        const current = projectOf(id)
+        const bound: ProjectRecord = { ...current }
+        delete bound.workspaceRoot
+        delete bound.workspaceSsh
+        if (next.workspaceRoot !== undefined) bound.workspaceRoot = next.workspaceRoot
+        if (next.workspaceSsh !== undefined) bound.workspaceSsh = next.workspaceSsh
+        // A write that landed while the workspace was connected is synced again with the binding.
+        return writeProject(bound, ['workspaceRoot', 'workspaceSsh'], current !== project)
+      })
     },
 
     updateProject(id, patch) {
@@ -1747,7 +1828,9 @@ export function createVaultStore(
       })
     }),
 
-    createTask,
+    createTask(projectId, task, origin) {
+      return detailOf(addTask(projectId, task, origin))
+    },
 
     agentTaskRequests(projectId) {
       return projects().filter((project) => projectId === undefined || project.id === projectId).flatMap((project) => {
@@ -1760,12 +1843,11 @@ export function createVaultStore(
 
     addAgentTask: atomic((projectId, request) => {
       const had = new Set(projectOf(projectId).tasks.map((task) => task.id))
-      const made = createTask(projectId, {
+      const project = addTask(projectId, {
         title: request.title, start: request.date, end: request.date, state: 'plan', priority: 'p1',
         ...(request.note === undefined ? {} : { note: request.note }),
       }, 'agent')
-      const task = made.tasks.find((candidate) => !had.has(candidate.id))!.id
-      const project = projectOf(projectId)
+      const task = project.tasks.find((candidate) => !had.has(candidate.id))!.id
       return writeProject({ ...project, agentTasks: { ...project.agentTasks, [request.id]: task } }, ['agentTasks'])
     }),
 
@@ -1801,10 +1883,11 @@ export function createVaultStore(
       return writeProject({ ...project, tasks: order.map((id) => byId.get(id)!) }, ['tasks'])
     },
 
-    setTaskNode(projectId, taskId, nodeId) {
+    async setTaskNode(projectId, taskId, nodeId) {
+      const graphs = await readWorkspaceGraphs([projectId])
       const project = projectOf(projectId)
       if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
-      const graph = readProjectWorkspace(project)?.graph ?? project.graph
+      const graph = workspaceGraph(project, graphs) ?? project.graph
       if (nodeId !== null && !graph.nodes.some((n) => n.id === nodeId)) throw new CallError('not-found', `节点不存在：${nodeId}`)
       const taskNodes = Object.fromEntries(Object.entries(project.taskNodes ?? {}).filter(([task]) => task !== taskId))
       if (nodeId !== null) taskNodes[taskId] = nodeId
@@ -2030,9 +2113,9 @@ export function createVaultStore(
       }, ['conclusionList'])
     },
 
-    verifyConclusion(projectId, node, fingerprint) {
+    verifyConclusion(projectId, node, fingerprint, graphs = NO_WORKSPACE_GRAPHS) {
       const project = projectOf(projectId)
-      const held = concludedNodes(readProjectWorkspace(project)?.graph ?? project.graph).find((n) => n.id === node)
+      const held = concludedNodes(workspaceGraph(project, graphs) ?? project.graph).find((n) => n.id === node)
       if (held === undefined) throw new CallError('not-found', `节点没有可验证的结论：${node}`)
       if (conclusionFingerprint(held) !== fingerprint) throw new CallError('changed', CONCLUSION_CHANGED)
       const entry = { node, fingerprint, date: today() }
@@ -2424,9 +2507,15 @@ export function createVaultStore(
       return wikiHome(wikiData)
     },
 
-    wikiAggregation(id) {
+    async wikiAggregation(id) {
       checkReadable(id)
-      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames(), pointName)
+      let graphs: WorkspaceGraphs = NO_WORKSPACE_GRAPHS
+      const unread = () => experimentProjects(wikiData.pages[id])
+        .filter((project) => projectById.get(project)?.workspaceSsh !== undefined && !graphs.has(project))
+      // The page can change while the workspaces it cites are read; what it cites by then is read too.
+      for (let ids = unread(); ids.length > 0; ids = unread()) graphs = new Map([...graphs, ...await readWorkspaceGraphs(ids)])
+      checkReadable(id)
+      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames(), pointName(graphs))
     },
 
     wikiPaper(id) {
@@ -2439,12 +2528,12 @@ export function createVaultStore(
       return wikiCards(wikiData)
     },
 
-    applyProposal: atomic((proposal, producer) => {
+    applyProposal: atomic((proposal, producer, graphs = NO_WORKSPACE_GRAPHS) => {
       const data = wikiData
       const day = today()
       for (const id of touchedPages(proposal, data)) checkReadable(id)
       // Validate the complete proposal first so an invalid step writes no bytes.
-      const next = applyProposal(data, proposal, day, worldOf(producer?.by ?? HUMAN))
+      const next = applyProposal(data, proposal, day, worldOf(producer?.by ?? HUMAN, graphs))
       // Refill requires generated-region markers. Newly proposed pages are not on disk yet, so skip them here.
       for (const id of refilled(proposal, data, next)) {
         if (existsSync(wikiFile(id))) checkGenerated(wikiFile(id))
@@ -2511,10 +2600,12 @@ export function createVaultStore(
       rereadWiki(touchedPages(proposal, data))
     }),
 
-    checkProposal(ops, by) {
+    checkProposal(ops, by, graphs = NO_WORKSPACE_GRAPHS) {
       for (const id of touchedPages({ ops }, wikiData)) checkReadable(id)
-      applyProposal(wikiData, { ops }, today(), worldOf(by, by === HUMAN))
+      applyProposal(wikiData, { ops }, today(), worldOf(by, graphs, by === HUMAN))
     },
+
+    readWorkspaceGraphs,
 
     describeProposal(ops) {
       return ops.map((op) => describeOp(op, wikiData))
@@ -2591,9 +2682,9 @@ export function createVaultStore(
       rereadWiki([id])
     }),
 
-    proposalPages(proposal, by = HUMAN) {
+    proposalPages(proposal, by = HUMAN, graphs = NO_WORKSPACE_GRAPHS) {
       const data = wikiData
-      const next = applyProposal(data, proposal, today(), worldOf(by))
+      const next = applyProposal(data, proposal, today(), worldOf(by, graphs))
       const named = touchedPages(proposal, data)
       return [...named, ...refilled(proposal, data, next).filter((id) => !named.includes(id))]
     },
@@ -2693,7 +2784,7 @@ export function createVaultStore(
         if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
         const { attachments } = project
         const at = Math.min(item.position ?? attachments.length, attachments.length)
-        writeProject(
+        landProject(
           { ...project, attachments: [...attachments.slice(0, at), item.attachment, ...attachments.slice(at)] },
           ['attachments'],
         )
@@ -2715,8 +2806,8 @@ export function createVaultStore(
       for (const item of cleared) discard(item)
     },
 
-    listFeed() {
-      absorbWorkspaceEvents()
+    async listFeed() {
+      await absorbWorkspaceEvents()
       return feedNewestFirst(feed, today())
     },
 

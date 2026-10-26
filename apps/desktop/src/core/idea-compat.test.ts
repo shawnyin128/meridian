@@ -57,11 +57,11 @@ describe('自己写下的想法存下的样子', () => {
     expect(ResearchIdeaSchema0154.parse(stored)).toEqual(stored)
   })
 
-  it('关联到绑了工作区的项目后,写进工作区变动面的这一条 agent 用的 Python 读得出', () => {
+  it('关联到绑了工作区的项目后,写进工作区变动面的这一条 agent 用的 Python 读得出', async () => {
     const project = store.createProject('自己的想法项目')
     const repo = join(vault, 'own-idea-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(project, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(project, { kind: 'local', root: repo })
     const created = store.createIdea(undefined, '我自己的想法', '先记下来,之后再验证')
     store.updateIdea(created.id, { project })
     const changes = JSON.parse(readFileSync(join(repo, '.meridian/control/changes.json'), 'utf8')) as { ideas: unknown[] }
@@ -80,11 +80,11 @@ describe('自己写下的想法存下的样子', () => {
     expect(JSON.parse(output)).toEqual(['ready', { chat_title: '手动添加' }])
   })
 
-  it('带来源项目、候选节点和关联的想法,0.0.16.1 的想法 schema 逐条读得出,新字段原样写回;放进绑了工作区的项目时,工作区里还是旧的样子', () => {
+  it('带来源项目、候选节点和关联的想法,0.0.16.1 的想法 schema 逐条读得出,新字段原样写回;放进绑了工作区的项目时,工作区里还是旧的样子', async () => {
     const project = store.createProject('来源项目')
     const repo = join(vault, 'source-project-repo')
     mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
-    store.bindProjectWorkspace(project, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(project, { kind: 'local', root: repo })
     writeFileSync(join(repo, '.meridian/ideas/ideas.json'), JSON.stringify({
       schema_version: 'meridian.workspace-agent-ideas.v1',
       ideas: [{ id: 'agent-idea', date: '2026-10-21', title: 'agent 记下的想法', body: '正文', node: 'thread.B' }],

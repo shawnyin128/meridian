@@ -1,5 +1,5 @@
 import { createHash, randomUUID } from 'node:crypto'
-import { execFile, spawnSync } from 'node:child_process'
+import { execFile } from 'node:child_process'
 import {
   existsSync, globSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync,
 } from 'node:fs'
@@ -134,8 +134,12 @@ type SshBinding = Extract<ProjectWorkspaceBinding, { kind: 'ssh' }>
 /** Where an SSH command connects: a host name or `Host` alias, and the port when it is not the default. */
 export type SshTarget = Pick<SshBinding, 'host' | 'port'>
 
-/** Injectable seam for protocol tests; production uses the user's system OpenSSH client. */
-export type SshExecutor = (target: SshTarget, command: string, input?: Buffer) => Buffer
+/**
+ * Injectable seam for protocol tests: runs `command` on `target` with `input` on its standard input,
+ * without blocking Core, and settles to its standard output. Production uses the user's system
+ * OpenSSH client.
+ */
+export type SshExecutor = (target: SshTarget, command: string, input?: Buffer) => Promise<Buffer>
 
 /** Injectable seam for listing folders: runs one command on an SSH host without blocking Core. */
 export type SshCommand = (target: SshTarget, command: string) => Promise<Buffer>
@@ -374,20 +378,29 @@ function sshArgs(target: SshTarget, command: string): string[] {
 const SSH_MAX_BUFFER = 32 * 1024 * 1024
 const SSH_TIMEOUT_MS = 15_000
 
-const systemSsh: SshExecutor = (target, command, input) => {
-  const result = spawnSync('ssh', sshArgs(target, command), {
-    input,
-    encoding: null,
-    maxBuffer: SSH_MAX_BUFFER,
-    timeout: SSH_TIMEOUT_MS,
+const systemSsh: SshExecutor = (target, command, input) => new Promise((done, fail) => {
+  const child = execFile('ssh', sshArgs(target, command), {
+    encoding: 'buffer', maxBuffer: SSH_MAX_BUFFER, timeout: SSH_TIMEOUT_MS,
+  }, (error, stdout, stderr) => {
+    if (error === null) done(stdout)
+    // A start that failed and output past maxBuffer carry a code naming why; the timeout's kill carries none.
+    else if (typeof error.code === 'string') fail(new Error(error.message))
+    else if (error.killed === true) fail(new CallError('timeout', 'SSH 连接超时'))
+    else fail(new Error(sshError(stderr)))
   })
-  if (result.error) {
-    throw result.error.message.includes('ETIMEDOUT')
-      ? new CallError('timeout', 'SSH 连接超时')
-      : new Error(result.error.message)
-  }
-  if (result.status !== 0) throw new Error(sshError(result.stderr))
-  return Buffer.isBuffer(result.stdout) ? result.stdout : Buffer.from(result.stdout ?? '')
+  child.stdin?.end(input)
+})
+
+/** The SSH calls of each project still running or waiting, by project id; each starts once the one before it settles. */
+const sshTurns = new Map<string, Promise<unknown>>()
+
+/** Runs `call`, an SSH call of project `id`, after every SSH call of that project made before it has settled. */
+function inTurn<T>(id: string, call: () => Promise<T>): Promise<T> {
+  const turn = (sshTurns.get(id) ?? Promise.resolve()).then(call, call)
+  const settled = turn.then(() => {}, () => {})
+  sshTurns.set(id, settled)
+  void settled.then(() => { if (sshTurns.get(id) === settled) sshTurns.delete(id) })
+  return turn
 }
 
 const systemSshCommand: SshCommand = (target, command) => new Promise((done, fail) => {
@@ -595,13 +608,13 @@ function parseRemoteFiles(payload: Buffer): Map<string, string> {
   return files
 }
 
-function readRemoteFiles(binding: SshBinding, ssh: SshExecutor): Map<string, string> {
-  return parseRemoteFiles(ssh(binding, readRemoteCommand(binding.path)))
+async function readRemoteFiles(binding: SshBinding, ssh: SshExecutor): Promise<Map<string, string>> {
+  return parseRemoteFiles(await ssh(binding, readRemoteCommand(binding.path)))
 }
 
-function writeRemoteFiles(
+async function writeRemoteFiles(
   binding: SshBinding, plan: Buffer, changes: Buffer, manifest: Buffer, ssh: SshExecutor,
-): void {
+): Promise<void> {
   const token = randomUUID()
   const command = [
     'set -eu',
@@ -621,7 +634,7 @@ function writeRemoteFiles(
     'mv "$manifest_tmp" "$root/.meridian/workspace.json"',
     'trap - 0 1 2 3 15',
   ].join('\n')
-  ssh(binding, command, Buffer.concat([plan, changes, manifest]))
+  await ssh(binding, command, Buffer.concat([plan, changes, manifest]))
 }
 
 function parsedObject(text: string | undefined): JsonObject | undefined {
@@ -639,34 +652,40 @@ function parsedChanges(text: string | undefined): WorkspaceChanges | undefined {
  * Materializes the App-owned control surface. Existing external graph and event files are never
  * opened for writing. An unknown manifest is refused rather than silently replaced.
  */
-export function writeProjectWorkspace(project: ProjectRecord, ssh: SshExecutor = systemSsh): string {
+export function writeProjectWorkspace(project: ProjectRecord, ssh: SshExecutor = systemSsh): Promise<string> {
   return writeProjectWorkspaceState(project, [], ssh)
 }
 
-/** Materializes the App-owned plan, linked-idea index, and incremental change journal. */
-export function writeProjectWorkspaceState(
+/**
+ * Materializes the App-owned plan, linked-idea index, and incremental change journal, and settles to
+ * the plan's revision. A local workspace is written at once; an SSH one is read and written after
+ * the project's SSH calls made before it.
+ */
+export async function writeProjectWorkspaceState(
   project: ProjectRecord,
   ideas: readonly ResearchIdea[],
   ssh: SshExecutor = systemSsh,
-): string {
+): Promise<string> {
   const planned = planOf(project)
   const manifest = manifestOf(project)
   const remote = sshBindingOf(project)
   if (remote !== undefined) {
-    const files = readRemoteFiles(remote, ssh)
-    const prior = files.get(MANIFEST)
-    if (prior !== undefined) ManifestSchema.parse(JSON.parse(prior))
-    const changes = changesOf(
-      project,
-      parsedObject(files.get(PLAN)),
-      planned.value,
-      parsedChanges(files.get(CHANGES)),
-      ideas,
-    )
-    writeRemoteFiles(
-      remote, jsonBytes(planned.value), jsonBytes(changes), jsonBytes(manifest), ssh,
-    )
-    return planned.revision
+    return inTurn(project.id, async () => {
+      const files = await readRemoteFiles(remote, ssh)
+      const prior = files.get(MANIFEST)
+      if (prior !== undefined) ManifestSchema.parse(JSON.parse(prior))
+      const changes = changesOf(
+        project,
+        parsedObject(files.get(PLAN)),
+        planned.value,
+        parsedChanges(files.get(CHANGES)),
+        ideas,
+      )
+      await writeRemoteFiles(
+        remote, jsonBytes(planned.value), jsonBytes(changes), jsonBytes(manifest), ssh,
+      )
+      return planned.revision
+    })
   }
 
   if (project.workspaceRoot === undefined) throw new CallError('refused', '项目尚未连接工作区')
@@ -1002,32 +1021,38 @@ export function readWorkspaceAgentIdeas(root: string | undefined): WorkspaceAgen
   }
 }
 
-/** Reads external surfaces afresh; callers can refresh without importing or copying project data. */
-export function readProjectWorkspace(
+/**
+ * Reads external surfaces afresh; callers can refresh without importing or copying project data. An
+ * SSH workspace is read after the project's SSH calls made before it; a remote failure is the
+ * workspace's `invalid` state with its reason.
+ */
+export async function readProjectWorkspace(
   project: ProjectRecord, ssh: SshExecutor = systemSsh,
-): ProjectWorkspace | undefined {
+): Promise<ProjectWorkspace | undefined> {
   const remote = sshBindingOf(project)
-  if (remote !== undefined) {
-    const planPath = `${remote.host}:${posix.join(remote.path, PLAN)}`
-    const base = {
-      kind: 'ssh' as const,
-      root: remote.path,
-      host: remote.host,
-      ...(remote.port === undefined ? {} : { port: remote.port }),
-      planPath,
-    }
-    try {
-      return projectWorkspaceFromFiles(base, readRemoteFiles(remote, ssh))
-    } catch (error) {
-      return {
-        ...base,
-        state: 'invalid',
-        events: [],
-        issue: error instanceof Error ? error.message : String(error),
-      }
+  if (remote === undefined) return readLocalProjectWorkspace(project)
+  const planPath = `${remote.host}:${posix.join(remote.path, PLAN)}`
+  const base = {
+    kind: 'ssh' as const,
+    root: remote.path,
+    host: remote.host,
+    ...(remote.port === undefined ? {} : { port: remote.port }),
+    planPath,
+  }
+  try {
+    return projectWorkspaceFromFiles(base, await inTurn(project.id, () => readRemoteFiles(remote, ssh)))
+  } catch (error) {
+    return {
+      ...base,
+      state: 'invalid',
+      events: [],
+      issue: error instanceof Error ? error.message : String(error),
     }
   }
+}
 
+/** Reads a local workspace's external surfaces afresh, as readProjectWorkspace does; undefined when the project has no local workspace. */
+export function readLocalProjectWorkspace(project: ProjectRecord): ProjectWorkspace | undefined {
   if (project.workspaceRoot === undefined) return undefined
   const root = project.workspaceRoot
   const base = { kind: 'local' as const, root, planPath: join(root, PLAN) }

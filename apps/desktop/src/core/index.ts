@@ -156,6 +156,7 @@ import {
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
+import { experimentProjects } from './wiki/index.js'
 
 type Handler = (params: unknown) => unknown
 
@@ -678,10 +679,10 @@ registerHandler('ssh.folders', (params) => {
   const { path, ...target } = SshFoldersParamsSchema.parse(params)
   return vaultRoot === undefined ? sshFolders(target, path, fixtureSsh) : sshFolders(target, path)
 })
-registerHandler('project.update', (params) => {
+registerHandler('project.update', async (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.updateProject(id, definedFields(patch)))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.delete', (params) => {
   const { id } = ProjectDeleteParamsSchema.parse(params)
@@ -696,10 +697,10 @@ registerHandler('project.updateTask', (params) => {
   const { projectId, taskId, patch } = ProjectUpdateTaskParamsSchema.parse(params)
   return store.updateTask(projectId, taskId, definedFields(patch))
 })
-registerHandler('project.deleteTask', (params) => {
+registerHandler('project.deleteTask', async (params) => {
   const { projectId, taskId } = ProjectDeleteTaskParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteTask(projectId, taskId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.reorderTasks', (params) => {
   const { projectId, order } = ProjectReorderTasksParamsSchema.parse(params)
@@ -717,19 +718,19 @@ registerHandler('project.updateMilestone', (params) => {
   const { projectId, milestoneId, patch } = ProjectUpdateMilestoneParamsSchema.parse(params)
   return store.updateMilestone(projectId, milestoneId, definedFields(patch))
 })
-registerHandler('project.deleteMilestone', (params) => {
+registerHandler('project.deleteMilestone', async (params) => {
   const { projectId, milestoneId } = ProjectDeleteMilestoneParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteMilestone(projectId, milestoneId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.createRelation', (params) => {
   const { projectId, relation } = ProjectCreateRelationParamsSchema.parse(params)
   return store.createRelation(projectId, relation)
 })
-registerHandler('project.deleteRelation', (params) => {
+registerHandler('project.deleteRelation', async (params) => {
   const { projectId, relationId } = ProjectDeleteRelationParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteRelation(projectId, relationId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.updateRelation', (params) => {
   const { projectId, relationId, relation } = ProjectUpdateRelationParamsSchema.parse(params)
@@ -739,10 +740,10 @@ registerHandler('project.addPaper', (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)
   return store.addPaper(projectId, paperId)
 })
-registerHandler('project.removePaper', (params) => {
+registerHandler('project.removePaper', async (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.removePaper(projectId, paperId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.moveRelation', (params) => {
   const { projectId, id, index } = ProjectMoveRelationParamsSchema.parse(params)
@@ -754,10 +755,10 @@ registerHandler('project.createAttachment', (params) => {
   const { projectId, attachment } = ProjectCreateAttachmentParamsSchema.parse(params)
   return store.createAttachment(projectId, attachment)
 })
-registerHandler('project.deleteAttachment', (params) => {
+registerHandler('project.deleteAttachment', async (params) => {
   const { projectId, attachmentId } = ProjectDeleteAttachmentParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteAttachment(projectId, attachmentId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.createConclusion', (params) => {
   const { projectId, text, chat, paper } = ProjectCreateConclusionParamsSchema.parse(params)
@@ -773,7 +774,7 @@ registerHandler('project.deleteConclusion', (params) => {
 })
 registerHandler('project.verifyConclusion', (params) => {
   const { projectId, node, fingerprint } = ProjectVerifyConclusionParamsSchema.parse(params)
-  return store.verifyConclusion(projectId, node, fingerprint)
+  return store.readWorkspaceGraphs([projectId]).then((graphs) => store.verifyConclusion(projectId, node, fingerprint, graphs))
 })
 registerHandler('project.unverifyConclusion', (params) => {
   const { projectId, node } = ProjectUnverifyConclusionParamsSchema.parse(params)
@@ -836,10 +837,10 @@ registerHandler('watch.list', (params) => {
 })
 registerHandler('author.search', (params) =>
   background.searchAuthors(AuthorSearchParamsSchema.parse(params).query))
-registerHandler('watch.suggest', (params) => {
+registerHandler('watch.suggest', async (params) => {
   const input = WatchSuggestionParamsSchema.parse(params)
   if (input.source === 'focus') return background.suggestWatches({ focus: input.focus })
-  const project = store.getProject(input.projectId)
+  const project = await store.getProject(input.projectId)
   const profile = store.discoveryProfile(input.projectId)
   const intentTopics = store.discoveryIntents(input.projectId)
     .filter((intent) => intent.enabled)
@@ -887,7 +888,8 @@ registerHandler('wiki.cards', (params) => {
 registerHandler('wiki.apply', async (params) => {
   const { proposal } = WikiApplyParamsSchema.parse(params)
   await wikiProposals.checkHumanQuotes(proposal.ops)
-  const { change } = recordChange(store, () => store.applyProposal(proposal))
+  const graphs = await store.readWorkspaceGraphs(experimentProjects(proposal.ops))
+  const { change } = recordChange(store, () => store.applyProposal(proposal, undefined, graphs))
   return { change }
 })
 registerHandler('wiki.propose', (params) =>

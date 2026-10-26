@@ -84,6 +84,26 @@ export function namedPages(ops: ProposalOp[]): string[] {
   return out
 }
 
+/**
+ * Returns the projects the experiment items anywhere in `value` name, each once in first-named order:
+ * the evidence and conflict targets of proposal ops, or of the claims a page record holds.
+ */
+export function experimentProjects(value: unknown): string[] {
+  const out: string[] = []
+  const walk = (node: unknown): void => {
+    if (Array.isArray(node)) {
+      node.forEach(walk)
+      return
+    }
+    if (node === null || typeof node !== 'object') return
+    const item = node as Record<string, unknown>
+    if (item['kind'] === 'experiment' && typeof item['project'] === 'string' && !out.includes(item['project'])) out.push(item['project'])
+    Object.values(item).forEach(walk)
+  }
+  walk(value)
+  return out
+}
+
 /** Short text for the other side of a conflict in a describeOp line. */
 const againstText = (against: ConflictTarget): string =>
   against.kind === 'claim' ? against.ref

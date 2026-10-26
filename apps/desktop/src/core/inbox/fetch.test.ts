@@ -43,7 +43,7 @@ describe('createWatchFetcher', () => {
     await fetcher.run()
     expect(queries).toEqual(['all:"speculative decoding"', 'au:Dao_T'])
     expect(store.listInbox()).toHaveLength(before + 2)
-    expect(store.listFeed()[0]).toMatchObject({
+    expect((await store.listFeed())[0]).toMatchObject({
       source: 'inbox',
       body: {
         kind: 'runs',
@@ -84,7 +84,7 @@ describe('createWatchFetcher', () => {
     expect(queries).toHaveLength(2)
     expect(store.refreshProgress({ kind: 'watch', id: 'dao' }).candidates.map((found) => found.id))
       .toEqual(['2609.00003', '2609.00013'])
-    expect(store.listFeed()[0]?.body).toMatchObject({
+    expect((await store.listFeed())[0]?.body).toMatchObject({
       kind: 'runs', runs: expect.arrayContaining([{ kind: 'strong', text: '1 篇新论文入队' }]),
     })
   })
@@ -178,9 +178,9 @@ describe('createWatchFetcher', () => {
     const { store, fetcher } = setup(async () => [paper('2211.17192', 'Already in inbox')], {
       lookup: async () => { scholarCalls += 1; return new Map() },
     })
-    const feed = store.listFeed().length
+    const feed = (await store.listFeed()).length
     await fetcher.run()
-    expect(store.listFeed()).toHaveLength(feed)
+    expect(await store.listFeed()).toHaveLength(feed)
     expect(scholarCalls).toBe(0)
   })
 
