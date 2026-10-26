@@ -12,7 +12,7 @@
 .icbtn.round{border-radius:var(--r-full);background-color:var(--chip);color:var(--ink)}
 :where(.icbtn):hover{color:var(--ink);box-shadow:inset 0 0 0 100vmax var(--hover)}
 :where(.icbtn.danger):hover{color:var(--bad)}
-.icbtn[aria-pressed="true"]{background-color:var(--selected);color:var(--on-selected)}
+.icbtn[aria-pressed="true"]{background-color:var(--selected);color:var(--accent-text)}
 .icbtn:enabled:active{background-image:linear-gradient(var(--press),var(--press))}
 /* A busy button shows live progress, so it keeps its full colour while it cannot be clicked. */
 .icbtn:disabled:not(.busy){opacity:.45;cursor:default;box-shadow:none}

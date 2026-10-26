@@ -21,4 +21,4 @@ button.pv{border:0;background:transparent;font-family:var(--sans);font-size:var(
 .cd.off:hover,.cd:disabled:hover{background:transparent}
 .cd:disabled{color:var(--ter)}
 .cd.today{color:var(--on-selected);font-weight:var(--fw-bold)}
-.cd.sel{background:var(--selected);color:var(--on-selected)}
+.cd.sel{background:var(--selected);color:var(--accent-text)}

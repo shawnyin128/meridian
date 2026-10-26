@@ -464,9 +464,9 @@ describe('选中、当前、已应用和按下的状态', () => {
     ['components/paper-table/PaperTable.css', '.ctbtn.on'],
   ] as const
 
-  it('当前页、已应用的筛选和选中的列类型用深一级的中性底配 --on-selected 的字', () => {
+  it('当前页、已应用的筛选和选中的列类型用深一级的中性底配强调色的字', () => {
     expect(FILLED_ON.map(([path, selector]) => lookOf(path, selector)))
-      .toEqual(FILLED_ON.map(() => '--selected-strong --on-selected'))
+      .toEqual(FILLED_ON.map(() => '--selected-strong --accent-text'))
   })
 
   for (const theme of THEMES) {
@@ -478,8 +478,17 @@ describe('选中、当前、已应用和按下的状态', () => {
         const where = `${named(theme)} ${ground.join(' + ')}`
         expect(contrast(on, off), `${where} 开对关`).toBeGreaterThanOrEqual(1.2)
         expect(contrast(on, hover), `${where} 开对悬停`).toBeGreaterThanOrEqual(1.15)
-        expect(contrast(colour(theme, '--on-selected'), on), `${where} 字`).toBeGreaterThanOrEqual(TEXT)
+        expect(contrast(colour(theme, '--accent-text'), on), `${where} 字`).toBeGreaterThanOrEqual(TEXT)
       }
+    })
+
+    it(`${named(theme)}按下的开关、选中的日子和阅读器开着的面板标签,强调色的字在中性的选中底上不低于 4.5:1;Wiki 目录的当前项字不低于 4.5:1,边上的记号不低于 3:1`, () => {
+      for (const ground of [['--content'], ['--card'], ['--raised'], ['--window', '--sidebar']]) {
+        const got = contrast(colour(theme, '--accent-text'), flatten(theme, [...ground, '--selected']))
+        expect(got, `--accent-text 压在 ${[...ground, '--selected'].join(' + ')} 上是 ${got.toFixed(2)}:1`).toBeGreaterThanOrEqual(TEXT)
+      }
+      expect(contrast(colour(theme, '--accent-text'), flatten(theme, ['--content'])), `${named(theme)} 目录的字`).toBeGreaterThanOrEqual(TEXT)
+      expect(contrast(colour(theme, '--accent-mark'), flatten(theme, ['--content'])), `${named(theme)} 目录的记号`).toBeGreaterThanOrEqual(MARK)
     })
   }
 })

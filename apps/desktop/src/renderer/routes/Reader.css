@@ -85,7 +85,7 @@
 .reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:var(--sp-8);box-sizing:border-box;gap:var(--sp-4);order:2}
 .reader-rail button{width:32px;height:32px;border:0;border-radius:var(--r-control);background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
 .reader-rail button:hover{background:var(--hover);color:var(--ink)}
-.reader-rail button.on{background:var(--selected);color:var(--on-selected)}
+.reader-rail button.on{background:var(--selected);color:var(--accent-text)}
 .reader-rail svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
 
