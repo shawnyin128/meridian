@@ -3216,9 +3216,21 @@ describe('vault store on the aggregation layout', () => {
       const project = store.createProject('量化实验')
       store.createRelation(project, { group: 'Wiki', text: '权重激活', page: WA })
       store.updateWikiPage('papers/2306.00978', `对照 [[${WA}|W-A]] 与 [[${WA}#^rotation-kv]]。`)
+      const both = store.createIdea(undefined, '旋转加平滑', '把两种变换叠起来试。')
+      store.updateIdea(both.id, { relations: { projects: [], pages: [WA, WO] } })
+      const one = store.createIdea(undefined, '激活量化的校准', '少量样本够不够。')
+      store.updateIdea(one.id, { relations: { projects: [], pages: [WA, 'topics/qat'] } })
+      const ideasBefore = readFileSync(join(vault, '.meridian', 'ideas.json'), 'utf8')
+      const relations = (id: string) => store.listIdeas().find((idea) => idea.id === id)!.relations!.pages
       const before = pages()
       const changes = store.listChanges().length
       store.mergeWikiPages(WA, WO, shown(WA, WO))
+      expect([relations(both.id), relations(one.id)]).toEqual([[WO], [WO, 'topics/qat']])
+      const record = (JSON.parse(readFileSync(join(vault, '.meridian', 'trash.json'), 'utf8')) as { kind: string; ideas?: unknown }[])
+        .find((item) => item.kind === 'page')!
+      expect(record.ideas).toEqual(expect.arrayContaining([
+        { id: both.id, before: [WA, WO], after: [WO] }, { id: one.id, before: [WA, 'topics/qat'], after: [WO, 'topics/qat'] },
+      ]))
       expect(existsSync(file(WA))).toBe(false)
       expect(store.listTrash()[0]).toMatchObject({ kind: 'page', title: 'Weight-activation PTQ' })
       const kept = store.wikiAggregation(WO)
@@ -3236,6 +3248,20 @@ describe('vault store on the aggregation layout', () => {
       store.undoChange(store.listChanges()[0]!.id)
       expect(pages()).toEqual(before)
       expect(store.listTrash().filter((entry) => entry.kind === 'page')).toEqual([])
+      expect(readFileSync(join(vault, '.meridian', 'ideas.json'), 'utf8')).toBe(ideasBefore)
+    })
+
+    it('合并后从垃圾桶恢复被并的页：想法的关联也回到它身上；之后又改过关联的想法不动', () => {
+      const moved = store.createIdea(undefined, '旋转加平滑', '把两种变换叠起来试。')
+      store.updateIdea(moved.id, { relations: { projects: [], pages: [WA] } })
+      const edited = store.createIdea(undefined, '激活量化的校准', '少量样本够不够。')
+      store.updateIdea(edited.id, { relations: { projects: [], pages: [WA] } })
+      store.mergeWikiPages(WA, WO, shown(WA, WO))
+      store.updateIdea(edited.id, { relations: { projects: [], pages: [WO, 'topics/qat'] } })
+      store.restoreTrash(store.listTrash()[0]!.id)
+      const relations = (id: string) => store.listIdeas().find((idea) => idea.id === id)!.relations!.pages
+      expect(relations(moved.id)).toEqual([WA])
+      expect(relations(edited.id)).toEqual([WO, 'topics/qat'])
     })
 
     it('合并：两张卡片在挑目标时显示的样子之后有一页变了，就拒绝合并，什么都不写', () => {

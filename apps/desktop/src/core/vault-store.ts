@@ -1203,6 +1203,32 @@ export function createVaultStore(
   const paperChatNow = (item: Extract<TrashRecord, { kind: 'chat' }>): ChatRecord | undefined =>
     (item.chat.paperId === undefined ? undefined : chats.find((held) => held.paperId === item.chat.paperId))
 
+  /**
+   * Sets each idea `moves` names, while it still relates to the pages `from`, to relate to the pages
+   * `to` instead, its other fields untouched, and refreshes the workspace of each project those ideas
+   * are carried out in.
+   */
+  const relateIdeas = (moves: { id: string; from: string[]; to: string[] }[]): void => {
+    const changed = new Set<string>()
+    const next = ideas.map((idea) => {
+      const move = moves.find((m) => m.id === idea.id)
+      if (move === undefined || JSON.stringify(idea.relations?.pages ?? []) !== JSON.stringify(move.from)) return idea
+      changed.add(idea.id)
+      return { ...idea, relations: { projects: idea.relations?.projects ?? [], ...idea.relations, pages: move.to } }
+    })
+    if (changed.size === 0) return
+    ideas = save('ideas', next)
+    for (const idea of next) {
+      if (!changed.has(idea.id) || idea.project === undefined) continue
+      const project = projectById.get(idea.project)
+      if (project !== undefined) syncProjectWorkspace(project)
+    }
+  }
+
+  /** Puts the ideas the merge that trashed page record `item` repointed back on the pages they related to before it. */
+  const putIdeasBack = (item: Extract<TrashRecord, { kind: 'page' }>): void =>
+    relateIdeas((item.ideas ?? []).map(({ id, before, after }) => ({ id, from: after, to: before })))
+
   /** Adds a record to trash with the most recently deleted item first. */
   const toTrash = (item: TrashRecord): void => {
     trash = save('trash', [item, ...trash])
@@ -2619,6 +2645,11 @@ export function createVaultStore(
 
     mergeWikiPages: atomic((from, into, shown) => {
       const texts = mergeOutcome(from, into)
+      const repointed = ideas.flatMap((idea) => {
+        const before = idea.relations?.pages ?? []
+        if (!before.includes(from)) return []
+        return [{ id: idea.id, before, after: [...new Set(before.map((p) => (p === from ? into : p)))] }]
+      })
       const cards = wikiCards(wikiData)
       const unchanged = (id: string, card: WikiAggregationCard): boolean =>
         JSON.stringify(cards.find((c) => c.id === id)) === JSON.stringify(card)
@@ -2628,7 +2659,11 @@ export function createVaultStore(
       for (const { id, after } of texts) replacePage(wikiFile(id), after, staging)
       const entry = nextId('trash')
       movePage(wikiFile(from), trashPage(entry))
-      toTrash({ id: entry, kind: 'page', title: labelOf(wikiData, from), deletedAt: nowMs(), page: `wiki/${from}.md` })
+      toTrash({
+        id: entry, kind: 'page', title: labelOf(wikiData, from), deletedAt: nowMs(), page: `wiki/${from}.md`,
+        ...(repointed.length === 0 ? {} : { ideas: repointed }),
+      })
+      relateIdeas(repointed.map(({ id, before, after }) => ({ id, from: before, to: after })))
       for (const { id } of texts) {
         if (!id.startsWith(PROJECT_PATH)) continue
         const pid = id.slice(PROJECT_PATH.length)
@@ -2677,6 +2712,7 @@ export function createVaultStore(
           if (held !== undefined) {
             trash = save('trash', trash.filter((item) => item !== held))
             discard(held)
+            if (held.kind === 'page') putIdeasBack(held)
           }
         }
         if (!path.startsWith(PROJECT_PATH)) continue
@@ -2736,6 +2772,7 @@ export function createVaultStore(
         movePage(trashPage(id), join(root, item.page))
         rereadWiki(memberPapers(trashedPageId(item.page)))
         refill(wikiData, aggregationIds())
+        putIdeasBack(item)
       } else if (item.kind === 'inbox') {
         inbox = save('inbox', inbox.map((entry) => {
           if (entry.id !== item.entryId) return entry

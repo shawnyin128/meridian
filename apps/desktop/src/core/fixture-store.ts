@@ -75,7 +75,7 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
   | { kind: 'later'; later: LaterRecord; position: number }
   | { kind: 'chat'; chat: ChatRecord; position: number }
-  | { kind: 'page'; pageId: string; page: WikiAggregationRecord }
+  | { kind: 'page'; pageId: string; page: WikiAggregationRecord; ideas?: { id: string; before: string[]; after: string[] }[] }
 )
 
 /** Seeded fixture change with cross-boundary fields but no undo/archive fields because it predates them. */
@@ -614,6 +614,19 @@ export function createFixtureStore(
     // Disk stores only `at`; shift the hand-authored fixture date around the epoch before converting it.
     at: Date.parse(`${relative(date, builtOn)}T00:00:00Z`), restore: null,
   }))
+
+  /** Sets each idea `moves` names, while it still relates to the pages `from`, to relate to the pages `to` instead. */
+  const relateIdeas = (moves: { id: string; from: string[]; to: string[] }[]): void => {
+    ideas = ideas.map((idea) => {
+      const move = moves.find((m) => m.id === idea.id)
+      if (move === undefined || JSON.stringify(idea.relations?.pages ?? []) !== JSON.stringify(move.from)) return idea
+      return { ...idea, relations: { projects: idea.relations?.projects ?? [], ...idea.relations, pages: move.to } }
+    })
+  }
+
+  /** Puts the ideas the merge that trashed page record `item` repointed back on the pages they related to before it. */
+  const putIdeasBack = (item: Extract<TrashRecord, { kind: 'page' }>): void =>
+    relateIdeas((item.ideas ?? []).map(({ id, before, after }) => ({ id, from: after, to: before })))
 
   /** The id of every aggregation, in id order. */
   const aggregationIds = (): string[] => Object.keys(wiki.pages).sort().filter((id) => !isPaper(wiki.pages[id]!))
@@ -1955,7 +1968,15 @@ export function createFixtureStore(
       rederiveRows(wiki, next)
       wiki = next
       for (const project of projects) projectById.set(project.id, project)
-      trash = [{ id: nextId('trash'), kind: 'page', title: page.fm.title, deletedAt: nowMs(), pageId: from, page }, ...trash]
+      const repointed = ideas.flatMap((idea) => {
+        const before = idea.relations?.pages ?? []
+        return before.includes(from) ? [{ id: idea.id, before, after: [...new Set(before.map((p) => (p === from ? into : p)))] }] : []
+      })
+      relateIdeas(repointed.map(({ id, before, after }) => ({ id, from: before, to: after })))
+      trash = [{
+        id: nextId('trash'), kind: 'page', title: page.fm.title, deletedAt: nowMs(), pageId: from, page,
+        ...(repointed.length === 0 ? {} : { ideas: repointed }),
+      }, ...trash]
     },
 
     wikiMergePages(from, into) {
@@ -2012,7 +2033,11 @@ export function createFixtureStore(
         if (text === null) delete next[path]
         else {
           next[path] = JSON.parse(text) as WikiData['pages'][string]
-          trash = trash.filter((item) => item.kind !== 'page' || item.pageId !== path)
+          const held = trash.find((item) => item.kind === 'page' && item.pageId === path)
+          if (held?.kind === 'page') {
+            trash = trash.filter((item) => item !== held)
+            putIdeasBack(held)
+          }
         }
       }
       const nextWiki = { ...wiki, pages: next }
@@ -2073,6 +2098,7 @@ export function createFixtureStore(
         const next = { ...wiki, pages: { ...wiki.pages, [item.pageId]: item.page } }
         rederiveRows(wiki, next)
         wiki = next
+        putIdeasBack(item)
       }
       else if (item.kind === 'later') later = [...later.slice(0, item.position), item.later, ...later.slice(item.position)]
       else if (item.kind === 'idea') ideas = [structuredClone(item.idea), ...ideas]
