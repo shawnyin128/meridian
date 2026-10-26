@@ -7,8 +7,9 @@
 .loading-placeholder--rows>span:nth-child(3n){width:84%}
 .loading-placeholder--cards{gap:var(--item-gap)}
 .loading-placeholder--cards>span{height:88px;border-radius:var(--r-card)}
-.loading-placeholder--lines{gap:var(--sp-8);padding:var(--sp-4) 0}
-.loading-placeholder--lines>span{height:var(--line-h);border-radius:var(--r-xs)}
+/* Each line is one line box of the text it stands in for, its bar centred in it, so the text replaces it at the same height. */
+.loading-placeholder--lines>span{display:flex;align-items:center;height:1lh;background:none}
+.loading-placeholder--lines>span::before{content:"";flex:1;height:var(--line-h);border-radius:var(--r-xs);background:var(--chip)}
 .loading-placeholder--lines>span:last-child:not(:first-child){width:60%}
 .loading-placeholder--sheet{align-items:center}
 .loading-placeholder--sheet>span{width:min(100%,612px);aspect-ratio:1/1.294;border-radius:var(--r-2xs)}
