@@ -33,8 +33,8 @@ When the repository has `.meridian/` and Meridian MCP is available:
    `meridian.lab_update` plus a `kind: complete` event. In that call, decide
    the node's state: `supported` when valid evidence supports it; when it
    needs repair or has failed, ask the user, then `repairable` or `dead`. A
-   node that ends `supported` or `dead` also gets its conclusion (Conclusion
-   in the `lab` skill).
+   node that ends `supported` or `dead` also gets its experiment conclusion
+   (Experiment conclusion in the `lab` skill).
 
 Do not call `meridian.lab_graph`, reread every idea, or retrieve the whole Paper
 Wiki unless the task actually requires discovery beyond the referenced entities.
@@ -72,7 +72,7 @@ found. Three calls feed it; none needs the user's confirmation.
 `python -m meridian workspace event-add` with `--kind`, `--text` as the
 title, and `--detail`) at these
 boundaries, one event each. Pass a structured `kind`, a one-line `title`
-(the conclusion, not a formatted sentence), and an optional `detail` for
+(the outcome, not a formatted sentence), and an optional `detail` for
 key numbers or parameters — do not fold the boundary's verb into the title
 text:
 

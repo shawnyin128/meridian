@@ -186,7 +186,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     workspace_event_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
     workspace_event_add.add_argument("--id", required=True, help="Stable event identifier.")
-    workspace_event_add.add_argument("--text", required=True, help="One-line title: the conclusion.")
+    workspace_event_add.add_argument("--text", required=True, help="One-line title: the outcome.")
     workspace_event_add.add_argument(
         "--kind", required=True, choices=sorted(EVENT_KINDS), help="Research record type."
     )
@@ -268,7 +268,7 @@ def build_parser() -> argparse.ArgumentParser:
     propose.add_argument("--wiki-root", type=Path, default=None, help="Canonical wiki root.")
     propose.add_argument("--library-root", type=Path, default=None, help="Optional Paper Wiki library root.")
     propose.add_argument("--title", required=True, help="One sentence for the review list.")
-    propose.add_argument("--project", required=True, help="The project id the conclusion came from.")
+    propose.add_argument("--project", required=True, help="The project id the finding came from.")
     propose.add_argument("--node", default=None, help="Optional project node id.")
     propose.add_argument("--rationale", default=None, help="Optional rationale.")
     propose.add_argument("--json-out", type=Path, default=None, help="Optional result JSON path.")
