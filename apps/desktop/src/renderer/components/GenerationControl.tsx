@@ -18,15 +18,15 @@ const RunningGlyph = () => (
   <span className="generation-running-glyph" aria-hidden="true">
     <RunningRing />
     <svg className="generation-stop" viewBox="0 0 24 24">
-      <rect x="7" y="7" width="10" height="10" rx="1.5" />
+      <rect x="8" y="8" width="8" height="8" rx="1.5" />
     </svg>
   </span>
 )
 
 /**
  * One shared start, running, and stop control for user-triggered generation. `disabled` disables the
- * start only: a running generation can always be stopped, and while running the control is named
- * `runningLabel`, by default the stop command. With `regular` it is a regular-size Button holding the
+ * start only: a running generation can always be stopped, and while running the control shows the
+ * stop square inside the turning ring and is named `runningLabel`, by default the stop command. With `regular` it is a regular-size Button holding the
  * glyph, which shows the shared busy state while `stopping`, after a press asked it to stop; otherwise
  * it is the bare glyph button whose look its `className` gives.
  */
