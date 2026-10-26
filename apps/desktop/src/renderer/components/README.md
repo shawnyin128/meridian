@@ -252,8 +252,8 @@ Current shared contracts:
 - `ComposerBox`: the one composer box, a rounded field with what is typed on top and, under it, a row
   of chips ending with the send control, a GenerationControl. The chat screen and the reader's paper
   chat compose it through `chat/ChatComposer`.
-- `ModelChips`: the composer's three pickers for one chat, each ChoicePicker's `text` look: the source,
-  the model of that source, ending with 模型设置…, and the reasoning effort. A pick changes only that
+- `ModelChips`: the composer's three pickers for one chat, each ChoicePicker's `capsule` look: the source,
+  ending with 模型设置…, the model of that source, and the reasoning effort. A pick changes only that
   chat's own choice, which Core keeps. While no model is set up it is the shared "AI not connected" tag.
 - `ElapsedTime`: the one time since a moment, `12s` under a minute and `1m 05s` after, counting up each
   second in tabular numerals; a pending chat answer shows it after 思考中….
@@ -327,8 +327,8 @@ Current shared contracts:
   way in a new item as in a saved one: a menu for a choice, the one calendar for a date, never a native date
   input or a click that cycles values. `ChoicePicker` is the one
   single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select,
-  and `appearance="text"` the composer's picker, text and a small caret that take a fill only under the
-  pointer and while open. `note` marks an option's row at its end, and `after` ends the menu with
+  and `appearance="capsule"` the composer's picker, text and a small caret on a neutral capsule whose fill
+  deepens under the pointer and while open. `note` marks an option's row at its end, and `after` ends the menu with
   commands after a divider.
   `DateRangeField` is the one start and end, a task's schedule and a project's dates alike, under one rule:
   the end's calendar starts at the start, and a start picked after the end takes the end along to it. `DotsMenu` is the one

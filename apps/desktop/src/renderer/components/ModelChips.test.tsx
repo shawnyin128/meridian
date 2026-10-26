@@ -130,7 +130,9 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
       for (let turn = 0; turn < 10; turn += 1) await Promise.resolve()
     })
   }
-  const pickers = () => [...host.querySelectorAll<HTMLButtonElement>('button.choice-text')]
+  const pickers = () => [...host.querySelectorAll<HTMLButtonElement>('button.choice-capsule')]
+  /** The open menu's commands, after its options. */
+  const commands = () => [...document.querySelectorAll<HTMLElement>('[role="menuitem"]')].map((item) => item.textContent)
   /** The pickers as they read: each one's text. */
   const read = () => pickers().map((picker) => picker.textContent)
   const open = (at: number) => act(() => {
@@ -149,19 +151,25 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     })
   }
 
-  it('三个选择器是带小箭头的文字，不是标签：服务来源、模型、推理强度，开始时是来源自己的默认', async () => {
+  it('三个选择器是带小箭头的胶囊，不是标签：服务来源、模型、推理强度，开始时是来源自己的默认', async () => {
     await mount({ source: 'cli:claude' })
     expect(read()).toEqual(['Claude 订阅', 'opus', 'high'])
     expect(pickers().map((picker) => [picker.className, picker.querySelector('svg:not(.ring)') !== null])).toEqual([
-      ['choice-text', true], ['choice-text', true], ['choice-text', true],
+      ['choice-capsule', true], ['choice-capsule', true], ['choice-capsule', true],
     ])
     expect(pickers().map((picker) => picker.getAttribute('aria-label'))).toEqual(['服务来源：Claude 订阅', '模型：opus', '推理强度：high'])
   })
 
-  it('服务来源只列能跑的，加上这条对话现在用的那个；换来源时只送来源，从它的默认模型和强度开始', async () => {
+  it('服务来源只列能跑的，加上这条对话现在用的那个，最后是模型设置…；换来源时只送来源，从它的默认模型和强度开始', async () => {
     await mount({ source: 'cli:claude', model: 'sonnet', effort: 'max' })
     open(0)
     expect(options()).toEqual([['Anthropic API', false], ['Ollama 本地', false], ['Claude 订阅', true], ['ChatGPT 订阅', false]])
+    expect(commands()).toEqual(['模型设置…'])
+    await choose('模型设置…')
+    expect(core.openCategory).toHaveBeenCalledExactlyOnceWith('model')
+
+    await mount({ source: 'cli:claude', model: 'sonnet', effort: 'max' })
+    open(0)
     await choose('ChatGPT 订阅')
     expect(core.setModel).toHaveBeenCalledExactlyOnceWith('chat-1', 'cli:codex', undefined, undefined)
     expect(read()).toEqual(['ChatGPT 订阅', '默认模型', 'medium'])
@@ -171,12 +179,10 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     expect(options().map(([text]) => text)).toEqual(['OpenAI API', 'Anthropic API', 'Ollama 本地', 'Claude 订阅', 'ChatGPT 订阅'])
   })
 
-  it('模型列出来源提供的每一个模型，来源的默认模型排第一、行尾标默认；CLI 自己的默认模型名字已说是默认，不再标；最后是模型设置…', async () => {
+  it('模型只列来源提供的每一个模型，来源的默认模型排第一、行尾标默认；CLI 自己的默认模型名字已说是默认，不再标', async () => {
     await mount({ source: 'cli:codex' })
     open(1)
-    expect(options()).toEqual([['默认模型', true], ['gpt-6.1', false], ['gpt-6.1-mini', false]])
-    await choose('模型设置…')
-    expect(core.openCategory).toHaveBeenCalledExactlyOnceWith('model')
+    expect([options(), commands()]).toEqual([[['默认模型', true], ['gpt-6.1', false], ['gpt-6.1-mini', false]], []])
 
     await mount({ source: 'cli:claude' })
     open(1)
