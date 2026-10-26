@@ -51,9 +51,9 @@ describe('Core chat service', () => {
     })
     const opus = (await model.addModel({ source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' }))
       .models.find((entry) => entry.model === 'opus')!.id
-    const runner: ChatHarnessRunner = { checkConnection: vi.fn(), answer: vi.fn(async () => '回答'), close: vi.fn() }
+    const runner: ChatHarnessRunner = { checkConnection: vi.fn(), answer: vi.fn(async () => '回答'), close: vi.fn(), listModels: vi.fn() }
     const service = createChatService({
-      store: createFixtureStore(), model, runner, choiceOf: (id) => (id === 'amortize' ? { model: opus } : null),
+      store: createFixtureStore(), model, runner, choiceOf: (id) => (id === 'amortize' ? { source: opus } : null),
     })
 
     expect(model.settings().configured).toBe(false)
@@ -69,6 +69,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '基于当前上下文的回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -90,6 +91,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -140,6 +142,7 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     expect(service.writing('amortize')).toBeNull()
@@ -175,6 +178,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     await service.send('amortize', written('问'))
@@ -191,6 +195,7 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -219,6 +224,7 @@ describe('Core chat service', () => {
         finish = resolve
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -256,6 +262,7 @@ describe('Core chat service', () => {
         return new Promise<string>((resolve) => { finish = resolve })
       }),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -288,6 +295,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => { throw new Error('401 Unauthorized: invalid x-api-key') }),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
 
@@ -307,6 +315,7 @@ describe('Core chat service', () => {
         return next
       }),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
   }
   const textsAfter = (store: ReturnType<typeof createFixtureStore>, before: number) =>
@@ -367,6 +376,7 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const first = service.send('amortize', written('第一句'))
@@ -386,6 +396,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(() => new Promise<string>((resolve) => { reply = resolve })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     expect(service.generating()).toEqual([])
@@ -407,6 +418,7 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const stopped = service.send('amortize', written('停止这个请求'))
@@ -430,6 +442,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '订阅模型的回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model, runner })
 

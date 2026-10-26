@@ -417,27 +417,25 @@ describe('model list', () => {
     expect(existsSync(join(root, HARNESS_MODELS_FILENAME))).toBe(false)
   })
 
-  it('adds models from several sources, a provider\'s models sharing its key, and makes the first one added the default', async () => {
+  it('configures each source once, an API source\'s key on its profile, refuses a source configured already, and makes the first one the default', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
 
     await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1', effort: 'high' })
-    await config.addModel({ source: openai, model: 'gpt-5.5' })
+    await expect(config.addModel({ source: openai, model: 'gpt-5.5' })).rejects.toMatchObject({ reason: 'refused' })
     await config.addModel({ source: claude, model: 'opus', effort: 'max' })
     const saved = await config.addModel({ source: codex, model: '' })
 
-    expect(shown(saved)).toEqual([
-      ['openai', 'gpt-6.1', 'high', true], ['openai', 'gpt-5.5', null, true], ['claude', 'opus', 'max', true], ['codex', '', null, true],
-    ])
-    expect(saved.defaultModel).toBe(saved.models[0]!.id)
+    expect(shown(saved)).toEqual([['openai', 'gpt-6.1', 'high', true], ['claude', 'opus', 'max', true], ['codex', '', null, true]])
+    expect([saved.models.map((entry) => entry.id), saved.defaultModel]).toEqual([['api:openai', 'cli:claude', 'cli:codex'], 'api:openai'])
     expect(saved.profiles).toHaveLength(1)
-    expect(await config.runtime({ model: saved.models[1]!.id })).toMatchObject({ provider: 'openai', model: 'gpt-5.5', apiKey: 'openai-secret' })
+    expect(await config.runtime({ source: 'api:openai', model: 'gpt-5.5' })).toMatchObject({ provider: 'openai', model: 'gpt-5.5', apiKey: 'openai-secret' })
     expect(await config.runtime()).toMatchObject({ provider: 'openai', model: 'gpt-6.1', apiKey: 'openai-secret', effort: 'high' })
     expect(listOf(root)).toEqual({
-      schemaVersion: 'meridian.harness-models.v1', default: saved.models[0]!.id,
+      schemaVersion: 'meridian.harness-models.v1', default: 'api:openai',
       mirrored: { profile: 'openai', profileModel: 'gpt-6.1', cli: null, cliModel: '' },
       models: saved.models.map((entry) => ({
-        id: entry.id, source: entry.source, model: entry.model, ...(entry.effort === undefined ? {} : { effort: entry.effort }),
+        source: entry.source, model: entry.model, ...(entry.effort === undefined ? {} : { effort: entry.effort }),
       })),
     })
     expect(readFileSync(join(root, HARNESS_MODELS_FILENAME), 'utf8')).not.toContain('openai-secret')
@@ -584,65 +582,57 @@ describe('model list', () => {
     })
   })
 
-  it('groups the models by source, API providers first, compatible services by host, then Claude, then ChatGPT, each source picking the default when it holds it, else its first model', async () => {
+  it('lists the configured sources in source order: API providers first, compatible services by base URL, then Claude, then ChatGPT', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
     await config.addModel({ source: codex, model: 'gpt-6.1-sol' })
-    await config.addModel({ source: claude, model: 'opus' })
     await config.addModel({ source: claude, model: 'sonnet' })
     await config.addModel({ source: local, model: 'qwen' })
     await config.addModel({ source: { ...anthropic, apiKey: 'anthropic-secret' }, model: 'claude-opus-5-5' })
-    const added = await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1' })
-    const id = (model: string) => added.models.find((entry) => entry.model === model)!.id
-    const saved = config.setDefaultModel(id('sonnet'))
+    await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1' })
+    const saved = config.setDefaultModel('cli:claude')
+    const local8000 = 'api:openai-compatible:http://127.0.0.1:8000/v1'
 
     expect(saved.sources).toEqual([
-      { source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: [id('gpt-6.1')], defaultEntry: id('gpt-6.1') },
-      { source: { kind: 'api', profile: 'anthropic' }, provider: 'anthropic', entries: [id('claude-opus-5-5')], defaultEntry: id('claude-opus-5-5') },
+      { source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['api:openai'], defaultEntry: 'api:openai' },
+      { source: { kind: 'api', profile: 'anthropic' }, provider: 'anthropic', entries: ['api:anthropic'], defaultEntry: 'api:anthropic' },
       {
         source: { kind: 'api', profile: 'openai-compatible:http://127.0.0.1:8000/v1' }, provider: 'openai-compatible', host: '127.0.0.1:8000',
-        entries: [id('qwen')], defaultEntry: id('qwen'),
+        entries: [local8000], defaultEntry: local8000,
       },
-      { source: claude, entries: [id('opus'), id('sonnet')], defaultEntry: id('sonnet') },
-      { source: codex, entries: [id('gpt-6.1-sol')], defaultEntry: id('gpt-6.1-sol') },
+      { source: claude, entries: ['cli:claude'], defaultEntry: 'cli:claude' },
+      { source: codex, entries: ['cli:codex'], defaultEntry: 'cli:codex' },
     ])
   })
 
-  it('makes a switch to a source pick the default when it can run, else the source\'s first model that can, else its first', async () => {
+  it('saves a configured source anew in place, its key and model with it, and refuses to turn it into another source', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
     await config.addModel({ source: openai, model: 'gpt-6.1' })
-    await config.addModel({ source: openai, model: 'gpt-5.5' })
     await config.addModel({ source: claude, model: 'opus' })
-    const added = await config.addModel({ source: claude, model: 'sonnet' })
-    const id = (model: string) => added.models.find((entry) => entry.model === model)!.id
-    const sourceOf = (settings: HarnessModelSettings, kind: 'api' | 'cli') => settings.sources.find((group) => group.source.kind === kind)!
+    expect(shown(config.settings())).toEqual([['openai', 'gpt-6.1', null, false], ['claude', 'opus', null, true]])
 
-    const unrunnable = config.setDefaultModel(id('gpt-5.5'))
-    expect(sourceOf(unrunnable, 'api').defaultEntry).toBe(id('gpt-6.1'))
-    const runnable = await config.updateModel({ id: id('gpt-5.5'), source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-5.5' })
-    expect(sourceOf(runnable, 'api').defaultEntry).toBe(id('gpt-5.5'))
-    expect(sourceOf(runnable, 'cli').defaultEntry).toBe(id('opus'))
-    expect(sourceOf(config.setDefaultModel(id('sonnet')), 'cli').defaultEntry).toBe(id('sonnet'))
+    const saved = await config.updateModel({ id: 'api:openai', source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-5.5', effort: 'low' })
+    expect(shown(saved)).toEqual([['openai', 'gpt-5.5', 'low', true], ['claude', 'opus', null, true]])
+    await expect(config.updateModel({ id: 'api:openai', source: claude, model: 'sonnet' })).rejects.toMatchObject({ reason: 'invalid' })
+    expect(shown(config.settings())).toEqual([['openai', 'gpt-5.5', 'low', true], ['claude', 'opus', null, true]])
   })
 
-  it('runs a chat\'s chosen model at the chat\'s effort, at the model\'s own once that model does not take it, and on the default once its model is gone', async () => {
+  it('runs a chat\'s chosen source on the chat\'s own model and effort, the source\'s effort only on its own model, and the default once that source is gone', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
     await config.addModel({ source: claude, model: 'opus', effort: 'high' })
-    const added = await config.addModel({ source: codex, model: 'gpt-6.1-sol', effort: 'low' })
-    const [opus, sol] = added.models.map((entry) => entry.id) as [string, string]
+    await config.addModel({ source: codex, model: 'gpt-6.1-sol', effort: 'low' })
 
-    expect(await config.runtime({ model: sol })).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol', effort: 'low' })
-    expect(await config.runtime({ model: sol, effort: 'xhigh' })).toMatchObject({ cli: 'codex', effort: 'xhigh' })
-    expect(await config.runtime({ model: opus, effort: 'ultra' })).toMatchObject({ cli: 'claude', effort: 'high' })
-    expect(config.modelOf({ model: sol })).toBe(sol)
-    config.removeModel(sol)
-    expect(config.modelOf({ model: sol })).toBe(opus)
-    expect(await config.runtime({ model: sol, effort: 'xhigh' })).toEqual({ source: 'cli', cli: 'claude', model: 'opus', effort: 'high' })
-    expect(config.accepts(opus, 'max')).toBe(true)
-    expect(config.accepts(opus, 'minimal')).toBe(false)
-    expect(config.accepts(sol)).toBe(false)
+    expect(await config.runtime({ source: 'cli:codex' })).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol', effort: 'low' })
+    expect(await config.runtime({ source: 'cli:codex', model: 'gpt-5.5' })).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5.5' })
+    expect(await config.runtime({ source: 'cli:codex', model: 'gpt-5.5', effort: 'xhigh' })).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5.5', effort: 'xhigh' })
+    expect(await config.runtime({ source: 'cli:claude', effort: 'ultra' })).toMatchObject({ cli: 'claude', model: 'opus', effort: 'high' })
+    expect(config.modelOf({ source: 'cli:codex' })).toBe('cli:codex')
+    config.removeModel('cli:codex')
+    expect(config.modelOf({ source: 'cli:codex', model: 'gpt-5.5' })).toBe('cli:claude')
+    expect(await config.runtime({ source: 'cli:codex', model: 'gpt-5.5', effort: 'xhigh' })).toEqual({ source: 'cli', cli: 'claude', model: 'opus', effort: 'high' })
+    expect([config.accepts('cli:claude', 'max'), config.accepts('cli:claude', 'minimal'), config.accepts('cli:codex')]).toEqual([true, false, false])
   })
 
   it.each([
@@ -668,38 +658,41 @@ describe('model list', () => {
     expect(() => config.setDefaultModel('gone')).toThrow(expect.objectContaining({ reason: 'not-found' }))
   })
 
-  it('reads the list record by record: one it cannot read is reported on its own, the others keep showing, and it is written back as it was', async () => {
+  it('reads the list record by record: one it cannot read, a second one of a source included, is reported on its own, the others keep showing, and it is written back as it was', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
-    const unknownSource = { id: 'mistral-1', source: { kind: 'api', profile: 'mistral' }, model: 'large' }
-    const unknownEffort = { id: 'opus-ludicrous', source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'ludicrous' }
-    const broken = { id: 7 }
+    const unknownSource = { source: { kind: 'api', profile: 'mistral' }, model: 'large' }
+    const unknownEffort = { source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'ludicrous' }
+    const secondCodex = { source: { kind: 'cli', cli: 'codex' }, model: 'gpt-5.5' }
+    const broken = { source: 7 }
     writeFileSync(join(root, HARNESS_MODELS_FILENAME), JSON.stringify({
-      schemaVersion: 'meridian.harness-models.v1', default: 'sol', shown: { compact: true },
+      schemaVersion: 'meridian.harness-models.v1', default: 'cli:codex', shown: { compact: true },
       models: [
         unknownSource,
-        { id: 'sol', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'medium', pinned: true },
+        { source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'medium', pinned: true },
         unknownEffort,
+        secondCodex,
         broken,
-        { id: 'gemini-cli', source: { kind: 'cli', cli: 'gemini' }, model: '' },
+        { source: { kind: 'cli', cli: 'gemini' }, model: '' },
       ],
     }), 'utf8')
 
     const config = await createHarnessModelConfig(root, credentialVault())
 
     expect(shown(config.settings())).toEqual([['codex', 'gpt-6.1-sol', 'medium', true]])
-    expect(config.settings()).toMatchObject({ defaultModel: 'sol', modelsError: 'newer-version' })
+    expect(config.settings()).toMatchObject({ defaultModel: 'cli:codex', modelsError: 'newer-version' })
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol', effort: 'medium' })
-    await config.addModel({ source: claude, model: 'sonnet' })
-    config.setDefaultModel('sol')
+    await config.addModel({ source: { ...anthropic, apiKey: 'anthropic-secret' }, model: 'claude-sonnet-5-5' })
+    config.setDefaultModel('cli:codex')
     const written = listOf(root) as unknown as Record<string, unknown> & { models: unknown[] }
     expect(written['shown']).toEqual({ compact: true })
-    expect(written.models.slice(0, 5)).toEqual([
+    expect(written.models.slice(0, 6)).toEqual([
       unknownSource,
-      { id: 'sol', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'medium', pinned: true },
+      { source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'medium', pinned: true },
       unknownEffort,
+      secondCodex,
       broken,
-      { id: 'gemini-cli', source: { kind: 'cli', cli: 'gemini' }, model: '' },
+      { source: { kind: 'cli', cli: 'gemini' }, model: '' },
     ])
     expect(log).toHaveBeenCalled()
     log.mockRestore()

@@ -77,13 +77,14 @@ function ModelMenu({ name, isDefault, onSetDefault, onEdit, onDelete }: {
 }
 
 /**
- * The model settings: the form on top, which adds a model, or, once a row of the list under it is
- * picked by a click or its … menu's Edit, saves that model anew, in its place, with that row
- * selected; then every configured model, grouped by source in the order the sources are shown, each
- * row naming its model, source and reasoning effort, with its state and the default's mark, and a
- * … menu to make it the default, edit it or delete it; the list scrolls to the model a save adds
- * or changes and flashes it. The form keeps what is typed for a new model or a model's change as a
- * draft, the key left out. `onCopy` puts a command on the clipboard and resolves whether it did.
+ * The model settings: the form on top, which configures a source not configured yet, or, once a row
+ * of the list under it is picked by a click or its … menu's Edit, saves that source anew, in its
+ * place, with that row selected; then every configured source, one row each in the order sources are
+ * shown, naming the source, its default model and reasoning effort, with its state and the default's
+ * mark, and a … menu to make it the default, edit it or delete it; the list scrolls to the source a
+ * save adds or changes and flashes it. The form keeps what is typed for a new source or a source's
+ * change as a draft, the key left out. `onCopy` puts a command on the clipboard and resolves whether
+ * it did.
  */
 export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
   const m = useMessages()
@@ -134,13 +135,13 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
   }
   const row = (group: HarnessModelSourceGroup, entry: HarnessModelEntry) => {
     const isDefault = settings.defaultModel === entry.id
-    const name = modelEntryLabel(m, entry)
+    const name = modelSourceLabel(m, group)
     return (
       <Item
         composite className="model-row" data-model={entry.id} key={entry.id} selected={editing === entry.id}
         onActivate={() => setEditing(entry.id)}
         title={<ItemOpen><FadeText label={name}>{name}</FadeText></ItemOpen>}
-        meta={[modelSourceLabel(m, group), ...(entry.effort === undefined ? [] : [entry.effort])].join(' · ')}
+        meta={[modelEntryLabel(m, entry), ...(entry.effort === undefined ? [] : [entry.effort])].join(' · ')}
         tags={(
           <>
             {isDefault ? <Tag>{m.settings.model.list.defaultMark}</Tag> : null}
@@ -171,6 +172,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
         <ModelForm
           key={edited === undefined ? `${NEW_MODEL}-${adds}` : edited.id}
           settings={settings} {...(edited === undefined ? {} : { entry: edited })}
+          taken={settings.models.map((held) => held.id).filter((id) => id !== edited?.id)}
           kept={{ draft: drafts.get(target) ?? {}, onChange: (next) => drafts.set(target, next) }}
           onSaved={saved} onCopy={onCopy}
           {...(edited === undefined ? {} : {

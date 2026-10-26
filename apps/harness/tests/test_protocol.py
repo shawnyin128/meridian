@@ -60,6 +60,32 @@ class ProtocolTests(TestCase):
         self.assertEqual(messages[1]["error"]["kind"], "bad_request")
         self.assertIn("unknown fields", messages[1]["error"]["message"])
 
+    def test_model_list_answers_with_the_model_ids_and_classifies_a_model_not_set_up(self) -> None:
+        from unittest import mock
+
+        model = {
+            "provider": "openai-compatible",
+            "protocol": "responses",
+            "baseUrl": "http://127.0.0.1:11434/v1",
+            "model": "qwen3",
+            "authentication": "none",
+        }
+        listing = {"type": "request", "id": 8, "method": "model.list", "params": {"model": model}}
+        with mock.patch(
+            "meridian_harness.models._provider_model_ids", return_value=["qwen3", "llama4"]
+        ):
+            listed = run_server([listing])
+        keyless = {**model, "authentication": "api-key"}
+        unset = run_server([
+            {"type": "request", "id": 9, "method": "model.list", "params": {"model": keyless}},
+        ])
+
+        self.assertEqual(
+            listed[1],
+            {"type": "response", "id": 8, "ok": True, "result": {"models": ["qwen3", "llama4"]}},
+        )
+        self.assertEqual([unset[1]["type"], unset[1]["error"]["kind"]], ["error", "no_model"])
+
     def test_missing_runtime_dependency_returns_an_actionable_diagnostic(self) -> None:
         def missing_dependency(_context: RequestContext, _params: object) -> object:
             raise ModuleNotFoundError("No module named 'langchain_core'", name="langchain_core")

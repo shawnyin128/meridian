@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto'
 import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
 import type {
@@ -31,7 +30,7 @@ const SUBSCRIPTION_VERSION = 'meridian.harness-subscription.v1'
 const SUBSCRIPTION_LABELS: Record<HarnessCli, string> = { claude: 'Claude 订阅', codex: 'ChatGPT 订阅' }
 export const HARNESS_MODELS_FILENAME = 'harness-models.json'
 const MODELS_VERSION = 'meridian.harness-models.v1'
-const MAX_MODELS = 100
+const MAX_SOURCES = 100
 /** The order sources are shown in: the API providers, OpenAI-compatible services by host, then the subscription CLIs. */
 const SOURCE_ORDER: readonly string[] = ['openai', 'anthropic', 'google-gemini', 'openai-compatible', 'claude', 'codex']
 /**
@@ -98,17 +97,23 @@ type SubscriptionRecord = {
 
 const noSubscription = (): SubscriptionChoice => ({ active: null, models: { claude: '', codex: '' } })
 
-/** A configured model as the model list keeps it. */
+/**
+ * A configured source as the model list keeps it: `id`, the source's own id (see `sourceIdOf`), the
+ * model its runs use unless a chat picks another, and their reasoning effort.
+ */
 type ModelRecord = { id: string; source: HarnessModelSource; model: string; effort?: string }
 
+/** The id of model source `source`: `api:<profile key>` or `cli:<cli>`. */
+export const sourceIdOf = (source: HarnessModelSource): string => (source.kind === 'cli' ? `cli:${source.cli}` : `api:${source.profile}`)
+
 /**
- * One record of the model list file: a model this version reads, with the record as read, keys it
+ * One record of the model list file: a source this version reads, with the record as read, keys it
  * does not know included, or a record it cannot read, kept as it was, with why.
  */
 type ModelSlot = { entry: ModelRecord; raw: Record<string, unknown> } | { unreadable: unknown; failure: CallFailure }
 
 /**
- * The model list: its records in order, the default model's id, the file as read, and whether the
+ * The model list: its records in order, the default source's id, the file as read, and whether the
  * file exists yet; until it does, the list is the one older Apps' choices give.
  */
 type ModelList = { slots: ModelSlot[]; defaultModel: string | null; raw: Record<string, unknown>; stored: boolean }
@@ -120,8 +125,8 @@ type ModelList = { slots: ModelSlot[]; defaultModel: string | null; raw: Record<
  */
 type Mirrored = { profile: string; profileModel: string; cli: HarnessCli | null; cliModel: string }
 
-/** The model a run asks for: a configured model and its own reasoning effort for it, as a chat chose them. */
-export type ModelChoice = { model: string; effort?: string }
+/** What a run asks for, as a chat chose it: a configured source, and its own model of it and reasoning effort. */
+export type ModelChoice = { source: string; model?: string; effort?: string }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
@@ -227,16 +232,24 @@ const sourceOrder = (source: HarnessModelSource): [number, string] => (source.ki
   ? [SOURCE_ORDER.indexOf(source.cli), '']
   : [SOURCE_ORDER.indexOf(providerOfKey(source.profile) ?? ''), source.profile])
 
+/** The source a model source input saves to. */
+const sourceOfInput = (given: HarnessAddModelParams['source']): HarnessModelSource => (given.kind === 'cli'
+  ? given
+  : { kind: 'api', profile: profileKey(given.provider, normalizeBaseUrl(given.baseUrl)) })
+
+/** The id of the source model source input `given` saves to. */
+export const sourceIdOfInput = (given: HarnessAddModelParams['source']): string => sourceIdOf(sourceOfInput(given))
+
 const sameSource = (left: HarnessModelSource, right: HarnessModelSource) => (left.kind === 'cli'
   ? right.kind === 'cli' && right.cli === left.cli
   : right.kind === 'api' && right.profile === left.profile)
 
 /**
- * Core owns model profiles and the model list. Main performs OS-backed cryptography; Renderer sees
- * metadata only. The model list lives in `harness-models.json`; while that file is missing it is the
- * list older Apps' choices give: every API profile with a model, every CLI that is chosen or has a
- * model, and the model source in use as the default. Every change to the default keeps
- * `harness-model.json` and `harness-subscription.json` in step for older Apps.
+ * Core owns model profiles and the model list, one configuration per source. Main performs OS-backed
+ * cryptography; Renderer sees metadata only. The model list lives in `harness-models.json`; while that
+ * file is missing it is the list older Apps' choices give: every API profile with a model, every CLI
+ * that is chosen or has a model, and the source in use as the default. Every change to the default
+ * keeps `harness-model.json` and `harness-subscription.json` in step for older Apps.
  */
 export async function createHarnessModelConfig(configHome: string, vault: CredentialVault) {
   const file = join(configHome, HARNESS_MODEL_CONFIG_FILENAME)
@@ -410,7 +423,8 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
   const saveList = () => {
     const models = list.slots.map((slot) => {
       if ('failure' in slot) return slot.unreadable
-      const record: Record<string, unknown> = { ...slot.raw, id: slot.entry.id, source: slot.entry.source, model: slot.entry.model }
+      const record: Record<string, unknown> = { ...slot.raw, source: slot.entry.source, model: slot.entry.model }
+      delete record['id']
       if (slot.entry.effort === undefined) delete record['effort']
       else record['effort'] = slot.entry.effort
       return record
@@ -510,9 +524,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
    */
   const savedModel = async (input: HarnessAddModelParams, activate: boolean): Promise<Omit<ModelRecord, 'id'>> => {
     const { source: given, model, effort } = input
-    const source: HarnessModelSource = given.kind === 'cli'
-      ? given
-      : { kind: 'api', profile: profileKey(given.provider, normalizeBaseUrl(given.baseUrl)) }
+    const source = sourceOfInput(given)
     if (source.kind === 'api' && model === '') throw new CallError('invalid', '没有填模型 ID')
     if (source.kind === 'cli') HarnessSubscriptionModelSchema.parse(model)
     if (effort !== undefined && !acceptsEffort(source, effort)) throw new CallError('invalid', `这个模型不接受推理强度 ${effort}`)
@@ -526,11 +538,11 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     return { source, model, ...(effort === undefined ? {} : { effort }) }
   }
 
-  /** Makes the model matching `match`, or a new one, the default, as an older App's model choice does. */
+  /** Makes `saved` its source's configuration, added when the list holds none, and the default, as an older App's model choice does. */
   const chooseDefault = (saved: Omit<ModelRecord, 'id'>) => {
-    const held = entries().find((entry) => sameSource(entry.source, saved.source) && entry.model === saved.model)
-    if (held === undefined && entries().length >= MAX_MODELS) throw new CallError('refused', `最多保存 ${MAX_MODELS} 个模型`)
-    const entry: ModelRecord = { id: held?.id ?? randomUUID(), ...saved }
+    const held = entryById(sourceIdOf(saved.source))
+    if (held === undefined && entries().length >= MAX_SOURCES) throw new CallError('refused', `最多配置 ${MAX_SOURCES} 个来源`)
+    const entry: ModelRecord = { id: sourceIdOf(saved.source), ...saved }
     list = {
       ...list,
       slots: held === undefined
@@ -543,9 +555,9 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
 
   /**
    * Makes the choice an older App made after the list was last saved the default: when the files it
-   * reads no longer say what the list mirrored into them, the chosen CLI's model, or else the active
-   * profile's model, becomes the default, added when the list holds no such model. A profile without a
-   * model is no choice.
+   * reads no longer say what the list mirrored into them, the chosen CLI, or else the active profile,
+   * becomes the default source, running the model that App chose, added when the list holds no such
+   * source. A profile without a model is no choice.
    */
   const adoptOlderChoice = () => {
     const held = list.raw['mirrored']
@@ -559,22 +571,34 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         ? { source: { kind: 'api', profile: now.profile }, model: now.profileModel }
         : undefined
     if (chosen === undefined) return
-    const kept = entries().find((entry) => sameSource(entry.source, chosen.source) && entry.model === chosen.model)
-    if (kept === undefined && entries().length >= MAX_MODELS) return
-    const entry: ModelRecord = kept ?? { id: randomUUID(), ...chosen }
-    list = { ...list, slots: kept === undefined ? [...list.slots, { entry, raw: {} }] : list.slots, defaultModel: entry.id }
+    const id = sourceIdOf(chosen.source)
+    const kept = entryById(id)
+    if (kept === undefined && entries().length >= MAX_SOURCES) return
+    const entry: ModelRecord = { ...kept, id, ...chosen }
+    list = {
+      ...list,
+      slots: kept === undefined
+        ? [...list.slots, { entry, raw: {} }]
+        : list.slots.map((slot) => ('entry' in slot && slot.entry.id === id ? { ...slot, entry } : slot)),
+      defaultModel: id,
+    }
     console.error(`[harness] 采用了旧版 App 选的模型 ${entry.model || entry.id}`)
     commit()
   }
 
-  /** The configured model a run on `choice` uses: its chosen model while that is configured, else the default. */
+  /**
+   * What a run on `choice` uses: its chosen source while that is configured, else the default source;
+   * the chat's own model of the chosen source, else the source's; and the chat's own effort, else the
+   * source's effort when the run uses the source's model, else the model's own.
+   */
   const resolve = (choice?: ModelChoice | null) => {
-    const chosen = choice === undefined || choice === null ? undefined : entryById(choice.model)
+    const chosen = choice === undefined || choice === null ? undefined : entryById(choice.source)
     const entry = chosen ?? defaultEntry()
     if (entry === undefined) return undefined
+    const model = chosen !== undefined && choice?.model !== undefined ? choice.model : entry.model
     const own = chosen !== undefined && choice?.effort !== undefined && acceptsEffort(entry.source, choice.effort) ? choice.effort : undefined
-    const effort = own ?? entry.effort
-    return { entry, ...(effort === undefined ? {} : { effort }) }
+    const effort = own ?? (model === entry.model ? entry.effort : undefined)
+    return { entry, model, ...(effort === undefined ? {} : { effort }) }
   }
 
   adoptOlderChoice()
@@ -611,28 +635,37 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       chooseDefault({ source: { kind: 'cli', cli }, model, ...(effort === undefined ? {} : { effort }) })
       return publicSettings()
     },
-    /** Adds the model `input` names; the first model added becomes the default. Throws `refused` once the list is full. */
+    /**
+     * Configures the source `input` names; the first source configured becomes the default. Throws
+     * `refused` for a source configured already and once the list is full.
+     */
     async addModel(input: HarnessAddModelParams): Promise<HarnessModelSettings> {
       const params = HarnessAddModelParamsSchema.parse(input)
-      if (entries().length >= MAX_MODELS) throw new CallError('refused', `最多保存 ${MAX_MODELS} 个模型`)
+      if (entryById(sourceIdOf(sourceOfInput(params.source))) !== undefined) throw new CallError('refused', '这个来源已经配置过')
+      if (entries().length >= MAX_SOURCES) throw new CallError('refused', `最多配置 ${MAX_SOURCES} 个来源`)
       const first = defaultEntry() === undefined
-      const entry: ModelRecord = { id: randomUUID(), ...await savedModel(params, first) }
+      const saved = await savedModel(params, first)
+      const entry: ModelRecord = { id: sourceIdOf(saved.source), ...saved }
       list = { ...list, slots: [...list.slots, { entry, raw: {} }], defaultModel: first ? entry.id : list.defaultModel }
       commit()
       return publicSettings()
     },
-    /** Saves model `input.id` anew. Throws `not-found` for a model the list does not hold. */
+    /**
+     * Saves configured source `input.id` anew. Throws `not-found` for a source the list does not hold,
+     * and `invalid` when `input.source` names another source.
+     */
     async updateModel(input: HarnessUpdateModelParams): Promise<HarnessModelSettings> {
       const { id, ...params } = HarnessUpdateModelParamsSchema.parse(input)
       if (entryById(id) === undefined) throw new CallError('not-found', '这个模型不在列表里')
+      if (sourceIdOf(sourceOfInput(params.source)) !== id) throw new CallError('invalid', '一项配置不能换成另一个来源')
       const entry: ModelRecord = { id, ...await savedModel(params, list.defaultModel === id) }
       list = { ...list, slots: list.slots.map((slot) => ('entry' in slot && slot.entry.id === id ? { ...slot, entry } : slot)) }
       commit()
       return publicSettings()
     },
     /**
-     * Removes model `id`; a removed default leaves the first model left that can run, in source order,
-     * the default, or else the first model left.
+     * Removes configured source `id`; a removed default leaves the first source left that can run, in
+     * source order, the default, or else the first source left.
      */
     removeModel(id: string): HarnessModelSettings {
       if (entryById(id) === undefined) throw new CallError('not-found', '这个模型不在列表里')
@@ -644,30 +677,29 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       commit()
       return publicSettings()
     },
-    /** Makes model `id` the default. Throws `not-found` for a model the list does not hold. */
+    /** Makes configured source `id` the default. Throws `not-found` for a source the list does not hold. */
     setDefaultModel(id: string): HarnessModelSettings {
       if (entryById(id) === undefined) throw new CallError('not-found', '这个模型不在列表里')
       list = { ...list, defaultModel: id }
       commit()
       return publicSettings()
     },
-    /** Whether model `id` is in the list and takes reasoning effort `effort`, when one is given. */
+    /** Whether source `id` is configured and takes reasoning effort `effort`, when one is given. */
     accepts(id: string, effort?: string): boolean {
       const entry = entryById(id)
       return entry !== undefined && (effort === undefined || acceptsEffort(entry.source, effort))
     },
-    /** The id of the model a run on `choice` uses, its chosen model while that is in the list and else the default, or null without one. */
+    /** The id of the source a run on `choice` uses, its chosen source while that is configured and else the default, or null without one. */
     modelOf(choice?: ModelChoice | null): string | null {
       return resolve(choice)?.entry.id ?? null
     },
-    /** Whether a run on `choice` has a model that can run as set up. */
+    /** Whether a run on `choice` has a source whose runs go ahead as set up. */
     configured(choice?: ModelChoice | null): boolean {
       const resolved = resolve(choice)
       return resolved !== undefined && runs(resolved.entry)
     },
     /**
-     * The model a run on `choice` uses, its chosen model while that is in the list and else the
-     * default, at the chosen effort when that model takes it and else at the model's own. Throws
+     * The model a run on `choice` uses, as `resolve` picks it, on its source's connection. Throws
      * `no-model` without one, and the reason when the subscription choice the list still comes from
      * cannot be read.
      */
@@ -675,10 +707,10 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       if (!list.stored && subscriptionError !== undefined) throw new CallError(subscriptionError, '订阅配置读不出来')
       const resolved = resolve(choice)
       if (resolved === undefined) throw new CallError(listError ?? 'no-model', '还没有设置默认模型')
-      const { entry, effort } = resolved
+      const { entry, model, effort } = resolved
       if (entry.source.kind === 'cli') {
         return {
-          source: 'cli', cli: entry.source.cli, ...(entry.model === '' ? {} : { model: entry.model }), ...(effort === undefined ? {} : { effort }),
+          source: 'cli', cli: entry.source.cli, ...(model === '' ? {} : { model }), ...(effort === undefined ? {} : { effort }),
         }
       }
       const key = entry.source.profile
@@ -706,13 +738,13 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         provider: current.provider,
         protocol: current.protocol,
         baseUrl: current.baseUrl,
-        model: entry.model,
+        model,
         authentication: current.authentication,
         ...(apiKey === undefined ? {} : { apiKey }),
         ...(effort === undefined ? {} : { effort }),
       }
     },
-    /** The default model as a run's confirmation names it. */
+    /** The default source's model as a run's confirmation names it. */
     planModel() {
       const chosen = defaultEntry()
       if (chosen === undefined) return { provider: '未配置', name: '未配置', configured: false, billable: false }
@@ -887,13 +919,11 @@ export type HarnessModelConfig = Awaited<ReturnType<typeof createHarnessModelCon
 
 /**
  * The model list record `raw` holds, or why it cannot be read: `newer-version` for a source, or an
- * effort word, this version does not know, `invalid` for anything else, `seen` holding the ids of
- * the records before it.
+ * effort word, this version does not know, `invalid` for anything else, a second record of one
+ * source included, `seen` holding the ids of the sources of the records before it.
  */
 function parseModelRecord(raw: unknown, seen: ReadonlySet<string>): ModelRecord | CallFailure {
   if (!isRecord(raw)) return 'invalid'
-  const id = raw['id']
-  if (typeof id !== 'string' || id === '' || id.length > 100 || seen.has(id)) return 'invalid'
   const held = raw['source']
   if (!isRecord(held)) return 'invalid'
   let source: HarnessModelSource
@@ -917,6 +947,8 @@ function parseModelRecord(raw: unknown, seen: ReadonlySet<string>): ModelRecord 
     if (!HarnessEffortSchema.safeParse(effort).success) return 'invalid'
     if (!acceptsEffort(source, effort as string)) return 'newer-version'
   }
+  const id = sourceIdOf(source)
+  if (seen.has(id)) return 'invalid'
   return { id, source, model, ...(effort === undefined ? {} : { effort: effort as string }) }
 }
 
@@ -935,7 +967,7 @@ function readModelList(file: string): ModelList | null {
     const records = parsed['models'] ?? []
     if (!Array.isArray(records)) throw new Error('models 不是列表')
     const seen = new Set<string>()
-    const slots = records.slice(0, MAX_MODELS).map((raw): ModelSlot => {
+    const slots = records.slice(0, MAX_SOURCES).map((raw): ModelSlot => {
       const read = parseModelRecord(raw, seen)
       if (typeof read === 'string') return { unreadable: raw, failure: read }
       seen.add(read.id)

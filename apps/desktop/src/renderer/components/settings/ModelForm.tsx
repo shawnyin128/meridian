@@ -120,6 +120,10 @@ function EffortField({ value, efforts, onChange }: {
   )
 }
 
+/** The draft fields of an API source, and those of a subscription. */
+const DRAFT_API_FIELDS = ['provider', 'protocol', 'baseUrl', 'authentication', 'compatibleTemplate']
+const DRAFT_CLI_FIELDS = ['cli', 'cliModel', 'cliEffort']
+
 /** What a new model's form keeps as its draft: every field but the key, which is never kept. */
 export type ModelDraft = Partial<{
   tab: ModelTab
@@ -136,16 +140,19 @@ export type ModelDraft = Partial<{
 }>
 
 /**
- * The model settings form: it adds a new model, or, given `entry`, saves that configured model anew.
- * It holds the API and subscription tabs, the service, the model ID, the reasoning effort and the
+ * The model settings form: it configures a source not configured yet, offering only the sources
+ * `taken`, the ids of those configured already, leaves out (an OpenAI-compatible service is a source
+ * per base URL), or, given `entry`, saves that configured source anew, its source fixed. It holds the
+ * API and subscription tabs, the service, the source's default model ID, its reasoning effort and the
  * key, a connection check of `entry` as saved, Cancel when there is `onCancel`, and Save. It starts
- * from `kept.draft` over `entry`, and once something changes gives `kept.onChange` what it shows, the
- * key left out. `onSaved` gets the settings the save returned; `onCopy` puts a command on the
- * clipboard and resolves whether it did.
+ * from `kept.draft` over `entry`, a draft's source only while that is still free, and once something
+ * changes gives `kept.onChange` what it shows, the key left out. `onSaved` gets the settings the save
+ * returned; `onCopy` puts a command on the clipboard and resolves whether it did.
  */
-export function ModelForm({ settings, entry, kept, onSaved, onCancel, onCopy }: {
+export function ModelForm({ settings, entry, taken, kept, onSaved, onCancel, onCopy }: {
   settings: HarnessModelSettings
   entry?: HarnessModelEntry
+  taken: readonly string[]
   kept?: { draft: ModelDraft; onChange: (next: ModelDraft) => void }
   onSaved: (next: HarnessModelSettings) => void
   onCancel?: () => void
@@ -154,17 +161,31 @@ export function ModelForm({ settings, entry, kept, onSaved, onCancel, onCopy }: 
   const m = useMessages()
   const source = entry?.source
   const profile = source?.kind === 'api' ? settings.profiles.find((held) => profileKey(held) === source.profile) : undefined
-  const draft = kept?.draft ?? {}
-  const [provider, setProvider] = useState<HarnessModelProvider>(draft.provider ?? profile?.provider ?? 'openai')
-  const [protocol, setProtocol] = useState<HarnessModelProtocol>(draft.protocol ?? profile?.protocol ?? PROVIDERS.openai.protocol)
-  const [baseUrl, setBaseUrl] = useState(draft.baseUrl ?? profile?.baseUrl ?? PROVIDERS.openai.baseUrl)
+  const freeProviders = entry === undefined
+    ? PROVIDER_CHOICES.filter((option) => option === 'openai-compatible' || !taken.includes(`api:${option}`))
+    : PROVIDER_CHOICES.filter((option) => option === profile?.provider)
+  const freeClis = entry === undefined ? CLI_CHOICES.filter((option) => !taken.includes(`cli:${option}`))
+    : CLI_CHOICES.filter((option) => source?.kind === 'cli' && option === source.cli)
+  const stored = kept?.draft ?? {}
+  // A draft's source the list took since the draft was kept no longer starts the form.
+  const apiFree = stored.provider === undefined || freeProviders.includes(stored.provider)
+  const cliFree = stored.cli === undefined || freeClis.includes(stored.cli)
+  const draft = Object.fromEntries(Object.entries(stored).filter(([key]) => (apiFree || !DRAFT_API_FIELDS.includes(key))
+    && (cliFree || !DRAFT_CLI_FIELDS.includes(key)))) as ModelDraft
+  const startProvider = draft.provider ?? profile?.provider ?? freeProviders[0] ?? 'openai'
+  const [provider, setProvider] = useState<HarnessModelProvider>(startProvider)
+  const [protocol, setProtocol] = useState<HarnessModelProtocol>(draft.protocol ?? profile?.protocol ?? PROVIDERS[startProvider].protocol)
+  const [baseUrl, setBaseUrl] = useState(draft.baseUrl ?? profile?.baseUrl ?? PROVIDERS[startProvider].baseUrl)
   const [model, setModel] = useState(draft.model ?? (source?.kind === 'api' ? entry!.model : ''))
   // The reasoning effort the API tab shows, '' for the provider's own default.
   const [effort, setEffort] = useState(draft.effort ?? (source?.kind === 'api' ? entry!.effort ?? '' : ''))
-  const [authentication, setAuthentication] = useState<'api-key' | 'none'>(draft.authentication ?? profile?.authentication ?? 'api-key')
-  const [tab, setTab] = useState<ModelTab>(draft.tab ?? (source?.kind === 'cli' ? 'subscription' : 'api'))
+  const [authentication, setAuthentication] = useState<'api-key' | 'none'>(
+    draft.authentication ?? profile?.authentication ?? PROVIDERS[startProvider].authentication,
+  )
+  const [tab, setTab] = useState<ModelTab>(source !== undefined ? (source.kind === 'cli' ? 'subscription' : 'api')
+    : draft.tab === 'subscription' && freeClis.length > 0 ? 'subscription' : 'api')
   // The subscription the subscription tab shows.
-  const [cli, setCli] = useState<HarnessCli>(draft.cli ?? (source?.kind === 'cli' ? source.cli : 'claude'))
+  const [cli, setCli] = useState<HarnessCli>(draft.cli ?? (source?.kind === 'cli' ? source.cli : freeClis[0] ?? 'claude'))
   const [cliModel, setCliModel] = useState(draft.cliModel ?? (source?.kind === 'cli' ? entry!.model : ''))
   const [cliEffort, setCliEffort] = useState(draft.cliEffort ?? (source?.kind === 'cli' ? entry!.effort ?? '' : ''))
   const [cliStatus, setCliStatus] = useState<HarnessSubscriptionStatus | null>(null)
@@ -343,7 +364,7 @@ export function ModelForm({ settings, entry, kept, onSaved, onCancel, onCopy }: 
         <FieldRow label={m.settings.model.fields.providerLabel}>
           <ChoicePicker
             appearance="field" aria-label={m.settings.model.fields.providerLabel} value={cli}
-            options={CLI_CHOICES} onPick={selectCli} label={(option) => m.settings.model.subscriptions[option].label}
+            options={freeClis} onPick={selectCli} label={(option) => m.settings.model.subscriptions[option].label}
           />
         </FieldRow>
         <FieldRow label={m.settings.model.subscription.cliLabel}>
@@ -401,7 +422,7 @@ export function ModelForm({ settings, entry, kept, onSaved, onCancel, onCopy }: 
       <FieldRow label={m.settings.model.fields.providerLabel}>
         <ChoicePicker
           appearance="field" aria-label={m.settings.model.fields.providerLabel} value={provider}
-          options={PROVIDER_CHOICES} onPick={selectProvider}
+          options={freeProviders} onPick={selectProvider}
           label={(option) => (option === 'openai-compatible' ? m.settings.model.providers[option].label : PROVIDER_NAMES[option])}
         />
       </FieldRow>
@@ -410,7 +431,9 @@ export function ModelForm({ settings, entry, kept, onSaved, onCancel, onCopy }: 
           <FieldRow label={m.settings.model.templates.chooseLabel}>
             <ChoicePicker
               appearance="field" aria-label={m.settings.model.templates.chooseAria} value={compatibleTemplate}
-              options={TEMPLATE_CHOICES} onPick={selectCompatibleTemplate}
+              options={entry === undefined ? TEMPLATE_CHOICES.filter((option) => option === 'choose' || option === 'custom'
+                || !taken.includes(`api:openai-compatible:${COMPATIBLE_TEMPLATES[option].baseUrl}`)) : [compatibleTemplate]}
+              onPick={selectCompatibleTemplate}
               label={(option) => (option === 'choose' ? m.settings.model.templates.choosePlaceholder
                 : option === 'custom' ? m.settings.model.templates.custom : m.settings.model.templates[option].label)}
             />
@@ -426,7 +449,7 @@ export function ModelForm({ settings, entry, kept, onSaved, onCancel, onCopy }: 
               </FieldRow>
               <FieldRow label={m.settings.model.fields.baseUrlLabel}>
                 <FormInput appearance="field" aria-label={m.settings.model.fields.baseUrlAria} value={baseUrl}
-                  placeholder={m.settings.model.providers['openai-compatible'].baseUrlPlaceholder}
+                  disabled={entry !== undefined} placeholder={m.settings.model.providers['openai-compatible'].baseUrlPlaceholder}
                   onChange={(event) => setBaseUrl(event.target.value)} />
               </FieldRow>
               <FieldRow label={m.settings.model.fields.authLabel}>
@@ -499,8 +522,11 @@ export function ModelForm({ settings, entry, kept, onSaved, onCancel, onCopy }: 
           />
         )}
         tabs={[
-          { value: 'api', label: m.settings.model.tabs.api, content: apiPanel },
-          { value: 'subscription', label: m.settings.model.tabs.subscription, content: subscriptionPanel },
+          { value: 'api', label: m.settings.model.tabs.api, content: apiPanel, disabled: source?.kind === 'cli' },
+          {
+            value: 'subscription', label: m.settings.model.tabs.subscription, content: subscriptionPanel,
+            disabled: source === undefined ? freeClis.length === 0 : source.kind === 'api',
+          },
         ]}
       />
       <ServiceFoot>

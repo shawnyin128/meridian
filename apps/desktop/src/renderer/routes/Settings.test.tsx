@@ -28,7 +28,7 @@ const core = vi.hoisted(() => {
     provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: '',
     authentication: 'api-key', apiKeyConfigured: false, configured: false,
   }
-  const held = { profiles: [] as HarnessModelProfile[], models: [] as HeldModel[], defaultModel: null as string | null, added: 0 }
+  const held = { profiles: [] as HarnessModelProfile[], models: [] as HeldModel[], defaultModel: null as string | null }
   const keyOf = (profile: { provider: string; baseUrl: string }) => (profile.provider === 'openai-compatible'
     ? `openai-compatible:${profile.baseUrl.replace(/\/+$/, '')}` : profile.provider)
   const sourceKey = (source: HarnessModelSource) => (source.kind === 'cli' ? source.cli : source.profile)
@@ -67,10 +67,17 @@ const core = vi.hoisted(() => {
     settings,
     /** Starts the list over with `profiles` and `models`, the first of them the default. */
     seed(profiles: HarnessModelProfile[] = [], models: HeldModel[] = []) {
-      Object.assign(held, { profiles, models, defaultModel: models[0]?.id ?? null, added: 0 })
+      Object.assign(held, { profiles, models, defaultModel: models[0]?.id ?? null })
     },
-    /** Saves model `params.id`, or adds a model without one, as Core saves it; the first model added becomes the default. */
+    /**
+     * Saves configured source `params.id`, or configures the source `params` names without one, as
+     * Core saves it, one configuration per source, each by the source's own id; the first source
+     * configured becomes the default.
+     */
     save(params: HarnessAddModelParams & { id?: string }): HarnessModelSettings {
+      const id = params.source.kind === 'cli' ? `cli:${params.source.cli}` : `api:${keyOf(params.source)}`
+      if (params.id === undefined && held.models.some((entry) => entry.id === id)) throw new CallError('harness.addModel', 'refused')
+      if (params.id !== undefined && params.id !== id) throw new CallError('harness.updateModel', 'invalid')
       let source: HarnessModelSource
       if (params.source.kind === 'cli') {
         source = { kind: 'cli', cli: params.source.cli }
@@ -86,9 +93,8 @@ const core = vi.hoisted(() => {
         }]
         source = { kind: 'api', profile: key }
       }
-      held.added += 1
       const entry: HeldModel = {
-        id: params.id ?? `added-${held.added}`, source, model: params.model.trim(),
+        id, source, model: params.model.trim(),
         ...(params.effort === undefined ? {} : { effort: params.effort }),
       }
       held.models = params.id === undefined ? [...held.models, entry] : held.models.map((other) => (other.id === params.id ? entry : other))
@@ -438,7 +444,7 @@ describe('Settings', () => {
   })
 
   it('API 总览列出模型和科研的当前状态，点科研进入 Semantic Scholar 页', async () => {
-    core.seed([officialProfile('openai', '1111')], [apiModel('gpt', 'openai', 'gpt-test')])
+    core.seed([officialProfile('openai', '1111')], [apiModel('openai', 'gpt-test')])
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
@@ -459,9 +465,9 @@ describe('Settings', () => {
       await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
       return dialog.querySelector('[data-api="model"] .api-state')?.textContent
     }
-    expect(await shown([cliModel('claude', 'claude', ''), cliModel('codex', 'codex', 'gpt-5-codex')])).toBe('Claude 订阅')
-    expect(await shown([cliModel('codex', 'codex', 'gpt-5-codex'), cliModel('claude', 'claude', '')])).toBe('ChatGPT 订阅 · gpt-5-codex')
-    expect(await shown([apiModel('gpt', 'openai', 'gpt-6.1'), cliModel('claude', 'claude', 'opus')])).toBe('未配置')
+    expect(await shown([cliModel('claude', ''), cliModel('codex', 'gpt-5-codex')])).toBe('Claude 订阅')
+    expect(await shown([cliModel('codex', 'gpt-5-codex'), cliModel('claude', '')])).toBe('ChatGPT 订阅 · gpt-5-codex')
+    expect(await shown([apiModel('openai', 'gpt-6.1'), cliModel('claude', 'opus')])).toBe('未配置')
   })
 
   it('API 总览还没读到一项的状态时，那一格是载入占位，不写正在读取', async () => {
@@ -1179,6 +1185,7 @@ describe('Settings', () => {
   })
 
   const OLLAMA = 'openai-compatible:http://127.0.0.1:11434/v1'
+  const OLLAMA_ID = `api:${OLLAMA}`
   /** An official provider's API profile, with a saved key ending in `lastFour`, or none without one. */
   const officialProfile = (provider: 'openai' | 'anthropic', lastFour?: string): HarnessModelProfile => ({
     provider, protocol: provider === 'openai' ? 'responses' : 'messages',
@@ -1191,18 +1198,18 @@ describe('Settings', () => {
     provider: 'openai-compatible', protocol: 'responses', baseUrl: 'http://127.0.0.1:11434/v1', model: '',
     authentication: 'none', apiKeyConfigured: false, configured: true,
   }
-  /** A model `id` on the API profile Core keys as `profile`. */
-  const apiModel = (id: string, profile: string, model: string, effort?: string): HeldModel => ({
-    id, source: { kind: 'api', profile }, model, ...(effort === undefined ? {} : { effort }),
+  /** The configured API source on the profile Core keys as `profile`, by its own id, running `model` by default. */
+  const apiModel = (profile: string, model: string, effort?: string): HeldModel => ({
+    id: `api:${profile}`, source: { kind: 'api', profile }, model, ...(effort === undefined ? {} : { effort }),
   })
-  /** A model `id` on subscription CLI `cli`. */
-  const cliModel = (id: string, cli: HarnessCli, model: string, effort?: string): HeldModel => ({
-    id, source: { kind: 'cli', cli }, model, ...(effort === undefined ? {} : { effort }),
+  /** The configured subscription `cli`, by its own id, running `model` by default. */
+  const cliModel = (cli: HarnessCli, model: string, effort?: string): HeldModel => ({
+    id: `cli:${cli}`, source: { kind: 'cli', cli }, model, ...(effort === undefined ? {} : { effort }),
   })
-  /** Opens Settings on the model page and returns its dialog. */
-  const openModelPage = async () => {
+  /** Opens Settings on the model page, anew for each `key`, and returns its dialog. */
+  const openModelPage = async (key = 'model') => {
     api.requestedCategory = 'model'
-    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    await act(async () => { root.render(<MessagesProvider key={key}><Settings /></MessagesProvider>) })
     return document.querySelector('.setdlg')!
   }
   /** Each row of the model list, as its id, its name, its meta and its tags. */
@@ -1212,11 +1219,11 @@ describe('Settings', () => {
   ])
   /** The ids of the selected rows of the model list. */
   const selectedRows = () => [...document.querySelectorAll<HTMLElement>('.setdlg .model-list .item--selected')].map((row) => row.dataset.model)
-  /** Opens model `id` in the form through the button around its name, the row's keyboard control. */
+  /** Opens source `id` in the form through the button around its name, the row's keyboard control. */
   const editModel = async (id: string) => {
     await act(async () => { document.querySelector<HTMLButtonElement>(`.setdlg .model-list [data-model="${id}"] button.item-open`)!.click() })
   }
-  /** Opens the … menu of the model named `name` and returns its items. */
+  /** Opens the … menu of the source named `name` and returns its items. */
   const openModelMenu = async (name: string) => {
     await act(async () => {
       document.querySelector(`.setdlg .model-list button[aria-label="管理「${name}」"]`)!
@@ -1231,8 +1238,8 @@ describe('Settings', () => {
     .find((button) => button.textContent === '取消')
 
   it('模型页的右栏自己不滚：标题和表单留在上面，表单下的模型列表占满剩下的高度，放不下时只在列表里滚', async () => {
-    core.seed([officialProfile('openai', '1111')], [
-      apiModel('gpt-a', 'openai', 'gpt-a'), apiModel('gpt-b', 'openai', 'gpt-b'), cliModel('opus', 'claude', 'opus'),
+    core.seed([officialProfile('openai', '1111'), officialProfile('anthropic', '2222')], [
+      apiModel('openai', 'gpt-a'), apiModel('anthropic', 'claude-b'), cliModel('claude', 'opus'),
     ])
     await openModelPage()
     const column = document.querySelector<HTMLElement>('.setdlg .split-main')!
@@ -1250,103 +1257,163 @@ describe('Settings', () => {
     expect(column.textContent).toBe(`模型${card.textContent}${list.textContent}`)
   })
 
+  it('每个配置过的来源一行：行名是来源，后面是它默认的模型和推理强度，没存强度的不写', async () => {
+    core.seed([officialProfile('openai'), ollamaProfile], [
+      apiModel('openai', 'gpt-6.1', 'high'), apiModel(OLLAMA, 'qwen3'), cliModel('claude', 'opus', 'high'), cliModel('codex', ''),
+    ])
+    await openModelPage()
+
+    expect(listRows().map(([id, name, meta]) => [id, name, meta])).toEqual([
+      ['api:openai', 'OpenAI API', 'gpt-6.1 · high'], [OLLAMA_ID, 'Ollama 本地', 'qwen3'],
+      ['cli:claude', 'Claude 订阅', 'opus · high'], ['cli:codex', 'ChatGPT 订阅', '默认模型'],
+    ])
+  })
+
+  it('添加框只提供还没配置的来源：配过的服务和订阅不在选项里，兼容服务按接口地址算，两个订阅都配过时订阅 tab 点不了', async () => {
+    core.seed([officialProfile('openai', '1111'), ollamaProfile], [
+      apiModel('openai', 'gpt-6.1'), apiModel(OLLAMA, 'qwen3'), cliModel('claude', 'opus'),
+    ])
+    const dialog = await openModelPage()
+
+    expect(dialog.querySelector('[aria-label="模型服务"]')?.textContent).toBe('Anthropic')
+    expect((await openPicker(dialog, '模型服务')).map((item) => item.textContent)).toEqual(['Anthropic', 'Google Gemini', 'OpenAI 兼容 API'])
+    await closePicker()
+    await pick(dialog, '模型服务', 'OpenAI 兼容 API')
+    expect((await openPicker(dialog, '兼容服务模板')).map((item) => item.textContent))
+      .toEqual(['模板', 'DeepSeek · 云端', 'OpenRouter · 云端聚合', 'LM Studio · 本地', '其他兼容服务'])
+    await closePicker()
+    await modelTab(dialog, '订阅')
+    expect([dialog.querySelector('[aria-label="模型服务"]')?.textContent, (await openPicker(dialog, '模型服务')).map((item) => item.textContent)])
+      .toEqual(['ChatGPT 订阅', ['ChatGPT 订阅']])
+    await closePicker()
+
+    core.seed([], [cliModel('claude', 'opus'), cliModel('codex', '')])
+    const full = await openModelPage('full')
+    expect(modelTabs(full)).toEqual([['API', 'true'], ['订阅', 'false']])
+    expect([...full.querySelectorAll<HTMLButtonElement>('.model-settings-card .section-heading .segmented-control>button')]
+      .map((button) => button.disabled)).toEqual([false, true])
+  })
+
+  it('点开一行时来源固定：服务只剩它自己，另一个 tab 点不了，兼容服务的接口地址不能改', async () => {
+    const custom: HarnessModelProfile = {
+      provider: 'openai-compatible', protocol: 'chat-completions', baseUrl: 'https://api.example.com/v1', model: '',
+      authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: '7777', configured: true,
+    }
+    core.seed([officialProfile('openai', '1111'), custom], [
+      apiModel('openai', 'gpt-6.1'), apiModel('openai-compatible:https://api.example.com/v1', 'mixtral'), cliModel('codex', 'gpt-5.5'),
+    ])
+    const dialog = await openModelPage()
+    const tabsDisabled = () => [...dialog.querySelectorAll<HTMLButtonElement>('.model-settings-card .section-heading .segmented-control>button')]
+      .map((button) => button.disabled)
+
+    await editModel('api:openai')
+    expect([(await openPicker(dialog, '模型服务')).map((item) => item.textContent), tabsDisabled()]).toEqual([['OpenAI'], [false, true]])
+    await closePicker()
+    await editModel('api:openai-compatible:https://api.example.com/v1')
+    expect([
+      dialog.querySelector('[aria-label="兼容服务模板"]')?.textContent, dialog.querySelector<HTMLInputElement>('[aria-label="模型接口地址"]')?.disabled,
+    ]).toEqual(['其他兼容服务', true])
+    await editModel('cli:codex')
+    expect([(await openPicker(dialog, '模型服务')).map((item) => item.textContent), tabsDisabled()]).toEqual([['ChatGPT 订阅'], [true, false]])
+    await closePicker()
+  })
+
   it('添加框里的新模型不能测试连接，按钮旁不写字；点开一个能运行的已存模型就能测试', async () => {
-    core.seed([officialProfile('openai', '1111')], [apiModel('gpt-a', 'openai', 'gpt-saved')])
+    core.seed([officialProfile('openai', '1111')], [apiModel('openai', 'gpt-saved')])
     await openModelPage()
     const test = () => [...document.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
       .find((b) => b.textContent === '测试连接')!
     expect([test().disabled, document.querySelector('.model-settings-card .service-actions .tag')]).toEqual([true, null])
-    await editModel('gpt-a')
+    await editModel('api:openai')
     expect([test().disabled, document.querySelector('.model-settings-card .service-actions .tag')]).toEqual([false, null])
   })
 
-  it('保存失败时添加框留着填的内容并写出原因；保存成功后新模型排在它服务那一组的末尾，列表滚到它并闪一下，添加框清空', async () => {
-    core.seed([officialProfile('openai', '1111'), ollamaProfile], [
-      apiModel('gpt-a', 'openai', 'gpt-a'), apiModel('qwen3', OLLAMA, 'qwen3'), cliModel('opus', 'claude', 'opus'),
-    ])
+  it('保存失败时添加框留着填的内容并写出原因；保存成功后新来源按来源的顺序排进列表，列表滚到它并闪一下，添加框清空', async () => {
+    core.seed([officialProfile('openai', '1111')], [apiModel('openai', 'gpt-a'), cliModel('claude', 'opus')])
     const dialog = await openModelPage()
-    await fill(dialog, '模型名称', 'gpt-b')
+    await fill(dialog, '模型名称', 'claude-opus-5-5')
     api.addModel.mockRejectedValueOnce(new CallError('harness.addModel', 'refused'))
     await save(dialog)
     expect([dialog.querySelector('.model-settings-card .service-error')?.textContent, modelName(dialog), listRows().map(([id]) => id)])
-      .toEqual(['现在不能这样做', 'gpt-b', ['gpt-a', 'qwen3', 'opus']])
+      .toEqual(['现在不能这样做', 'claude-opus-5-5', ['api:openai', 'cli:claude']])
 
     await save(dialog)
     expect(api.addModel).toHaveBeenLastCalledWith({
-      source: { kind: 'api', provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', authentication: 'api-key' },
-      model: 'gpt-b',
+      source: { kind: 'api', provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com', authentication: 'api-key' },
+      model: 'claude-opus-5-5',
     })
     expect(listRows()).toEqual([
-      ['gpt-a', 'gpt-a', 'OpenAI API', ['默认', '已配置']], ['added-1', 'gpt-b', 'OpenAI API', ['已配置']],
-      ['qwen3', 'qwen3', 'Ollama 本地', ['已配置']], ['opus', 'opus', 'Claude 订阅', ['已用订阅登录']],
+      ['api:openai', 'OpenAI API', 'gpt-a', ['默认', '已配置']], ['api:anthropic', 'Anthropic API', 'claude-opus-5-5', ['未配置']],
+      ['cli:claude', 'Claude 订阅', 'opus', ['已用订阅登录']],
     ])
-    const landed = dialog.querySelector<HTMLElement>('.model-list [data-model="added-1"]')!
+    const landed = dialog.querySelector<HTMLElement>('.model-list [data-model="api:anthropic"]')!
     expect([scrolledTo.filter((box) => box.closest('.model-list') !== null).map((box) => box.dataset.model), landed.hasAttribute('data-arrived')])
-      .toEqual([['added-1'], true])
+      .toEqual([['api:anthropic'], true])
     expect([modelName(dialog), dialog.querySelector('.model-settings-card .service-error'), cancelButton(dialog), selectedRows()])
       .toEqual(['', null, undefined, []])
   })
 
-  it('保存一个点开改过的模型后，列表滚到它那一行并闪一下，和新加的模型一样；表单回到添加框', async () => {
+  it('保存一个点开改过的来源后，列表滚到它那一行并闪一下，和新加的一样；表单回到添加框', async () => {
     core.seed([officialProfile('openai', '1111'), ollamaProfile], [
-      apiModel('gpt-a', 'openai', 'gpt-a'), apiModel('qwen3', OLLAMA, 'qwen3'), cliModel('opus', 'claude', 'opus'),
+      apiModel('openai', 'gpt-a'), apiModel(OLLAMA, 'qwen3'), cliModel('claude', 'opus'),
     ])
     const dialog = await openModelPage()
-    await editModel('qwen3')
+    await editModel(OLLAMA_ID)
     await fill(dialog, '模型名称', 'qwen3.5')
     await save(dialog)
 
-    const landed = dialog.querySelector<HTMLElement>('.model-list [data-model="qwen3"]')!
-    expect([api.updateModel.mock.calls.length, landed.querySelector('.item-title')?.textContent]).toEqual([1, 'qwen3.5'])
+    const landed = dialog.querySelector<HTMLElement>(`.model-list [data-model="${OLLAMA_ID}"]`)!
+    expect([api.updateModel.mock.calls.length, landed.querySelector('.item-meta')?.textContent]).toEqual([1, 'qwen3.5'])
     expect([scrolledTo.filter((box) => box.closest('.model-list') !== null).map((box) => box.dataset.model), landed.hasAttribute('data-arrived')])
-      .toEqual([['qwen3'], true])
-    expect([...dialog.querySelectorAll('.model-list [data-arrived]')].map((row) => (row as HTMLElement).dataset.model)).toEqual(['qwen3'])
+      .toEqual([[OLLAMA_ID], true])
+    expect([...dialog.querySelectorAll('.model-list [data-arrived]')].map((row) => (row as HTMLElement).dataset.model)).toEqual([OLLAMA_ID])
     expect([modelName(dialog), selectedRows(), cancelButton(dialog)]).toEqual(['', [], undefined])
   })
 
-  it('点一行的名字或它 … 菜单里的编辑，表单就换成这个模型，这一行显示选中；保存在原处替换它，id 不变，表单回到添加框', async () => {
-    core.seed([officialProfile('openai', '1111')], [
-      apiModel('gpt-a', 'openai', 'gpt-a'), apiModel('gpt-b', 'openai', 'gpt-b', 'high'), cliModel('opus', 'claude', 'opus'),
+  it('点一行的名字或它 … 菜单里的编辑，表单就换成这个来源，这一行显示选中；保存在原处替换它，id 不变，表单回到添加框', async () => {
+    core.seed([officialProfile('openai', '1111'), officialProfile('anthropic', '2222')], [
+      apiModel('openai', 'gpt-a'), apiModel('anthropic', 'claude-b', 'high'), cliModel('claude', 'opus'),
     ])
     const dialog = await openModelPage()
     expect([selectedRows(), cancelButton(dialog)]).toEqual([[], undefined])
 
-    await editModel('gpt-b')
-    expect([modelName(dialog), effortField(dialog), selectedRows(), cancelButton(dialog) === undefined]).toEqual(['gpt-b', 'high', ['gpt-b'], false])
-    await fill(dialog, '模型名称', 'gpt-b2')
+    await editModel('api:anthropic')
+    expect([modelName(dialog), effortField(dialog), selectedRows(), cancelButton(dialog) === undefined])
+      .toEqual(['claude-b', 'high', ['api:anthropic'], false])
+    await fill(dialog, '模型名称', 'claude-b2')
     await save(dialog)
     expect(api.updateModel).toHaveBeenCalledWith({
-      id: 'gpt-b',
-      source: { kind: 'api', provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', authentication: 'api-key' },
-      model: 'gpt-b2', effort: 'high',
+      id: 'api:anthropic',
+      source: { kind: 'api', provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com', authentication: 'api-key' },
+      model: 'claude-b2', effort: 'high',
     })
     expect(api.addModel).not.toHaveBeenCalled()
     expect(listRows().map(([id, name, meta]) => [id, name, meta])).toEqual([
-      ['gpt-a', 'gpt-a', 'OpenAI API'], ['gpt-b', 'gpt-b2', 'OpenAI API · high'], ['opus', 'opus', 'Claude 订阅'],
+      ['api:openai', 'OpenAI API', 'gpt-a'], ['api:anthropic', 'Anthropic API', 'claude-b2 · high'], ['cli:claude', 'Claude 订阅', 'opus'],
     ])
     expect([modelName(dialog), selectedRows(), cancelButton(dialog)]).toEqual(['', [], undefined])
 
-    await act(async () => { (await openModelMenu('opus')).find((item) => item.textContent === '编辑')!.click() })
+    await act(async () => { (await openModelMenu('Claude 订阅')).find((item) => item.textContent === '编辑')!.click() })
     expect([dialog.querySelector('[aria-label="模型服务"]')?.textContent, modelName(dialog), selectedRows()])
-      .toEqual(['Claude 订阅', 'opus', ['opus']])
+      .toEqual(['Claude 订阅', 'opus', ['cli:claude']])
   })
 
   it('编辑时点取消，没存的改动丢掉，表单回到添加框；再点开这一行还是存下的样子', async () => {
-    core.seed([officialProfile('openai', '1111')], [apiModel('gpt-a', 'openai', 'gpt-a')])
+    core.seed([officialProfile('openai', '1111')], [apiModel('openai', 'gpt-a')])
     const dialog = await openModelPage()
-    await editModel('gpt-a')
+    await editModel('api:openai')
     await fill(dialog, '模型名称', 'gpt-changed')
     await act(async () => { cancelButton(dialog)!.click() })
     expect([modelName(dialog), selectedRows(), cancelButton(dialog)]).toEqual(['', [], undefined])
 
-    await editModel('gpt-a')
+    await editModel('api:openai')
     expect(modelName(dialog)).toBe('gpt-a')
     expect([api.updateModel.mock.calls.length, api.addModel.mock.calls.length]).toEqual([0, 0])
   })
 
   it('换到别的行时，表单里没存的改动按行留在草稿里，切回来还在；填的 API Key 从不留下', async () => {
     core.seed([officialProfile('openai', '1111'), officialProfile('anthropic', '2222')], [
-      apiModel('gpt-a', 'openai', 'gpt-a'), apiModel('claude-b', 'anthropic', 'claude-b'),
+      apiModel('openai', 'gpt-a'), apiModel('anthropic', 'claude-b'),
     ])
     api.requestedCategory = 'model'
     await act(async () => { root.render(<DraftsProvider><MessagesProvider><Settings /></MessagesProvider></DraftsProvider>) })
@@ -1354,14 +1421,14 @@ describe('Settings', () => {
     const savedKey = (lastFour: string) => dialog.querySelector(`[aria-label="模型 API Key 已保存，末四位 ${lastFour}"]`) !== null
 
     await fill(dialog, '模型名称', 'new-draft')
-    await editModel('gpt-a')
+    await editModel('api:openai')
     await fill(dialog, '模型名称', 'gpt-a-draft')
     await act(async () => { dialog.querySelector<HTMLButtonElement>('[aria-label="模型 API Key 已保存，末四位 1111"]')!.click() })
     await fill(dialog, '模型 API Key', 'sk-typed-secret')
-    await editModel('claude-b')
+    await editModel('api:anthropic')
     expect([modelName(dialog), savedKey('2222')]).toEqual(['claude-b', true])
 
-    await editModel('gpt-a')
+    await editModel('api:openai')
     expect([modelName(dialog), savedKey('1111'), dialog.querySelector('[aria-label="模型 API Key"]')]).toEqual(['gpt-a-draft', true, null])
     const kept = window.localStorage.getItem(keptDraftsKey('/tmp/meridian'))!
     expect([kept.includes('new-draft'), kept.includes('gpt-a-draft'), kept.includes('sk-typed-secret')]).toEqual([true, true, false])
@@ -1371,33 +1438,33 @@ describe('Settings', () => {
   })
 
   it('… 菜单里的设为默认把默认标记挪到这一行；默认那一行的菜单里没有设为默认', async () => {
-    core.seed([officialProfile('openai', '1111')], [apiModel('gpt-a', 'openai', 'gpt-a'), cliModel('opus', 'claude', 'opus')])
+    core.seed([officialProfile('openai', '1111')], [apiModel('openai', 'gpt-a'), cliModel('claude', 'opus')])
     await openModelPage()
-    expect((await openModelMenu('gpt-a')).map((item) => item.textContent)).toEqual(['编辑', '删除'])
+    expect((await openModelMenu('OpenAI API')).map((item) => item.textContent)).toEqual(['编辑', '删除'])
     await closePicker()
 
-    const items = await openModelMenu('opus')
+    const items = await openModelMenu('Claude 订阅')
     expect(items.map((item) => item.textContent)).toEqual(['设为默认', '编辑', '删除'])
     await act(async () => { items[0]!.click() })
-    expect(api.setDefaultModel).toHaveBeenCalledWith('opus')
-    expect(listRows().map(([id, , , tags]) => [id, tags])).toEqual([['gpt-a', ['已配置']], ['opus', ['默认', '已用订阅登录']]])
+    expect(api.setDefaultModel).toHaveBeenCalledWith('cli:claude')
+    expect(listRows().map(([id, , , tags]) => [id, tags])).toEqual([['api:openai', ['已配置']], ['cli:claude', ['默认', '已用订阅登录']]])
   })
 
-  it('删除先问确认，取消就什么都不删；确认后删掉这一行，删的是默认时默认落到按服务顺序第一个能运行的模型', async () => {
+  it('删除先问确认，取消就什么都不删；确认后删掉这一行，删的是默认时默认落到按来源顺序第一个能运行的来源', async () => {
     core.seed([officialProfile('openai'), ollamaProfile], [
-      cliModel('opus', 'claude', 'opus'), apiModel('gpt-x', 'openai', 'gpt-x'), apiModel('qwen3', OLLAMA, 'qwen3'),
+      cliModel('claude', 'opus'), apiModel('openai', 'gpt-x'), apiModel(OLLAMA, 'qwen3'),
     ])
     await openModelPage()
     expect(listRows().map(([id, , , tags]) => [id, tags])).toEqual([
-      ['gpt-x', ['未配置']], ['qwen3', ['已配置']], ['opus', ['默认', '已用订阅登录']],
+      ['api:openai', ['未配置']], [OLLAMA_ID, ['已配置']], ['cli:claude', ['默认', '已用订阅登录']],
     ])
     const pickDelete = async () => {
-      await act(async () => { (await openModelMenu('opus')).find((item) => item.textContent === '删除')!.click() })
+      await act(async () => { (await openModelMenu('Claude 订阅')).find((item) => item.textContent === '删除')!.click() })
       await vi.waitFor(() => expect(document.querySelector('[role="alertdialog"]')).not.toBeNull())
     }
 
     await pickDelete()
-    expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('删除 opus？')
+    expect(document.querySelector('[role="alertdialog"] .modal-title')!.textContent).toBe('删除 Claude 订阅？')
     await act(async () => {
       [...document.querySelectorAll<HTMLButtonElement>('[role="alertdialog"] button')].find((button) => button.textContent === '取消')!.click()
     })
@@ -1405,8 +1472,8 @@ describe('Settings', () => {
 
     await pickDelete()
     await act(async () => { document.querySelector<HTMLButtonElement>('[role="alertdialog"] .btn.pri.danger')!.click() })
-    expect(api.removeModel).toHaveBeenCalledWith('opus')
-    expect(listRows().map(([id, , , tags]) => [id, tags])).toEqual([['gpt-x', ['未配置']], ['qwen3', ['默认', '已配置']]])
+    expect(api.removeModel).toHaveBeenCalledWith('cli:claude')
+    expect(listRows().map(([id, , , tags]) => [id, tags])).toEqual([['api:openai', ['未配置']], [OLLAMA_ID, ['默认', '已配置']]])
   })
 
   it('读不到一个 CLI 的状态时，它的行写出原因，不停在占位上，也不报到屏头', async () => {
@@ -1414,36 +1481,37 @@ describe('Settings', () => {
       if (cli === 'codex') throw new CallError('harness.subscriptionStatus', 'unavailable')
       return { state: 'found', version: '2.1.3', signIn: 'subscription', models: [], efforts: {} }
     })
-    core.seed([], [cliModel('opus', 'claude', 'opus'), cliModel('codex', 'codex', '')])
+    core.seed([], [cliModel('claude', 'opus'), cliModel('codex', '')])
     const dialog = await openModelPage()
 
-    expect(listRows().map(([id, , , tags]) => [id, tags])).toEqual([['opus', ['默认', '已用订阅登录']], ['codex', ['网络不可用']]])
+    expect(listRows().map(([id, , , tags]) => [id, tags])).toEqual([['cli:claude', ['默认', '已用订阅登录']], ['cli:codex', ['网络不可用']]])
     expect([
-      dialog.querySelector('.model-list [data-model="codex"] .item-tags .tag')?.classList.contains('tag--error'),
+      dialog.querySelector('.model-list [data-model="cli:codex"] .item-tags .tag')?.classList.contains('tag--error'),
       dialog.querySelector('.model-list .loading-placeholder'), dialog.querySelector('.split-main-head .page-error'),
     ]).toEqual([true, null, null])
   })
 
-  it('用连接模板存的模型：列表行和表单读同一张模板表，行写模板的名字，点开时表单停在那个模板上', async () => {
+  it('用连接模板存的来源：列表行和表单读同一张模板表，行名是模板的名字，点开时表单停在那个模板上', async () => {
     const compatibleProfile = (baseUrl: string, protocol: 'responses' | 'chat-completions', keyed: boolean): HarnessModelProfile => ({
       provider: 'openai-compatible', protocol, baseUrl, model: '', authentication: keyed ? 'api-key' : 'none',
       apiKeyConfigured: keyed, ...(keyed ? { apiKeyLastFour: '9999' } : {}), configured: true,
     })
+    const deepseek = 'openai-compatible:https://api.deepseek.com'
+    const openrouter = 'openai-compatible:https://openrouter.ai/api/v1'
+    const lmStudio = 'openai-compatible:http://127.0.0.1:1234/v1'
     core.seed([
       compatibleProfile('https://api.deepseek.com', 'chat-completions', true), compatibleProfile('https://openrouter.ai/api/v1', 'chat-completions', true),
       ollamaProfile, compatibleProfile('http://127.0.0.1:1234/v1', 'responses', false),
     ], [
-      apiModel('deepseek', 'openai-compatible:https://api.deepseek.com', 'deepseek-chat'),
-      apiModel('openrouter', 'openai-compatible:https://openrouter.ai/api/v1', 'qwen/qwen3-coder'),
-      apiModel('ollama', OLLAMA, 'qwen3'), apiModel('lm-studio', 'openai-compatible:http://127.0.0.1:1234/v1', 'gemma-3'),
+      apiModel(deepseek, 'deepseek-chat'), apiModel(openrouter, 'qwen/qwen3-coder'), apiModel(OLLAMA, 'qwen3'), apiModel(lmStudio, 'gemma-3'),
     ])
     const dialog = await openModelPage()
 
-    expect(listRows().map(([id, , meta]) => [id, meta])).toEqual([
-      ['ollama', 'Ollama 本地'], ['lm-studio', 'LM Studio 本地'], ['deepseek', 'DeepSeek API'], ['openrouter', 'OpenRouter API'],
+    expect(listRows().map(([id, name]) => [id, name])).toEqual([
+      [OLLAMA_ID, 'Ollama 本地'], [`api:${lmStudio}`, 'LM Studio 本地'], [`api:${deepseek}`, 'DeepSeek API'], [`api:${openrouter}`, 'OpenRouter API'],
     ])
     const templates = []
-    for (const id of ['deepseek', 'openrouter', 'ollama', 'lm-studio']) {
+    for (const id of [`api:${deepseek}`, `api:${openrouter}`, OLLAMA_ID, `api:${lmStudio}`]) {
       await editModel(id)
       templates.push(dialog.querySelector('[aria-label="兼容服务模板"]')?.textContent)
     }
@@ -1516,16 +1584,16 @@ describe('Settings', () => {
   })
 
   it('用最多一个输出 token 测试点开的那个已存模型的连接；表单改过就不能测试', async () => {
-    core.seed([officialProfile('openai', 'c123')], [apiModel('gpt', 'openai', 'gpt-test')])
+    core.seed([officialProfile('openai', 'c123')], [apiModel('openai', 'gpt-test')])
     const dialog = await openModelPage()
-    await editModel('gpt')
+    await editModel('api:openai')
 
     const test = [...dialog.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '测试连接')!
     expect(test.disabled).toBe(false)
     await act(async () => { test.click() })
 
-    expect(api.checkModelConnection.mock.calls).toEqual([['gpt']])
+    expect(api.checkModelConnection.mock.calls).toEqual([['api:openai']])
     expect(dialog.textContent).toContain('连接成功 · 最多 1 个输出 token')
 
     await fill(dialog, '模型名称', 'unsaved-model')
@@ -1537,14 +1605,14 @@ describe('Settings', () => {
     core.seed([{
       provider: 'openai-compatible', protocol: 'chat-completions', baseUrl: 'https://api.deepseek.com', model: '',
       authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: 'd18b', configured: true,
-    }], [apiModel('deepseek', 'openai-compatible:https://api.deepseek.com', 'deepseek-flash')])
+    }], [apiModel('openai-compatible:https://api.deepseek.com', 'deepseek-flash')])
     api.checkModelConnection.mockResolvedValueOnce({
       state: 'failed', reason: 'model-or-endpoint',
       detail: 'HTTP 404: model deepseek-flash was not found',
       modelCalls: 1, maxOutputTokens: 1,
     })
     const dialog = await openModelPage()
-    await editModel('deepseek')
+    await editModel('api:openai-compatible:https://api.deepseek.com')
 
     const test = [...dialog.querySelectorAll<HTMLButtonElement>('button')]
       .find((button) => button.textContent === '测试连接')!
@@ -1693,14 +1761,14 @@ describe('Settings', () => {
 
     await save(dialog)
     expect(api.addModel.mock.calls).toEqual([[{ source: { kind: 'cli', cli: 'claude' }, model: '' }]])
-    expect(listRows()).toEqual([['added-1', '默认模型', 'Claude 订阅', ['默认', '已用订阅登录']]])
-    await editModel('added-1')
+    expect(listRows()).toEqual([['cli:claude', 'Claude 订阅', '默认模型', ['默认', '已用订阅登录']]])
+    await editModel('cli:claude')
     expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('已配置')
 
     const reads = api.subscriptionStatus.mock.calls.length
     api.checkModelConnection.mockResolvedValueOnce({ state: 'connected', modelCalls: 1 })
     await act(async () => { testButton(dialog).click() })
-    expect(api.checkModelConnection.mock.calls).toEqual([['added-1']])
+    expect(api.checkModelConnection.mock.calls).toEqual([['cli:claude']])
     expect(dialog.querySelector('.service-connection-status')?.textContent).toBe('连接成功')
     expect(api.subscriptionStatus).toHaveBeenCalledTimes(reads + 1)
   })
@@ -1711,7 +1779,7 @@ describe('Settings', () => {
     const dialog = document.querySelector('.setdlg')!
     await pickSubscription(dialog, 'Claude 订阅')
     await act(async () => { dialog.querySelector<HTMLButtonElement>('.service-actions .btn.pri')!.click() })
-    await editModel('added-1')
+    await editModel('cli:claude')
 
     const headlines = []
     for (const [reason, detail] of [
@@ -1768,15 +1836,15 @@ describe('Settings', () => {
     ])
     await pick(dialog, '推理强度', 'high')
     await save(dialog)
-    expect(listRows()).toEqual([['added-1', '默认模型', 'Claude 订阅 · high', ['默认', '已用订阅登录']]])
-    await editModel('added-1')
+    expect(listRows()).toEqual([['cli:claude', 'Claude 订阅', '默认模型 · high', ['默认', '已用订阅登录']]])
+    await editModel('cli:claude')
     expect(effortField(dialog)).toBe('high')
     await pick(dialog, '推理强度', '默认')
     await save(dialog)
 
     expect([api.addModel.mock.calls, api.updateModel.mock.calls]).toEqual([
       [[{ source: { kind: 'cli', cli: 'claude' }, model: '', effort: 'high' }]],
-      [[{ id: 'added-1', source: { kind: 'cli', cli: 'claude' }, model: '' }]],
+      [[{ id: 'cli:claude', source: { kind: 'cli', cli: 'claude' }, model: '' }]],
     ])
   })
 
@@ -1794,13 +1862,13 @@ describe('Settings', () => {
     expect(effortField(dialog)).toBe('medium')
     await pick(dialog, '推理强度', 'low默认')
     await save(dialog)
-    await editModel('added-1')
+    await editModel('cli:codex')
     expect(effortField(dialog)).toBe('low')
     await pick(dialog, '推理强度', 'max')
     await fill(dialog, '模型名称', 'gpt-5.5')
     expect(effortField(dialog)).toBe('medium')
     await save(dialog)
-    await editModel('added-1')
+    await editModel('cli:codex')
     await pick(dialog, '推理强度', 'xhigh')
     await fill(dialog, '模型名称', 'gpt-6.1-sol')
     expect(effortField(dialog)).toBe('xhigh')
@@ -1809,8 +1877,8 @@ describe('Settings', () => {
     expect([api.addModel.mock.calls, api.updateModel.mock.calls]).toEqual([
       [[{ source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol' }]],
       [
-        [{ id: 'added-1', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-5.5' }],
-        [{ id: 'added-1', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'xhigh' }],
+        [{ id: 'cli:codex', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-5.5' }],
+        [{ id: 'cli:codex', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'xhigh' }],
       ],
     ])
   })
@@ -1839,12 +1907,11 @@ describe('Settings', () => {
     expect(dialog.querySelector('[aria-label="推理强度"]')).toBeNull()
   })
 
-  it('每一行写出它的服务和存下的推理强度，没存的不写；点开时推理强度显示存下的那一档', async () => {
-    core.seed([officialProfile('openai')], [apiModel('gpt', 'openai', 'gpt-6.1', 'high'), cliModel('codex', 'codex', '')])
+  it('点开一行时推理强度显示它存下的那一档', async () => {
+    core.seed([officialProfile('openai')], [apiModel('openai', 'gpt-6.1', 'high'), cliModel('codex', '')])
     const dialog = await openModelPage()
 
-    expect(listRows().map(([, name, meta]) => [name, meta])).toEqual([['gpt-6.1', 'OpenAI API · high'], ['默认模型', 'ChatGPT 订阅']])
-    await editModel('gpt')
+    await editModel('api:openai')
     expect(effortField(dialog)).toBe('high')
   })
 
@@ -1923,41 +1990,30 @@ describe('Settings', () => {
     expect([api.addModel.mock.calls.length, api.updateModel.mock.calls.length]).toEqual([0, 0])
   })
 
-  it('添加框从 API 开始；点开一个模型时表单停在它所在的 tab，是它的服务和模型；只换 tab 或订阅不存，也不能测试，换回来才能；存了才在原处改它', async () => {
+  it('添加框从 API 开始；点开一个来源时表单停在它所在的 tab，是它的服务和默认模型；改了模型就不能测试，改回来才能；存了才在原处改它', async () => {
     core.seed([officialProfile('openai', '1111')], [
-      cliModel('codex', 'codex', 'gpt-5-codex'), apiModel('gpt', 'openai', 'gpt-saved'), cliModel('opus', 'claude', 'opus'),
+      cliModel('codex', 'gpt-5-codex'), apiModel('openai', 'gpt-saved'), cliModel('claude', 'opus'),
     ])
     const dialog = await openModelPage()
     expect(modelTabs(dialog)).toEqual([['API', 'true'], ['订阅', 'false']])
 
-    await editModel('codex')
+    await editModel('cli:codex')
     expect(modelTabs(dialog)).toEqual([['API', 'false'], ['订阅', 'true']])
     expect([dialog.querySelector('[aria-label="模型服务"]')?.textContent, modelName(dialog)]).toEqual(['ChatGPT 订阅', 'gpt-5-codex'])
     expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('已配置')
     expect(testButton(dialog).disabled).toBe(false)
-
-    await modelTab(dialog, 'API')
-    expect(dialog.querySelector('[aria-label="模型服务"]')?.textContent).toBe('OpenAI')
-    expect(dialog.querySelector('[aria-label="模型 API Key 已保存，末四位 1111"]')).not.toBeNull()
-    expect(modelRows(dialog).map(([label]) => label)).not.toContain('CLI')
+    await fill(dialog, '模型名称', 'gpt-6.1-sol')
     expect(testButton(dialog).disabled).toBe(true)
-    await modelTab(dialog, '订阅')
-    expect(testButton(dialog).disabled).toBe(false)
-    await pick(dialog, '模型服务', 'Claude 订阅')
-    expect(testButton(dialog).disabled).toBe(true)
-    await pick(dialog, '模型服务', 'ChatGPT 订阅')
+    await fill(dialog, '模型名称', 'gpt-5-codex')
     expect(testButton(dialog).disabled).toBe(false)
     expect([api.addModel.mock.calls.length, api.updateModel.mock.calls.length]).toEqual([0, 0])
 
-    await modelTab(dialog, 'API')
-    await fill(dialog, '模型名称', 'gpt-6.1')
+    await fill(dialog, '模型名称', 'gpt-6.1-sol')
     await save(dialog)
-    expect(api.updateModel.mock.calls).toEqual([[{
-      id: 'codex',
-      source: { kind: 'api', provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', authentication: 'api-key' },
-      model: 'gpt-6.1',
-    }]])
-    expect(listRows().map(([id, name]) => [id, name])).toEqual([['codex', 'gpt-6.1'], ['gpt', 'gpt-saved'], ['opus', 'opus']])
+    expect(api.updateModel.mock.calls).toEqual([[{ id: 'cli:codex', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol' }]])
+    expect(listRows().map(([id, name, meta]) => [id, name, meta])).toEqual([
+      ['api:openai', 'OpenAI API', 'gpt-saved'], ['cli:claude', 'Claude 订阅', 'opus'], ['cli:codex', 'ChatGPT 订阅', 'gpt-6.1-sol'],
+    ])
   })
 
   it('订阅初次读 CLI 时 CLI、登录、模型 ID、推理强度四行都在值的位置转圈，各占它的值的高度；读完换成值', async () => {
@@ -2008,9 +2064,9 @@ describe('Settings', () => {
   })
 
   it('测试连接后再查 CLI 查不出来时，先前找到的结果不算数，也不能存', async () => {
-    core.seed([], [cliModel('claude', 'claude', '')])
+    core.seed([], [cliModel('claude', '')])
     const dialog = await openModelPage()
-    await editModel('claude')
+    await editModel('cli:claude')
 
     api.subscriptionStatus.mockRejectedValueOnce(new CallError('harness.subscriptionStatus', 'unavailable'))
     await act(async () => { testButton(dialog).click() })

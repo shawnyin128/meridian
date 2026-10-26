@@ -16,6 +16,8 @@ if TYPE_CHECKING:
 DEFAULT_TIMEOUT_SECONDS = 120.0
 MAX_TIMEOUT_SECONDS = 900
 CONNECTION_CHECK_TIMEOUT_SECONDS = 20.0
+MODEL_LIST_TIMEOUT_SECONDS = 20.0
+MAX_LISTED_MODELS = 1000
 CONNECTION_CHECK_LIMITS = {"maxOutputTokens": 1, "maxModelCalls": 1}
 MAX_CONNECTION_ERROR_DETAIL = 500
 # The reasoning efforts each provider's LangChain integration takes: OpenAI's reasoning.effort,
@@ -314,3 +316,60 @@ def check_model_connection(
             "maxOutputTokens": 1,
         }
     return {"state": "connected", "modelCalls": 1, "maxOutputTokens": 1}
+
+
+def _provider_model_ids(runtime: dict[str, object]) -> list[str]:
+    """Ask the provider's official SDK for the models the configured key may call."""
+
+    provider = runtime["provider"]
+    api_key = str(runtime["api_key"])
+    if provider in {"openai", "openai-compatible"}:
+        from openai import OpenAI
+
+        client = OpenAI(
+            api_key=api_key,
+            base_url=str(runtime["base_url"]),
+            max_retries=0,
+            timeout=MODEL_LIST_TIMEOUT_SECONDS,
+        )
+        return [model.id for model in client.models.list()]
+    if provider == "anthropic":
+        from anthropic import Anthropic
+
+        client = Anthropic(
+            api_key=api_key,
+            base_url=str(runtime["base_url"]),
+            max_retries=0,
+            timeout=MODEL_LIST_TIMEOUT_SECONDS,
+        )
+        return [model.id for model in client.models.list(limit=1000)]
+    from google import genai
+    from google.genai import types
+
+    client = genai.Client(
+        api_key=api_key,
+        http_options=types.HttpOptions(timeout=int(MODEL_LIST_TIMEOUT_SECONDS * 1000)),
+    )
+    # Gemini names its models `models/<id>` and lists embedding models too; a chat model
+    # generates content.
+    return [
+        str(model.name).removeprefix("models/")
+        for model in client.models.list()
+        if model.name and "generateContent" in (model.supported_actions or [])
+    ]
+
+
+def list_models(model: object) -> list[str]:
+    """List the model IDs the provider of runtime model `model` offers its key, with no model call.
+
+    Each ID appears once, in the provider's order, up to MAX_LISTED_MODELS. Raises
+    ModelConfigurationError for a model that is not set up to run, and ModelInvocationError,
+    classified and free of the provider's own text, when the provider's call fails.
+    """
+
+    runtime = _runtime_model(model)
+    try:
+        listed = _provider_model_ids(runtime)
+    except Exception as cause:  # noqa: BLE001
+        raise ModelInvocationError.from_exception(cause) from None
+    return list(dict.fromkeys(name.strip() for name in listed if name.strip()))[:MAX_LISTED_MODELS]

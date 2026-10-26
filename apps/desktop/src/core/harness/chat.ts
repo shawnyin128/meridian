@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type {
-  ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
+  CallFailure, ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { extractPdfPages } from '../paper-library/index.js'
@@ -33,6 +33,22 @@ const ChatContextParamsSchema = z.object({
   currentText: z.string().min(1).max(20_000),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000) }).strict()
+/** The model IDs a provider's model-list call answered with, as Harness hands them over. */
+const ModelListSchema = z.object({ models: z.array(z.string().trim().min(1).max(200)).max(1_000) }).strict()
+/** How long one model-list read may take, Harness's own provider timeout included. */
+const MODEL_LIST_TIMEOUT_MS = 30_000
+/** How a model-list read's provider failure, as Harness classified it, reads as a call failure. */
+const MODEL_LIST_FAILURES: Record<string, CallFailure> = {
+  rate_limit: 'rate-limit', timeout: 'timeout', provider_http: 'server', authentication: 'model',
+}
+
+/** Why a model-list read failed, from the Harness error `cause`. */
+const modelListFailure = (cause: unknown): CallFailure => {
+  if (!(cause instanceof HarnessRpcError)) return 'unknown'
+  if (cause.kind === 'no_model') return 'no-model'
+  if (cause.kind === 'model_error') return MODEL_LIST_FAILURES[String(cause.detail)] ?? 'unavailable'
+  return cause.kind === 'harness_gone' ? 'unavailable' : 'unknown'
+}
 /** A chat turn's model call: the whole turn as `system` and `prompt`, and the new message alone. */
 const ChatModelInvokeParamsSchema = z.object({
   system: z.string().min(1).max(500_000),
@@ -380,11 +396,11 @@ export function createChatHarnessRunner(options: {
   }
 
   return {
-    /** Checks configured model `id`, or the default model without one, at its provider's or CLI's own default effort. */
+    /** Checks configured source `id` at its own model, or the default source without one, at its provider's or CLI's own default effort. */
     async checkConnection(id?: string) {
       let model
       try {
-        model = await options.model.runtime(id === undefined ? undefined : { model: id })
+        model = await options.model.runtime(id === undefined ? undefined : { source: id })
       } catch (cause) {
         return failedConnectionCheck(cause, [], 0)
       }
@@ -404,6 +420,20 @@ export function createChatHarnessRunner(options: {
         const modelCalls = cause instanceof HarnessRpcError
           && ['harness_gone', 'bad_request', 'no_model'].includes(cause.kind) ? 0 : 1
         return failedConnectionCheck(cause, secrets, modelCalls)
+      }
+    },
+    /**
+     * The model IDs API source `id` lists, as its provider's own model-list call answers with the
+     * source's key, which makes no model call. Throws a CallError: `no-model` for a source that is
+     * not set up to run, and why the provider's call failed otherwise.
+     */
+    async listModels(id: string): Promise<string[]> {
+      const model = await options.model.runtime({ source: id })
+      if ('source' in model) throw new CallError('invalid', '订阅的模型不从 API 读')
+      try {
+        return ModelListSchema.parse(await rpc.request('model.list', { model }, { timeoutMs: MODEL_LIST_TIMEOUT_MS })).models
+      } catch (cause) {
+        throw new CallError(modelListFailure(cause), '模型列表读不出来', { cause })
       }
     },
     /**

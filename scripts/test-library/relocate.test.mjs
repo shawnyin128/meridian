@@ -80,6 +80,10 @@ describe('测试库副本的路径改写', () => {
   /** A credential store for model lists that hold no key. */
   const noKeys = { seal: async () => { throw new Error('no key is sealed') }, open: async () => { throw new Error('no key is opened') } }
   const SESSION = '0b1f6a9e-3c2d-4e5f-8a7b-9c0d1e2f3a4b'
+  /** The models the Claude subscription offers, as Claude Code's status lists them. */
+  const claudeList = async (source) => ({
+    source, models: ['opus', '', 'sonnet'].map((id) => ({ id, efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max'] } })),
+  })
 
   it('副本里每个聊天自己选的模型和它的 CLI 会话也改到副本：Core 读到的还是种下的选择和会话，会话的工作目录跟着搬过去', async () => {
     home = mkdtempSync(join(tmpdir(), 'meridian-test-library-'))
@@ -89,10 +93,8 @@ describe('测试库副本的路径改写', () => {
     seeded(from)
     const models = await createHarnessModelConfig(join(from, 'config'), noKeys)
     await models.addModel({ source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' })
-    const sonnet = (await models.addModel({ source: { kind: 'cli', cli: 'claude' }, model: 'sonnet' }))
-      .models.find((entry) => entry.model === 'sonnet').id
-    openChatModels({ file: join(from, 'user-data', 'chat-models', 'choices.json'), vault: join(from, 'library'), models })
-      .set('chat-156', sonnet, 'max')
+    await openChatModels({ file: join(from, 'user-data', 'chat-models', 'choices.json'), vault: join(from, 'library'), models, offers: claudeList })
+      .set('chat-156', 'cli:claude', 'sonnet', 'max')
     const sessions = openCliChatSessions({ root: join(from, 'user-data', 'cli-chats'), vault: join(from, 'library'), home: cliHome })
     const before = sessions.folder('chat-156')
     writeFileSync(join(before, 'turn.txt'), 'the CLI ran here')
@@ -105,10 +107,10 @@ describe('测试库副本的路径改写', () => {
     relocate(out, from, (line) => reported.push(line))
     const copied = openChatModels({
       file: join(out, 'user-data', 'chat-models', 'choices.json'), vault: join(out, 'library'),
-      models: await createHarnessModelConfig(join(out, 'config'), noKeys),
+      models: await createHarnessModelConfig(join(out, 'config'), noKeys), offers: claudeList,
     })
     const moved = openCliChatSessions({ root: join(out, 'user-data', 'cli-chats'), vault: join(out, 'library'), home: cliHome })
-    expect(copied.shown('chat-156')).toEqual({ model: sonnet, effort: 'max' })
+    expect(copied.shown('chat-156')).toEqual({ source: 'cli:claude', model: 'sonnet', effort: 'max' })
     expect(moved.resumable('chat-156', { source: 'cli', cli: 'claude' }, 'two turns')).toEqual({ cli: 'claude', id: SESSION, history: 'two turns' })
     expect(readFileSync(join(moved.folder('chat-156'), 'turn.txt'), 'utf8')).toBe('the CLI ran here')
     expect(existsSync(join(out, 'user-data', 'cli-chats', basename(before)))).toBe(false)
