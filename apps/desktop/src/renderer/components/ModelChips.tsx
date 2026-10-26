@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import type {
   ChatModelChoice, HarnessModelEfforts, HarnessModelEntry, HarnessModelSettings, HarnessModelSourceGroup, HarnessSourceModels,
 } from '../../shared/contract.js'
+import { HARNESS_API_EFFORTS } from '../../shared/contract.js'
 import { useModelStatus } from '../hooks/useModelStatus.js'
 import { chat as chatApi, harness } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
@@ -37,17 +38,17 @@ function useChatChoice(chat: string | null, settings: HarnessModelSettings | nul
 }
 
 /**
- * The models configured source `source` offers, as Core keeps them from its read at App start, asked
- * again when `settings` change; null while Core has not answered for this source yet.
+ * The models configured source `source` offers, as Core keeps them for the session, asked for while
+ * `wanted` and again when `settings` change; null until Core has answered for this source.
  */
-function useSourceModels(source: string | null, settings: HarnessModelSettings | null): HarnessSourceModels | null {
+function useSourceModels(source: string | null, settings: HarnessModelSettings | null, wanted: boolean): HarnessSourceModels | null {
   const [models, setModels] = useState<HarnessSourceModels | null>(null)
   useEffect(() => {
-    if (source === null) return
+    if (source === null || !wanted) return
     let live = true
     void harness.sourceModels(source).then((next) => { if (live) setModels(next) })
     return () => { live = false }
-  }, [source, settings])
+  }, [source, settings, wanted])
   return models !== null && models.source === source ? models : null
 }
 
@@ -59,8 +60,11 @@ function useSourceModels(source: string | null, settings: HarnessModelSettings |
  * it is the CLI's own default, whose name says so; the effort picker the levels of the chosen model. A
  * pick changes only this chat, the way Core saves a chat's own choice: a new source runs at its
  * defaults, a new model drops the chat's own effort, and picking the source's default model or the
- * effort a run takes anyway keeps none of the chat's own. While a source's models are not known yet
- * the model and effort pickers are busy. A refused change shows as a
+ * effort a run takes anyway keeps none of the chat's own. A CLI source's models, which Core reads at
+ * App start, are asked for at once, and while they are not known the model and effort pickers are
+ * busy. An API source's models, whose read opens its key, are asked for only once its model menu
+ * opens; until they arrive that menu offers the source's default model and the chat's own, and the
+ * effort picker its provider's levels. A refused change shows as a
  * refusal notice. They show while some configured source can run, the chat's own or the default
  * included when it cannot; while none can, or the chat has no source to run, it is the shared "AI
  * not connected" tag. Nothing shows before the chat's choice is read; without a chat they show the
@@ -74,7 +78,9 @@ export function ModelChips({ chat }: { chat: string | null }) {
   const { choice, adopt } = useChatChoice(chat, settings)
   const shown = chat === null ? settings?.defaultModel ?? null : choice?.source ?? null
   const entry = settings?.models.find((model) => model.id === shown) ?? null
-  const offers = useSourceModels(entry?.id ?? null, settings)
+  const api = entry?.source.kind === 'api'
+  const [asked, setAsked] = useState<string | null>(null)
+  const offers = useSourceModels(entry?.id ?? null, settings, !api || asked === entry?.id)
   if (settings === null || (chat !== null && choice === null)) return null
   if (anyRuns !== true || entry === null) return <ModelStatusTag connected={false} />
 
@@ -83,7 +89,7 @@ export function ModelChips({ chat }: { chat: string | null }) {
     settings.models.find((model) => model.id === id)?.configured === true
   )))
   const model = choice?.model ?? entry.model
-  const models = offers === null ? [model] : offers.models.some((held) => held.id === model)
+  const models = offers === null ? [...new Set([entry.model, model])] : offers.models.some((held) => held.id === model)
     ? offers.models.map((held) => held.id) : [...offers.models.map((held) => held.id), model]
   const save = (next: { source: string; model?: string; effort?: string }) => {
     if (chat === null) return
@@ -103,7 +109,8 @@ export function ModelChips({ chat }: { chat: string | null }) {
         after={<MenuItem inset onSelect={() => openCategory('model')}>{m.chat.modelSettings}</MenuItem>}
       />
       <ChoicePicker
-        appearance="capsule" disabled={chat === null} busy={offers === null}
+        appearance="capsule" disabled={chat === null} busy={offers === null && !api}
+        onOpenChange={(open) => { if (open && api) setAsked(entry.id) }}
         aria-label={m.chat.modelPicker(modelEntryLabel(m, { model }))}
         value={model} options={models} label={(id) => modelEntryLabel(m, { model: id })}
         note={(id) => (id === entry.model && id !== '' ? m.chat.defaultMark : undefined)}
@@ -113,7 +120,8 @@ export function ModelChips({ chat }: { chat: string | null }) {
       />
       <EffortPicker
         entry={entry} model={model} chosen={choice?.effort} disabled={chat === null}
-        efforts={offers === null ? null : offers.models.find((held) => held.id === model)?.efforts ?? { levels: [] }}
+        efforts={offers !== null ? offers.models.find((held) => held.id === model)?.efforts ?? { levels: [] }
+          : api ? { levels: [...HARNESS_API_EFFORTS[group.provider ?? 'openai-compatible']] } : null}
         onPick={(effort) => save({ source: entry.id, ...(choice?.model === undefined ? {} : { model: choice.model }), ...(effort === undefined ? {} : { effort }) })}
       />
     </>

@@ -24,17 +24,17 @@ function session(sources = SOURCES, api: (id: string) => Promise<string[]> = asy
 }
 
 describe('the models each configured source offers', () => {
-  it('reads every configured source once at start, in the background, and never again when a chat or Settings asks', async () => {
+  it('reads every configured CLI once at start, in the background, and an API source, whose key that opens, only once it is first asked for', async () => {
     const { lists, readCli, readApi } = session()
     lists.start()
-    expect([readCli.mock.calls, readApi.mock.calls]).toEqual([[['claude']], [['api:openai'], ['api:openai-compatible:http://127.0.0.1:11434/v1']]])
+    expect([readCli.mock.calls, readApi.mock.calls]).toEqual([[['claude']], []])
 
     for (let ask = 0; ask < 3; ask += 1) {
       await lists.models('cli:claude')
       await lists.models('api:openai')
       await lists.status('claude')
     }
-    expect([readCli.mock.calls.length, readApi.mock.calls.length]).toEqual([1, 2])
+    expect([readCli.mock.calls.length, readApi.mock.calls.map(([id]) => id)]).toEqual([1, ['api:openai']])
   })
 
   it('lists the source\'s default model first, then the others the CLI names, each with its efforts; the CLI\'s own default only when it is the source\'s default', async () => {
@@ -73,11 +73,11 @@ describe('the models each configured source offers', () => {
       })
     }
     expect((await lists.models('cli:claude')).error).toBeUndefined()
-    expect(readApi).toHaveBeenCalledTimes(2)
+    expect(readApi).toHaveBeenCalledTimes(1)
     expect(onLog).toHaveBeenCalledWith(expect.stringContaining('api:openai'))
   })
 
-  it('reads one source\'s status and models again when its configuration changes, and no other\'s', async () => {
+  it('reads a CLI\'s status and models again at once when its configuration changes; an API source\'s list is dropped and read again only when next asked for', async () => {
     const { lists, readCli, readApi } = session()
     lists.start()
     await lists.models('api:openai')
@@ -85,8 +85,9 @@ describe('the models each configured source offers', () => {
     lists.refresh('cli:claude')
     lists.refresh('api:openai')
     await lists.models('cli:claude')
-    expect([readCli.mock.calls, readApi.mock.calls.map(([id]) => id)])
-      .toEqual([[['claude'], ['claude']], ['api:openai', 'api:openai-compatible:http://127.0.0.1:11434/v1', 'api:openai']])
+    expect([readCli.mock.calls, readApi.mock.calls.map(([id]) => id)]).toEqual([[['claude'], ['claude']], ['api:openai']])
+    await lists.models('api:openai')
+    expect(readApi.mock.calls.map(([id]) => id)).toEqual(['api:openai', 'api:openai'])
   })
 
   it('names a CLI that is missing or unsupported as why its list cannot be read, offering its default model', async () => {
