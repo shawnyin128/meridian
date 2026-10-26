@@ -148,7 +148,7 @@ import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-t
 import {
   checkCliConnection, createChatHarnessRunner, createChatService, createCliChatRunner, createCliRunner,
   createHarnessCostGate, createHarnessModelConfig, createHarnessProposalAudit, createInternalMcp,
-  createMainCredentialVault, createPaperWikiHarnessRunner, createSourceModels, discoverCli, listCliModels, openChatModels,
+  createMainCredentialVault, createPaperWikiHarnessRunner, createSourceModels, discoverCli, followCliState, listCliModels, openChatModels,
   openCliChatSessions, sourceIdOfInput, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
@@ -251,7 +251,12 @@ const background = createBackground({
   semanticScholarApiKey: semanticKey.current,
 })
 const cliRunnerDeps = {
-  discover: (cli: HarnessCli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+  // A run's own pre-call check decides at run time; what it finds corrects the status Settings and the pickers keep.
+  discover: followCliState(
+    (cli: HarnessCli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+    (cli) => (harnessModel.accepts(`cli:${cli}`) ? sourceModels.status(cli) : null),
+    (cli) => sourceModels.refresh(`cli:${cli}`),
+  ),
   settingsRevision: () => harnessModel.revision(),
   internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
 }
