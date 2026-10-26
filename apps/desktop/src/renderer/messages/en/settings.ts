@@ -146,6 +146,16 @@ export const settings = {
       },
     },
     tabs: { label: 'Model source', api: 'API', subscription: 'Subscription' },
+    list: {
+      defaultMark: 'Default',
+      defaultModel: 'Default model',
+      setDefault: 'Set as default',
+      apiSource: (name: string) => `${name} API`,
+      localSource: (name: string) => `${name} (local)`,
+      localService: (port: string) => `Local service · ${port}`,
+      confirmDelete: (name: string) => `Delete ${name}?`,
+      manage: (name: string) => `Manage “${name}”`,
+    },
     subscriptions: {
       claude: { label: 'Claude subscription' },
       codex: { label: 'ChatGPT subscription' },
@@ -162,7 +172,6 @@ export const settings = {
         subscription: 'Signed in with subscription', other: 'Not signed in with subscription', 'signed-out': 'Signed out',
         unknown: 'Sign-in unreadable',
       },
-      defaultModel: 'Default',
     },
     templates: {
       chooseLabel: 'Connection template',
@@ -196,6 +205,8 @@ export const settings = {
       modelIdAria: 'Model name',
       apiKeyLabel: 'API key',
       apiKeyAria: 'Model API key',
+      effortLabel: 'Reasoning effort',
+      effortDefault: 'Default',
     },
     configured: 'Configured',
     notConfigured: 'Not configured',

@@ -50,9 +50,17 @@ vi.mock('../ipc.js', () => ({
   chat: {
     send: api.send, retry: api.retry, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction,
     writing: api.writing,
+    model: () => Promise.resolve({ source: 'model-1' }), setModel: () => Promise.resolve({ source: 'model-1' }),
   },
   feed: { append: api.feedAppend },
-  harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
+  harness: {
+    sourceModels: () => Promise.resolve({ source: 'model-1', models: [{ id: 'gpt-5.5', efforts: { levels: [] } }] }),
+    modelSettings: () => Promise.resolve({
+      configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } },
+      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: api.configured }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
+    }),
+    subscriptionStatus: () => Promise.resolve({ state: 'missing' }),
+  },
   idea: { create: api.createIdea },
   jobs: {
     status: (): Promise<JobsStatus> => Promise.resolve({
@@ -429,7 +437,8 @@ describe('Chat composer', () => {
     const answers = () => [...document.querySelectorAll('.msgs .msg.ai .answer')].map((node) => node.textContent)
     const tags = () => [...document.querySelectorAll('.msgs .msg.ai .msg-who')].map((node) => node.textContent)
     const model = { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' } as const
-    api.writing.mockResolvedValue({ text: '', model })
+    const since = new Date().toISOString()
+    api.writing.mockResolvedValue({ text: '', model, since })
     api.messages.mockResolvedValueOnce([turnOf('1', 'you', 'EAGLE 快多少')])
     session.revision = 1
     await openChat('chat-1')
@@ -437,9 +446,9 @@ describe('Chat composer', () => {
     await settle()
     expect(api.writing).toHaveBeenCalledWith('chat-1')
     expect(tags()).toEqual(['Claude Opus 5.5 · 订阅'])
-    expect(answers()).toEqual(['思考中…'])
+    expect(answers()).toEqual([expect.stringMatching(/^思考中… \ds$/)])
 
-    api.writing.mockResolvedValue({ text: 'EAGLE 快 3.76 倍', model })
+    api.writing.mockResolvedValue({ text: 'EAGLE 快 3.76 倍', model, since })
     await act(async () => { await new Promise((wait) => setTimeout(wait, 200)) })
     expect(answers()).toEqual(['EAGLE 快 3.76 倍'])
 
@@ -452,6 +461,62 @@ describe('Chat composer', () => {
     await settle()
     expect(answers()).toEqual(['EAGLE 快 3.76 倍 [p. 6]'])
     expect(tags()).toEqual(['Claude Opus 5.5 · 订阅'])
+  })
+
+  it('生成中在输入框里按 Escape 停下这条对话的回答；没在生成时 Escape 什么也不停', async () => {
+    press('Escape')
+    await settle()
+    expect(api.cancel).not.toHaveBeenCalled()
+
+    const finish = await sendPending('为什么')
+    expect(control().getAttribute('aria-label')).toBe('停止生成')
+    press('Escape')
+    await settle()
+    expect(api.cancel).toHaveBeenCalledExactlyOnceWith('chat-1')
+    expect(control().getAttribute('aria-label')).toBe('发送')
+    await finish()
+  })
+
+  it('停下后，写到一半的字带着模型标签留作回答；还没写出字就停下，「思考中…」那一行就不在了', async () => {
+    const answers = () => [...document.querySelectorAll('.msgs .msg.ai .answer')].map((node) => node.textContent)
+    const tags = () => [...document.querySelectorAll('.msgs .msg.ai .msg-who')].map((node) => node.textContent)
+    const model = { route: 'subscription', cli: 'codex', id: 'gpt-6.1' } as const
+    const asked = turnOf('1', 'you', 'EAGLE 快多少')
+    const kept = { ...turnOf('2', 'ai', 'EAGLE 快 3.7'), model }
+    const since = new Date().toISOString()
+    api.writing.mockResolvedValue({ text: 'EAGLE 快 3.7', model, since })
+    api.messages.mockResolvedValueOnce([asked])
+    session.revision = 1
+    await openChat('chat-1')
+    const finish = await sendPending('EAGLE 快多少')
+    await act(async () => { await new Promise((wait) => setTimeout(wait, 200)) })
+    expect(answers()).toEqual(['EAGLE 快 3.7'])
+    act(() => control().click())
+    await settle()
+    await finish()
+    api.messages.mockResolvedValueOnce([asked, kept])
+    session.revision = 2
+    await openChat('chat-1')
+    await settle()
+    expect([answers(), tags()]).toEqual([['EAGLE 快 3.7'], ['GPT-6.1 · 订阅']])
+
+    const askedAgain = turnOf('3', 'you', '再问一句')
+    api.writing.mockResolvedValue({ text: '', model, since })
+    const again = await sendPending('再问一句')
+    api.messages.mockResolvedValueOnce([asked, kept, askedAgain])
+    session.revision = 3
+    await openChat('chat-1')
+    await settle()
+    expect(answers()).toEqual(['EAGLE 快 3.7', expect.stringMatching(/^思考中… \ds$/)])
+    act(() => control().click())
+    await settle()
+    await again()
+    api.messages.mockResolvedValueOnce([asked, kept, askedAgain])
+    session.revision = 4
+    await openChat('chat-1')
+    await settle()
+    expect(answers()).toEqual(['EAGLE 快 3.7'])
+    expect(api.cancel).toHaveBeenCalledTimes(2)
   })
 
   it('换到另一条对话后，前一条晚到的消息不会顶替这一条的', async () => {

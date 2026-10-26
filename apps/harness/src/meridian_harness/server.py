@@ -125,6 +125,22 @@ def _check_model_connection(context: RequestContext, params: object) -> object:
     return result
 
 
+def _list_models(context: RequestContext, params: object) -> object:
+    context.check_cancelled()
+    request = require_object(params, "model list")
+    require_fields(request, frozenset({"model"}), frozenset(), "model list")
+    from .models import ModelConfigurationError, ModelInvocationError, list_models
+
+    try:
+        names = list_models(request["model"])
+    except ModelConfigurationError as cause:
+        raise HarnessFailure("no_model", str(cause)) from None
+    except ModelInvocationError as cause:
+        raise HarnessFailure("model_error", str(cause), cause.detail) from None
+    context.check_cancelled()
+    return {"models": names}
+
+
 class JsonLineServer:
     """Read client messages from stdin and reserve stdout for protocol frames."""
 
@@ -134,6 +150,7 @@ class JsonLineServer:
             "paper-wiki.propose": _propose_paper_wiki,
             "chat.answer": _answer_chat,
             "model.check": _check_model_connection,
+            "model.list": _list_models,
             **(methods or {}),
         }
         self._write_lock = Lock()

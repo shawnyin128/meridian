@@ -43,6 +43,24 @@ describe('Core chat service', () => {
     expect(detail.length).toBeLessThanOrEqual(500)
   })
 
+  it('runs a chat on its own model while the default cannot run, and finds no model for a chat without one', async () => {
+    const model = await createHarnessModelConfig(mkdtempSync(join(tmpdir(), 'meridian-chat-model-')), vault)
+    await model.addModel({
+      source: { kind: 'api', provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', authentication: 'api-key' },
+      model: 'gpt-6.1',
+    })
+    const opus = (await model.addModel({ source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' }))
+      .models.find((entry) => entry.model === 'opus')!.id
+    const runner: ChatHarnessRunner = { checkConnection: vi.fn(), answer: vi.fn(async () => '回答'), close: vi.fn(), listModels: vi.fn() }
+    const service = createChatService({
+      store: createFixtureStore(), model, runner, choiceOf: (id) => (id === 'amortize' ? { source: opus } : null),
+    })
+
+    expect(model.settings().configured).toBe(false)
+    await expect(service.send('amortize', written('测试'))).resolves.toEqual({ id: 'amortize', state: 'complete' })
+    await expect(service.send('widthknee', written('测试'))).resolves.toEqual({ id: 'widthknee', state: 'failed', reason: 'no-model' })
+  })
+
   it('persists one explicit user turn and one validated Harness answer', async () => {
     const store = createFixtureStore()
     const runner: ChatHarnessRunner = {
@@ -51,6 +69,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '基于当前上下文的回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -72,6 +91,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -122,16 +142,21 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     expect(service.writing('amortize')).toBeNull()
 
+    const sentAt = Date.now()
     const answered = service.send('amortize', written('EAGLE 快多少'))
-    expect(service.writing('amortize')).toEqual({ text: '', model: configured })
+    const since = service.writing('amortize')?.since ?? ''
+    expect(Date.parse(since)).toBeGreaterThanOrEqual(sentAt)
+    expect(Date.parse(since)).toBeLessThanOrEqual(Date.now())
+    expect(service.writing('amortize')).toEqual({ text: '', model: configured, since })
     write('EAGLE reaches')
     vi.mocked(runner.answer).mock.calls[0]![3]!.onModel(reported)
     write('EAGLE reaches 3.76x')
-    expect(service.writing('amortize')).toEqual({ text: 'EAGLE reaches 3.76x', model: reported })
+    expect(service.writing('amortize')).toEqual({ text: 'EAGLE reaches 3.76x', model: reported, since })
     expect(service.writing('widthknee')).toBeNull()
     finish('EAGLE reaches 3.76x [p. 6].')
     await expect(answered).resolves.toMatchObject({ state: 'complete' })
@@ -139,7 +164,7 @@ describe('Core chat service', () => {
     expect(store.chatMessages('amortize').at(-1)).toMatchObject({ role: 'ai', model: reported })
 
     const stopped = service.send('amortize', written('再问一句'))
-    expect(service.writing('amortize')).toEqual({ text: '', model: configured })
+    expect(service.writing('amortize')).toEqual({ text: '', model: configured, since: expect.any(String) })
     service.cancel('amortize')
     expect(service.writing('amortize')).toBeNull()
     await expect(stopped).resolves.toMatchObject({ state: 'cancelled' })
@@ -153,6 +178,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     await service.send('amortize', written('问'))
@@ -169,6 +195,7 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -178,6 +205,46 @@ describe('Core chat service', () => {
     await expect(sending).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
     expect(store.chatMessages('amortize').slice(before)).toMatchObject([
       { role: 'you', runs: [{ text: '停止这个请求' }] },
+    ])
+  })
+
+  it('stopping a turn keeps the text it had written as its answer, with the model writing it, and nothing it answers after the stop', async () => {
+    const store = createFixtureStore()
+    const model = { route: 'subscription' as const, cli: 'codex' as const, id: 'gpt-6.1' }
+    const writes: string[] = []
+    let finish: (answer: string) => void = () => {}
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      // Names its model, writes what `writes` holds, and resolves only when the test says so, stopped or not.
+      answer: vi.fn((_id, _text, _signal, progress) => new Promise<string>((resolve) => {
+        progress?.onModel(model)
+        for (const text of writes) progress?.onText(text)
+        finish = resolve
+      })),
+      close: vi.fn(),
+      listModels: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const before = store.chatMessages('amortize').length
+
+    writes.push('EAGLE reaches', 'EAGLE reaches 3.76x')
+    const stopped = service.send('amortize', written('EAGLE 快多少'))
+    expect(service.cancel('amortize')).toEqual({ id: 'amortize', cancelled: true })
+    finish('EAGLE reaches 3.76x [p. 6].')
+    await expect(stopped).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
+
+    writes.length = 0
+    const silent = service.send('amortize', written('再问一句'))
+    expect(service.cancel('amortize')).toEqual({ id: 'amortize', cancelled: true })
+    finish('停止之后才到的回答')
+    await expect(silent).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
+
+    expect(store.chatMessages('amortize').slice(before)).toEqual([
+      { id: expect.any(String), role: 'you', runs: [{ kind: 'text', text: 'EAGLE 快多少' }], actions: [] },
+      { id: expect.any(String), role: 'ai', runs: [{ kind: 'text', text: 'EAGLE reaches 3.76x' }], actions: [], model },
+      { id: expect.any(String), role: 'you', runs: [{ kind: 'text', text: '再问一句' }], actions: [] },
     ])
   })
 
@@ -195,6 +262,7 @@ describe('Core chat service', () => {
         return new Promise<string>((resolve) => { finish = resolve })
       }),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -227,6 +295,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => { throw new Error('401 Unauthorized: invalid x-api-key') }),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
 
@@ -246,6 +315,7 @@ describe('Core chat service', () => {
         return next
       }),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
   }
   const textsAfter = (store: ReturnType<typeof createFixtureStore>, before: number) =>
@@ -306,6 +376,7 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const first = service.send('amortize', written('第一句'))
@@ -325,6 +396,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(() => new Promise<string>((resolve) => { reply = resolve })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     expect(service.generating()).toEqual([])
@@ -346,6 +418,7 @@ describe('Core chat service', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const stopped = service.send('amortize', written('停止这个请求'))
@@ -369,6 +442,7 @@ describe('Core chat service', () => {
       })),
       answer: vi.fn(async () => '订阅模型的回答'),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const service = createChatService({ store, model, runner })
 

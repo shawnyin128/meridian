@@ -231,8 +231,8 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
 /**
  * The connection check of subscription CLI `model.cli`: when it is installed, its help lists every
  * flag the runner and a chat turn pass, and it is signed in with the user's subscription, one model
- * call through `run` on `model.model`, or the CLI's own default, with a fixed prompt asking for one
- * word, whose answer is discarded. Connected when that call completes; otherwise failed for the CLI
+ * call through `run` on `model.model`, or the CLI's own default, at the CLI's own default effort,
+ * with a fixed prompt asking for one word, whose answer is discarded. Connected when that call completes; otherwise failed for the CLI
  * problem or the model call's failure, in their words, with whether a model call was made. Reports
  * the CLI's version when it has one, and logs through `onLog` which flags an unsupported CLI lacks and
  * the call's time and tokens.

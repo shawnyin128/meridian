@@ -443,6 +443,7 @@ export function createPaperWikiHarnessRunner(options: {
         result = await options.cli({
           cli: model.cli,
           ...(model.model === undefined ? {} : { model: model.model }),
+          ...(model.effort === undefined ? {} : { effort: model.effort }),
           ...call,
           timeoutMs: CLI_CALL_TIMEOUT_MS,
           signal,
@@ -476,7 +477,7 @@ export function createPaperWikiHarnessRunner(options: {
           callbacks: {
             'model.invoke': modelCall(model, AbortSignal.any([execution.signal, ended.signal]), (cause) => { failure = cause }),
           },
-        } : {}),
+        } : { timeoutMs: execution.requestTimeoutMs }),
       }))
     } catch (cause) {
       throw failure === undefined

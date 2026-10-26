@@ -5,11 +5,39 @@ import type {
   HarnessRejectPaperWikiParams, HarnessStartParams, PaperReading, PaperRow, RecordedChange, WikiPaper,
 } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
+import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS } from './cli-call.js'
 import type { AppliedHarnessProposal, HarnessProposalAuditEvent, PendingHarnessProposal } from './proposal-audit.js'
 
 const PLAN_TTL_MS = 10 * 60 * 1_000
 const MAX_MODEL_CALLS = 1
 const MAX_OUTPUT_TOKENS = 6_000
+/** How long an API model call, and the Harness request around it, may take without a reasoning allowance. */
+const API_CALL_TIMEOUT_MS = 2 * 60_000
+/**
+ * The output tokens an API run may spend on reasoning beyond its own cap, by reasoning effort: each
+ * provider counts reasoning inside the cap (OpenAI's max_output_tokens, Anthropic's max_tokens,
+ * Gemini's max_output_tokens).
+ */
+const REASONING_ALLOWANCES: Readonly<Record<string, number>> = {
+  none: 0, minimal: 4_000, low: 8_000, medium: 20_000, high: 32_000, xhigh: 56_000, max: 56_000,
+}
+
+/**
+ * The limits of a run on an API model at reasoning effort `effort`, or at the provider's own default
+ * without one, whose own output cap is `maxOutputTokens`: that cap raised by the effort's reasoning
+ * allowance, and the timeouts of its model call, in seconds, and of its Harness request: the
+ * subscription CLIs' ten and twelve minutes with an allowance, two minutes for both without one.
+ */
+export function apiRunLimits(effort: string | undefined, maxOutputTokens: number) {
+  const allowance = effort === undefined ? 0 : REASONING_ALLOWANCES[effort] ?? 0
+  return allowance === 0
+    ? { maxOutputTokens, timeoutSeconds: API_CALL_TIMEOUT_MS / 1_000, requestTimeoutMs: API_CALL_TIMEOUT_MS }
+    : {
+        maxOutputTokens: maxOutputTokens + allowance,
+        timeoutSeconds: CLI_CALL_TIMEOUT_MS / 1_000,
+        requestTimeoutMs: CLI_REQUEST_TIMEOUT_MS,
+      }
+}
 
 export type HarnessModel = HarnessPlan['model']
 
@@ -23,10 +51,14 @@ export type HarnessExecution = {
   plan: HarnessPlan
   snapshot: PaperWikiSnapshot
   signal: AbortSignal
+  /** What the run may spend, as Harness receives it; `timeoutSeconds` bounds an API model call. */
   limits: {
     maxOutputTokens: number
     maxModelCalls: number
+    timeoutSeconds: number
   }
+  /** How long the Harness request of a run on an API model may take. */
+  requestTimeoutMs: number
 }
 
 export type HarnessRunner = (execution: HarnessExecution) => Promise<{
@@ -115,6 +147,8 @@ export function createHarnessCostGate(deps: Dependencies) {
   const failures = new Map<string, CallFailure>()
 
   const configuredModel = () => typeof deps.model === 'function' ? deps.model() : deps.model
+  /** The limits of a run on `model`; a subscription CLI's output has no cap to raise. */
+  const limitsOf = (model: HarnessModel) => apiRunLimits(model.cli === undefined ? model.effort : undefined, MAX_OUTPUT_TOKENS)
 
   const snapshot = (paperId: string): PaperWikiSnapshot => ({
     paper: deps.paper(paperId),
@@ -150,6 +184,8 @@ export function createHarnessCostGate(deps: Dependencies) {
       for (const [id, candidate] of plans) {
         if (candidate.used || Date.parse(candidate.plan.expiresAt) <= created.getTime()) plans.delete(id)
       }
+      const model = configuredModel()
+      const { maxOutputTokens } = limitsOf(model)
       const plan: HarnessPlan = {
         id: nextId('plan'),
         workflow: 'paper-wiki',
@@ -158,7 +194,8 @@ export function createHarnessCostGate(deps: Dependencies) {
         action,
         label: action === 'create' ? '生成 Wiki' : '更新 Wiki',
         scope: scopeOf(held),
-        model: { ...configuredModel() },
+        model: { ...model },
+        ...(maxOutputTokens === MAX_OUTPUT_TOKENS ? {} : { outputLimit: maxOutputTokens }),
         expiresAt: new Date(created.getTime() + PLAN_TTL_MS).toISOString(),
       }
       plans.set(plan.id, { plan, used: false })
@@ -195,12 +232,14 @@ export function createHarnessCostGate(deps: Dependencies) {
       running.set(held.plan.targetId, controller)
       failures.delete(held.plan.targetId)
       let result: Awaited<ReturnType<HarnessRunner>>
+      const { maxOutputTokens, timeoutSeconds, requestTimeoutMs } = limitsOf(held.plan.model)
       try {
         result = await deps.run({
           plan: structuredClone(held.plan),
           snapshot: current,
           signal: controller.signal,
-          limits: { maxOutputTokens: MAX_OUTPUT_TOKENS, maxModelCalls: MAX_MODEL_CALLS },
+          limits: { maxOutputTokens, maxModelCalls: MAX_MODEL_CALLS, timeoutSeconds },
+          requestTimeoutMs,
         })
       } catch (error) {
         failures.set(held.plan.targetId, callFailure(error))

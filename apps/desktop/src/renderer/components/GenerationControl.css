@@ -1,7 +1,6 @@
 .generation-control{position:relative}
 .generation-control .generation-idle-icon,.generation-control .generation-running-glyph{width:15px;height:15px;display:block;flex:0 0 auto}
-.generation-running-glyph{position:relative}
-.generation-running-glyph svg{position:absolute;inset:0;width:100%;height:100%}
-.generation-stop{display:none;fill:currentColor;stroke:none}
-.generation-control.is-running:hover .ring,.generation-control.is-running:focus-visible .ring{display:none}
-.generation-control.is-running:hover .generation-stop,.generation-control.is-running:focus-visible .generation-stop{display:block}
+/* While running, the stop square sits inside the turning ring, which needs the room of a larger glyph. */
+.generation-control .generation-running-glyph{position:relative;width:18px;height:18px}
+.generation-control .generation-running-glyph svg{position:absolute;inset:0;width:100%;height:100%}
+.generation-stop{fill:currentColor;stroke:none}

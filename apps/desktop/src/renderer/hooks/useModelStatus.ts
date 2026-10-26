@@ -3,30 +3,20 @@ import type { ChatSendResult, HarnessModelSettings } from '../../shared/contract
 import { harness } from '../ipc.js'
 
 /**
- * A kind of source the App's model answers from: an API endpoint set up in the model settings, or
- * the user's own subscription CLI chosen there.
+ * Whether the App's models can answer, as every screen shows it; see `useCoreModelStatus`. A surface
+ * is connected while the model it runs can run as set up: a chat runs its own model, else the
+ * default, and every other surface runs the default.
  */
-export type ModelSource = 'api' | 'subscription'
-
-/**
- * The source `settings` set up a model from, or null when they set up none, which includes a
- * subscription choice that could not be read. A new kind of model source is read here.
- */
-export function modelSourceOf(settings: HarnessModelSettings): ModelSource | null {
-  if (settings.subscription.error !== undefined) return null
-  if (settings.subscription.active !== null) return 'subscription'
-  return settings.configured ? 'api' : null
-}
-
-/** Whether the App's model can answer, as every screen shows it; see `useCoreModelStatus`. */
 export type ModelStatus = {
-  /** Whether a model is set up to answer: null until the model settings have been read. */
+  /** Whether the default model can run as set up: null until the model settings have been read. */
   connected: boolean | null
-  /** Where the model answers from, while one is set up. */
-  source: ModelSource | null
+  /** Whether some configured model can run, one a chat can switch to: null until the model settings have been read. */
+  anyRuns: boolean | null
+  /** The model settings as last read: null until the first read answers. */
+  settings: HarnessModelSettings | null
   /**
-   * Passes a chat send through; one whose result disagrees with the status, finding no model set up
-   * while one is or answered while none is, has the model settings read again.
+   * Passes a chat send through; one whose result disagrees with the status, finding no model while
+   * some model can run or answered while none can, has the model settings read again.
    */
   track: (send: Promise<ChatSendResult>) => Promise<ChatSendResult>
 }
@@ -53,16 +43,16 @@ export function useCoreModelStatus(settingsOpen: boolean): ModelStatus {
     settingsWereOpen.current = settingsOpen
     if (closed || reads.current === 0) read()
   }, [settingsOpen, read])
-  const source = settings === null ? null : modelSourceOf(settings)
-  const connected = settings === null ? null : source !== null
-  const connectedNow = useRef(connected)
-  connectedNow.current = connected
+  const connected = settings === null ? null : settings.models.some((model) => model.id === settings.defaultModel && model.configured)
+  const anyRuns = settings === null ? null : settings.models.some((model) => model.configured)
+  const anyRunsNow = useRef(anyRuns)
+  anyRunsNow.current = anyRuns
   const track = useCallback((send: Promise<ChatSendResult>) => send.then((result) => {
     const noModel = result.state === 'failed' && result.reason === 'no-model'
-    if (noModel ? connectedNow.current !== false : connectedNow.current === false) read()
+    if (noModel ? anyRunsNow.current !== false : anyRunsNow.current === false) read()
     return result
   }), [read])
-  return useMemo(() => ({ connected, source, track }), [connected, source, track])
+  return useMemo(() => ({ connected, anyRuns, settings, track }), [connected, anyRuns, settings, track])
 }
 
 /** Returns the shell's model status. */

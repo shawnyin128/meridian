@@ -34,6 +34,12 @@ chat.mentionGroup.page label
 chat.mentionGroup.paper label
 chat.mentionGroup.project label
 chat.messagesLabel aria
+chat.modelPicker aria
+chat.sourcePicker aria
+chat.defaultMark state
+chat.modelSettings action
+chat.effortPicker aria
+chat.effortDefault state
 chat.thinking state
 chat.newChat state
 chat.paperChatLabel aria
@@ -784,6 +790,8 @@ settings.model.fields.authLabel label
 settings.model.fields.authNoneOption label
 settings.model.fields.baseUrlAria aria
 settings.model.fields.baseUrlLabel label
+settings.model.fields.effortDefault label
+settings.model.fields.effortLabel label
 settings.model.fields.modelIdAria aria
 settings.model.fields.modelIdLabel label
 settings.model.fields.protocolAria aria
@@ -791,6 +799,14 @@ settings.model.fields.protocolLabel label
 settings.model.fields.providerLabel label
 settings.model.heading label
 settings.model.keyStored aria
+settings.model.list.apiSource label
+settings.model.list.confirmDelete label
+settings.model.list.defaultMark state
+settings.model.list.defaultModel label
+settings.model.list.localService label
+settings.model.list.localSource label
+settings.model.list.manage aria
+settings.model.list.setDefault action
 settings.model.notConfigured state
 settings.model.providers.anthropic.label label
 settings.model.providers.google-gemini.label label
@@ -801,7 +817,6 @@ settings.model.save action
 settings.model.saving aria
 settings.model.subscription.cliLabel label
 settings.model.subscription.copySignIn aria
-settings.model.subscription.defaultModel placeholder
 settings.model.subscription.missing state
 settings.model.subscription.otherModel aria
 settings.model.subscription.signIn.other state
@@ -1056,6 +1071,7 @@ wiki.harness.freeNote state
 wiki.harness.modelLabel label
 wiki.harness.noOutputLimit state
 wiki.harness.outputLimitLabel label
+wiki.harness.outputTokens state
 wiki.harness.personalContentLabel label
 wiki.harness.personalContentSummary state
 wiki.harness.planNote.claude state

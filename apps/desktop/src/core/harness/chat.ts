@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type {
-  ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
+  CallFailure, ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { extractPdfPages } from '../paper-library/index.js'
@@ -13,12 +13,14 @@ import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
 import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { CliUsage } from './cli/runner.js'
-import type { HarnessModelConfig } from './model-config.js'
+import { apiRunLimits } from './cost-gate.js'
+import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 import { citablePages } from './paper-wiki.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
 
 const MAX_MODEL_CONNECTION_DETAIL = 500
+const MAX_ANSWER_TOKENS = 2_000
 const MODEL_CONNECTION_REDACTIONS = [
   /(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)[^\s,'"}\]]+/gi,
   /(\b(?:api[-_ ]?key|x-api-key|access[-_ ]?token|secret)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)[^\s,'"}\]]+/gi,
@@ -31,6 +33,22 @@ const ChatContextParamsSchema = z.object({
   currentText: z.string().min(1).max(20_000),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000) }).strict()
+/** The model IDs a provider's model-list call answered with, as Harness hands them over. */
+const ModelListSchema = z.object({ models: z.array(z.string().trim().min(1).max(200)).max(1_000) }).strict()
+/** How long one model-list read may take, Harness's own provider timeout included. */
+const MODEL_LIST_TIMEOUT_MS = 30_000
+/** How a model-list read's provider failure, as Harness classified it, reads as a call failure. */
+const MODEL_LIST_FAILURES: Record<string, CallFailure> = {
+  rate_limit: 'rate-limit', timeout: 'timeout', provider_http: 'server', authentication: 'model',
+}
+
+/** Why a model-list read failed, from the Harness error `cause`. */
+const modelListFailure = (cause: unknown): CallFailure => {
+  if (!(cause instanceof HarnessRpcError)) return 'unknown'
+  if (cause.kind === 'no_model') return 'no-model'
+  if (cause.kind === 'model_error') return MODEL_LIST_FAILURES[String(cause.detail)] ?? 'unavailable'
+  return cause.kind === 'harness_gone' ? 'unavailable' : 'unknown'
+}
 /** A chat turn's model call: the whole turn as `system` and `prompt`, and the new message alone. */
 const ChatModelInvokeParamsSchema = z.object({
   system: z.string().min(1).max(500_000),
@@ -222,14 +240,17 @@ export function chatHarnessError(cause: unknown): Error {
 }
 
 /**
- * A single-purpose chat client with a least-privilege callback surface. A turn on a subscription CLI
- * also gets its one model call from Core, which `cli` runs in the chat's CLI session that `sessions`
- * keeps, with the internal MCP server's vault lookups, scoped to the chat's paper in a paper chat; a
- * turn whose CLI call fails fails for the CLI problem it met.
+ * A single-purpose chat client with a least-privilege callback surface. A turn runs on the model its
+ * chat chose, as `choiceOf` gives it, or on the default. A turn on a subscription CLI also gets its
+ * one model call from Core, which `cli` runs in the chat's CLI session that `sessions` keeps, with the
+ * internal MCP server's vault lookups, scoped to the chat's paper in a paper chat; a turn whose CLI
+ * call fails fails for the CLI problem it met.
  */
 export function createChatHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
+  /** The model chat `chatId` chose, or null when it chose none; every chat runs the default without it. */
+  choiceOf?: (chatId: string) => ModelChoice | null
   /** The connection check of a subscription CLI's model, which makes one model call once the CLI is ready. */
   checkCli: (model: HarnessCliModel) => Promise<HarnessModelConnectionCheckResult>
   cli: CliChatRunner
@@ -334,6 +355,7 @@ export function createChatHarnessRunner(options: {
         result = await options.cli({
           cli: model.cli,
           ...(model.model === undefined ? {} : { model: model.model }),
+          ...(model.effort === undefined ? {} : { effort: model.effort }),
           system,
           prompt: resumed === null ? prompt : message,
           session: resumed !== null ? { resume: resumed.id } : start === undefined ? {} : { start },
@@ -374,18 +396,22 @@ export function createChatHarnessRunner(options: {
   }
 
   return {
-    async checkConnection() {
+    /** Checks configured source `id` at its own model, or the default source without one, at its provider's or CLI's own default effort. */
+    async checkConnection(id?: string) {
       let model
       try {
-        model = await options.model.runtime()
+        model = await options.model.runtime(id === undefined ? undefined : { source: id })
       } catch (cause) {
         return failedConnectionCheck(cause, [], 0)
       }
       if ('source' in model) return options.checkCli(model)
       const secrets = model.apiKey === undefined ? [] : [model.apiKey]
+      // The check runs at the provider's own default effort.
+      const checked = { ...model }
+      delete checked.effort
       try {
         const result = HarnessModelConnectionCheckResultSchema.parse(await rpc.request('model.check', {
-          model,
+          model: checked,
         }))
         return result.state === 'connected'
           ? result
@@ -397,6 +423,20 @@ export function createChatHarnessRunner(options: {
       }
     },
     /**
+     * The model IDs API source `id` lists, as its provider's own model-list call answers with the
+     * source's key, which makes no model call. Throws a CallError: `no-model` for a source that is
+     * not set up to run, and why the provider's call failed otherwise.
+     */
+    async listModels(id: string): Promise<string[]> {
+      const model = await options.model.runtime({ source: id })
+      if ('source' in model) throw new CallError('invalid', '订阅的模型不从 API 读')
+      try {
+        return ModelListSchema.parse(await rpc.request('model.list', { model }, { timeoutMs: MODEL_LIST_TIMEOUT_MS })).models
+      } catch (cause) {
+        throw new CallError(modelListFailure(cause), '模型列表读不出来', { cause })
+      }
+    },
+    /**
      * Asks Harness to answer `text` in chat `id` until `signal` aborts. `progress` hears the model
      * writing the answer at once, as configured, and again when a CLI names its own; a model that
      * streams its answer also tells it the answer as far as it is written.
@@ -405,21 +445,22 @@ export function createChatHarnessRunner(options: {
       const ended = new AbortController()
       let failure: CliRunError | undefined
       try {
-        const model = await options.model.runtime()
+        const model = await options.model.runtime(options.choiceOf?.(id))
         progress?.onModel('source' in model
           ? { route: 'subscription', cli: model.cli, ...(model.model === undefined ? {} : { id: model.model }) }
           : { route: 'api', id: model.model })
         const turn = 'source' in model
           ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }, progress)
           : null
+        const { maxOutputTokens, timeoutSeconds, requestTimeoutMs } = apiRunLimits('source' in model ? undefined : model.effort, MAX_ANSWER_TOKENS)
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,
           model,
-          limits: { maxOutputTokens: 2_000, maxModelCalls: 1 },
+          limits: { maxOutputTokens, maxModelCalls: 1, timeoutSeconds },
         }, {
           signal,
-          ...(turn === null ? {} : {
+          ...(turn === null ? { timeoutMs: requestTimeoutMs } : {
             timeoutMs: CLI_REQUEST_TIMEOUT_MS,
             callbacks: { 'model.invoke': turn.call },
           }),

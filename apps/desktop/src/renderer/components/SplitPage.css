@@ -40,3 +40,5 @@
 /* A heading spaces itself from the body; a head of fields stands the item gap above it. */
 .split-main-head--fields{padding-bottom:var(--item-gap)}
 .split-main-body{margin-top:calc(-1 * var(--ring-room));padding:var(--ring-room) var(--sp-24)}
+/* A body that fills the column holds parts that scroll inside themselves; it never scrolls. */
+.split-main-body--fill{display:flex;flex:1 1 0;min-height:0;flex-direction:column}

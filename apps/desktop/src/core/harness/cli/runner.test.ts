@@ -5,6 +5,7 @@ import { afterEach, describe, expect, it } from 'vitest'
 import type { HarnessCli } from '../../../shared/contract.js'
 import type { CliDiscovery } from './discovery.js'
 import { CODEX_DISABLED_FEATURES, createCliRunner, runnerFlags, strictSchema } from './runner.js'
+import { createHarnessModelConfig } from '../model-config.js'
 
 /** What a stand-in CLI saw: its arguments, stdin, the variables of interest and its folder. */
 type Seen = {
@@ -182,6 +183,44 @@ describe('subscription CLI runner', () => {
     })
   })
 
+  it('passes the chosen reasoning effort to claude as --effort and to codex as model_reasoning_effort, and none without one', async () => {
+    const { runner, records, answer } = standIns({ stdout: claudeResult({ structured_output: { title: 'Draft' } }) })
+
+    await runner({ ...call('claude'), model: 'opus', effort: 'max' })
+    await runner(call('claude'))
+    answer({ stdout: codexEvents({ input_tokens: 10, cached_input_tokens: 0, output_tokens: 2 }), lastMessage: '{"title":"Draft"}' })
+    await runner({ ...call('codex'), model: 'gpt-6.1-sol', effort: 'medium' })
+    await runner(call('codex'))
+
+    const [claudeMax, claudeDefault, codexMedium, codexDefault] = records().map((record) => record.argv)
+    expect(claudeMax!.slice(-2)).toEqual(['--model=opus', '--effort=max'])
+    expect(claudeDefault!.some((arg) => arg.startsWith('--effort'))).toBe(false)
+    expect(codexMedium!.slice(-4)).toEqual(['--model=gpt-6.1-sol', '-c', 'model_reasoning_effort="medium"', '-'])
+    expect(codexDefault!.join(' ')).not.toContain('reasoning')
+  })
+
+  it('runs a CLI at its saved effort, and at its own default once a model change that reset the effort is saved', async () => {
+    const { runner, records } = standIns({ stdout: codexEvents({ input_tokens: 1, cached_input_tokens: 0, output_tokens: 1 }), lastMessage: '{}' })
+    const configHome = mkdtempSync(join(tmpdir(), 'meridian-cli-test-config-'))
+    folders.push(configHome)
+    const config = await createHarnessModelConfig(configHome, { seal: async (secret) => secret, open: async (secret) => ({ secret }) })
+    const runOnSaved = async () => {
+      const model = await config.runtime()
+      if (!('source' in model)) throw new Error('expected a CLI model')
+      await runner({ ...call(model.cli), ...(model.model === undefined ? {} : { model: model.model }), ...(model.effort === undefined ? {} : { effort: model.effort }) })
+    }
+
+    config.updateSubscription({ cli: 'codex', model: 'gpt-6.1-sol', effort: 'max' })
+    await runOnSaved()
+    config.updateSubscription({ cli: 'codex', model: 'gpt-5.5' })
+    await runOnSaved()
+
+    const [saved, changed] = records().map((record) => record.argv.join(' '))
+    expect(saved).toContain('--model=gpt-6.1-sol -c model_reasoning_effort="max"')
+    expect(changed).toContain('--model=gpt-5.5')
+    expect(changed).not.toContain('reasoning')
+  })
+
   it('removes the API-key variables from the child\'s environment and keeps the rest', async () => {
     const { bin, runner, records } = standIns({
       stdout: claudeResult({ structured_output: { title: 'Draft' } }),
@@ -330,7 +369,7 @@ describe('subscription CLI runner', () => {
   it('names every flag it passes, a call that looks up the vault included, the way each CLI\'s help lists them', () => {
     expect(runnerFlags('claude')).toEqual([
       '-p', '--output-format', '--json-schema', '--tools', '--strict-mcp-config', '--setting-sources',
-      '--no-session-persistence', '--system-prompt', '--model', '--mcp-config', '--allowedTools',
+      '--no-session-persistence', '--system-prompt', '--model', '--effort', '--mcp-config', '--allowedTools',
     ])
     expect(runnerFlags('codex')).toEqual([
       '--ephemeral', '--skip-git-repo-check', '--sandbox', '--ignore-user-config', '--ignore-rules', '--json',

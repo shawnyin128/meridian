@@ -3,7 +3,7 @@
 from typing import Final
 
 PROTOCOL_VERSION: Final = "meridian.harness.v1"
-CAPABILITIES: Final = ("paper-wiki", "chat", "model-check")
+CAPABILITIES: Final = ("paper-wiki", "chat", "model-check", "model-list")
 ERROR_KINDS: Final = frozenset(
     {"bad_request", "no_model", "model_error", "cancelled", "harness_gone", "internal"}
 )

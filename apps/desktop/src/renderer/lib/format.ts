@@ -97,3 +97,12 @@ export function useFormat(): Format {
   const locale = useLocale()
   return useMemo(() => createFormat(locale), [locale])
 }
+
+/**
+ * The time `ms` milliseconds take, in whole seconds rounded down: `12s` under a
+ * minute and `1m 05s` from then on, the same in every language. A negative time counts as none.
+ */
+export function elapsedText(ms: number): string {
+  const seconds = Math.floor(Math.max(0, ms) / 1000)
+  return seconds < 60 ? `${seconds}s` : `${Math.floor(seconds / 60)}m ${String(seconds % 60).padStart(2, '0')}s`
+}

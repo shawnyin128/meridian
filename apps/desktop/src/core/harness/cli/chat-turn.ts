@@ -5,7 +5,7 @@ import { type ChildOutcome, cliEnvironment, inTemporaryFolder, runChild } from '
 import { type InternalMcp, internalMcpArgs } from './internal-mcp.js'
 import {
   claudeExitFailure, claudeFailure, claudeUsage, cliCheck, CODEX_DISABLED_FEATURES, codexFailure, codexUsage,
-  type CliRunnerDeps, type CliUsage, isRecord, jsonLine,
+  type CliRunnerDeps, type CliUsage, effortArgs, isRecord, jsonLine,
 } from './runner.js'
 import type { VaultToolScope } from './vault-tools.js'
 
@@ -13,6 +13,8 @@ export type CliChatCall = {
   cli: HarnessCli
   /** The CLI's model for this turn; without it the CLI uses its own default. */
   model?: string
+  /** The reasoning effort for this turn; without it the CLI uses its own default. */
+  effort?: string
   /** The instructions and the chat's context. */
   system: string
   /** The history and the new message, or, in a resumed session, the new message alone. */
@@ -50,7 +52,9 @@ export type CliChatResult = {
  */
 export type CliChatRunner = (call: CliChatCall) => Promise<CliChatResult>
 
-const modelFlag = (call: CliChatCall) => (call.model === undefined ? [] : [`--model=${call.model}`])
+const modelFlags = (call: CliChatCall) => [
+  ...(call.model === undefined ? [] : [`--model=${call.model}`]), ...effortArgs(call.cli, call.effort),
+]
 
 /** Claude reads the system prompt from `systemFile`, so a long chat context never meets a command-line limit. */
 function claudeArgs(call: CliChatCall, systemFile: string, mcp: InternalMcp | null): string[] {
@@ -60,7 +64,7 @@ function claudeArgs(call: CliChatCall, systemFile: string, mcp: InternalMcp | nu
     '-p', '--output-format', 'stream-json', '--verbose', '--include-partial-messages',
     '--tools', '', '--strict-mcp-config', '--setting-sources', 'project',
     ...session, '--system-prompt-file', systemFile,
-    ...modelFlag(call), ...(mcp?.claudeArgs ?? []),
+    ...modelFlags(call), ...(mcp?.claudeArgs ?? []),
   ]
 }
 
@@ -69,7 +73,7 @@ function codexArgs(call: CliChatCall, mcp: InternalMcp | null): string[] {
   const common = [
     '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', 'web_search="disabled"',
     ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
-    ...modelFlag(call), ...(mcp?.codexArgs ?? []),
+    ...modelFlags(call), ...(mcp?.codexArgs ?? []),
   ]
   return 'resume' in call.session
     ? ['exec', 'resume', ...common, '-c', 'sandbox_mode="read-only"', call.session.resume, '-']
@@ -82,7 +86,7 @@ function codexArgs(call: CliChatCall, mcp: InternalMcp | null): string[] {
  */
 export function chatTurnFlags(cli: HarnessCli): string[] {
   const turn = (session: CliChatCall['session']): CliChatCall => ({
-    cli, model: 'model', system: 'system', prompt: 'prompt', session, folder: 'folder', timeoutMs: 0,
+    cli, model: 'model', effort: 'effort', system: 'system', prompt: 'prompt', session, folder: 'folder', timeoutMs: 0,
     signal: new AbortController().signal,
   })
   const lookup: InternalMcp = {

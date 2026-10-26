@@ -8,10 +8,11 @@ import { EditorView, keymap, placeholder as placeholderText } from '@codemirror/
 import type { ChatRun } from '../../../shared/contract.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { sendsMessage } from '../../lib/chat.js'
-import { composing } from '../../lib/keyboard.js'
+import { commitKeys, composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { ComposerBox } from '../ComposerBox.js'
 import { GenerationControl } from '../GenerationControl.js'
-import { ModelStatusTag } from '../ModelStatusTag.js'
+import { ModelChips } from '../ModelChips.js'
 import { PickerPopover, PickOption } from '../PickerPopover.js'
 import { Tag } from '../Tag.js'
 import { useWidgetSlots } from '../widget-slots.js'
@@ -58,19 +59,21 @@ function hitsOf(typed: string, all: readonly MentionCandidate[]): MentionCandida
 const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringify(a) === JSON.stringify(b)
 
 /**
- * The one chat composer, in the Chat screen and the reader's paper chat: a CodeMirror editor over
- * `draft` with its own undo history, the shared model status (see ModelStatusTag) and the send control. Enter sends, Shift+Enter
- * breaks the line, and an Enter that confirms an input method's composition belongs to the input
- * method. With `mentions`, typing `@` anywhere opens the picker of the candidates matching what
+ * The one chat composer, in the Chat screen and the reader's paper chat: a ComposerBox holding a
+ * CodeMirror editor over `draft` with its own undo history, then the model pickers of chat `chat`
+ * (see ModelChips) and the send control, which stops the turn while `running`, as Escape anywhere in
+ * the box does. Enter sends, Shift+Enter breaks the line, and an Enter that confirms an input
+ * method's composition belongs to the input method. With `mentions`, typing `@` anywhere opens the picker of the candidates matching what
  * follows it up to the caret; picking one puts it in as a pill, which the caret steps over and a
  * deletion takes whole. `draft` replaces what the editor holds whenever it differs from what the
  * editor last reported through `onDraft`; nothing can be typed while `unavailable` or `running`.
  * `label` names the editor for assistive technology, as the placeholder does without it.
  */
 export function ChatComposer({
-  ref, id, label, placeholder, draft, onDraft, unavailable, running, sendId, onSend, onStop, mentions = [],
+  ref, id, chat, label, placeholder, draft, onDraft, unavailable, running, sendId, onSend, onStop, mentions = [],
 }: {
   ref?: Ref<ChatComposerHandle>
+  chat: string | null
   id?: string
   label?: string
   placeholder: string
@@ -154,28 +157,33 @@ export function ChatComposer({
         open={hits.length > 0} onOpenChange={(open) => { if (!open) setDismissed(true) }}
         size="tall" contentId="cRes" side="top" align="center" sideOffset={6}
         anchor={(
-          <div className="cbox">
-            <div
-              className="chat-composer" ref={host}
-              // Capturing the keys the composer acts on keeps the editor from acting on them too.
-              onKeyDownCapture={(event) => {
-                if (composing(event.nativeEvent)) return
-                if (hits.length > 0) {
-                  if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter') return
-                  keys.onKeyDown(event)
-                  event.preventDefault()
-                } else if (sendsMessage(event.nativeEvent)) {
-                  event.preventDefault()
-                  onSend()
-                }
-              }}
-            />
-            <ModelStatusTag />
-            <GenerationControl
-              className="send" id={sendId} running={running} disabled={unavailable || draftText(draft).trim() === ''}
-              onStart={onSend} onStop={onStop}
-            />
-          </div>
+          <ComposerBox
+            onKeyDown={commitKeys(running ? { onCancel: onStop } : {})}
+            field={(
+              <div
+                className="chat-composer" ref={host}
+                // Capturing the keys the composer acts on keeps the editor from acting on them too.
+                onKeyDownCapture={(event) => {
+                  if (composing(event.nativeEvent)) return
+                  if (hits.length > 0) {
+                    if (event.key !== 'ArrowDown' && event.key !== 'ArrowUp' && event.key !== 'Enter') return
+                    keys.onKeyDown(event)
+                    event.preventDefault()
+                  } else if (sendsMessage(event.nativeEvent)) {
+                    event.preventDefault()
+                    onSend()
+                  }
+                }}
+              />
+            )}
+            chips={<ModelChips chat={chat} />}
+            send={(
+              <GenerationControl
+                className="send" id={sendId} running={running} disabled={unavailable || draftText(draft).trim() === ''}
+                onStart={onSend} onStop={onStop}
+              />
+            )}
+          />
         )}
         content={hits.length === 0 ? null : (
           <>

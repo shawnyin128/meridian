@@ -139,6 +139,16 @@ export const settings = {
       },
     },
     tabs: { label: '模型来源', api: 'API', subscription: '订阅' },
+    list: {
+      defaultMark: '默认',
+      defaultModel: '默认模型',
+      setDefault: '设为默认',
+      apiSource: (name: string) => `${name} API`,
+      localSource: (name: string) => `${name} 本地`,
+      localService: (port: string) => `本地服务 · ${port}`,
+      confirmDelete: (name: string) => `删除 ${name}？`,
+      manage: (name: string) => `管理「${name}」`,
+    },
     subscriptions: {
       claude: { label: 'Claude 订阅' },
       codex: { label: 'ChatGPT 订阅' },
@@ -152,7 +162,6 @@ export const settings = {
       missing: '没有找到',
       unsupported: '版本不受支持',
       signIn: { subscription: '已用订阅登录', other: '未用订阅登录', 'signed-out': '未登录', unknown: '读不出登录状态' },
-      defaultModel: '默认',
     },
     templates: {
       chooseLabel: '连接模板',
@@ -186,6 +195,8 @@ export const settings = {
       modelIdAria: '模型名称',
       apiKeyLabel: 'API Key',
       apiKeyAria: '模型 API Key',
+      effortLabel: '推理强度',
+      effortDefault: '默认',
     },
     configured: '已配置',
     notConfigured: '未配置',

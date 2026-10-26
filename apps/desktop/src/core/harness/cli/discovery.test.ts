@@ -209,8 +209,8 @@ describe('subscription CLI discovery', () => {
     const noVariant = machine({ help: FULL_HELP.replace(/^ {2}--system-prompt-file .*$/m, '') })
     executable(join(noVariant.home, '.local', 'bin', 'claude'), STAND_IN)
     await expect(check('claude', noVariant.options)).resolves.toMatchObject({ reason: 'cli-unsupported' })
-    for (const [cli, flag] of [['claude', '--resume'], ['codex', 'resume']] as const) {
-      const noResume = machine({ help: FULL_HELP.replace(new RegExp(`^ {2}${flag} .*$`, 'm'), '') })
+    for (const [cli, flag] of [['claude', '--resume'], ['claude', '--effort'], ['codex', 'resume']] as const) {
+      const noResume = machine({ help: FULL_HELP.replace(new RegExp(`^ {2}${flag} .*$`, 'gm'), '') })
       executable(join(noResume.home, '.local', 'bin', cli), STAND_IN)
       await expect(check(cli, noResume.options)).resolves.toMatchObject({
         state: 'failed', reason: 'cli-unsupported', modelCalls: 0,
@@ -249,6 +249,17 @@ describe('subscription CLI discovery', () => {
       type: 'object', properties: { word: { type: 'string', maxLength: 40 } }, required: ['word'], additionalProperties: false,
     })
     expect(logs).toEqual(['claude: 4.2 s, 1 turns, 18204 input tokens (0 cached), 5 output tokens'])
+  })
+
+  it('makes the check\'s model call at the CLI\'s own default effort, whatever effort the model is set to', async () => {
+    const signedIn = machine()
+    executable(join(signedIn.home, '.local', 'bin', 'claude'), STAND_IN)
+    const runner = standInRunner()
+
+    await expect(checkCliConnection({ source: 'cli', cli: 'claude', model: 'opus', effort: 'max' }, { ...signedIn.options, run: runner.run }))
+      .resolves.toMatchObject({ state: 'connected' })
+
+    expect(runner.calls.map((call) => [call.model, call.effort])).toEqual([['opus', undefined]])
   })
 
   it.each([

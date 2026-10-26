@@ -5,7 +5,7 @@ import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { trashedEntry } from '../write-receipts.js'
 import { ChatFailure, type ChatHarnessRunner } from './chat.js'
-import type { HarnessModelConfig } from './model-config.js'
+import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 
 const textRun = (text: string) => [{ kind: 'text' as const, text }]
 /** `runs`, one or more, without the whitespace that starts or ends the turn and the text runs that leaves empty. */
@@ -27,11 +27,15 @@ const statusMessage = (text: string): ChatMessageFields => ({
 /** The text of a turn's runs, as the model is asked it. */
 const textOf = (runs: readonly ChatRun[]) => runs.map((run) => run.text).join('')
 
-/** Core-owned chat transaction: persist the user turn, run once, then persist a validated result. */
+/**
+ * Core-owned chat transaction: persist the user turn, run once on the model the chat chose, as
+ * `choiceOf` gives it, or on the default, then persist a validated result.
+ */
 export function createChatService(options: {
   store: VaultStore
   model: HarnessModelConfig
   runner: ChatHarnessRunner | null
+  choiceOf?: (chatId: string) => ModelChoice | null
 }) {
   const running = new Map<string, AbortController>()
   const written = new Map<string, ChatWriting>()
@@ -46,20 +50,22 @@ export function createChatService(options: {
    * own text goes to the log.
    */
   const answer = async (id: string, text: string): Promise<ChatSendResult> => {
-    if (!options.model.planModel().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
+    if (!options.model.configured(options.choiceOf?.(id)) || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
     const controller = new AbortController()
+    const since = new Date().toISOString()
     running.set(id, controller)
     try {
       let model: ChatAnswerModel | undefined
       const answered = await options.runner.answer(id, text, controller.signal, {
         onModel: (named) => {
           model = named
-          if (running.get(id) === controller) written.set(id, { text: written.get(id)?.text ?? '', model: named })
+          if (running.get(id) === controller) written.set(id, { text: written.get(id)?.text ?? '', model: named, since })
         },
         onText: (so) => {
-          if (running.get(id) === controller && model !== undefined) written.set(id, { text: so, model })
+          if (running.get(id) === controller && model !== undefined) written.set(id, { text: so, model, since })
         },
       })
+      if (controller.signal.aborted) return { id, state: 'cancelled' }
       options.store.appendChatMessages(id, [answerMessage(answered, model)])
       return { id, state: 'complete' }
     } catch (cause) {
@@ -96,12 +102,18 @@ export function createChatService(options: {
       }
       return answer(id, textOf(question.runs))
     },
-    /** Stops the reply being generated in `id`; from then on the chat no longer counts as generating. */
+    /**
+     * Stops the reply being generated in `id` and keeps the text it had written so far as its answer,
+     * with the model writing it; a reply that had written no text leaves no answer. From then on the
+     * chat no longer counts as generating.
+     */
     cancel(id: string) {
       const controller = running.get(id)
       if (controller === undefined) return { id, cancelled: false }
+      const so = written.get(id)
       controller.abort()
       stopped(id)
+      if (so !== undefined && so.text.trim() !== '') options.store.appendChatMessages(id, [answerMessage(so.text, so.model)])
       return { id, cancelled: true }
     },
     /** Stops the reply chat `id` is generating, if any, then moves the chat into the trash; throws when there is no such chat. */
@@ -124,8 +136,8 @@ export function createChatService(options: {
       }))
     },
     /**
-     * The answer being written in chat `id`: its model, as far as known, and its text so far, empty
-     * before the first text; null while no turn there has named its model.
+     * The answer being written in chat `id`: its model, as far as known, its text so far, empty before
+     * the first text, and when its turn began; null while no turn there has named its model.
      */
     writing(id: string): ChatWriting | null {
       return written.get(id) ?? null

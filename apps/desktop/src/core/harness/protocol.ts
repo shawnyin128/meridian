@@ -1,5 +1,5 @@
 export const HARNESS_PROTOCOL_VERSION = 'meridian.harness.v1'
-export const HARNESS_CAPABILITIES = ['paper-wiki', 'chat', 'model-check'] as const
+export const HARNESS_CAPABILITIES = ['paper-wiki', 'chat', 'model-check', 'model-list'] as const
 
 export type HarnessCapability = typeof HARNESS_CAPABILITIES[number]
 

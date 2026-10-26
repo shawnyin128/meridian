@@ -19,7 +19,7 @@ const { document, getComputedStyle } = globalThis as unknown as Window
 
 /** The stylesheets of the message stream and both composers, in the order the App bundles them. */
 const STYLES = [
-  'shell/tokens.css', 'components/Tag.css', 'routes/shell.css', 'components/GenerationControl.css',
+  'shell/tokens.css', 'components/Tag.css', 'routes/shell.css', 'components/GenerationControl.css', 'components/ComposerBox.css',
   'components/chat/Chat.css', 'routes/Reader.css',
 ].map((path) => readFileSync(join(import.meta.dirname, '..', 'renderer', path), 'utf8'))
 

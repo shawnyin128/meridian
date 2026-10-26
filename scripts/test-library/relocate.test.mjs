@@ -1,7 +1,10 @@
-import { cpSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { dirname, join, relative } from 'node:path'
+import { basename, dirname, join, relative } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
+import { openChatModels } from '../../apps/desktop/src/core/harness/chat-models.ts'
+import { openCliChatSessions } from '../../apps/desktop/src/core/harness/cli/chat-sessions.ts'
+import { createHarnessModelConfig } from '../../apps/desktop/src/core/harness/model-config.ts'
 import { relocate } from './relocate.mjs'
 
 let home = ''
@@ -73,5 +76,74 @@ describe('测试库副本的路径改写', () => {
     cpSync(from, out, { recursive: true })
     expect(() => relocate(out, from)).toThrow(/snapshot\.bin: it names .+ but is not UTF-8 text/)
     expect(readFileSync(join(out, 'library', '.meridian', 'snapshot.bin'))).toEqual(binary)
+  })
+  /** A credential store for model lists that hold no key. */
+  const noKeys = { seal: async () => { throw new Error('no key is sealed') }, open: async () => { throw new Error('no key is opened') } }
+  const SESSION = '0b1f6a9e-3c2d-4e5f-8a7b-9c0d1e2f3a4b'
+  /** The models the Claude subscription offers, as Claude Code's status lists them. */
+  const claudeList = async (source) => ({
+    source, models: ['opus', '', 'sonnet'].map((id) => ({ id, efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max'] } })),
+  })
+
+  it('副本里每个聊天自己选的模型和它的 CLI 会话也改到副本：Core 读到的还是种下的选择和会话，会话的工作目录跟着搬过去', async () => {
+    home = mkdtempSync(join(tmpdir(), 'meridian-test-library-'))
+    const from = join(home, 'v0.0.21.1')
+    const out = join(home, 'copy')
+    const cliHome = join(home, 'cli-home')
+    seeded(from)
+    const models = await createHarnessModelConfig(join(from, 'config'), noKeys)
+    await models.addModel({ source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' })
+    await openChatModels({ file: join(from, 'user-data', 'chat-models', 'choices.json'), vault: join(from, 'library'), models, offers: claudeList })
+      .set('chat-156', 'cli:claude', 'sonnet', 'max')
+    const sessions = openCliChatSessions({ root: join(from, 'user-data', 'cli-chats'), vault: join(from, 'library'), home: cliHome })
+    const before = sessions.folder('chat-156')
+    writeFileSync(join(before, 'turn.txt'), 'the CLI ran here')
+    sessions.keep('chat-156', { cli: 'claude', id: SESSION, history: 'two turns' })
+    mkdirSync(join(cliHome, '.claude', 'projects', 'chat'), { recursive: true })
+    writeFileSync(join(cliHome, '.claude', 'projects', 'chat', `${SESSION}.jsonl`), '{}\n')
+    cpSync(from, out, { recursive: true })
+
+    const reported = []
+    relocate(out, from, (line) => reported.push(line))
+    const copied = openChatModels({
+      file: join(out, 'user-data', 'chat-models', 'choices.json'), vault: join(out, 'library'),
+      models: await createHarnessModelConfig(join(out, 'config'), noKeys), offers: claudeList,
+    })
+    const moved = openCliChatSessions({ root: join(out, 'user-data', 'cli-chats'), vault: join(out, 'library'), home: cliHome })
+    expect(copied.shown('chat-156')).toEqual({ source: 'cli:claude', model: 'sonnet', effort: 'max' })
+    expect(moved.resumable('chat-156', { source: 'cli', cli: 'claude' }, 'two turns')).toEqual({ cli: 'claude', id: SESSION, history: 'two turns' })
+    expect(readFileSync(join(moved.folder('chat-156'), 'turn.txt'), 'utf8')).toBe('the CLI ran here')
+    expect(existsSync(join(out, 'user-data', 'cli-chats', basename(before)))).toBe(false)
+    expect([naming(join(out, 'user-data'), from), reported]).toEqual([
+      ['Local Storage/leveldb/000003.log', 'Local Storage/leveldb/LOG'], [],
+    ])
+  })
+
+  it('用户数据里读不出的记录和文件原样留着并报出来，不让整个改写失败；别的库的记录不动', () => {
+    home = mkdtempSync(join(tmpdir(), 'meridian-test-library-'))
+    const from = join(home, 'v0.0.21.1')
+    const out = join(home, 'copy')
+    seeded(from)
+    const unreadable = { chat: 'chat-9', model: 'gone' }
+    const elsewhere = { vault: '/libraries/research', chat: 'chat-3', model: 'opus' }
+    mkdirSync(join(from, 'user-data', 'chat-models'), { recursive: true })
+    writeFileSync(join(from, 'user-data', 'chat-models', 'choices.json'), JSON.stringify({
+      chats: [unreadable, elsewhere, { vault: join(from, 'library'), chat: 'chat-156', model: 'sonnet', effort: 'max', note: 'kept' }],
+    }))
+    mkdirSync(join(from, 'user-data', 'cli-chats'), { recursive: true })
+    writeFileSync(join(from, 'user-data', 'cli-chats', 'sessions.json'), '{"chats": [')
+    cpSync(from, out, { recursive: true })
+
+    const reported = []
+    relocate(out, from, (line) => reported.push(line))
+    expect(JSON.parse(readFileSync(join(out, 'user-data', 'chat-models', 'choices.json'), 'utf8')).chats).toEqual([
+      unreadable, elsewhere, { vault: join(out, 'library'), chat: 'chat-156', model: 'sonnet', effort: 'max', note: 'kept' },
+    ])
+    expect(readFileSync(join(out, 'user-data', 'cli-chats', 'sessions.json'), 'utf8')).toBe('{"chats": [')
+    expect(reported).toEqual([
+      `${join(out, 'user-data', 'chat-models', 'choices.json')}: 1 chat records cannot be read and stay as they are`,
+      `${join(out, 'user-data', 'cli-chats', 'sessions.json')} cannot be read; it stays as it is`,
+    ])
+    expect(JSON.parse(readFileSync(join(out, 'library', 'meridian-wiki.json'), 'utf8')).library_root).toBe(join(out, 'library'))
   })
 })

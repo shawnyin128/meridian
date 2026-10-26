@@ -302,7 +302,8 @@ process.stdin.on('end', () => {
           wiki: {} as WikiPaper,
         },
         signal: new AbortController().signal,
-        limits: { maxOutputTokens: 6_000, maxModelCalls: 1 },
+        limits: { maxOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 120 },
+        requestTimeoutMs: 120_000,
       })
 
       expect(result).toMatchObject({ state: 'proposal-ready', proposalQuality: { caseId: 'p1' } })

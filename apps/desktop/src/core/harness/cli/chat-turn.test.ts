@@ -282,11 +282,35 @@ describe('the flags a chat turn needs', () => {
   it('lists each option a chat turn that starts or resumes a session and looks up the vault passes once, without its value', () => {
     expect(chatTurnFlags('claude')).toEqual([
       '-p', '--output-format', '--verbose', '--include-partial-messages', '--tools', '--strict-mcp-config',
-      '--setting-sources', '--session-id', '--system-prompt-file', '--model', '--mcp-config', '--allowedTools', '--resume',
+      '--setting-sources', '--session-id', '--system-prompt-file', '--model', '--effort', '--mcp-config', '--allowedTools',
+      '--resume',
     ])
     expect(chatTurnFlags('codex')).toEqual([
       '--skip-git-repo-check', '--ignore-user-config', '--ignore-rules', '--json', '-c', '--disable', '--model',
       '--sandbox', '--color', '-C', 'resume',
     ])
+  })
+})
+
+describe('a chat turn\'s reasoning effort', () => {
+  it('passes the chosen effort whether the turn starts or resumes a session, on both CLIs, and none without one', async () => {
+    const { runner, records, folder } = standIns({
+      lines: [claudeResult('Yes.'), agentMessage('Yes.'), { type: 'turn.completed', usage: codexUsage }],
+    })
+
+    await runner(turn('claude', folder, { effort: 'high', session: { start: 'session-1' } }))
+    await runner(turn('claude', folder, { effort: 'high', session: { resume: 'session-1' } }))
+    await runner(turn('codex', folder, { effort: 'xhigh' }))
+    await runner(turn('codex', folder, { effort: 'xhigh', session: { resume: '0199a213-81c0-7800-8aa1-bbab2a035a53' } }))
+    await runner(turn('claude', folder))
+    await runner(turn('codex', folder))
+
+    const [claudeStart, claudeResume, codexStart, codexResume, claudeDefault, codexDefault] = records().map((record) => record.argv)
+    expect(claudeStart).toContain('--effort=high')
+    expect(claudeResume).toContain('--effort=high')
+    expect(codexStart!.join(' ')).toContain('-c model_reasoning_effort="xhigh"')
+    expect(codexResume!.join(' ')).toContain('-c model_reasoning_effort="xhigh"')
+    expect(claudeDefault!.join(' ')).not.toContain('effort')
+    expect(codexDefault!.join(' ')).not.toContain('reasoning')
   })
 })

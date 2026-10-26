@@ -11,8 +11,9 @@ import './HarnessAction.css'
 /**
  * The one shared visual gate for cost-bearing Harness work. Feature components supply a prepared
  * plan and a start callback; they cannot skip the explicit acknowledgement represented here. It
- * cannot start while the plan was prepared without a model, the model Core will run it with. A run
- * on a subscription CLI names the plan it counts against and that its output has no limit.
+ * cannot start while the plan was prepared without a model, the model Core will run it with, which
+ * it names with its reasoning effort. A run on a subscription CLI names the plan it counts against
+ * and that its output has no limit; a run on an API model at an effort names its raised output cap.
  */
 export function HarnessAction({ plan, running, stopping = false, onStart, onCancel }: {
   plan: HarnessPlan
@@ -55,9 +56,13 @@ export function HarnessAction({ plan, running, stopping = false, onStart, onCanc
           <Property label={m.wiki.harness.personalContentLabel}>
             {m.wiki.harness.personalContentSummary(personal, plan.scope.hasRemark)}
           </Property>
-          <Property label={m.wiki.harness.modelLabel}>{plan.model.provider} · {plan.model.name}</Property>
-          {plan.model.cli === undefined ? null : (
+          <Property label={m.wiki.harness.modelLabel}>
+            {[plan.model.provider, plan.model.name, ...(plan.model.effort === undefined ? [] : [plan.model.effort])].join(' · ')}
+          </Property>
+          {plan.model.cli !== undefined ? (
             <Property label={m.wiki.harness.outputLimitLabel}>{m.wiki.harness.noOutputLimit}</Property>
+          ) : plan.outputLimit === undefined ? null : (
+            <Property label={m.wiki.harness.outputLimitLabel}>{m.wiki.harness.outputTokens(plan.outputLimit)}</Property>
           )}
         </PropertyList>
       )}

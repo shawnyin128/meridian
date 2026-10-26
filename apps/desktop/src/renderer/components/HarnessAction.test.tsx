@@ -19,7 +19,7 @@ declare global {
 /** `node` in the shell, whose model status says a model is set up while `connected`. */
 const withMessages = (node: ReactNode, connected = true) => (
   <MessagesProvider>
-    <ModelStatusContext.Provider value={{ connected, source: connected ? 'api' : null, track: (send) => send }}>
+    <ModelStatusContext.Provider value={{ connected, anyRuns: connected, settings: null, track: (send) => send }}>
       {node}
     </ModelStatusContext.Provider>
   </MessagesProvider>
@@ -113,6 +113,24 @@ describe('HarnessAction', () => {
       onCancel={vi.fn()} />)))
     act(() => host.querySelector<HTMLButtonElement>('button')!.click())
     expect(document.body.textContent).not.toContain('输出上限')
+  })
+
+  it('names the effort a run asks for in its model row, and the raised output cap of an API run at an effort', () => {
+    const properties = () => [...document.querySelectorAll('.harness-cost-plan .property')]
+      .map((row) => [row.querySelector('dt')?.textContent, row.querySelector('dd')?.textContent]).slice(2)
+    const api: HarnessPlan = {
+      ...plan(true, true), model: { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true, effort: 'high' },
+      outputLimit: 38_000,
+    }
+    act(() => root!.render(withMessages(<HarnessAction plan={api} running={false} onStart={vi.fn()} onCancel={vi.fn()} />)))
+    act(() => host.querySelector<HTMLButtonElement>('button')!.click())
+    expect(properties()).toEqual([['模型', 'OpenAI · gpt-6.1 · high'], ['输出上限', '38,000 个 token']])
+
+    const cli: HarnessPlan = {
+      ...plan(), model: { provider: 'Claude 订阅', name: 'opus', configured: true, billable: false, cli: 'claude', effort: 'max' },
+    }
+    act(() => root!.render(withMessages(<HarnessAction plan={cli} running={false} onStart={vi.fn()} onCancel={vi.fn()} />)))
+    expect(properties()).toEqual([['模型', 'Claude 订阅 · opus · max'], ['输出上限', '不限']])
   })
 
   it('shows the plan but cannot start when no model is configured', () => {

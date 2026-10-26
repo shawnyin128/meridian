@@ -181,11 +181,11 @@ describe('强调色', () => {
    */
   const ACCENT = [
     'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri',
-    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
+    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/ComposerBox.css  .send', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
     'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
     'components/Switch.css  .switch[data-state="checked"]',
     'components/Table.css  .table-row--selected', 'components/Table.css  .table-row--selected>.table-cell--title',
-    'components/chat/Chat.css  .send', 'components/icons.css  .ring',
+    'components/icons.css  .ring',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
     'components/timeline/TimelineBoard.css  .gtoday',
   ]
