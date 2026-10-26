@@ -8,9 +8,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
-from langchain_core.language_models import BaseChatModel
-from langchain_core.messages import BaseMessage
+from langchain_core.exceptions import OutputParserException
+from langchain_core.language_models import BaseChatModel, LanguageModelInput
 from langchain_core.prompts import ChatPromptTemplate
+from langchain_core.runnables import Runnable
 from langgraph.graph import END, START, StateGraph
 from langgraph.graph.state import CompiledStateGraph
 from langgraph.runtime import Runtime
@@ -22,6 +23,7 @@ from meridian_harness.models import (
     ModelInvocationError,
     create_chat_model,
     runs_on_cli,
+    structured_output_method,
 )
 from meridian_harness.protocol import ProtocolViolation
 
@@ -161,8 +163,9 @@ class ChatRuntime:
     """Ephemeral dependencies supplied to one graph invocation."""
 
     core: CoreReadContext
-    # None when Core runs the model call on the user's subscription CLI.
-    model: BaseChatModel | None
+    # The model with ChatAnswer as its structured output; None when Core runs the model call on the
+    # user's subscription CLI.
+    model: Runnable[LanguageModelInput, object] | None
 
 
 CHAT_INSTRUCTIONS = """\
@@ -196,22 +199,6 @@ CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
 
 _CITATION_TOKEN = re.compile(r"\[(?:p|pp)\.[^\]]*\]")
 _VALID_CITATION = re.compile(r"\[p\. ([1-9]\d*)\]")
-
-
-def _message_text(message: BaseMessage) -> str:
-    content = message.content
-    if isinstance(content, str):
-        return content.strip()
-    chunks: list[str] = []
-    if isinstance(content, list):
-        for block in content:
-            if isinstance(block, str):
-                chunks.append(block)
-            elif isinstance(block, dict):
-                text = block.get("text")
-                if isinstance(text, str):
-                    chunks.append(text)
-    return "\n".join(chunks).strip()
 
 
 def _read_context(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[str, object]:
@@ -285,19 +272,23 @@ def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[st
     runtime.context.core.check_cancelled()
     model = runtime.context.model
     if model is None:
-        output = _answer_on_cli(runtime.context.core, state["context"], state["text"])
+        candidate: object = {
+            "answer": _answer_on_cli(runtime.context.core, state["context"], state["text"]),
+        }
     else:
         prompt = CHAT_PROMPT.invoke({
             "context_json": _compact(_prompt_context(state["context"])),
             "question": state["text"],
         })
         try:
-            output = _message_text(model.invoke(prompt))
+            candidate = model.invoke(prompt)
+        except (ValidationError, OutputParserException) as cause:
+            raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
         except Exception as cause:
             raise ModelInvocationError.from_exception(cause) from cause
     runtime.context.core.check_cancelled()
     try:
-        answer = ChatAnswer.model_validate({"answer": output})
+        answer = ChatAnswer.model_validate(candidate)
     except ValidationError as cause:
         raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
     _validate_citations(answer.answer, state["context"], whole_paper=model is None)
@@ -348,7 +339,13 @@ def build_chat_method(
         chat_model = _mapping(params.get("model"), "chat model")
         limits = _mapping(params.get("limits"), "chat limits")
         try:
-            model = None if runs_on_cli(chat_model) else model_factory(chat_model, limits)
+            model = (
+                None
+                if runs_on_cli(chat_model)
+                else model_factory(chat_model, limits).with_structured_output(
+                    ChatAnswer, method=structured_output_method(chat_model),
+                )
+            )
         except ModelConfigurationError as cause:
             from meridian_harness.server import HarnessFailure
 

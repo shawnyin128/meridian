@@ -16,6 +16,7 @@ from meridian_harness.models import (
     check_model_connection,
     create_chat_model,
     list_models,
+    structured_output_method,
 )
 
 
@@ -66,6 +67,30 @@ class ModelFactoryTests(unittest.TestCase):
         self.assertEqual(chat_completions.max_retries, 0)
         self.assertEqual(chat_completions.extra_body, {"max_tokens": 6000})
         self.assertIsNone(chat_completions.max_tokens)
+
+    def test_asks_compatible_services_for_a_tool_call_and_other_providers_for_a_json_schema(
+        self,
+    ) -> None:
+        self.assertEqual(
+            [
+                structured_output_method(_model("openai")),
+                structured_output_method(
+                    _model("anthropic", "https://api.anthropic.com", "messages"),
+                ),
+                structured_output_method(_model(
+                    "google-gemini",
+                    "https://generativelanguage.googleapis.com/v1beta",
+                    "generate-content",
+                )),
+                structured_output_method(
+                    _model("openai-compatible", "https://api.example.test", "chat-completions"),
+                ),
+                structured_output_method(
+                    _model("openai-compatible", "https://api.example.test", "responses"),
+                ),
+            ],
+            ["json_schema", "json_schema", "json_schema", "function_calling", "function_calling"],
+        )
 
     def test_builds_each_provider_model_at_the_effort_its_integration_takes(self) -> None:
         openai = create_chat_model({**_model("openai"), "effort": "xhigh"}, _limits())

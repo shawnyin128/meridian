@@ -4,8 +4,10 @@ import json
 import unittest
 from importlib.resources import files
 from threading import Event
+from unittest import mock
 
 from langchain_core.runnables import Runnable, RunnableLambda
+from provider_stand_in import ProviderStandIn
 
 from meridian_harness.protocol import ProtocolViolation
 from meridian_harness.server import CoreCallbackError, HarnessFailure, RequestContext
@@ -13,6 +15,7 @@ from meridian_harness.workflows.paper_wiki import (
     PAPER_WIKI_GRAPH,
     PAPER_WIKI_PROMPT,
     PaperWikiDraft,
+    build_draft_chain,
     build_paper_wiki_method,
 )
 
@@ -184,6 +187,74 @@ class PaperWikiWorkflowTests(unittest.TestCase):
 
         self.assertEqual(raised.exception.kind, "model_error")
         self.assertEqual(raised.exception.detail, "structured_output")
+
+    def test_every_string_and_list_in_the_draft_schema_the_model_gets_is_bounded(self) -> None:
+        unbounded: list[str] = []
+
+        def walk(node: object, at: str) -> None:
+            if isinstance(node, dict):
+                if node.get("type") == "string" and "maxLength" not in node:
+                    unbounded.append(at)
+                if node.get("type") == "array" and "maxItems" not in node:
+                    unbounded.append(at)
+                for key, value in node.items():
+                    walk(value, f"{at}/{key}")
+            elif isinstance(node, list):
+                for index, value in enumerate(node):
+                    walk(value, f"{at}/{index}")
+
+        walk(PaperWikiDraft.model_json_schema(), "#")
+        self.assertEqual(unbounded, [])
+
+    def test_rejects_an_oversized_reading_reference_or_open_question(self) -> None:
+        for field, value in (
+            ("reading_refs", "note:" + "x" * 200),
+            ("open_questions", "Does it " + "x" * 1_000 + "?"),
+        ):
+            with self.subTest(field=field):
+                candidate = _valid_draft()
+                if field == "reading_refs":
+                    candidate["user_observations"] = [
+                        {"text": "Reader observation", field: [value]},
+                    ]
+                else:
+                    candidate[field] = [value]
+
+                def draft(
+                    _model: object, _limits: object, output: object = candidate,
+                ) -> Runnable[dict[str, object], PaperWikiDraft]:
+                    return RunnableLambda(lambda _packet: output)
+
+                with self.assertRaises(HarnessFailure) as raised:
+                    build_paper_wiki_method(draft)(RequestContext(10, Event(), _read), _params())
+
+                self.assertEqual(raised.exception.kind, "model_error")
+                self.assertEqual(raised.exception.detail, "structured_output")
+
+    def test_the_draft_reaches_each_api_provider_as_its_own_structured_output(self) -> None:
+        for provider, protocol, mechanism in (
+            ("openai", "responses", "json_schema"),
+            ("openai-compatible", "chat-completions", "tool"),
+        ):
+            with self.subTest(provider=provider):
+                service = ProviderStandIn(_valid_draft())
+                model = {**_params()["model"], "provider": provider, "protocol": protocol}
+                with mock.patch(
+                    "meridian_harness.workflows.paper_wiki.create_chat_model",
+                    return_value=service.model(responses=protocol == "responses"),
+                ):
+                    chain = build_draft_chain(model, _params()["limits"])
+                draft = chain.invoke({"scope_json": "{}"})
+
+                self.assertEqual(PaperWikiDraft.model_validate(draft).model_dump(), _valid_draft())
+                (request,) = service.requests
+                if mechanism == "json_schema":
+                    self.assertNotIn("tools", request)
+                    self.assertEqual(request["text"]["format"]["type"], "json_schema")
+                else:
+                    self.assertNotIn("response_format", request)
+                    self.assertEqual(request["tools"][0]["function"]["name"], "PaperWikiDraft")
+                    self.assertIn("PaperWikiDraft", json.dumps(request["tool_choice"]))
 
     def test_rejects_a_source_page_outside_the_authorized_scope(self) -> None:
         def draft(_model: object, _limits: object) -> Runnable[dict[str, object], PaperWikiDraft]:
