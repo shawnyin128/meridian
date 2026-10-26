@@ -24,6 +24,8 @@ export type ModelStatus = {
   connected: boolean | null
   /** Where the model answers from, while one is set up. */
   source: ModelSource | null
+  /** The model settings as last read: null until the first read answers. */
+  settings: HarnessModelSettings | null
   /**
    * Passes a chat send through; one whose result disagrees with the status, finding no model set up
    * while one is or answered while none is, has the model settings read again.
@@ -62,7 +64,7 @@ export function useCoreModelStatus(settingsOpen: boolean): ModelStatus {
     if (noModel ? connectedNow.current !== false : connectedNow.current === false) read()
     return result
   }), [read])
-  return useMemo(() => ({ connected, source, track }), [connected, source, track])
+  return useMemo(() => ({ connected, source, settings, track }), [connected, source, settings, track])
 }
 
 /** Returns the shell's model status. */

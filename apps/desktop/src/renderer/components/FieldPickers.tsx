@@ -5,7 +5,7 @@ import { dnum } from '../../shared/dates.js'
 import { useToday } from '../shell/AppShell.js'
 import { useFormat } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
-import { ActionMenu, MenuItem, MenuRadioGroup, MenuRadioItem, type MenuSurface } from './ActionMenu.js'
+import { ActionMenu, MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator, type MenuSurface } from './ActionMenu.js'
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
@@ -129,13 +129,20 @@ export function DotsMenu({
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or
  * `placeholder` while `value` matches no option, and with the refused look of a field while
  * `aria-invalid` holds. With `appearance="button"` its trigger is a compact Button showing
- * `children`, for a heading's actions. Otherwise the host field supplies the trigger's class, and its
+ * `children`, for a heading's actions. With `appearance="text"` its trigger is the composer's picker:
+ * `children`, or the picked option's label, then a small caret, as text that takes a fill only under
+ * the pointer and while its menu is open; while `busy` it cannot open and keeps its full colour, for
+ * a running ring in its place while its options are read.
+ * Otherwise the host field supplies the trigger's class, and its
  * content as `children`, which defaults to the picked option's label. Outside the field appearance
- * the trigger is one of the controls of the toolbar it renders in.
+ * the trigger is one of the controls of the toolbar it renders in. `after` holds menu items that end
+ * the menu after a divider, such as the command that opens the choice's settings; `onOpenChange`
+ * hears the menu open and close.
  */
 export function ChoicePicker<T extends string>({
   value, options, onPick, label = (option) => option, note, className, appearance, placeholder = '',
-  disabled = false, 'aria-label': ariaLabel, 'aria-invalid': invalid, stopRowActivation = false, children,
+  disabled = false, busy = false, 'aria-label': ariaLabel, 'aria-invalid': invalid, stopRowActivation = false, after,
+  onOpenChange, children,
 }: {
   value: T
   options: readonly T[]
@@ -143,13 +150,16 @@ export function ChoicePicker<T extends string>({
   label?: (option: T) => string
   note?: (option: T) => string | undefined
   className?: string
-  appearance?: 'field' | 'button'
+  appearance?: 'field' | 'button' | 'text'
   placeholder?: string
   disabled?: boolean
+  busy?: boolean
   'aria-label'?: string
   'aria-invalid'?: true | undefined
   /** Pass true when the row or card itself is clickable, so the trigger swallows the click instead of bubbling it. */
   stopRowActivation?: boolean
+  after?: ReactNode
+  onOpenChange?: (open: boolean) => void
   children?: ReactNode
 }) {
   const asItem = useToolbarItem()
@@ -171,16 +181,24 @@ export function ChoicePicker<T extends string>({
           onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
         >{children ?? label(value)}</Button>
       )
-      : asItem(
-        <button
-          className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
-          disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
-        >{children ?? label(value)}</button>,
-      )
+      : asItem(appearance === 'text'
+        ? (
+          <button className="choice-text" aria-label={ariaLabel} disabled={disabled || busy} aria-busy={busy || undefined}>
+            <FadeText className="choice-text-value">{children ?? label(value)}</FadeText>
+            <IconChevron />
+          </button>
+        )
+        : (
+          <button
+            className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}
+            disabled={disabled} onClick={stopRowActivation ? (e) => e.stopPropagation() : undefined}
+          >{children ?? label(value)}</button>
+        ))
   return (
     <ActionMenu
       align="start" trigger={trigger} stopContentClickPropagation={stopRowActivation}
       {...(appearance === 'field' ? { contentClassName: 'choice-picker-menu', scrolls: true } : {})}
+      {...(onOpenChange === undefined ? {} : { onOpenChange })}
     >
       <MenuRadioGroup value={value}>
         {options.map((option) => {
@@ -192,6 +210,7 @@ export function ChoicePicker<T extends string>({
           )
         })}
       </MenuRadioGroup>
+      {after === undefined ? null : <><MenuSeparator />{after}</>}
     </ActionMenu>
   )
 }

@@ -54,8 +54,15 @@ vi.mock('../ipc.js', () => ({
   chat: {
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
     recordAction: api.recordAction, writing: api.writing,
+    model: () => Promise.resolve({ model: 'model-1' }), setModel: () => Promise.resolve({ model: 'model-1' }),
   },
-  harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
+  harness: {
+    modelSettings: () => Promise.resolve({
+      configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } },
+      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: true }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
+    }),
+    subscriptionStatus: () => Promise.resolve({ state: 'missing' }),
+  },
   idea: { create: api.createIdea },
   feed: { append: api.feedAppend },
   jobs: {
@@ -298,7 +305,7 @@ describe('PaperChat', () => {
   })
 
   it('一发出问题，论文对话里回答那一行就带着模型标签出现，写出字前是运行圈和「思考中…」', async () => {
-    api.writing.mockResolvedValue({ text: '', model: { route: 'api', id: 'gpt-5.5' } })
+    api.writing.mockResolvedValue({ text: '', model: { route: 'api', id: 'gpt-5.5' }, since: new Date().toISOString() })
     const finish = pendingReply()
     const host = document.createElement('div')
     document.body.append(host)
@@ -316,7 +323,7 @@ describe('PaperChat', () => {
       answer.querySelector('.msg-who')?.textContent,
       answer.querySelector('.answer [aria-busy="true"]')?.textContent,
       answer.querySelector('.answer .ring.spin') === null,
-    ])).toEqual([['GPT-5.5 · API', '思考中…', false]])
+    ])).toEqual([['GPT-5.5 · API', expect.stringMatching(/^思考中… \ds$/), false]])
     await finish()
   })
 

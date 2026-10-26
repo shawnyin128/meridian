@@ -1,0 +1,13 @@
+/*
+ * The composer box: what is typed on top, then the row of chips that ends with the send control.
+ * The box's radius is the send control's plus the padding and border around it, so the corner under
+ * the send control is concentric with it.
+ */
+.cbox{--send-size:30px;display:flex;flex-direction:column;gap:var(--sp-4);background:var(--field);border:1px solid var(--sep2);border-radius:calc(var(--send-size) / 2 + var(--sp-8) + 1px);padding:var(--sp-6) var(--sp-8) var(--sp-8) var(--sp-12)}
+.cbox:focus-within{border-color:var(--sep-strong);background:var(--card)}
+.cbox-foot{display:flex;align-items:center;gap:var(--sp-6);min-width:0}
+.cbox-send{display:flex;margin-left:auto}
+/* The send control, a GenerationControl: a solid accent circle. */
+.send{width:var(--send-size);height:var(--send-size);border-radius:var(--r-full);border:0;background:var(--accent-solid);color:var(--on-accent);cursor:pointer;flex-shrink:0;display:grid;place-items:center;padding:0;transition:box-shadow var(--t-fast) var(--e-out)}
+.send:enabled:hover{box-shadow:inset 0 0 0 100vmax var(--hover-solid)}
+.send:disabled{opacity:.45;cursor:default}

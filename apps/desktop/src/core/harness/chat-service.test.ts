@@ -126,12 +126,16 @@ describe('Core chat service', () => {
     const service = createChatService({ store, model: await configuredModel(), runner })
     expect(service.writing('amortize')).toBeNull()
 
+    const sentAt = Date.now()
     const answered = service.send('amortize', written('EAGLE 快多少'))
-    expect(service.writing('amortize')).toEqual({ text: '', model: configured })
+    const since = service.writing('amortize')?.since ?? ''
+    expect(Date.parse(since)).toBeGreaterThanOrEqual(sentAt)
+    expect(Date.parse(since)).toBeLessThanOrEqual(Date.now())
+    expect(service.writing('amortize')).toEqual({ text: '', model: configured, since })
     write('EAGLE reaches')
     vi.mocked(runner.answer).mock.calls[0]![3]!.onModel(reported)
     write('EAGLE reaches 3.76x')
-    expect(service.writing('amortize')).toEqual({ text: 'EAGLE reaches 3.76x', model: reported })
+    expect(service.writing('amortize')).toEqual({ text: 'EAGLE reaches 3.76x', model: reported, since })
     expect(service.writing('widthknee')).toBeNull()
     finish('EAGLE reaches 3.76x [p. 6].')
     await expect(answered).resolves.toMatchObject({ state: 'complete' })
@@ -139,7 +143,7 @@ describe('Core chat service', () => {
     expect(store.chatMessages('amortize').at(-1)).toMatchObject({ role: 'ai', model: reported })
 
     const stopped = service.send('amortize', written('再问一句'))
-    expect(service.writing('amortize')).toEqual({ text: '', model: configured })
+    expect(service.writing('amortize')).toEqual({ text: '', model: configured, since: expect.any(String) })
     service.cancel('amortize')
     expect(service.writing('amortize')).toBeNull()
     await expect(stopped).resolves.toMatchObject({ state: 'cancelled' })

@@ -204,7 +204,9 @@ export function Chat() {
                       : undefined}
                   />
                 ))}
-            {writing === null ? null : <ChatMessageView key={writing.id} message={writing} onAct={() => act(writing)} writing />}
+            {writing === null ? null : (
+              <ChatMessageView key={writing.message.id} message={writing.message} onAct={() => act(writing.message)} writingSince={writing.since} />
+            )}
             {id === null || ideaDraft === undefined
               ? null
               : (
@@ -248,7 +250,7 @@ export function Chat() {
             </Toolbar>
 
             <ChatComposer
-              key={id} ref={composer} id="composer" sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
+              key={id} ref={composer} id="composer" chat={id} sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
               draft={draft} onDraft={(next) => { if (id !== null) drafts.set('message', next) }} unavailable={id === null}
               running={sending} onSend={submit} onStop={stopSending}
               mentions={mentions}

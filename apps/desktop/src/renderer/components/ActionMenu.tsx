@@ -87,8 +87,12 @@ export function ActionMenu({
   )
 }
 
-export function MenuItem({ className = 'mi', ...props }: DropdownMenu.DropdownMenuItemProps) {
-  return <DropdownMenu.Item className={className} {...props} />
+/**
+ * A menu item. An `inset` item keeps the empty check slot before its label, so its label starts where
+ * the labels of the radio or checkbox items in the same menu start.
+ */
+export function MenuItem({ className = 'mi', inset = false, children, ...props }: DropdownMenu.DropdownMenuItemProps & { inset?: boolean }) {
+  return <DropdownMenu.Item className={className} {...props}>{inset ? <span className="ck" aria-hidden="true" /> : null}{children}</DropdownMenu.Item>
 }
 
 export function MenuSeparator({ className = 'msep', ...props }: DropdownMenu.DropdownMenuSeparatorProps) {

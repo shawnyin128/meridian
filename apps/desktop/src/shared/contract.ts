@@ -2395,11 +2395,11 @@ export const ChatSetModelParamsSchema = z.object({
 }).strict()
 
 /**
- * The answer a chat's turn is writing: the model writing it, as far as Core knows it yet, and its
- * `text` so far, empty until the first text arrives, which a model that does not stream sends only
- * with the whole answer.
+ * The answer a chat's turn is writing: the model writing it, as far as Core knows it yet, its `text`
+ * so far, empty until the first text arrives, which a model that does not stream sends only with the
+ * whole answer, and `since`, when the turn began.
  */
-export const ChatWritingSchema = z.object({ text: z.string(), model: ChatAnswerModelSchema }).strict()
+export const ChatWritingSchema = z.object({ text: z.string(), model: ChatAnswerModelSchema, since: IsoTimestamp }).strict()
 
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
 export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()

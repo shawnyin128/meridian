@@ -4,6 +4,7 @@ import type {
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useJump } from '../../shell/AppShell.js'
+import { ElapsedTime } from '../ElapsedTime.js'
 import { ENTITY_SCREEN, EntityLink, opensHere } from '../EntityLink.js'
 import { Icon, RunningRing } from '../icons.js'
 import { InlineMessage } from '../InlineMessage.js'
@@ -51,14 +52,15 @@ function Runs({ runs }: { runs: ChatRun[] }) {
  * One message: what you said sits on the right as a bubble, an answer is unboxed text under the label
  * of the model that wrote it, or of an agent for an answer kept without one, and a status line is an
  * inline note led by an icon that never poses as a model answer. With `onRetry`, given to the status
- * line of a turn that got no answer, the line ends with Retry. With `writing`, the answer is being
- * written, and until it has text it says the model is thinking, beside the running ring.
+ * line of a turn that got no answer, the line ends with Retry. With `writingSince`, when its turn
+ * began, the answer is being written, and until it has text it says the model is thinking and for
+ * how long so far, beside the running ring.
  */
-export function ChatMessageView({ message, onAct, onRetry, writing = false }: {
+export function ChatMessageView({ message, onAct, onRetry, writingSince }: {
   message: ChatMessage
   onAct: (action: ChatAction) => void
   onRetry?: (() => void) | undefined
-  writing?: boolean
+  writingSince?: string | undefined
 }) {
   const m = useMessages()
   if (message.role === 'status') {
@@ -86,8 +88,12 @@ export function ChatMessageView({ message, onAct, onRetry, writing = false }: {
           ? <AgentLabel className="msg-who" />
           : <ModelLabel model={message.model} className="msg-who" />}
         <div className={answer ? 'answer' : 'bubble'}>
-          {writing && message.runs.every((run) => run.text === '')
-            ? <InlineMessage tone="info" variant="line" lead={<RunningRing />} aria-busy>{m.chat.thinking}</InlineMessage>
+          {writingSince !== undefined && message.runs.every((run) => run.text === '')
+            ? (
+              <InlineMessage tone="info" variant="line" lead={<RunningRing />} aria-busy>
+                {m.chat.thinking} <ElapsedTime since={writingSince} />
+              </InlineMessage>
+            )
             : <Runs runs={message.runs} />}
           {message.actions.length > 0
             ? (

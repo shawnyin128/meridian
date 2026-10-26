@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { createFormat } from './format.js'
+import { createFormat, elapsedText } from './format.js'
 
 describe('中文日期', () => {
   const fmt = createFormat('zh')
@@ -112,5 +112,12 @@ describe('时间戳的日期与作者列表', () => {
   it('作者按顺序用逗号隔开,没有作者时是空的', () => {
     expect(createFormat('zh').authors(['Ada Lovelace', 'Alan Turing'])).toBe('Ada Lovelace, Alan Turing')
     expect(createFormat('en').authors([])).toBe('')
+  })
+})
+
+describe('过了多久', () => {
+  it('一分钟以内写秒数，之后写分和两位的秒，不满一秒的部分舍掉，负数算没过', () => {
+    expect([0, 999, 12_400, 59_999, 60_000, 65_000, 600_000, 3_725_000, -500].map(elapsedText))
+      .toEqual(['0s', '0s', '12s', '59s', '1m 00s', '1m 05s', '10m 00s', '62m 05s', '0s'])
   })
 })
