@@ -9,7 +9,7 @@ import { ActionMenu, MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator, typ
 import { ActionPopover, PopoverClose } from './ActionPopover.js'
 import { FormButton } from './FormControls.js'
 import { IconButton } from './IconButton.js'
-import { IconChevron, IconDots, IconNext, IconPrevious } from './icons.js'
+import { IconChevron, IconDots, IconNext, IconPrevious, RunningRing } from './icons.js'
 import { ToggleGroup, ToggleItem, useToolbarItem } from './Toolbar.js'
 import { FadeText } from './FadeText.js'
 import { typesText } from '../lib/keyboard.js'
@@ -131,8 +131,8 @@ export function DotsMenu({
  * `aria-invalid` holds. With `appearance="button"` its trigger is a compact Button showing
  * `children`, for a heading's actions. With `appearance="text"` its trigger is the composer's picker:
  * `children`, or the picked option's label, then a small caret, as text that takes a fill only under
- * the pointer and while its menu is open; while `busy` it cannot open and keeps its full colour, for
- * a running ring in its place while its options are read.
+ * the pointer and while its menu is open; while `busy`, as its options are read, it cannot open,
+ * keeps its full colour and shows the running ring in place of its caret.
  * Otherwise the host field supplies the trigger's class, and its
  * content as `children`, which defaults to the picked option's label. Outside the field appearance
  * the trigger is one of the controls of the toolbar it renders in. `after` holds menu items that end
@@ -185,7 +185,7 @@ export function ChoicePicker<T extends string>({
         ? (
           <button className="choice-text" aria-label={ariaLabel} disabled={disabled || busy} aria-busy={busy || undefined}>
             <FadeText className="choice-text-value">{children ?? label(value)}</FadeText>
-            <IconChevron />
+            {busy ? <RunningRing /> : <span className="choice-text-caret"><IconChevron /></span>}
           </button>
         )
         : (

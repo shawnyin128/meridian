@@ -49,14 +49,17 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: core.send, cancel: core.cancel, messages: () => Promise.resolve([]), writing: () => Promise.resolve(null),
-    model: () => Promise.resolve({ model: 'model-1' }),
+    model: () => Promise.resolve({ source: 'model-1' }),
     forPaper: (paperId: string) => Promise.resolve({
       id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
     }),
   },
   feed: { append: () => Promise.resolve() },
   idea: { create: () => Promise.resolve({ id: 'idea-1' }) },
-  harness: { modelSettings: core.modelSettings, subscriptionStatus: () => Promise.resolve({ state: 'missing' }) },
+  harness: {
+    modelSettings: core.modelSettings,
+    sourceModels: () => Promise.resolve({ source: 'model-1', models: [{ id: 'gpt-5.5', efforts: { levels: [] } }] }),
+  },
   jobs: { status: core.status },
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
   project: { list: () => Promise.resolve([]) },
