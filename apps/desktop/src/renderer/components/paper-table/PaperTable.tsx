@@ -29,6 +29,7 @@ import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } fr
 import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
+import { listFill, useListPaging } from '../../hooks/useListPaging.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useDragReorder, type ReorderDrag } from '../../hooks/useDragReorder.js'
@@ -94,8 +95,8 @@ const DEFAULT_WIDTHS: Record<'t' | BodyKey, number> = {
 /** Custom column width, as in the demo: a column that was never resized stays this wide. */
 const CUSTOM_WIDTH = 140
 
-const MIN_PAGE_SIZE = 20
-const PAGE_SIZES = [MIN_PAGE_SIZE, 30, 50]
+/** Rows a page holds until the table has measured how many fit. */
+const FIRST_PAGE_SIZE = 20
 const RESEARCH_MAP_LIMIT = 200
 
 /**
@@ -202,8 +203,8 @@ export function PaperTable() {
   const [sel, setSel] = useState<string | null>(null)
   // The toolbar's filters, at most one value per field; they narrow the rows whatever the grouping.
   const [filters, setFilters] = useState<FieldValue[]>([])
-  const [page, setPage] = useState(1)
-  const [size, setSize] = useState(MIN_PAGE_SIZE)
+  const paging = useListPaging(FIRST_PAGE_SIZE)
+  const { page, size, setPage } = paging
   const [sort, setSort] = useState<SortKey>('addedAt')
   const [direction, setDirection] = useState<SortDirection>('desc')
   const [columns, setColumns] = useState<PaperColumns>(
@@ -320,13 +321,14 @@ export function PaperTable() {
 
   useEffect(() => {
     if (view !== 'table' || !listed) return
-    const params: ListParams = {
-      page: shownPage, size, sort, direction,
+    const params: Omit<ListParams, 'page' | 'size'> = {
+      sort, direction,
       ...(filter ? { filter } : {}),
       ...(sel === null || group === 'none' ? {} : { facet: { field: group, value: sel } }),
       ...(filters.length === 0 ? {} : { filters }),
     }
-    return load('rows', papers.list(params), (r) => {
+    const read = listFill() === 'scroll' ? papers.listFirst(params, shownPage, size) : papers.list({ ...params, page: shownPage, size })
+    return load('rows', read, (r) => {
       setRows(r.rows)
       setTotal(r.total)
     })
@@ -817,6 +819,8 @@ export function PaperTable() {
   const paperTable = (
     <Table
       className="ptable" columns={tableColumns}
+      onFit={listFill() === 'pages' ? paging.fit : undefined}
+      onEnd={listFill() === 'scroll' && shownPage * size < total ? paging.more : undefined}
       draft={newCol
         ? (
           <NewColumnHead
@@ -1018,11 +1022,10 @@ export function PaperTable() {
         </div>
       </PageBody>
 
-      {view === 'table' && listed
+      {view === 'table' && listed && listFill() === 'pages'
         ? (
           <Pager
-            total={total} page={shownPage} size={size} sizes={PAGE_SIZES}
-            onPage={setPage} onSize={setSize}
+            total={total} page={shownPage} size={size} onPage={setPage}
             {...(detail ? { className: 'withdetail' } : {})}
           />
         )

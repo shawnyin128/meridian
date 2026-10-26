@@ -34,6 +34,7 @@ import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
+import { listFill, useListPaging } from '../hooks/useListPaging.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -61,8 +62,8 @@ import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
 import './Wiki.css'
 
-/** Papers per page, as in the demo's pagerHTML('wkp', …, [12,24,48]). */
-const PAGE_SIZES = [12, 24, 48]
+/** Paper cards a page holds until the grid has measured how many fit. */
+const FIRST_PAGE_SIZE = 12
 
 /** The page shown: null is the Wiki home, REVIEW the review queue, TIDY the tidying list, any other value a page id. */
 type Place = string | null
@@ -360,8 +361,8 @@ export function Wiki() {
   const [home, setHome] = useState<WikiHome | null>(null)
   const [rows, setRows] = useState<PaperRow[]>([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [size, setSize] = useState(PAGE_SIZES[0]!)
+  const paging = useListPaging(FIRST_PAGE_SIZE)
+  const { page, size, setPage } = paging
   const [agg, setAgg] = useState<WikiAggregation | null>(null)
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
@@ -452,7 +453,7 @@ export function Wiki() {
 
   useEffect(() => load('home', wiki.home(), setHome), [revision, load])
 
-  useEffect(() => load('papers', papers.list({ page, size }), (r) => {
+  useEffect(() => load('papers', listFill() === 'scroll' ? papers.listFirst({}, page, size) : papers.list({ page, size }), (r) => {
     setRows(r.rows)
     setTotal(r.total)
   }), [page, size, revision, load])
@@ -1094,7 +1095,11 @@ export function Wiki() {
               })}
 
               <SectionHeading>{m.project.sections.papers}</SectionHeading>
-              <List variant="embedded" rows="all" grid className="wkgrid">
+              <List
+                variant="embedded" rows="all" grid className="wkgrid"
+                onFit={listFill() === 'pages' ? paging.fit : undefined}
+                onEnd={listFill() === 'scroll' && page * size < total ? paging.more : undefined}
+              >
                 {rows.map((p) => <PaperCard key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)} />)}
               </List>
             </>
@@ -1102,12 +1107,9 @@ export function Wiki() {
           : null}
       </PageBody>
 
-      {place === null
+      {place === null && listFill() === 'pages'
         ? (
-          <Pager
-            total={total} page={page} size={size} sizes={PAGE_SIZES}
-            onPage={setPage} onSize={setSize}
-          />
+          <Pager total={total} page={page} size={size} onPage={setPage} />
         )
         : null}
 

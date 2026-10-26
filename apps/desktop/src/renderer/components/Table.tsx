@@ -4,6 +4,7 @@ import type {
 } from 'react'
 import type { SortDirection } from '../../shared/contract.js'
 import { isClipped } from '../hooks/useClipped.js'
+import { useNearEnd } from '../hooks/useListPaging.js'
 import { useRowCap } from '../hooks/useRowCap.js'
 import { useMessages } from '../messages/useMessages.js'
 import { CountBadge } from './CountBadge.js'
@@ -93,19 +94,44 @@ function SortArrow({ direction }: { direction: SortDirection }) {
  * in the actions column: its header cell holds `actions` (null for nothing) and each row its own.
  * `draft` is the header cell of a column being created (a `TableDraftHead`), placed after the
  * columns; while it is open every row leaves a cell under it. `className` only names the table.
- * `children` are the body rows, each a `TableRow`.
+ * `children` are the body rows, each a `TableRow`. A filling table with `onFit` reports, after every
+ * render and whenever its box changes size, how many body rows its box shows below the header; with
+ * `onEnd` it calls that whenever its last row comes within one screen of the box's visible end.
  */
-export function Table({ columns, rows = 'fill', actions, draft = null, className, children }: {
+export function Table({ columns, rows = 'fill', actions, draft = null, className, onFit, onEnd, children }: {
   columns: readonly TableColumn[]
   rows?: 'fill' | 'capped'
   actions?: ReactNode
   draft?: ReactNode
   className?: string | undefined
+  onFit?: ((rows: number) => void) | undefined
+  onEnd?: (() => void) | undefined
   children: ReactNode
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement | null>(null)
   const cap = useRowCap(box, bodyRows, rows === 'capped' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
+  useNearEnd(box, bodyRows, onEnd)
+  const fit = useRef(onFit)
+  fit.current = onFit
+  const fits = onFit !== undefined
+  useLayoutEffect(() => {
+    const node = box.current
+    if (!fits || node === null) return undefined
+    const measure = () => {
+      // A hidden screen lays the box out zero high.
+      if (node.clientHeight === 0) return
+      const table = node.querySelector<HTMLTableElement>(':scope > table')!
+      const row = bodyRows(node)[0]?.getBoundingClientRect().height
+        ?? parseFloat(getComputedStyle(node).getPropertyValue('--row-table-h'))
+      const room = node.clientHeight - table.tHead!.getBoundingClientRect().height - parseFloat(getComputedStyle(table).marginBottom)
+      fit.current?.(Math.max(1, Math.floor(room / row)))
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  })
   const drag = useRef<WidthDrag | null>(null)
   const [widths, setWidths] = useState<ReadonlyMap<Slot, number>>(new Map())
   const hasActions = actions !== undefined
