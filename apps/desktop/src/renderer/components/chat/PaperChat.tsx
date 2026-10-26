@@ -145,7 +145,9 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
                   : undefined}
               />
             ))}
-          {writing === null ? null : <ChatMessageView key={writing.id} message={writing} onAct={() => act(writing)} writing />}
+          {writing === null ? null : (
+            <ChatMessageView key={writing.message.id} message={writing.message} onAct={() => act(writing.message)} writingSince={writing.since} />
+          )}
           {session === null || paper === null || ideaDraft === undefined
             ? null
             : (

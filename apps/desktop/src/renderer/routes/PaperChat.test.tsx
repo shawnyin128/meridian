@@ -298,7 +298,7 @@ describe('PaperChat', () => {
   })
 
   it('一发出问题，论文对话里回答那一行就带着模型标签出现，写出字前是运行圈和「思考中…」', async () => {
-    api.writing.mockResolvedValue({ text: '', model: { route: 'api', id: 'gpt-5.5' } })
+    api.writing.mockResolvedValue({ text: '', model: { route: 'api', id: 'gpt-5.5' }, since: new Date().toISOString() })
     const finish = pendingReply()
     const host = document.createElement('div')
     document.body.append(host)
@@ -316,7 +316,7 @@ describe('PaperChat', () => {
       answer.querySelector('.msg-who')?.textContent,
       answer.querySelector('.answer [aria-busy="true"]')?.textContent,
       answer.querySelector('.answer .ring.spin') === null,
-    ])).toEqual([['GPT-5.5 · API', '思考中…', false]])
+    ])).toEqual([['GPT-5.5 · API', expect.stringMatching(/^思考中… \ds$/), false]])
     await finish()
   })
 

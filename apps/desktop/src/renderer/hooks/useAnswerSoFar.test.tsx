@@ -12,13 +12,15 @@ const writing = vi.hoisted(() => vi.fn<(id: string) => Promise<ChatWriting | nul
 vi.mock('../ipc.js', () => ({ chat: { writing } }))
 
 const { useAnswerSoFar } = await import('./useAnswerSoFar.js')
+type AnswerSoFar = import('./useAnswerSoFar.js').AnswerSoFar
 
 const message = (id: string, role: ChatMessage['role'], text: string): ChatMessage =>
   ({ id, role, runs: [{ kind: 'text', text }], actions: [] })
 const asked = [message('m1', 'you', 'EAGLE 快多少')]
 const MODEL = { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' } as const
-/** Core's report of an answer written as far as `text`. */
-const so = (text: string): ChatWriting => ({ text, model: MODEL })
+const SINCE = '2026-10-25T12:00:00.000Z'
+/** Core's report of an answer written as far as `text`, in a turn that began at SINCE. */
+const so = (text: string): ChatWriting => ({ text, model: MODEL, since: SINCE })
 
 type Props = { chat: string | null; running: boolean; messages: ChatMessage[] | null }
 
@@ -27,7 +29,7 @@ function mount(props: Props) {
   const host = document.createElement('div')
   document.body.appendChild(host)
   const root: Root = createRoot(host)
-  let latest: ChatMessage | null = null
+  let latest: AnswerSoFar | null = null
   function Probe(current: Props) {
     latest = useAnswerSoFar(current.chat, current.running, current.messages)
     return null
@@ -54,12 +56,12 @@ describe('useAnswerSoFar', () => {
     writing.mockResolvedValue(so('EAGLE reaches'))
     const probe = mount({ chat: 'chat-1', running: true, messages: asked })
     await poll()
-    expect(probe.latest()).toEqual({ ...message('answer-so-far', 'ai', 'EAGLE reaches'), model: MODEL })
+    expect(probe.latest()).toEqual({ message: { ...message('answer-so-far', 'ai', 'EAGLE reaches'), model: MODEL }, since: SINCE })
     expect(writing).toHaveBeenCalledWith('chat-1')
 
     writing.mockResolvedValue(so('EAGLE reaches 3.76x'))
     await poll()
-    expect(probe.latest()?.runs).toEqual([{ kind: 'text', text: 'EAGLE reaches 3.76x' }])
+    expect(probe.latest()?.message.runs).toEqual([{ kind: 'text', text: 'EAGLE reaches 3.76x' }])
     probe.unmount()
   })
 
@@ -69,7 +71,7 @@ describe('useAnswerSoFar', () => {
     await poll()
 
     probe.render({ chat: 'chat-1', running: false, messages: asked })
-    expect(probe.latest()?.runs).toEqual([{ kind: 'text', text: 'EAGLE reaches 3.76x' }])
+    expect(probe.latest()?.message.runs).toEqual([{ kind: 'text', text: 'EAGLE reaches 3.76x' }])
     const calls = writing.mock.calls.length
     await poll()
     expect(writing.mock.calls.length).toBe(calls)
@@ -86,7 +88,7 @@ describe('useAnswerSoFar', () => {
     expect(probe.latest()).toBeNull()
     writing.mockResolvedValue(so(''))
     await poll()
-    expect(probe.latest()).toEqual({ id: 'answer-so-far', role: 'ai', runs: [], actions: [], model: MODEL })
+    expect(probe.latest()?.message).toEqual({ id: 'answer-so-far', role: 'ai', runs: [], actions: [], model: MODEL })
 
     writing.mockResolvedValue(so('EAGLE reaches 3.76x'))
     await poll()

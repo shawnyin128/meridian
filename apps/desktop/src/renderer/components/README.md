@@ -244,6 +244,8 @@ Current shared contracts:
 - `GenerationControl`: the shared idle and running button contract for model-backed actions: while
   running it is the stop control, the stop square inside the turning ring. Chat composers and Wiki
   Harness generation do not define independent running animations.
+- `ElapsedTime`: the one time since a moment, `12s` under a minute and `1m 05s` after, counting up each
+  second in tabular numerals; a pending chat answer shows it after 思考中….
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
   `--t-spin` in `--accent-mark`. GenerationControl, Button and About use it; on a
   solid accent fill (a primary button, the composer's send) it turns in the fill's ink, by its own rule in

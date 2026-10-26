@@ -52,16 +52,17 @@ export function createChatService(options: {
   const answer = async (id: string, text: string): Promise<ChatSendResult> => {
     if (!options.model.configured(options.choiceOf?.(id)) || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
     const controller = new AbortController()
+    const since = new Date().toISOString()
     running.set(id, controller)
     try {
       let model: ChatAnswerModel | undefined
       const answered = await options.runner.answer(id, text, controller.signal, {
         onModel: (named) => {
           model = named
-          if (running.get(id) === controller) written.set(id, { text: written.get(id)?.text ?? '', model: named })
+          if (running.get(id) === controller) written.set(id, { text: written.get(id)?.text ?? '', model: named, since })
         },
         onText: (so) => {
-          if (running.get(id) === controller && model !== undefined) written.set(id, { text: so, model })
+          if (running.get(id) === controller && model !== undefined) written.set(id, { text: so, model, since })
         },
       })
       if (controller.signal.aborted) return { id, state: 'cancelled' }
@@ -135,8 +136,8 @@ export function createChatService(options: {
       }))
     },
     /**
-     * The answer being written in chat `id`: its model, as far as known, and its text so far, empty
-     * before the first text; null while no turn there has named its model.
+     * The answer being written in chat `id`: its model, as far as known, its text so far, empty before
+     * the first text, and when its turn began; null while no turn there has named its model.
      */
     writing(id: string): ChatWriting | null {
       return written.get(id) ?? null

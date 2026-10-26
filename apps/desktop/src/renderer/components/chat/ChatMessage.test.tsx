@@ -34,8 +34,8 @@ describe('ChatMessageView', () => {
     root = null
   })
 
-  const show = (message: ChatMessage, writing = false) => act(() => root!.render(
-    <MessagesProvider><ChatMessageView message={message} onAct={() => {}} writing={writing} /></MessagesProvider>,
+  const show = (message: ChatMessage, writingSince?: string) => act(() => root!.render(
+    <MessagesProvider><ChatMessageView message={message} onAct={() => {}} writingSince={writingSince} /></MessagesProvider>,
   ))
   /** The label and the text of the answer on screen. */
   const answerParts = () => [...host.querySelector('.msg.ai')!.children].map((part) => [part.className, part.textContent])
@@ -61,21 +61,35 @@ describe('ChatMessageView', () => {
     expect(answerParts()[0]![1]).toBe('GPT-5.5 · API')
   })
 
-  it('还没写出字的回答在标签下面转着运行圈，旁边写「思考中…」；写出字后就是那些字', () => {
-    const model = { route: 'subscription' as const, cli: 'claude' as const, id: 'claude-opus-5-5[1m]' }
-    show({ id: 'answer-so-far', role: 'ai', runs: [], actions: [], model }, true)
-    expect(answerParts()).toEqual([
-      ['tag tag--label tag--neutral source-label msg-who', 'Claude Opus 5.5 · 订阅'],
-      ['answer', '思考中…'],
-    ])
-    const thinking = host.querySelector('.answer .inline-message')!
-    expect(['role', 'aria-label', 'aria-busy'].map((name) => thinking.getAttribute(name))).toEqual(['status', null, 'true'])
-    expect(thinking.querySelector('.inline-message-text')!.textContent).toBe('思考中…')
-    expect(thinking.querySelector('.inline-message-lead svg.ring.spin')).not.toBeNull()
+  it('还没写出字的回答在标签下面转着运行圈，旁边写「思考中…」和这一轮开始后过了多久；写出字后就是那些字', () => {
+    vi.useFakeTimers({ now: new Date('2026-10-25T12:00:12.000Z') })
+    try {
+      const model = { route: 'subscription' as const, cli: 'claude' as const, id: 'claude-opus-5-5[1m]' }
+      const since = '2026-10-25T12:00:00.000Z'
+      show({ id: 'answer-so-far', role: 'ai', runs: [], actions: [], model }, since)
+      expect(answerParts()).toEqual([
+        ['tag tag--label tag--neutral source-label msg-who', 'Claude Opus 5.5 · 订阅'],
+        ['answer', '思考中… 12s'],
+      ])
+      const thinking = host.querySelector('.answer .inline-message')!
+      expect(['role', 'aria-label', 'aria-busy'].map((name) => thinking.getAttribute(name))).toEqual(['status', null, 'true'])
+      expect(thinking.querySelector('.inline-message-lead svg.ring.spin')).not.toBeNull()
+      const timer = thinking.querySelector('.inline-message-text .elapsed-time')!
+      expect(timer.getAttribute('role')).toBe('timer')
 
-    show({ id: 'answer-so-far', role: 'ai', runs: [{ kind: 'text', text: 'EAGLE 快' }], actions: [], model }, true)
-    expect(answerParts()[1]).toEqual(['answer', 'EAGLE 快'])
-    expect(host.querySelector('.inline-message')).toBeNull()
+      act(() => { vi.advanceTimersByTime(999) })
+      expect(timer.textContent).toBe('12s')
+      act(() => { vi.advanceTimersByTime(1) })
+      expect(timer.textContent).toBe('13s')
+      act(() => { vi.advanceTimersByTime(52_000) })
+      expect(timer.textContent).toBe('1m 05s')
+
+      show({ id: 'answer-so-far', role: 'ai', runs: [{ kind: 'text', text: 'EAGLE 快' }], actions: [], model }, since)
+      expect(answerParts()[1]).toEqual(['answer', 'EAGLE 快'])
+      expect(host.querySelector('.inline-message')).toBeNull()
+    } finally {
+      vi.useRealTimers()
+    }
   })
 
   it('发出的消息里的引用和输入框里一样是共享的 chip，夹在前后的字中间，点它打开它点名的实体', () => {
