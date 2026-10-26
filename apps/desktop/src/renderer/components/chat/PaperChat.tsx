@@ -6,7 +6,7 @@ import {
   useJump, useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { GripTooltip } from '../../shell/GripTooltip.js'
-import { ChatMessageView, endsUnanswered } from './ChatMessage.js'
+import { ChatMessageView, endsUnanswered, shownMessages } from './ChatMessage.js'
 import { ChatComposer, draftText, type ChatComposerHandle } from './ChatComposer.js'
 import { BackButton } from '../BackButton.js'
 import { Grip } from '../Grip.js'
@@ -19,6 +19,7 @@ import { useDrafts } from '../../hooks/useDrafts.js'
 import { useChatTurn } from '../../hooks/useChatTurn.js'
 import { useDraftSlot } from '../DraftSlot.js'
 import { useAnswerSoFar } from '../../hooks/useAnswerSoFar.js'
+import { useChatFailure } from '../../hooks/useChatFailure.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
 import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useModelStatus } from '../../hooks/useModelStatus.js'
@@ -71,6 +72,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   )
   const sending = sessionId !== null && running(sessionId)
   const writing = useAnswerSoFar(sessionId, sending, messages)
+  const failure = useChatFailure(sessionId, messages)
 
   useEffect(() => {
     setSession(null)
@@ -137,10 +139,11 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             ? (error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
             : messages.length === 0 && error === null
             ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
-            : messages.map((message, at) => (
+            : shownMessages(messages, sending || writing !== null).map((message, at, shown) => (
               <ChatMessageView
                 key={message.id} message={message} onAct={() => act(message)}
-                onRetry={session !== null && !sending && at === messages.length - 1 && endsUnanswered(messages)
+                failure={at === shown.length - 1 ? failure : undefined}
+                onRetry={session !== null && !sending && at === shown.length - 1 && endsUnanswered(shown)
                   ? () => { follow(); void turn.retry(session.id) }
                   : undefined}
               />

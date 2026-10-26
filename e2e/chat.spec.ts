@@ -102,7 +102,7 @@ test('动态的「看看」建立结论冲突会话，未配置模型时给明�
 
   await expect(shown(win, '.msg.you .bubble')).toHaveText(demo.asked)
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
-  await expect(shown(win, '.msg .event')).toHaveCount(0)
+  await expect(shown(win, '.msg :is(.event, .failure-disclosure)')).toHaveCount(0)
   await expect(shown(win, '.msg.ai')).toHaveCount(0)
   await expect(shown(win, '.msgs')).not.toContainText(stripped(demo.reply.split('<div class="macts">')[0]!))
 
@@ -164,7 +164,7 @@ test('问一个一般问题,输入框显示「AI 未连接」的状态而不是�
   await say(win, '宽树在批量下还成立吗?')
 
   await expect(shown(win, '.cbox .tag')).toHaveText(NO_MODEL)
-  await expect(shown(win, '.msg .event')).toHaveCount(0)
+  await expect(shown(win, '.msg :is(.event, .failure-disclosure)')).toHaveCount(0)
   // The status is not an answer: no answer bubble is drawn, and no fake answer marked "(demo)" appears.
   await expect(shown(win, '.msg.ai')).toHaveCount(0)
   await expect(shown(win, '.msgs')).not.toContainText('(demo)')

@@ -12,7 +12,7 @@ import { dnum } from '../../shared/dates.js'
 import { useFormat, type Format } from '../lib/format.js'
 import { useMessages } from '../messages/useMessages.js'
 import type { Catalog } from '../messages/catalog.js'
-import { ChatMessageView, endsUnanswered } from '../components/chat/ChatMessage.js'
+import { ChatMessageView, endsUnanswered, shownMessages } from '../components/chat/ChatMessage.js'
 import {
   ChatComposer, draftText, type ChatComposerHandle, type MentionCandidate,
 } from '../components/chat/ChatComposer.js'
@@ -27,6 +27,7 @@ import { useDrafts } from '../hooks/useDrafts.js'
 import { useDraftSlot } from '../components/DraftSlot.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useAnswerSoFar } from '../hooks/useAnswerSoFar.js'
+import { useChatFailure } from '../hooks/useChatFailure.js'
 import { useChatTurn } from '../hooks/useChatTurn.js'
 import { useGenerations } from '../hooks/useGenerations.js'
 import { useModelStatus } from '../hooks/useModelStatus.js'
@@ -112,6 +113,7 @@ export function Chat() {
   const ideaSlot = useDraftSlot<HTMLDivElement>(ideaDraft !== undefined, () => { if (id !== null) ideaDrafts.set('idea', { title: '', body: '' }) })
   const sending = id !== null && running(id)
   const writing = useAnswerSoFar(id, sending, messages)
+  const failure = useChatFailure(id, messages)
 
   useEffect(() => load('projects', project.list(), setProjects), [revision, load])
   useEffect(() => load('papers', papers.list({ page: 1, size: MENTION_PAPERS }), (r) => setRows(r.rows)), [revision, load])
@@ -196,10 +198,11 @@ export function Chat() {
               ? (id !== null && error === null ? <div className="mwrap"><LoadingPlaceholder shape="lines" /></div> : null)
               : messages.length === 0
                 ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
-                : messages.map((msg, at) => (
+                : shownMessages(messages, sending || writing !== null).map((msg, at, shown) => (
                   <ChatMessageView
                     key={msg.id} message={msg} onAct={() => act(msg)}
-                    onRetry={id !== null && !sending && at === messages.length - 1 && endsUnanswered(messages)
+                    failure={at === shown.length - 1 ? failure : undefined}
+                    onRetry={id !== null && !sending && at === shown.length - 1 && endsUnanswered(shown)
                       ? () => { follow(); void turn.retry(id) }
                       : undefined}
                   />

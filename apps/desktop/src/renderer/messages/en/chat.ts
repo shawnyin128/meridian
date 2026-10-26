@@ -27,6 +27,10 @@ export const chat = {
   paperChatWidth: 'Paper chat width',
   askAboutPaper: 'Ask about this paper',
   actionDone: 'Added to the research log',
+  failure: {
+    summary: 'Generation failed',
+    steps: { start: 'Starting the AI service', request: 'The AI service handling the request', cli: 'Running the subscription CLI', core: 'Inside the App' },
+  },
   status: {
     failed: (reason: string) => `Generation failed: ${reason}`,
     setUpModel: 'AI is not set up yet. Set up a model and an API key in settings first.',

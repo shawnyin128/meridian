@@ -4,7 +4,7 @@ import { createRoot, type Root } from 'react-dom/client'
 import { redo, undo } from '@codemirror/commands'
 import { EditorView } from '@codemirror/view'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import type { ChatMessage, ChatSendResult, ChatSession, ChatWriting, JobsStatus, PaperRow } from '../../shared/contract.js'
+import type { ChatMessage, ChatSendResult, ChatSession, ChatWriting, JobsStatus, PaperRow, HarnessFailureDetail } from '../../shared/contract.js'
 import { CONFLICT_THREAD } from '../lib/chat.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
@@ -29,6 +29,7 @@ const api = vi.hoisted(() => ({
   listPapers: vi.fn((): Promise<{ rows: PaperRow[]; total: number }> => Promise.resolve({ rows: [], total: 0 })),
   messages: vi.fn<() => Promise<ChatMessage[]>>(() => Promise.resolve([])),
   writing: vi.fn<(id: string) => Promise<ChatWriting | null>>(() => Promise.resolve(null)),
+  failure: vi.fn<(id: string) => Promise<HarnessFailureDetail | null>>(() => Promise.resolve(null)),
   create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
   recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
   feedAppend: vi.fn(() => Promise.resolve()),
@@ -49,7 +50,7 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, retry: api.retry, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction,
-    writing: api.writing,
+    writing: api.writing, failure: api.failure,
     model: () => Promise.resolve({ source: 'model-1' }), setModel: () => Promise.resolve({ source: 'model-1' }),
   },
   feed: { append: api.feedAppend },
@@ -405,7 +406,7 @@ describe('Chat composer', () => {
 
   /** A chat turn: a message of `role` saying `text`. */
   const turnOf = (id: string, role: ChatMessage['role'], text: string): ChatMessage => ({ id, role, runs: [{ kind: 'text', text }], actions: [] })
-  const retry = () => document.querySelector<HTMLButtonElement>('.msgs .event .btn')
+  const retry = () => document.querySelector<HTMLButtonElement>('.msgs .failure-disclosure .inline-message-action .btn')
 
   it('一轮没得到回答时,对话以那条状态行结束,行尾有重试;点它对这条对话的最后一问再要一次回答', async () => {
     api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了')])
@@ -416,6 +417,43 @@ describe('Chat composer', () => {
     await settle()
     expect(api.retry).toHaveBeenCalledExactlyOnceWith('chat-1')
     expect(api.send).not.toHaveBeenCalled()
+  })
+
+  it('一轮失败的那一行展开后是原因和 Core 记下的失败之处:步骤、类型与英文细节', async () => {
+    api.failure.mockResolvedValueOnce({ step: 'request', kind: 'bad_request', detail: 'Core returned an invalid chat context' })
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务内部出错')])
+    session.revision = 1
+    await openChat('chat-1')
+    await settle()
+    expect(api.failure).toHaveBeenCalledWith('chat-1')
+    act(() => document.querySelector<HTMLElement>('.msgs .failure-disclosure .fold-toggle')!.click())
+    expect([...document.querySelectorAll('.msgs .failure-detail')].map((row) => row.textContent)).toEqual([
+      'AI 服务内部出错', 'AI 服务处理请求bad_request · Core returned an invalid chat context',
+    ])
+  })
+
+  it('重试那一轮生成时,它的失败行让位给正在写的回答,不再叠一行', async () => {
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('2', 'status', '生成失败：AI 服务停了')])
+    session.revision = 1
+    await openChat('chat-1')
+    let finish = () => {}
+    api.retry.mockImplementationOnce(() => {
+      api.generating.add('chat-1')
+      return new Promise((resolve) => {
+        finish = () => {
+          api.generating.delete('chat-1')
+          resolve({ id: 'chat-1', state: 'failed', reason: 'model' })
+        }
+      })
+    })
+    act(() => retry()!.click())
+    await settle()
+    expect(document.querySelectorAll('.msgs .failure-disclosure')).toHaveLength(0)
+    api.messages.mockResolvedValueOnce([turnOf('1', 'you', '问'), turnOf('3', 'status', '生成失败：AI 服务内部出错')])
+    await act(async () => { finish(); await Promise.resolve() })
+    session.revision = 2
+    await openChat('chat-1')
+    expect(document.querySelectorAll('.msgs .failure-disclosure')).toHaveLength(1)
   })
 
   it('状态行后面已经有回答,或者还在生成时,不给重试;对话是一段读屏会念出新消息的记录', async () => {

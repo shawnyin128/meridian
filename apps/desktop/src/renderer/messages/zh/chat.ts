@@ -25,6 +25,10 @@ export const chat = {
   paperChatWidth: '论文对话宽度',
   askAboutPaper: '向当前论文提问',
   actionDone: '已记入科研记录',
+  failure: {
+    summary: '生成失败',
+    steps: { start: '启动 AI 服务', request: 'AI 服务处理请求', cli: '运行订阅 CLI', core: 'App 内部' },
+  },
   // A chat's status lines are stored in these Chinese words whatever the App's language, and are read
   // back by matching them (status-lines.ts): each text stays exactly what an App once stored.
   status: {

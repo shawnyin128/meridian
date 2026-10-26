@@ -263,6 +263,10 @@ Current shared contracts:
   `icons.css`, and a running job is never drawn in a danger tone.
 - `ProgressFill`: the one progress presentation, a 2px `--accent-mark` line on a `--track` groove along its
   host's bottom edge, filled to the progress. ParseProgress and InlineMessage host it.
+- `FailureDisclosure`: the one failure that unfolds into its details: an error `InlineMessage` line, its
+  mark, the summary with the fold caret and, right after it (`actionAt="text"`), its one action such as
+  重试; unfolded, one compact row per detail, its label and the raw detail in a code chip. A failed chat
+  turn shows its reason and where it failed this way, in the chat and the reader chat.
 - `CardTray`: progressive disclosure for secondary card details. It keeps a one-line summary visible,
   expands details below the host without moving its primary identity, and owns the shared animation,
   keyboard semantics, and reduced-motion behavior.

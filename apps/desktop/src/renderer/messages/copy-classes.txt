@@ -47,6 +47,11 @@ chat.paperChatWidth aria
 chat.quotePrefix content
 chat.recordedNote content
 chat.saveIdeaLabel action
+chat.failure.steps.cli label
+chat.failure.steps.core label
+chat.failure.steps.request label
+chat.failure.steps.start label
+chat.failure.summary failure
 chat.status.failed content
 chat.status.reasons.answerUnreadable content
 chat.status.reasons.authRefused content
