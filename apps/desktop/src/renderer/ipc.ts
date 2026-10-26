@@ -2,12 +2,14 @@ import type { AppUpdateStatus } from '../shared/app-update.js'
 import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import type {
   AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
-  ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme, ColourThemeFile,
+  ChatMessage, ChatMessageFields, ChatModelChoice, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme,
+  ColourThemeFile,
   ConclusionState, ContractMethod, Facet, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
-  HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
+  HarnessAddModelParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
+  HarnessUpdateModelParams,
   HarnessModelSettings, HarnessModelSettingsUpdate, HarnessSubscriptionStatus, HarnessUpdateSubscriptionParams,
   HarnessPaperWikiRejectionFeedback, HarnessPendingPaperWikiResult, HarnessPlan,
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
@@ -167,8 +169,14 @@ export const harness = {
   modelSettings: () => call<HarnessModelSettings>('harness.modelSettings', {}),
   updateModelSettings: (settings: HarnessModelSettingsUpdate) =>
     call<HarnessModelSettings>('harness.updateModelSettings', settings),
-  checkModelConnection: () =>
-    call<HarnessModelConnectionCheckResult>('harness.checkModelConnection', {}),
+  /** Checks configured model `model`, or the default model without one. */
+  checkModelConnection: (model?: string) =>
+    call<HarnessModelConnectionCheckResult>('harness.checkModelConnection', model === undefined ? {} : { model }),
+  /** Adds a configured model; the first one added becomes the default. */
+  addModel: (params: HarnessAddModelParams) => call<HarnessModelSettings>('harness.addModel', params),
+  updateModel: (params: HarnessUpdateModelParams) => call<HarnessModelSettings>('harness.updateModel', params),
+  removeModel: (id: string) => call<HarnessModelSettings>('harness.removeModel', { id }),
+  setDefaultModel: (id: string) => call<HarnessModelSettings>('harness.setDefaultModel', { id }),
   /** Makes a subscription CLI the model source; the API profiles stay as they are. */
   updateSubscription: (choice: HarnessUpdateSubscriptionParams) =>
     call<HarnessModelSettings>('harness.updateSubscription', choice),
@@ -290,6 +298,11 @@ export const chat = {
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   /** The answer being written in the chat, with the model writing it, or null while no turn runs there. */
   writing: (id: string) => call<ChatWriting | null>('chat.writing', { id }),
+  /** The configured model the chat runs on, and its own reasoning effort for it. */
+  model: (id: string) => call<ChatModelChoice>('chat.model', { id }),
+  /** Makes the chat run on configured model `model`, at `effort` or else the model's own effort. */
+  setModel: (id: string, model: string, effort?: string) =>
+    call<ChatModelChoice>('chat.setModel', { id, model, ...(effort === undefined ? {} : { effort }) }),
   recordAction: (id: string, messageId: string) =>
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>

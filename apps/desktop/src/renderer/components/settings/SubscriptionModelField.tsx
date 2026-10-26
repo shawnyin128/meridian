@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { commitKeys } from '../../lib/keyboard.js'
+import { modelEntryLabel } from '../../lib/model-source.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { CandidateField } from '../CandidateField.js'
 import { FormInput } from '../FormControls.js'
@@ -43,7 +44,7 @@ export function SubscriptionModelField({ value, models, onChange }: {
       field={(
         <FormInput
           appearance="field" ref={input} aria-label={m.settings.model.fields.modelIdAria} value={value}
-          placeholder={m.settings.model.subscription.defaultModel} autoComplete="off" spellCheck={false}
+          placeholder={modelEntryLabel(m, { model: '' })} autoComplete="off" spellCheck={false}
           onFocus={() => {
             setOpen(true)
             setFiltering(false)
@@ -62,7 +63,7 @@ export function SubscriptionModelField({ value, models, onChange }: {
         />
       )}
       candidates={open ? rows.map((model) => ({
-        id: model, label: model === '' ? m.settings.model.subscription.defaultModel : model, checked: model === typed,
+        id: model, label: modelEntryLabel(m, { model }), checked: model === typed,
       })) : []}
       onPick={(candidate) => choose(candidate.id)}
       create={open && isNew ? { text: typed, label: m.settings.model.subscription.otherModel(typed), onCreate: () => choose(typed) } : undefined}

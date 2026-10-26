@@ -6,6 +6,8 @@ import {
   AuthorSearchParamsSchema,
   ChatAppendParamsSchema,
   ChatCancelParamsSchema,
+  ChatModelParamsSchema,
+  ChatSetModelParamsSchema,
   ChatWritingParamsSchema,
   ChatRetryParamsSchema,
   ChatCreateParamsSchema,
@@ -24,8 +26,13 @@ import {
   EmptyParamsSchema,
   SemanticKeySetParamsSchema,
   FeedAppendParamsSchema,
+  HarnessAddModelParamsSchema,
   HarnessCancelParamsSchema,
   HarnessDismissFailureParamsSchema,
+  HarnessModelConnectionCheckParamsSchema,
+  HarnessRemoveModelParamsSchema,
+  HarnessSetDefaultModelParamsSchema,
+  HarnessUpdateModelParamsSchema,
   HarnessPendingPaperWikiParamsSchema,
   HarnessPrepareParamsSchema,
   HarnessApplyPaperWikiParamsSchema,
@@ -140,8 +147,8 @@ import { deleteColourTheme, listColourThemes, saveColourTheme } from './colour-t
 import {
   checkCliConnection, createChatHarnessRunner, createChatService, createCliChatRunner, createCliRunner,
   createHarnessCostGate, createHarnessModelConfig, createHarnessProposalAudit, createInternalMcp,
-  createMainCredentialVault, createPaperWikiHarnessRunner, discoverCli, listCliModels, openCliChatSessions,
-  subscriptionStatus,
+  createMainCredentialVault, createPaperWikiHarnessRunner, discoverCli, listCliModels, openChatModels,
+  openCliChatSessions, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -244,7 +251,7 @@ const background = createBackground({
 })
 const cliRunnerDeps = {
   discover: (cli: HarnessCli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
-  settingsRevision: () => harnessModel.subscriptionRevision(),
+  settingsRevision: () => harnessModel.revision(),
   internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
 }
 const cliRunner = createCliRunner(cliRunnerDeps)
@@ -257,9 +264,17 @@ const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarness
 const chatSessions = openCliChatSessions({
   root: join(userData, 'cli-chats'), vault: locationRoot, onLog: (line) => console.error(`[harness] ${line}`),
 })
-/** Deletes the CLI sessions of the chats the vault no longer keeps; the trash keeps its chats' sessions. */
+const chatModels = openChatModels({
+  file: join(userData, 'chat-models', 'choices.json'), vault: locationRoot, models: harnessModel,
+  onLog: (line) => console.error(`[harness] ${line}`),
+})
+/**
+ * Deletes the CLI sessions and forgets the model choices of the chats the vault no longer keeps; the
+ * trash keeps its chats' sessions and choices.
+ */
 const pruneChatSessions = (): void => {
   if (openError !== null) return
+  chatModels.prune(new Set(store.chatIds()))
   void chatSessions.prune(new Set(store.chatIds())).catch((cause: unknown) => {
     console.error(`[harness] 对话的 CLI 会话没能删掉：${cause instanceof Error ? cause.message : String(cause)}`)
   })
@@ -273,9 +288,10 @@ const chatHarness = createChatHarnessRunner({
   checkCli: (model) => checkCliConnection(model, { onLog: (line) => console.error(`[harness] ${line}`), run: cliRunner }),
   cli: createCliChatRunner(cliRunnerDeps),
   sessions: chatSessions,
+  choiceOf: chatModels.choiceOf,
   onLog: (line) => console.error(`[harness] ${line}`),
 })
-const chatService = createChatService({ store, model: harnessModel, runner: chatHarness })
+const chatService = createChatService({ store, model: harnessModel, runner: chatHarness, choiceOf: chatModels.choiceOf })
 const pendingHarnessProposals = (() => {
   if (proposalAudit === null) return []
   try {
@@ -542,9 +558,16 @@ registerHandler('harness.modelSettings', (params) => {
 registerHandler('harness.updateModelSettings', (params) =>
   harnessModel.update(HarnessModelSettingsUpdateSchema.parse(params)))
 registerHandler('harness.checkModelConnection', (params) => {
-  EmptyParamsSchema.parse(params)
-  return chatHarness.checkConnection()
+  const { model } = HarnessModelConnectionCheckParamsSchema.parse(params)
+  if (model !== undefined && !harnessModel.accepts(model)) throw new CallError('not-found', '这个模型不在列表里')
+  return chatHarness.checkConnection(model)
 })
+registerHandler('harness.addModel', (params) => harnessModel.addModel(HarnessAddModelParamsSchema.parse(params)))
+registerHandler('harness.updateModel', (params) => harnessModel.updateModel(HarnessUpdateModelParamsSchema.parse(params)))
+registerHandler('harness.removeModel', (params) =>
+  harnessModel.removeModel(HarnessRemoveModelParamsSchema.parse(params).id))
+registerHandler('harness.setDefaultModel', (params) =>
+  harnessModel.setDefaultModel(HarnessSetDefaultModelParamsSchema.parse(params).id))
 registerHandler('harness.updateSubscription', (params) =>
   harnessModel.updateSubscription(HarnessUpdateSubscriptionParamsSchema.parse(params)))
 registerHandler('harness.subscriptionStatus', (params) =>
@@ -903,6 +926,16 @@ registerHandler('chat.retry', (params) => chatService.retry(ChatRetryParamsSchem
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
 registerHandler('chat.writing', (params) => chatService.writing(ChatWritingParamsSchema.parse(params).id))
+registerHandler('chat.model', (params) => {
+  const { id } = ChatModelParamsSchema.parse(params)
+  store.chatSession(id)
+  return chatModels.shown(id)
+})
+registerHandler('chat.setModel', (params) => {
+  const { id, model, effort } = ChatSetModelParamsSchema.parse(params)
+  store.chatSession(id)
+  return chatModels.set(id, model, effort)
+})
 registerHandler('idea.list', (params) => {
   EmptyParamsSchema.parse(params)
   return store.listIdeas()

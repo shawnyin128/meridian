@@ -906,14 +906,12 @@ export const HarnessSubscriptionModelSchema = z.string().trim().max(200)
   .regex(/^(?:[A-Za-z0-9][\w.:@/[\]-]*)?$/, '模型名含有不允许的字符')
 
 /**
- * The subscription choice: `active` is the CLI that runs the model features, or null while the
- * active API profile does, `models` holds the model each CLI runs and `efforts` the reasoning effort
- * each runs at, absent for the CLI's own default.
+ * The subscription choice as older Apps read it: `active` is the CLI the default model runs on, or
+ * null while it runs on an API profile, and `models` holds the model each CLI runs.
  */
 export const HarnessSubscriptionSettingsSchema = z.object({
   active: HarnessCliSchema.nullable(),
   models: z.object({ claude: HarnessSubscriptionModelSchema, codex: HarnessSubscriptionModelSchema }).strict(),
-  efforts: z.object({ claude: HarnessEffortSchema.optional(), codex: HarnessEffortSchema.optional() }).strict(),
   /** Why the saved choice could not be loaded; no model source is set up until a choice is saved again. */
   error: CallFailureSchema.optional(),
 }).strict()
@@ -962,17 +960,62 @@ export const HarnessModelProfileSchema = z.object({
   apiKeyConfigured: z.boolean(),
   apiKeyLastFour: z.string().min(1).max(4).optional(),
   configured: z.boolean(),
-  /** The reasoning effort runs on this profile ask for, absent for the provider's own default. */
-  effort: HarnessEffortSchema.optional(),
 }).strict()
 
+/**
+ * Where a configured model runs: on an API profile, named by the key Core keeps it under (its
+ * provider, or `openai-compatible:<base URL>` for a compatible service), or on a subscription CLI.
+ */
+export const HarnessModelSourceSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('api'), profile: z.string().min(1).max(300) }).strict(),
+  z.object({ kind: z.literal('cli'), cli: HarnessCliSchema }).strict(),
+])
+
+/**
+ * A configured model: where it runs, its model ID, `''` running a CLI's own default, and the
+ * reasoning effort it runs at, absent for the provider's or CLI's own. `configured` says whether it
+ * can run as set up: an API model's profile exists and has a key or needs none.
+ */
+export const HarnessModelEntrySchema = z.object({
+  id: z.string().min(1).max(100),
+  source: HarnessModelSourceSchema,
+  model: z.string().max(200),
+  effort: HarnessEffortSchema.optional(),
+  configured: z.boolean(),
+}).strict()
+
+/**
+ * The configured models of one source, in the order sources are shown: the API providers (OpenAI,
+ * Anthropic, Google Gemini, then each OpenAI-compatible service by host), then the Claude
+ * subscription, then the ChatGPT one. An API source names its `provider`, and a compatible one its
+ * `host`. `entries` lists the source's models by id, in the list's order, and `defaultEntry` is the
+ * one switching to the source picks: the default model when the source holds it and it can run, else
+ * the source's first model that can run, else its first.
+ */
+export const HarnessModelSourceGroupSchema = z.object({
+  source: HarnessModelSourceSchema,
+  provider: HarnessModelProviderSchema.optional(),
+  host: z.string().min(1).max(300).optional(),
+  entries: z.array(z.string().min(1).max(100)).min(1),
+  defaultEntry: z.string().min(1).max(100),
+}).strict()
+
+/**
+ * The model settings. The top-level profile fields, `profiles` and `subscription` are the API
+ * profiles and the subscription choice as older Apps read them, kept in step with the default model.
+ * `models` lists the configured models; `defaultModel` is the id of the one that answers new chats
+ * and every other model feature, or null while none is; `sources` groups `models` by source.
+ */
 export const HarnessModelSettingsSchema = HarnessModelProfileSchema.extend({
   profiles: z.array(HarnessModelProfileSchema).max(100),
   subscription: HarnessSubscriptionSettingsSchema,
   /** Why the saved model configuration could not be loaded as it was. */
   error: CallFailureSchema.optional(),
-  /** Why a saved reasoning effort could not be loaded; runs on its profile or CLI refuse until one is saved again. */
-  effortError: CallFailureSchema.optional(),
+  models: z.array(HarnessModelEntrySchema).max(100),
+  defaultModel: z.string().min(1).max(100).nullable(),
+  sources: z.array(HarnessModelSourceGroupSchema),
+  /** Why the model list, or some of the models in it, could not be read; the others keep showing. */
+  modelsError: CallFailureSchema.optional(),
 }).strict()
 
 export const HarnessModelConnectionFailureSchema = z.enum([
@@ -1076,6 +1119,48 @@ export const HarnessModelSettingsUpdateSchema = z.object({
       })
     }
   })
+
+/**
+ * Where a model to save runs: an API connection, saved on its provider's or endpoint's profile with
+ * its key the way a model settings update saves it, or a subscription CLI.
+ */
+export const HarnessModelSourceInputSchema = z.discriminatedUnion('kind', [
+  z.object({
+    kind: z.literal('api'),
+    provider: HarnessModelProviderSchema,
+    protocol: HarnessModelProtocolSchema,
+    baseUrl: HarnessHttpUrlSchema,
+    authentication: z.enum(['api-key', 'none']),
+    apiKey: z.string().trim().min(1).max(20_000).optional(),
+    clearApiKey: z.boolean().optional(),
+  }).strict(),
+  z.object({ kind: z.literal('cli'), cli: HarnessCliSchema }).strict(),
+])
+
+/**
+ * Adds a model: on `source`, running model `model` (a CLI's `''` running its own default) at
+ * reasoning effort `effort`, or at the provider's or CLI's own default without one. The first model
+ * added becomes the default.
+ */
+export const HarnessAddModelParamsSchema = z.object({
+  source: HarnessModelSourceInputSchema,
+  model: z.string().trim().max(200),
+  effort: HarnessEffortSchema.optional(),
+}).strict()
+
+/** Saves model `id` anew, as adding it would. */
+export const HarnessUpdateModelParamsSchema = HarnessAddModelParamsSchema.extend({
+  id: z.string().min(1).max(100),
+}).strict()
+
+/** Removes model `id`; when it was the default, the first model left, in source order, becomes the default. */
+export const HarnessRemoveModelParamsSchema = z.object({ id: z.string().min(1).max(100) }).strict()
+
+/** Makes model `id` the default. */
+export const HarnessSetDefaultModelParamsSchema = z.object({ id: z.string().min(1).max(100) }).strict()
+
+/** Checks model `model`, or the default model without one. */
+export const HarnessModelConnectionCheckParamsSchema = z.object({ model: z.string().min(1).max(100).optional() }).strict()
 
 /**
  * Writable paper fields. Users can correct bibliographic frontmatter without
@@ -2293,6 +2378,23 @@ export const ChatCancelParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatWritingParamsSchema = z.object({ id: z.string() }).strict()
 
 /**
+ * The model chat `id` runs on: the configured model it chose, or the default once it chose none or
+ * its choice was removed, null while there is none; `effort` is the chat's own reasoning effort for
+ * that model, absent while it runs at the model's.
+ */
+export const ChatModelChoiceSchema = z.object({
+  model: z.string().min(1).max(100).nullable(),
+  effort: HarnessEffortSchema.optional(),
+}).strict()
+export const ChatModelParamsSchema = z.object({ id: z.string() }).strict()
+/** Makes chat `id` run on configured model `model`, at reasoning effort `effort` or else the model's own. */
+export const ChatSetModelParamsSchema = z.object({
+  id: z.string(),
+  model: z.string().min(1).max(100),
+  effort: HarnessEffortSchema.optional(),
+}).strict()
+
+/**
  * The answer a chat's turn is writing: the model writing it, as far as Core knows it yet, and its
  * `text` so far, empty until the first text arrives, which a model that does not stream sends only
  * with the whole answer.
@@ -2673,6 +2775,13 @@ export type HarnessSubscriptionSettings = z.infer<typeof HarnessSubscriptionSett
 export type HarnessUpdateSubscriptionParams = z.infer<typeof HarnessUpdateSubscriptionParamsSchema>
 export type HarnessSubscriptionStatus = z.infer<typeof HarnessSubscriptionStatusSchema>
 export type HarnessModelEfforts = z.infer<typeof HarnessModelEffortsSchema>
+export type HarnessModelSource = z.infer<typeof HarnessModelSourceSchema>
+export type HarnessModelEntry = z.infer<typeof HarnessModelEntrySchema>
+export type HarnessModelSourceGroup = z.infer<typeof HarnessModelSourceGroupSchema>
+export type HarnessModelSourceInput = z.infer<typeof HarnessModelSourceInputSchema>
+export type HarnessAddModelParams = z.infer<typeof HarnessAddModelParamsSchema>
+export type HarnessUpdateModelParams = z.infer<typeof HarnessUpdateModelParamsSchema>
+export type ChatModelChoice = z.infer<typeof ChatModelChoiceSchema>
 export type ProjectDetail = z.infer<typeof ProjectDetailSchema>
 export type ProjectSummary = z.infer<typeof ProjectSummarySchema>
 export type ProjectOverview = z.infer<typeof ProjectOverviewSchema>
@@ -2841,6 +2950,10 @@ export const CONTRACT_METHODS = [
   'harness.checkModelConnection',
   'harness.updateSubscription',
   'harness.subscriptionStatus',
+  'harness.addModel',
+  'harness.updateModel',
+  'harness.removeModel',
+  'harness.setDefaultModel',
   'harness.applyPaperWiki',
   'harness.rejectPaperWiki',
   'papers.columns',
@@ -2930,6 +3043,8 @@ export const CONTRACT_METHODS = [
   'chat.retry',
   'chat.cancel',
   'chat.writing',
+  'chat.model',
+  'chat.setModel',
   'idea.list',
   'idea.create',
   'idea.update',

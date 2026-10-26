@@ -5,7 +5,7 @@ import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { trashedEntry } from '../write-receipts.js'
 import { ChatFailure, type ChatHarnessRunner } from './chat.js'
-import type { HarnessModelConfig } from './model-config.js'
+import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 
 const textRun = (text: string) => [{ kind: 'text' as const, text }]
 /** `runs`, one or more, without the whitespace that starts or ends the turn and the text runs that leaves empty. */
@@ -27,11 +27,15 @@ const statusMessage = (text: string): ChatMessageFields => ({
 /** The text of a turn's runs, as the model is asked it. */
 const textOf = (runs: readonly ChatRun[]) => runs.map((run) => run.text).join('')
 
-/** Core-owned chat transaction: persist the user turn, run once, then persist a validated result. */
+/**
+ * Core-owned chat transaction: persist the user turn, run once on the model the chat chose, as
+ * `choiceOf` gives it, or on the default, then persist a validated result.
+ */
 export function createChatService(options: {
   store: VaultStore
   model: HarnessModelConfig
   runner: ChatHarnessRunner | null
+  choiceOf?: (chatId: string) => ModelChoice | null
 }) {
   const running = new Map<string, AbortController>()
   const written = new Map<string, ChatWriting>()
@@ -46,7 +50,7 @@ export function createChatService(options: {
    * own text goes to the log.
    */
   const answer = async (id: string, text: string): Promise<ChatSendResult> => {
-    if (!options.model.planModel().configured || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
+    if (!options.model.configured(options.choiceOf?.(id)) || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
     const controller = new AbortController()
     running.set(id, controller)
     try {

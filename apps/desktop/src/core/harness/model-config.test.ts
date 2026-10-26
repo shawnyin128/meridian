@@ -1,11 +1,12 @@
-import { existsSync, mkdtempSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdtempSync, readFileSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import type { HarnessModelSettings } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { CredentialVault } from './credential-vault.js'
 import {
-  createHarnessModelConfig, HARNESS_MODEL_CONFIG_FILENAME, HARNESS_MODEL_OPTIONS_FILENAME, HARNESS_SUBSCRIPTION_FILENAME,
+  createHarnessModelConfig, HARNESS_MODEL_CONFIG_FILENAME, HARNESS_MODELS_FILENAME, HARNESS_SUBSCRIPTION_FILENAME,
 } from './model-config.js'
 
 const credentialVault = (): CredentialVault => ({
@@ -29,7 +30,10 @@ describe('Harness model configuration', () => {
     expect(config.settings()).toEqual({
       ...initialProfile,
       profiles: [initialProfile],
-      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {} },
+      subscription: { active: null, models: { claude: '', codex: '' } },
+      models: [],
+      defaultModel: null,
+      sources: [],
     })
 
     const saved = await config.update({
@@ -264,7 +268,7 @@ describe('subscription choice', () => {
     })
 
     const reopened = await createHarnessModelConfig(root, credentialVault())
-    expect(reopened.settings().subscription).toEqual({ active: 'claude', models: { claude: '', codex: '' }, efforts: {} })
+    expect(reopened.settings().subscription).toEqual({ active: 'claude', models: { claude: '', codex: '' } })
     expect(readFileSync(join(root, HARNESS_MODEL_CONFIG_FILENAME)).equals(profiles)).toBe(true)
   })
 
@@ -274,7 +278,7 @@ describe('subscription choice', () => {
     await config.updateSubscription({ cli: 'claude', model: 'opus' })
     const saved = await config.updateSubscription({ cli: 'codex', model: 'gpt-5-codex' })
 
-    expect(saved.subscription).toEqual({ active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' }, efforts: {} })
+    expect(saved.subscription).toEqual({ active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' } })
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5-codex' })
     expect(config.planModel()).toMatchObject({ provider: 'ChatGPT 订阅', name: 'gpt-5-codex', configured: true, cli: 'codex' })
   })
@@ -286,29 +290,28 @@ describe('subscription choice', () => {
 
     const saved = await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
 
-    expect(saved.subscription).toEqual({ active: null, models: { claude: '', codex: 'gpt-5-codex' }, efforts: {} })
+    expect(saved.subscription).toEqual({ active: null, models: { claude: '', codex: 'gpt-5-codex' } })
     expect(await config.runtime()).toMatchObject({ provider: 'anthropic', apiKey: 'anthropic-secret' })
     expect(config.planModel()).toMatchObject({ provider: 'Anthropic', name: 'claude-api' })
     expect(config.planModel()).not.toHaveProperty('cli')
     expect((await createHarnessModelConfig(root, credentialVault())).settings().subscription.active).toBeNull()
   })
 
-  it('changes the subscription revision each time the subscription choice is saved, and only then', async () => {
+  it('changes the revision each time the model list or the subscription choice is saved, and only then', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
-    const revisions = [config.subscriptionRevision()]
+    const revisions = [config.revision()]
 
     await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
-    revisions.push(config.subscriptionRevision())
+    revisions.push(config.revision())
     config.updateSubscription({ cli: 'claude', model: '' })
-    revisions.push(config.subscriptionRevision())
+    revisions.push(config.revision())
     config.updateSubscription({ cli: 'claude', model: '' })
-    revisions.push(config.subscriptionRevision())
+    revisions.push(config.revision())
     await config.update({ ...apiProfile })
-    revisions.push(config.subscriptionRevision())
+    revisions.push(config.revision())
 
-    expect(revisions[1]).toBe(revisions[0])
-    expect(new Set(revisions.slice(1)).size).toBe(4)
+    expect(new Set(revisions).size).toBe(5)
   })
 
   it('writes no subscription file while only API profiles are saved', async () => {
@@ -329,7 +332,7 @@ describe('subscription choice', () => {
 
     const config = await createHarnessModelConfig(root, credentialVault())
 
-    expect(config.settings().subscription).toEqual({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, efforts: {} })
+    expect(config.settings().subscription).toEqual({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' } })
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5-codex' })
   })
 
@@ -338,11 +341,12 @@ describe('subscription choice', () => {
     [JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v1', active: 'codex', clis: { codex: { model: '--yolo' } } }), 'invalid'],
     [JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v1', active: 'gemini', clis: {} }), 'newer-version'],
     [JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v2', active: 'claude', clis: {} }), 'newer-version'],
-  ])('sets up no model source, not the API profile, while the subscription file %s cannot be read', async (text, reason) => {
+  ])('sets up no model source, not the API profile, while no model list is saved and the subscription file %s cannot be read', async (text, reason) => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
     await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    rmSync(join(root, HARNESS_MODELS_FILENAME))
     writeFileSync(join(root, HARNESS_SUBSCRIPTION_FILENAME), text, 'utf8')
 
     const reopened = await createHarnessModelConfig(root, credentialVault())
@@ -352,177 +356,362 @@ describe('subscription choice', () => {
     expect(reopened.planModel().configured).toBe(false)
     await expect(reopened.runtime()).rejects.toThrow()
     expect((await reopened.updateSubscription({ cli: 'claude', model: '' })).subscription)
-      .toEqual({ active: 'claude', models: { claude: '', codex: '' }, efforts: {} })
+      .toEqual({ active: 'claude', models: { claude: '', codex: '' } })
     vi.restoreAllMocks()
   })
 })
 
-describe('reasoning efforts', () => {
-  const openai = {
-    provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'api-key',
-  } as const
-  const compatible = {
-    provider: 'openai-compatible', protocol: 'chat-completions', baseUrl: 'http://127.0.0.1:8000/v1', model: 'local', authentication: 'none',
-  } as const
-  const options = (root: string) => JSON.parse(readFileSync(join(root, HARNESS_MODEL_OPTIONS_FILENAME), 'utf8')) as unknown
 
-  it('keeps each API profile\'s and each CLI\'s effort in its own file and writes the profiles and the subscription choice as without one', async () => {
-    const plain = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
-    const withoutEffort = await createHarnessModelConfig(plain, credentialVault())
-    await withoutEffort.update({ ...openai, apiKey: 'openai-secret' })
-    await withoutEffort.update({ ...apiProfile, apiKey: 'anthropic-secret' })
-    withoutEffort.updateSubscription({ cli: 'codex', model: 'gpt-6.1-sol' })
-    withoutEffort.updateSubscription({ cli: 'claude', model: 'opus' })
+describe('model list', () => {
+  it('runs the default of a saved model list while the subscription file older Apps read cannot be read', async () => {
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    await (await createHarnessModelConfig(root, credentialVault())).update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    writeFileSync(join(root, HARNESS_SUBSCRIPTION_FILENAME), '{bad', 'utf8')
+
+    const config = await createHarnessModelConfig(root, credentialVault())
+
+    expect(config.settings()).toMatchObject({ configured: true, subscription: { error: 'invalid' } })
+    expect(config.planModel().configured).toBe(true)
+    expect(await config.runtime()).toMatchObject({ provider: 'anthropic', apiKey: 'anthropic-secret' })
+    vi.restoreAllMocks()
+  })
+
+  const openai = { kind: 'api', provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', authentication: 'api-key' } as const
+  const anthropic = { kind: 'api', provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com', authentication: 'api-key' } as const
+  const local = { kind: 'api', provider: 'openai-compatible', protocol: 'chat-completions', baseUrl: 'http://127.0.0.1:8000/v1/', authentication: 'none' } as const
+  const claude = { kind: 'cli', cli: 'claude' } as const
+  const codex = { kind: 'cli', cli: 'codex' } as const
+  const listOf = (root: string) => JSON.parse(readFileSync(join(root, HARNESS_MODELS_FILENAME), 'utf8')) as {
+    schemaVersion: string; default: string | null; models: Array<Record<string, unknown>>
+  }
+  /** Each model of `settings`, as its profile or CLI, model ID, effort or null, and whether it can run. */
+  const shown = (settings: HarnessModelSettings) => settings.models.map((entry) => [
+    entry.source.kind === 'api' ? entry.source.profile : entry.source.cli, entry.model, entry.effort ?? null, entry.configured,
+  ])
+
+  it('starts from every API profile with a model and every CLI chosen or with a model, the model in use the default, and writes no list until one is saved', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const older = await createHarnessModelConfig(root, credentialVault())
+    await older.update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    await older.update({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: '', authentication: 'api-key', apiKey: 'openai-secret' })
+    older.updateSubscription({ cli: 'codex', model: 'gpt-6.1-sol' })
+    rmSync(join(root, HARNESS_MODELS_FILENAME))
+
+    const config = await createHarnessModelConfig(root, credentialVault())
+
+    expect(shown(config.settings())).toEqual([['anthropic', 'claude-api', null, true], ['codex', 'gpt-6.1-sol', null, true]])
+    expect(config.settings().defaultModel).toBe('cli:codex')
+    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol' })
+    expect(existsSync(join(root, HARNESS_MODELS_FILENAME))).toBe(false)
+  })
+
+  it('adds models from several sources, a provider\'s models sharing its key, and makes the first one added the default', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
 
-    await config.update({ ...openai, apiKey: 'openai-secret', effort: 'xhigh' })
-    await config.update({ ...apiProfile, apiKey: 'anthropic-secret', effort: 'max' })
-    config.updateSubscription({ cli: 'codex', model: 'gpt-6.1-sol', effort: 'medium' })
-    const saved = config.updateSubscription({ cli: 'claude', model: 'opus', effort: 'high' })
+    await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1', effort: 'high' })
+    await config.addModel({ source: openai, model: 'gpt-5.5' })
+    await config.addModel({ source: claude, model: 'opus', effort: 'max' })
+    const saved = await config.addModel({ source: codex, model: '' })
 
-    for (const name of [HARNESS_MODEL_CONFIG_FILENAME, HARNESS_SUBSCRIPTION_FILENAME]) {
-      expect(readFileSync(join(root, name)).equals(readFileSync(join(plain, name)))).toBe(true)
-    }
-    expect(options(root)).toEqual({
-      schemaVersion: 'meridian.harness-model-options.v1',
-      profiles: { openai: { effort: 'xhigh' }, anthropic: { effort: 'max' } },
-      clis: { codex: { effort: 'medium' }, claude: { effort: 'high' } },
+    expect(shown(saved)).toEqual([
+      ['openai', 'gpt-6.1', 'high', true], ['openai', 'gpt-5.5', null, true], ['claude', 'opus', 'max', true], ['codex', '', null, true],
+    ])
+    expect(saved.defaultModel).toBe(saved.models[0]!.id)
+    expect(saved.profiles).toHaveLength(1)
+    expect(await config.runtime({ model: saved.models[1]!.id })).toMatchObject({ provider: 'openai', model: 'gpt-5.5', apiKey: 'openai-secret' })
+    expect(await config.runtime()).toMatchObject({ provider: 'openai', model: 'gpt-6.1', apiKey: 'openai-secret', effort: 'high' })
+    expect(listOf(root)).toEqual({
+      schemaVersion: 'meridian.harness-models.v1', default: saved.models[0]!.id,
+      mirrored: { profile: 'openai', profileModel: 'gpt-6.1', cli: null, cliModel: '' },
+      models: saved.models.map((entry) => ({
+        id: entry.id, source: entry.source, model: entry.model, ...(entry.effort === undefined ? {} : { effort: entry.effort }),
+      })),
     })
-    if (process.platform !== 'win32') expect(statSync(join(root, HARNESS_MODEL_OPTIONS_FILENAME)).mode & 0o777).toBe(0o600)
-    expect(saved.subscription.efforts).toEqual({ codex: 'medium', claude: 'high' })
-    expect(saved.profiles.map((profile) => [profile.provider, profile.effort])).toEqual([['anthropic', 'max'], ['openai', 'xhigh']])
-    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'claude', model: 'opus', effort: 'high' })
-    expect(config.planModel()).toMatchObject({ cli: 'claude', effort: 'high' })
-
-    const reopened = await createHarnessModelConfig(root, credentialVault())
-    expect(reopened.settings()).toEqual(saved)
-    await reopened.update({ ...openai, effort: 'xhigh' })
-    expect(await reopened.runtime()).toMatchObject({ provider: 'openai', apiKey: 'openai-secret', effort: 'xhigh' })
-    expect(reopened.planModel()).toMatchObject({ provider: 'OpenAI', effort: 'xhigh' })
+    expect(readFileSync(join(root, HARNESS_MODELS_FILENAME), 'utf8')).not.toContain('openai-secret')
   })
 
-  it('runs at the provider\'s or CLI\'s own default once its effort is set back to the default, and writes no effort file while none is chosen', async () => {
+  it('keeps the profile and the subscription choice older Apps read in step with the default model', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
-    await config.update({ ...apiProfile, apiKey: 'anthropic-secret' })
-    config.updateSubscription({ cli: 'codex', model: '' })
-    expect(existsSync(join(root, HARNESS_MODEL_OPTIONS_FILENAME))).toBe(false)
+    await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1' })
+    await config.addModel({ source: { ...anthropic, apiKey: 'anthropic-secret' }, model: 'claude-opus-5-5' })
+    const added = await config.addModel({ source: claude, model: 'opus' })
+    const [gpt, opusApi, opusCli] = added.models.map((entry) => entry.id) as [string, string, string]
+    const older = () => ({
+      model: JSON.parse(readFileSync(join(root, HARNESS_MODEL_CONFIG_FILENAME), 'utf8')) as { activeProfile: string; profiles: Array<{ provider: string; model: string }> },
+      subscription: existsSync(join(root, HARNESS_SUBSCRIPTION_FILENAME))
+        ? (JSON.parse(readFileSync(join(root, HARNESS_SUBSCRIPTION_FILENAME), 'utf8')) as { active: string | null; clis: Record<string, { model: string }> })
+        : null,
+    })
 
-    config.updateSubscription({ cli: 'codex', model: '', effort: 'high' })
-    await config.update({ ...apiProfile, effort: 'low' })
-    config.updateSubscription({ cli: 'codex', model: '' })
-    const saved = await config.update({ ...apiProfile })
-
-    expect(options(root)).toEqual({ schemaVersion: 'meridian.harness-model-options.v1', profiles: {}, clis: {} })
-    expect(saved).not.toHaveProperty('effort')
-    expect(saved.subscription.efforts).toEqual({})
-    expect(await config.runtime()).not.toHaveProperty('effort')
-    expect(config.planModel()).not.toHaveProperty('effort')
+    expect(older().model.activeProfile).toBe('openai')
+    config.setDefaultModel(opusCli)
+    expect(older().subscription).toMatchObject({ active: 'claude', clis: { claude: { model: 'opus' } } })
+    expect(config.settings()).toMatchObject({ defaultModel: opusCli, subscription: { active: 'claude' } })
+    config.setDefaultModel(opusApi)
+    expect(older().model.activeProfile).toBe('anthropic')
+    expect(older().model.profiles.find((profile) => profile.provider === 'anthropic')?.model).toBe('claude-opus-5-5')
+    expect(older().subscription?.active).toBeNull()
+    await config.updateModel({ id: opusApi, source: anthropic, model: 'claude-sonnet-5-5' })
+    expect(older().model.profiles.find((profile) => profile.provider === 'anthropic')?.model).toBe('claude-sonnet-5-5')
+    expect(config.planModel()).toMatchObject({ provider: 'Anthropic', name: 'claude-sonnet-5-5', configured: true, billable: true })
+    config.setDefaultModel(gpt)
+    expect(config.planModel()).toMatchObject({ provider: 'OpenAI', name: 'gpt-6.1' })
+    expect(older().model.activeProfile).toBe('openai')
   })
 
-  it.each([
-    ['an Anthropic profile', () => ({ ...apiProfile, effort: 'none' }), 'update'],
-    ['a Gemini profile', () => ({
-      provider: 'google-gemini', protocol: 'generate-content', baseUrl: 'https://generativelanguage.googleapis.com/v1beta',
-      model: 'gemini-3', authentication: 'api-key', effort: 'xhigh',
-    }), 'update'],
-    ['an OpenAI-compatible profile', () => ({ ...compatible, effort: 'low' }), 'update'],
-    ['Claude', () => ({ cli: 'claude', model: '', effort: 'minimal' }), 'subscription'],
-    ['Codex', () => ({ cli: 'codex', model: '', effort: 'ultra' }), 'subscription'],
-    ['Codex', () => ({ cli: 'codex', model: '', effort: 'High Effort' }), 'subscription'],
-  ] as const)('refuses an effort %s does not take and keeps nothing', async (_, input, call) => {
+  it('makes the first model left, in source order, the default once the default is removed, and has none once the list is empty', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
+    await config.addModel({ source: codex, model: 'gpt-6.1-sol' })
+    await config.addModel({ source: claude, model: 'opus' })
+    const added = await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1' })
+    const [sol, opus, gpt] = added.models.map((entry) => entry.id) as [string, string, string]
 
-    if (call === 'update') await expect(config.update(input() as never)).rejects.toThrow()
-    else expect(() => config.updateSubscription(input() as never)).toThrow()
-    expect(existsSync(join(root, HARNESS_MODEL_OPTIONS_FILENAME))).toBe(false)
+    expect(config.removeModel(sol).defaultModel).toBe(gpt)
+    expect(config.removeModel(gpt).defaultModel).toBe(opus)
+    const empty = config.removeModel(opus)
+
+    expect(empty).toMatchObject({ models: [], defaultModel: null, sources: [], configured: false })
+    expect(config.planModel()).toMatchObject({ configured: false })
+    await expect(config.runtime()).rejects.toMatchObject({ reason: 'no-model' })
   })
 
-  it('reads an effort file with keys, providers and CLIs a newer App added, and keeps every one of them when it saves an effort', async () => {
+  it('makes the first model left that can run, in source order, the default once the default is removed, else the first model left', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
-    const written = {
-      schemaVersion: 'meridian.harness-model-options.v1',
-      verbosity: { shown: true },
-      profiles: {
-        openai: { effort: 'high', verbosity: 'low' },
-        'openai-compatible:http://127.0.0.1:8000/v1': { temperature: 0 },
-        mistral: { effort: 'high' },
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.addModel({ source: codex, model: 'gpt-6.1-sol' })
+    await config.addModel({ source: openai, model: 'gpt-6.1' })
+    const added = await config.addModel({ source: claude, model: 'opus' })
+    const [sol, gpt, opus] = added.models.map((entry) => entry.id) as [string, string, string]
+
+    expect(config.removeModel(sol).defaultModel).toBe(opus)
+    expect(config.removeModel(opus).defaultModel).toBe(gpt)
+  })
+
+  describe('a choice an older App made after the list was saved', () => {
+    /** Writes the subscription choice the way an older App saves it. */
+    const chooseCli = (root: string, active: 'claude' | 'codex' | null, models: { claude: string; codex: string }) => writeFileSync(
+      join(root, HARNESS_SUBSCRIPTION_FILENAME),
+      JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v1', active, clis: { claude: { model: models.claude }, codex: { model: models.codex } } }),
+    )
+    /** Makes profile `key` active, running `model`, the way an older App saves a profile. */
+    const chooseProfile = (root: string, key: string, model: string) => {
+      const file = join(root, HARNESS_MODEL_CONFIG_FILENAME)
+      const held = JSON.parse(readFileSync(file, 'utf8')) as { activeProfile: string; profiles: Array<{ provider: string; model: string }> }
+      writeFileSync(file, JSON.stringify({
+        ...held, activeProfile: key, profiles: held.profiles.map((profile) => (profile.provider === key ? { ...profile, model } : profile)),
+      }))
+    }
+    /** A saved list: OpenAI's gpt-6.1 with a key and Claude's opus at the high effort, the default. */
+    const savedList = async () => {
+      const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+      const config = await createHarnessModelConfig(root, credentialVault())
+      await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1' })
+      const added = await config.addModel({ source: claude, model: 'opus', effort: 'high' })
+      config.setDefaultModel(added.models[1]!.id)
+      return { root, gpt: added.models[0]!.id, opus: added.models[1]!.id }
+    }
+
+    it('adopts a subscription the older App chose, adding its model as the default when the list holds none', async () => {
+      const { root, gpt, opus } = await savedList()
+      chooseCli(root, 'codex', { claude: 'opus', codex: 'gpt-5.5' })
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      const settings = config.settings()
+      const adopted = settings.models.find((entry) => entry.source.kind === 'cli' && entry.source.cli === 'codex')!
+      expect(settings.models.map((entry) => entry.id)).toEqual([gpt, opus, adopted.id])
+      expect(adopted).toMatchObject({ model: 'gpt-5.5', configured: true })
+      expect(settings.defaultModel).toBe(adopted.id)
+      expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5.5' })
+      expect((await createHarnessModelConfig(root, credentialVault())).settings().defaultModel).toBe(adopted.id)
+    })
+
+    it('adopts the API model the older App made active, reusing the model the list holds', async () => {
+      const { root, gpt } = await savedList()
+      chooseProfile(root, 'openai', 'gpt-6.1')
+      chooseCli(root, null, { claude: 'opus', codex: '' })
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      expect(config.settings()).toMatchObject({ defaultModel: gpt })
+      expect(config.settings().models).toHaveLength(2)
+      expect(await config.runtime()).toMatchObject({ provider: 'openai', model: 'gpt-6.1', apiKey: 'openai-secret' })
+    })
+
+    it('adopts a model the older App gave the active profile while a subscription stays chosen', async () => {
+      const { root } = await savedList()
+      chooseProfile(root, 'openai', 'gpt-5.5')
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      const chosen = config.settings().models.find((entry) => entry.id === config.settings().defaultModel)
+      expect(chosen).toMatchObject({ source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5' })
+    })
+
+    it('keeps the default, and writes nothing, while the older Apps\' files say what the list last saved', async () => {
+      const { root, opus } = await savedList()
+      const before = readFileSync(join(root, HARNESS_MODELS_FILENAME))
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      expect(config.settings().defaultModel).toBe(opus)
+      expect(readFileSync(join(root, HARNESS_MODELS_FILENAME)).equals(before)).toBe(true)
+    })
+
+    it('adopts nothing from an API profile the older App left without a model', async () => {
+      const { root, opus } = await savedList()
+      chooseProfile(root, 'openai', '')
+      chooseCli(root, null, { claude: 'opus', codex: '' })
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      expect(config.settings().defaultModel).toBe(opus)
+    })
+  })
+
+  it('groups the models by source, API providers first, compatible services by host, then Claude, then ChatGPT, each source picking the default when it holds it, else its first model', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.addModel({ source: codex, model: 'gpt-6.1-sol' })
+    await config.addModel({ source: claude, model: 'opus' })
+    await config.addModel({ source: claude, model: 'sonnet' })
+    await config.addModel({ source: local, model: 'qwen' })
+    await config.addModel({ source: { ...anthropic, apiKey: 'anthropic-secret' }, model: 'claude-opus-5-5' })
+    const added = await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1' })
+    const id = (model: string) => added.models.find((entry) => entry.model === model)!.id
+    const saved = config.setDefaultModel(id('sonnet'))
+
+    expect(saved.sources).toEqual([
+      { source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: [id('gpt-6.1')], defaultEntry: id('gpt-6.1') },
+      { source: { kind: 'api', profile: 'anthropic' }, provider: 'anthropic', entries: [id('claude-opus-5-5')], defaultEntry: id('claude-opus-5-5') },
+      {
+        source: { kind: 'api', profile: 'openai-compatible:http://127.0.0.1:8000/v1' }, provider: 'openai-compatible', host: '127.0.0.1:8000',
+        entries: [id('qwen')], defaultEntry: id('qwen'),
       },
-      clis: { claude: { effort: 'max', fast: true }, gemini: { effort: 'deep' } },
-    }
-    await (await createHarnessModelConfig(root, credentialVault())).update({ ...openai })
-    writeFileSync(join(root, HARNESS_MODEL_OPTIONS_FILENAME), JSON.stringify(written), 'utf8')
+      { source: claude, entries: [id('opus'), id('sonnet')], defaultEntry: id('sonnet') },
+      { source: codex, entries: [id('gpt-6.1-sol')], defaultEntry: id('gpt-6.1-sol') },
+    ])
+  })
+
+  it('makes a switch to a source pick the default when it can run, else the source\'s first model that can, else its first', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())
+    await config.addModel({ source: openai, model: 'gpt-6.1' })
+    await config.addModel({ source: openai, model: 'gpt-5.5' })
+    await config.addModel({ source: claude, model: 'opus' })
+    const added = await config.addModel({ source: claude, model: 'sonnet' })
+    const id = (model: string) => added.models.find((entry) => entry.model === model)!.id
+    const sourceOf = (settings: HarnessModelSettings, kind: 'api' | 'cli') => settings.sources.find((group) => group.source.kind === kind)!
 
-    expect(config.settings()).toMatchObject({ effort: 'high', subscription: { efforts: { claude: 'max' } } })
-    expect(config.settings()).not.toHaveProperty('effortError')
-    expect(await config.runtime()).toMatchObject({ provider: 'openai', effort: 'high' })
+    const unrunnable = config.setDefaultModel(id('gpt-5.5'))
+    expect(sourceOf(unrunnable, 'api').defaultEntry).toBe(id('gpt-6.1'))
+    const runnable = await config.updateModel({ id: id('gpt-5.5'), source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-5.5' })
+    expect(sourceOf(runnable, 'api').defaultEntry).toBe(id('gpt-5.5'))
+    expect(sourceOf(runnable, 'cli').defaultEntry).toBe(id('opus'))
+    expect(sourceOf(config.setDefaultModel(id('sonnet')), 'cli').defaultEntry).toBe(id('sonnet'))
+  })
 
-    await config.update({ ...openai, effort: 'low' })
-    config.updateSubscription({ cli: 'claude', model: '' })
+  it('runs a chat\'s chosen model at the chat\'s effort, at the model\'s own once that model does not take it, and on the default once its model is gone', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.addModel({ source: claude, model: 'opus', effort: 'high' })
+    const added = await config.addModel({ source: codex, model: 'gpt-6.1-sol', effort: 'low' })
+    const [opus, sol] = added.models.map((entry) => entry.id) as [string, string]
 
-    expect(options(root)).toEqual({
-      ...written,
-      profiles: { ...written.profiles, openai: { effort: 'low', verbosity: 'low' } },
-      clis: { claude: { fast: true }, gemini: { effort: 'deep' } },
-    })
+    expect(await config.runtime({ model: sol })).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol', effort: 'low' })
+    expect(await config.runtime({ model: sol, effort: 'xhigh' })).toMatchObject({ cli: 'codex', effort: 'xhigh' })
+    expect(await config.runtime({ model: opus, effort: 'ultra' })).toMatchObject({ cli: 'claude', effort: 'high' })
+    expect(config.modelOf({ model: sol })).toBe(sol)
+    config.removeModel(sol)
+    expect(config.modelOf({ model: sol })).toBe(opus)
+    expect(await config.runtime({ model: sol, effort: 'xhigh' })).toEqual({ source: 'cli', cli: 'claude', model: 'opus', effort: 'high' })
+    expect(config.accepts(opus, 'max')).toBe(true)
+    expect(config.accepts(opus, 'minimal')).toBe(false)
+    expect(config.accepts(sol)).toBe(false)
   })
 
   it.each([
-    ['a level its provider does not take here', { profiles: { openai: { effort: 'ludicrous' } } }, 'newer-version'],
-    ['an effort that is no level word', { profiles: { openai: { effort: '--yolo' } } }, 'invalid'],
-    ['an entry that is no object', { profiles: { openai: 'high' } }, 'invalid'],
-  ])('reports a saved effort that is %s and refuses runs on its profile alone until an effort is saved again', async (_, entries, reason) => {
+    ['an API model without a model ID', { source: openai, model: '' }, 'invalid'],
+    ['an effort its provider does not take', { source: anthropic, model: 'claude-opus-5-5', effort: 'none' }, 'invalid'],
+    ['an effort Codex runs cannot use', { source: codex, model: '', effort: 'ultra' }, 'invalid'],
+    ['an effort an OpenAI-compatible service is not offered', { source: local, model: 'qwen', effort: 'low' }, 'invalid'],
+  ] as const)('refuses to add %s and keeps nothing', async (_, params, reason) => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+
+    await expect(config.addModel(params)).rejects.toMatchObject({ reason })
+    expect(existsSync(join(root, HARNESS_MODELS_FILENAME))).toBe(false)
+    expect(existsSync(join(root, HARNESS_MODEL_CONFIG_FILENAME))).toBe(false)
+  })
+
+  it('refuses to change, remove or make the default a model the list does not hold', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+
+    await expect(config.updateModel({ id: 'gone', source: claude, model: '' })).rejects.toMatchObject({ reason: 'not-found' })
+    expect(() => config.removeModel('gone')).toThrow(expect.objectContaining({ reason: 'not-found' }))
+    expect(() => config.setDefaultModel('gone')).toThrow(expect.objectContaining({ reason: 'not-found' }))
+  })
+
+  it('reads the list record by record: one it cannot read is reported on its own, the others keep showing, and it is written back as it was', async () => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
-    const first = await createHarnessModelConfig(root, credentialVault())
-    await first.update({ ...apiProfile, apiKey: 'anthropic-secret' })
-    await first.update({ ...openai, apiKey: 'openai-secret' })
-    writeFileSync(join(root, HARNESS_MODEL_OPTIONS_FILENAME), JSON.stringify({
-      schemaVersion: 'meridian.harness-model-options.v1', ...entries, clis: { claude: { effort: 'high' } },
+    const unknownSource = { id: 'mistral-1', source: { kind: 'api', profile: 'mistral' }, model: 'large' }
+    const unknownEffort = { id: 'opus-ludicrous', source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'ludicrous' }
+    const broken = { id: 7 }
+    writeFileSync(join(root, HARNESS_MODELS_FILENAME), JSON.stringify({
+      schemaVersion: 'meridian.harness-models.v1', default: 'sol', shown: { compact: true },
+      models: [
+        unknownSource,
+        { id: 'sol', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'medium', pinned: true },
+        unknownEffort,
+        broken,
+        { id: 'gemini-cli', source: { kind: 'cli', cli: 'gemini' }, model: '' },
+      ],
     }), 'utf8')
 
     const config = await createHarnessModelConfig(root, credentialVault())
 
-    expect(config.settings()).toMatchObject({ provider: 'openai', configured: true, effortError: reason, subscription: { efforts: { claude: 'high' } } })
-    expect(config.settings()).not.toHaveProperty('effort')
-    await expect(config.runtime()).rejects.toMatchObject({ reason })
-    config.updateSubscription({ cli: 'claude', model: '', effort: 'high' })
-    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'claude', effort: 'high' })
-    await config.update({ ...apiProfile })
-    expect(await config.runtime()).toMatchObject({ provider: 'anthropic', apiKey: 'anthropic-secret' })
-    await config.update({ ...openai })
-    expect(await config.runtime()).toMatchObject({ provider: 'openai' })
-    expect(config.settings()).not.toHaveProperty('effortError')
+    expect(shown(config.settings())).toEqual([['codex', 'gpt-6.1-sol', 'medium', true]])
+    expect(config.settings()).toMatchObject({ defaultModel: 'sol', modelsError: 'newer-version' })
+    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol', effort: 'medium' })
+    await config.addModel({ source: claude, model: 'sonnet' })
+    config.setDefaultModel('sol')
+    const written = listOf(root) as unknown as Record<string, unknown> & { models: unknown[] }
+    expect(written['shown']).toEqual({ compact: true })
+    expect(written.models.slice(0, 5)).toEqual([
+      unknownSource,
+      { id: 'sol', source: { kind: 'cli', cli: 'codex' }, model: 'gpt-6.1-sol', effort: 'medium', pinned: true },
+      unknownEffort,
+      broken,
+      { id: 'gemini-cli', source: { kind: 'cli', cli: 'gemini' }, model: '' },
+    ])
     expect(log).toHaveBeenCalled()
     log.mockRestore()
   })
 
   it.each([
     ['{bad', 'invalid'],
-    [JSON.stringify({ schemaVersion: 'meridian.harness-model-options.v2', profiles: {} }), 'newer-version'],
-    [JSON.stringify({ schemaVersion: 'meridian.harness-model-options.v1', clis: [] }), 'invalid'],
-  ])('keeps the profiles and the subscription choice showing while the effort file %s cannot be read, and refuses runs until an effort is saved', async (text, reason) => {
+    [JSON.stringify({ schemaVersion: 'meridian.harness-models.v2', models: [] }), 'newer-version'],
+    [JSON.stringify({ schemaVersion: 'meridian.harness-models.v1', models: {} }), 'invalid'],
+  ])('keeps the profiles showing while the list file %s cannot be read, runs nothing, and starts the list again once a model is added', async (text, reason) => {
     const log = vi.spyOn(console, 'error').mockImplementation(() => {})
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
-    const first = await createHarnessModelConfig(root, credentialVault())
-    await first.update({ ...apiProfile, apiKey: 'anthropic-secret' })
-    first.updateSubscription({ cli: 'codex', model: 'gpt-6.1-sol' })
-    writeFileSync(join(root, HARNESS_MODEL_OPTIONS_FILENAME), text, 'utf8')
+    await (await createHarnessModelConfig(root, credentialVault())).update({ ...apiProfile, apiKey: 'anthropic-secret' })
+    writeFileSync(join(root, HARNESS_MODELS_FILENAME), text, 'utf8')
 
     const config = await createHarnessModelConfig(root, credentialVault())
 
-    expect(config.settings()).toMatchObject({
-      provider: 'anthropic', apiKeyLastFour: 'cret', effortError: reason,
-      subscription: { active: 'codex', models: { codex: 'gpt-6.1-sol' }, efforts: {} },
-    })
+    expect(config.settings()).toMatchObject({ models: [], modelsError: reason })
+    expect(config.settings().profiles).toContainEqual(expect.objectContaining({ provider: 'anthropic', apiKeyLastFour: 'cret' }))
     await expect(config.runtime()).rejects.toMatchObject({ reason })
-    config.updateSubscription({ cli: 'codex', model: 'gpt-6.1-sol' })
-    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol' })
-    expect(config.settings()).not.toHaveProperty('effortError')
-    expect(options(root)).toEqual({ schemaVersion: 'meridian.harness-model-options.v1', clis: {} })
+    const added = await config.addModel({ source: claude, model: 'opus' })
+    expect(added).not.toHaveProperty('modelsError')
+    expect(await config.runtime()).toEqual({ source: 'cli', cli: 'claude', model: 'opus' })
     log.mockRestore()
   })
 
@@ -534,7 +723,7 @@ describe('reasoning efforts', () => {
 
     const config = await createHarnessModelConfig(root, credentialVault())
 
-    expect(config.settings().subscription.efforts).toEqual({})
+    expect(shown(config.settings())).toEqual([['codex', 'gpt-6.1-sol', null, true]])
     expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol' })
   })
 })
