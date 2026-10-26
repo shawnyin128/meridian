@@ -14,9 +14,18 @@ if TYPE_CHECKING:
     from langchain_core.language_models import BaseChatModel
 
 DEFAULT_TIMEOUT_SECONDS = 120.0
+MAX_TIMEOUT_SECONDS = 900
 CONNECTION_CHECK_TIMEOUT_SECONDS = 20.0
 CONNECTION_CHECK_LIMITS = {"maxOutputTokens": 1, "maxModelCalls": 1}
 MAX_CONNECTION_ERROR_DETAIL = 500
+# The reasoning efforts each provider's LangChain integration takes: OpenAI's reasoning.effort,
+# Anthropic's output_config.effort and Gemini's thinking_level. Core offers the same levels.
+REASONING_EFFORTS: dict[str, frozenset[str]] = {
+    "openai": frozenset({"none", "minimal", "low", "medium", "high", "xhigh", "max"}),
+    "anthropic": frozenset({"low", "medium", "high", "xhigh", "max"}),
+    "google-gemini": frozenset({"minimal", "low", "medium", "high"}),
+    "openai-compatible": frozenset(),
+}
 
 _AUTHORIZATION_PATTERN = re.compile(
     r"(?i)(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)"
@@ -112,6 +121,10 @@ def _runtime_model(value: object) -> dict[str, object]:
     api_key = model.get("apiKey")
     if authentication == "api-key" and (not isinstance(api_key, str) or not api_key):
         raise ModelConfigurationError("Model API key is not configured")
+    effort = model.get("effort")
+    accepted = REASONING_EFFORTS[provider]
+    if effort is not None and (not isinstance(effort, str) or effort not in accepted):
+        raise ModelConfigurationError("The model provider does not take this reasoning effort")
     return {
         "provider": provider,
         "protocol": protocol,
@@ -119,6 +132,7 @@ def _runtime_model(value: object) -> dict[str, object]:
         "name": _required_text(model.get("model"), "model name"),
         "authentication": authentication,
         "api_key": api_key if isinstance(api_key, str) and api_key else "not-required",
+        "effort": effort,
     }
 
 
@@ -138,19 +152,40 @@ def _output_limit(value: object) -> int:
     return output_tokens
 
 
+def _call_timeout(value: object, fallback: float) -> float:
+    """The model call timeout in seconds `limits` sets, or `fallback` when it sets none."""
+
+    timeout = _mapping(value, "limits").get("timeoutSeconds")
+    if timeout is None:
+        return fallback
+    if (
+        not isinstance(timeout, int | float)
+        or isinstance(timeout, bool)
+        or not 0 < timeout <= MAX_TIMEOUT_SECONDS
+    ):
+        raise ModelConfigurationError("timeoutSeconds must be a bounded number of seconds")
+    return float(timeout)
+
+
 def create_chat_model(
     model: object,
     limits: object,
     *,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
 ) -> BaseChatModel:
-    """Build one LangChain chat model with retries disabled at the paid boundary."""
+    """Build one LangChain chat model with retries disabled at the paid boundary.
+
+    The model runs at the reasoning effort `model` sets, or at the provider's own default, and a
+    call may take the `timeoutSeconds` `limits` sets, or `timeout_seconds` when it sets none.
+    """
 
     runtime = _runtime_model(model)
     max_output_tokens = _output_limit(limits)
+    timeout_seconds = _call_timeout(limits, timeout_seconds)
     provider = runtime["provider"]
     api_key = SecretStr(str(runtime["api_key"]))
     name = str(runtime["name"])
+    effort = runtime["effort"]
 
     if provider in {"openai", "openai-compatible"}:
         from langchain_openai import ChatOpenAI
@@ -172,6 +207,8 @@ def create_chat_model(
             options["max_completion_tokens"] = max_output_tokens
         if provider == "openai":
             options["store"] = False
+        if effort is not None:
+            options["reasoning_effort"] = effort
         return ChatOpenAI(
             **options,
         )
@@ -185,6 +222,7 @@ def create_chat_model(
             max_tokens_to_sample=max_output_tokens,
             max_retries=0,
             timeout=timeout_seconds,
+            reasoning_effort=effort,
         )
     from langchain_google_genai import ChatGoogleGenerativeAI
 
@@ -194,6 +232,7 @@ def create_chat_model(
         max_tokens=max_output_tokens,
         retries=0,
         request_timeout=timeout_seconds,
+        thinking_level=effort,
     )
 
 

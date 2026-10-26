@@ -287,7 +287,8 @@ const execution = (signal = new AbortController().signal): HarnessExecution => (
     wiki: {} as WikiPaper,
   },
   signal,
-  limits: { maxOutputTokens: 6_000, maxModelCalls: 1 },
+  limits: { maxOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 120 },
+  requestTimeoutMs: 120_000,
 })
 
 const envelope = () => ({
@@ -522,6 +523,17 @@ describe('Paper Wiki run on a subscription CLI', () => {
       rmSync(folder, { recursive: true, force: true })
     }
   }, 15_000)
+
+  it('sends an API run\'s limits to Harness and gives up on its request after the run\'s own timeout', async () => {
+    const { child, runner } = paperWikiRunner(API_MODEL, vi.fn<CliRunner>())
+    const limits = { maxOutputTokens: 38_000, maxModelCalls: 1, timeoutSeconds: 600 }
+    const running = runner.run({ ...execution(), limits, requestTimeoutMs: 50 })
+    child.ready()
+
+    expect(await child.frame()).toMatchObject({ method: 'paper-wiki.propose', params: { limits } })
+    await expect(running).rejects.toThrow()
+    runner.close()
+  })
 
   it('offers no model call to a run on an API model', async () => {
     const cli = vi.fn<CliRunner>()

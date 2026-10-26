@@ -679,6 +679,8 @@ export const HarnessPlanSchema = z.object({
     cli: HarnessCliSchema.optional(),
     effort: HarnessEffortSchema.optional(),
   }).strict(),
+  /** The output cap of a run on an API model at a reasoning effort, raised by the reasoning it may spend; absent otherwise. */
+  outputLimit: z.number().int().positive().optional(),
   expiresAt: IsoTimestamp,
 }).strict()
 

@@ -1,8 +1,9 @@
 import { useEffect, useState } from 'react'
 import type {
-  HarnessCli, HarnessModelConnectionCheckResult, HarnessModelProfile, HarnessModelProtocol,
+  HarnessCli, HarnessModelConnectionCheckResult, HarnessModelEfforts, HarnessModelProfile, HarnessModelProtocol,
   HarnessModelProvider, HarnessModelSettings, HarnessSubscriptionStatus,
 } from '../../../shared/contract.js'
+import { HARNESS_API_EFFORTS } from '../../../shared/contract.js'
 import { harness } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { errorLabel, reasonLabel } from '../../lib/failure-label.js'
@@ -72,6 +73,7 @@ const SIGN_IN_COMMANDS: Record<HarnessCli, string> = { claude: 'claude auth logi
 /** The protocols an OpenAI-compatible service may speak, by their API names. */
 const COMPATIBLE_PROTOCOLS: readonly HarnessModelProtocol[] = ['responses', 'chat-completions']
 const AUTHENTICATIONS = ['api-key', 'none'] as const
+const NO_EFFORTS: HarnessModelEfforts = { levels: [] }
 
 /** Structural, language-neutral data for each template. Copy comes from the catalog by template id. */
 const COMPATIBLE_TEMPLATES: Record<Exclude<CompatibleTemplateId, 'choose' | 'custom'>, {
@@ -134,6 +136,29 @@ const profileFor = (
 
 type ConnectionCheckState = { state: 'idle' | 'testing' } | HarnessModelConnectionCheckResult
 
+/**
+ * The reasoning effort picker of a model: each level `efforts` lists, by its own name, where `''`
+ * stands for the provider's or CLI's own default. That is the default level `efforts` names, which
+ * carries the default mark, or else a default option before the levels.
+ */
+function EffortField({ value, efforts, onChange }: {
+  value: string
+  efforts: HarnessModelEfforts
+  onChange: (effort: string) => void
+}) {
+  const m = useMessages()
+  const named = efforts.default
+  return (
+    <ChoicePicker
+      appearance="field" aria-label={m.settings.model.fields.effortLabel} value={value} placeholder={value}
+      options={named === undefined ? ['', ...efforts.levels] : efforts.levels.map((level) => (level === named ? '' : level))}
+      onPick={onChange}
+      label={(option) => (option !== '' ? option : named ?? m.settings.model.fields.effortDefault)}
+      note={(option) => (option === '' && named !== undefined ? m.settings.model.fields.effortDefault : undefined)}
+    />
+  )
+}
+
 /** The model settings card; `onCopy` puts a command on the clipboard and resolves whether it did. */
 export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
   const m = useMessages()
@@ -142,11 +167,14 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
   const [protocol, setProtocol] = useState<HarnessModelProtocol>(PROVIDERS.openai.protocol)
   const [baseUrl, setBaseUrl] = useState(PROVIDERS.openai.baseUrl)
   const [model, setModel] = useState('')
+  // The reasoning effort the API tab shows, '' for the provider's own default.
+  const [effort, setEffort] = useState('')
   const [authentication, setAuthentication] = useState<'api-key' | 'none'>('api-key')
   const [tab, setTab] = useState<ModelTab>('api')
   // The subscription the subscription tab shows.
   const [cli, setCli] = useState<HarnessCli>('claude')
   const [cliModel, setCliModel] = useState('')
+  const [cliEffort, setCliEffort] = useState('')
   const [cliStatus, setCliStatus] = useState<HarnessSubscriptionStatus | null>(null)
   const [statusReads, setStatusReads] = useState(0)
   const [compatibleTemplate, setCompatibleTemplate] = useState<CompatibleTemplateId>('choose')
@@ -171,6 +199,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     setProtocol(profile.protocol)
     setBaseUrl(profile.baseUrl)
     setModel(profile.model)
+    setEffort(profile.effort ?? '')
     setAuthentication(profile.authentication)
     setCompatibleTemplate(profile.provider === 'openai-compatible'
       ? compatibleTemplateFor(profile.baseUrl, profile.protocol, profile.authentication)
@@ -184,6 +213,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     setProtocol(next.protocol)
     setBaseUrl(next.baseUrl)
     setModel(next.model)
+    setEffort(next.effort ?? '')
     setAuthentication(next.authentication)
     setCompatibleTemplate(next.provider === 'openai-compatible'
       ? compatibleTemplateFor(next.baseUrl, next.protocol, next.authentication)
@@ -192,6 +222,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     setTab(active === null ? 'api' : 'subscription')
     setCli(active ?? 'claude')
     setCliModel(next.subscription.models[active ?? 'claude'])
+    setCliEffort(next.subscription.efforts[active ?? 'claude'] ?? '')
   }), [load])
 
   useEffect(() => {
@@ -201,12 +232,24 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
 
   useEffect(() => {
     setConnectionCheck({ state: 'idle' })
-  }, [tab, provider, protocol, baseUrl, model, authentication, apiKey, clearApiKey, cli, cliModel])
+  }, [tab, provider, protocol, baseUrl, model, effort, authentication, apiKey, clearApiKey, cli, cliModel, cliEffort])
 
   const selectCli = (next: HarnessCli) => {
     if (next !== cli) setCliStatus(null)
     setCli(next)
     setCliModel(settings?.subscription.models[next] ?? '')
+    setCliEffort(settings?.subscription.efforts[next] ?? '')
+  }
+
+  /** The reasoning efforts CLI model `name` takes, as the CLI's status lists them. */
+  const cliEffortsOf = (name: string) => (cliStatus?.state === 'found'
+    ? cliStatus.efforts[name.trim()] ?? cliStatus.efforts[''] ?? NO_EFFORTS
+    : NO_EFFORTS)
+
+  const changeCliModel = (next: string) => {
+    setCliModel(next)
+    const efforts = cliEffortsOf(next)
+    if (!efforts.levels.includes(cliEffort) || cliEffort === efforts.default) setCliEffort('')
   }
 
   const selectProvider = (next: HarnessModelProvider) => {
@@ -221,6 +264,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     setBaseUrl(preset.baseUrl)
     setAuthentication(preset.authentication)
     setModel('')
+    setEffort('')
     setCompatibleTemplate('choose')
     resetCredentialDraft()
   }
@@ -266,12 +310,17 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
           provider, protocol, baseUrl, model, authentication,
           ...(apiKey.trim() === '' ? {} : { apiKey }),
           ...(clearApiKey ? { clearApiKey: true } : {}),
+          ...(effort === '' ? {} : { effort }),
         })
-        : await harness.updateSubscription({ cli, model: cliModel })
+        : await harness.updateSubscription({ cli, model: cliModel, ...(cliEffort === '' ? {} : { effort: cliEffort }) })
       setSaved(true)
       setSettings(next)
-      if (tab === 'api') showProfile(next)
-      else setCliModel(next.subscription.models[cli])
+      if (tab === 'api') {
+        showProfile(next)
+      } else {
+        setCliModel(next.subscription.models[cli])
+        setCliEffort(next.subscription.efforts[cli] ?? '')
+      }
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
       setSaveError(errorLabel(m, caught))
@@ -300,6 +349,8 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
 
   const selected = { ...PROVIDERS[provider], ...m.settings.model.providers[provider] }
   const subscriptionSaved = settings.subscription.active === cli && cliModel.trim() === settings.subscription.models[cli]
+    && cliEffort === (settings.subscription.efforts[cli] ?? '')
+  const apiEfforts = HARNESS_API_EFFORTS[provider]
   const selectedCompatibleTemplate = compatibleTemplate !== 'choose' && compatibleTemplate !== 'custom'
     ? { ...COMPATIBLE_TEMPLATES[compatibleTemplate], ...m.settings.model.templates[compatibleTemplate] }
     : null
@@ -310,11 +361,13 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     && protocol === savedProfile.protocol
     && authentication === savedProfile.authentication
     && model === savedProfile.model
+    && effort === (savedProfile.effort ?? '')
   const showingSavedApiKey = savedKeyAvailable && !editingApiKey && !clearApiKey
   const activeSelection = provider === settings.provider
     && protocol === settings.protocol
     && normalizeBaseUrl(baseUrl) === normalizeBaseUrl(settings.baseUrl)
     && model === settings.model
+    && effort === (settings.effort ?? '')
     && authentication === settings.authentication
   const canTestConnection = tab === 'subscription'
     ? subscriptionSaved
@@ -368,8 +421,13 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
         <FieldRow label={m.settings.model.fields.modelIdLabel}>
           {statusFailure === null && cliStatus === null ? <LoadingPlaceholder shape="ring" holds="field" /> : (
             <SubscriptionModelField
-              value={cliModel} models={cliStatus?.state === 'found' ? cliStatus.models : []} onChange={setCliModel}
+              value={cliModel} models={cliStatus?.state === 'found' ? cliStatus.models : []} onChange={changeCliModel}
             />
+          )}
+        </FieldRow>
+        <FieldRow label={m.settings.model.fields.effortLabel}>
+          {statusFailure === null && cliStatus === null ? <LoadingPlaceholder shape="ring" holds="field" /> : (
+            <EffortField value={cliEffort} efforts={cliEffortsOf(cliModel)} onChange={setCliEffort} />
           )}
         </FieldRow>
       </FieldRows>
@@ -442,6 +500,11 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
             <FormInput appearance="field" aria-label={m.settings.model.fields.modelIdAria} value={model}
               placeholder={m.settings.model.fields.modelIdLabel} onChange={(event) => setModel(event.target.value)} />
           </FieldRow>
+          {apiEfforts.length === 0 ? null : (
+            <FieldRow label={m.settings.model.fields.effortLabel}>
+              <EffortField value={effort} efforts={{ levels: [...apiEfforts] }} onChange={setEffort} />
+            </FieldRow>
+          )}
           {authentication === 'api-key' ? (
             <FieldRow label={m.settings.model.fields.apiKeyLabel}>
               {showingSavedApiKey ? (
@@ -525,6 +588,9 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
       )}
       {settings.subscription.error === undefined ? null : (
         <ServiceError>{reasonLabel(m, settings.subscription.error)}</ServiceError>
+      )}
+      {settings.effortError === undefined ? null : (
+        <ServiceError>{reasonLabel(m, settings.effortError)}</ServiceError>
       )}
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>

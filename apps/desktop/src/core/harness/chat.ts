@@ -13,12 +13,14 @@ import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
 import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { CliUsage } from './cli/runner.js'
+import { apiRunLimits } from './cost-gate.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { citablePages } from './paper-wiki.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
 
 const MAX_MODEL_CONNECTION_DETAIL = 500
+const MAX_ANSWER_TOKENS = 2_000
 const MODEL_CONNECTION_REDACTIONS = [
   /(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)[^\s,'"}\]]+/gi,
   /(\b(?:api[-_ ]?key|x-api-key|access[-_ ]?token|secret)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)[^\s,'"}\]]+/gi,
@@ -416,14 +418,15 @@ export function createChatHarnessRunner(options: {
         const turn = 'source' in model
           ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }, progress)
           : null
+        const { maxOutputTokens, timeoutSeconds, requestTimeoutMs } = apiRunLimits('source' in model ? undefined : model.effort, MAX_ANSWER_TOKENS)
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,
           model,
-          limits: { maxOutputTokens: 2_000, maxModelCalls: 1 },
+          limits: { maxOutputTokens, maxModelCalls: 1, timeoutSeconds },
         }, {
           signal,
-          ...(turn === null ? {} : {
+          ...(turn === null ? { timeoutMs: requestTimeoutMs } : {
             timeoutMs: CLI_REQUEST_TIMEOUT_MS,
             callbacks: { 'model.invoke': turn.call },
           }),

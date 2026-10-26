@@ -196,6 +196,8 @@ export const settings = {
       modelIdAria: 'Model name',
       apiKeyLabel: 'API key',
       apiKeyAria: 'Model API key',
+      effortLabel: 'Reasoning effort',
+      effortDefault: 'Default',
     },
     configured: 'Configured',
     notConfigured: 'Not configured',

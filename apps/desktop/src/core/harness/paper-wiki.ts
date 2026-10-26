@@ -477,7 +477,7 @@ export function createPaperWikiHarnessRunner(options: {
           callbacks: {
             'model.invoke': modelCall(model, AbortSignal.any([execution.signal, ended.signal]), (cause) => { failure = cause }),
           },
-        } : {}),
+        } : { timeoutMs: execution.requestTimeoutMs }),
       }))
     } catch (cause) {
       throw failure === undefined

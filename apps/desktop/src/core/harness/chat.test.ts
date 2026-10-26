@@ -543,6 +543,25 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
+  it.each([
+    ['at the provider\'s own default', undefined, { maxOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 120 }],
+    ['at the high effort', 'high', { maxOutputTokens: 34_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+  ])('sends a turn on an API model %s the output cap and timeout its effort gives', async (_, effort, limits) => {
+    const model: HarnessRuntimeModel = {
+      provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5',
+      authentication: 'api-key', apiKey: 'sk-ant-test', ...(effort === undefined ? {} : { effort }),
+    }
+    const { child, runner, chat, close } = chatRunner(model, vi.fn<CliChatRunner>())
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Because.' } })
+
+    await expect(answering).resolves.toBe('Because.')
+    expect(request).toMatchObject({ method: 'chat.answer', params: { limits } })
+    close()
+  })
+
   it('offers no model call to a chat on an API model', async () => {
     const cli = vi.fn<CliChatRunner>()
     const { child, runner, chat, close } = chatRunner({

@@ -1,3 +1,4 @@
+import { formatNumber } from '../../lib/number.js'
 import { pluralEn } from '../../lib/plural.js'
 import { wiki as zh } from '../zh/wiki.js'
 
@@ -235,6 +236,7 @@ export const wiki = {
     modelLabel: 'Model',
     outputLimitLabel: 'Output limit',
     noOutputLimit: 'No limit',
+    outputTokens: (count: number) => `${formatNumber('en', count)} tokens`,
   },
   claims: {
     heading: 'Findings',

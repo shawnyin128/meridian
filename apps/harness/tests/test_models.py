@@ -64,6 +64,97 @@ class ModelFactoryTests(unittest.TestCase):
         self.assertEqual(chat_completions.extra_body, {"max_tokens": 6000})
         self.assertIsNone(chat_completions.max_tokens)
 
+    def test_builds_each_provider_model_at_the_effort_its_integration_takes(self) -> None:
+        openai = create_chat_model({**_model("openai"), "effort": "xhigh"}, _limits())
+        anthropic = create_chat_model(
+            {**_model("anthropic", "https://api.anthropic.com", "messages"), "effort": "max"},
+            _limits(),
+        )
+        gemini = create_chat_model(
+            {
+                **_model(
+                    "google-gemini",
+                    "https://generativelanguage.googleapis.com/v1beta",
+                    "generate-content",
+                ),
+                "effort": "minimal",
+            },
+            _limits(),
+        )
+
+        self.assertIsInstance(openai, ChatOpenAI)
+        self.assertEqual(openai._get_request_payload("hi")["reasoning"], {"effort": "xhigh"})
+        self.assertIsInstance(anthropic, ChatAnthropic)
+        self.assertEqual(anthropic._get_request_payload("hi")["output_config"], {"effort": "max"})
+        self.assertIsInstance(gemini, ChatGoogleGenerativeAI)
+        self.assertEqual(gemini.thinking_level, "minimal")
+
+    def test_builds_each_provider_model_at_its_own_default_effort_without_one(self) -> None:
+        openai = create_chat_model(_model("openai"), _limits())
+        anthropic = create_chat_model(
+            _model("anthropic", "https://api.anthropic.com", "messages"), _limits()
+        )
+        gemini = create_chat_model(
+            _model(
+                "google-gemini",
+                "https://generativelanguage.googleapis.com/v1beta",
+                "generate-content",
+            ),
+            _limits(),
+        )
+
+        self.assertNotIn("reasoning", openai._get_request_payload("hi"))
+        self.assertNotIn("output_config", anthropic._get_request_payload("hi"))
+        self.assertIsNone(gemini.thinking_level)
+
+    def test_rejects_an_effort_its_provider_does_not_take_before_constructing_a_model(self) -> None:
+        for provider, base_url, protocol, effort in (
+            ("openai", "https://api.openai.com/v1", "responses", "ultra"),
+            ("anthropic", "https://api.anthropic.com", "messages", "none"),
+            (
+                "google-gemini",
+                "https://generativelanguage.googleapis.com/v1beta",
+                "generate-content",
+                "xhigh",
+            ),
+            ("openai-compatible", "https://api.example.test", "chat-completions", "low"),
+            ("openai", "https://api.openai.com/v1", "responses", 3),
+            ("openai", "https://api.openai.com/v1", "responses", ["high"]),
+        ):
+            with self.subTest(provider=provider, effort=effort), self.assertRaisesRegex(
+                ModelConfigurationError, "reasoning effort"
+            ):
+                create_chat_model(
+                    {**_model(provider, base_url, protocol), "effort": effort}, _limits()
+                )
+
+    def test_gives_each_provider_model_the_call_timeout_core_sets(self) -> None:
+        limits = {**_limits(), "timeoutSeconds": 600}
+        openai = create_chat_model(_model("openai"), limits)
+        anthropic = create_chat_model(
+            _model("anthropic", "https://api.anthropic.com", "messages"), limits
+        )
+        gemini = create_chat_model(
+            _model(
+                "google-gemini",
+                "https://generativelanguage.googleapis.com/v1beta",
+                "generate-content",
+            ),
+            limits,
+        )
+
+        self.assertEqual(openai.request_timeout, 600)
+        self.assertEqual(anthropic.default_request_timeout, 600)
+        self.assertEqual(gemini.timeout, 600)
+        self.assertEqual(create_chat_model(_model("openai"), _limits()).request_timeout, 120)
+
+    def test_rejects_a_call_timeout_that_is_not_a_bounded_number_of_seconds(self) -> None:
+        for timeout in (0, -1, 901, True, "600"):
+            with self.subTest(timeout=timeout), self.assertRaisesRegex(
+                ModelConfigurationError, "timeoutSeconds"
+            ):
+                create_chat_model(_model("openai"), {**_limits(), "timeoutSeconds": timeout})
+
     def test_rejects_unknown_provider_before_constructing_a_model(self) -> None:
         with self.assertRaises(ModelConfigurationError):
             create_chat_model(_model("unknown"), _limits())
