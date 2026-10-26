@@ -2,7 +2,8 @@
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "lib": ["ES2023", "DOM"],
-    "types": ["node"]
+    "types": ["node"],
+    "jsx": "react-jsx"
   },
-  "include": ["src/shared/call-boundary.test.ts", "src/shared/chat-status-lines.test.ts", "src/renderer/meridian.d.ts"]
+  "include": ["src/shared/call-boundary.test.ts", "src/shared/chat-status-lines.test.ts", "src/shared/chat-sent-turn.test.tsx", "src/renderer/*.d.ts"]
 }
