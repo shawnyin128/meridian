@@ -107,6 +107,9 @@ let bumps: number
 let crumbTail: { text: string }[]
 /** The screens the back control returned to, in order. */
 let returnedTo: string[]
+/** Whether a Semantic Scholar key is saved, and how many times papers.fillPublication was called. */
+let semanticKeySaved: boolean
+let publicationFills: number
 
 vi.mock('../ipc.js', () => ({
   papers: {
@@ -158,7 +161,9 @@ vi.mock('../ipc.js', () => ({
       setColumnTypeCalls.push({ ...c, key, type })
       return c.promise.then(() => ({ change: 'change-type' }))
     },
+    fillPublication: () => { publicationFills += 1; return Promise.resolve({ updated: 2 }) },
   },
+  delivery: { semanticKey: () => Promise.resolve(semanticKeySaved ? { configured: true, lastFour: 'abcd' } : { configured: false }) },
   changelog: { undo: (id: string) => { undone.push(id); return Promise.resolve() } },
   project: {
     list: () => Promise.resolve([]),
@@ -175,6 +180,7 @@ vi.mock('../shell/AppShell.js', () => ({
     jump: jumpHere,
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
     returnTo: (screen: string) => { returnedTo.push(screen) },
+    enter: (screen: string) => { openedScreens.push([screen]) },
   }),
   useScreenEntry: () => 0,
   usePaperCount: () => vaultPaperCount,
@@ -362,6 +368,32 @@ describe('PaperTable', () => {
     bumps = 0
     crumbTail = []
     returnedTo = []
+    semanticKeySaved = false
+    publicationFills = 0
+  })
+
+  it('存了 Semantic Scholar key 时，屏头的更多菜单里有补全发表信息，点了查完提示改了几篇；没存 key 时屏头没有这个菜单', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    expect(host.querySelector('.desk-head .dots')).toBeNull()
+
+    act(() => mountedRoot!.unmount())
+    semanticKeySaved = true
+    const keyed = mount()
+    await flush()
+    await act(async () => {
+      keyed.querySelector('.desk-head .dots')!.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 }))
+    })
+    const items = [...document.querySelectorAll<HTMLElement>('[role="menu"] [role="menuitem"]')]
+    expect(items.map((item) => item.textContent)).toEqual(['补全发表信息'])
+    await act(async () => { items[0]!.click() })
+    await flush()
+    expect(publicationFills).toBe(1)
+    expect(successes.at(-1)![0]).toBe('补全了 2 篇的发表信息')
+    await act(async () => { successes.at(-1)![1]!.onAction() })
+    expect(openedScreens.at(-1)).toEqual(['changelog'])
   })
 
   it('从别的屏点链接打开一篇的详情时屏头左端有返回,按它回到来的那一屏;从论文屏自己的搜索打开时没有', async () => {

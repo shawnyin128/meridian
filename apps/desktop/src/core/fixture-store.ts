@@ -30,7 +30,7 @@ import type { ChangeRecord } from './changelog.js'
 import { lastProgressOf, PROJECT_FIELDS, withChangelog } from './changelog.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
-  emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, missingMetadata,
+  emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, missingMetadata, publicationFill,
   paperImportResult, parsePaperUpload, patchedCustom, readingNoteCount, remoteMetadata, renamedCell,
   renamedOptions, restoredColumn, retypedColumn,
 } from './paper-library/index.js'
@@ -46,6 +46,7 @@ import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
 } from './inbox/identity.js'
 import type { RemotePaper } from './net/arxiv.js'
+import type { Publication } from './net/semantic-metadata.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, recommendationSeedIds,
@@ -682,6 +683,16 @@ export function createFixtureStore(
     return paperImportResult('added', paper)
   }
 
+  /** The bibliographic fields the App last filled into each paper, with the values it wrote, by paper id. */
+  const fills = new Map<string, Record<string, unknown>>()
+
+  /** What fillPaperPublication writes onto paper `id` for `publication`. Throws if there is no such paper. */
+  const publicationFillOf = (id: string, publication: Publication): MetadataFill => {
+    const paper = byId.get(id)
+    if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
+    return publicationFill(paper, fills.get(id), publication)
+  }
+
   /** Fills only missing bibliographic fields and updates queued copies of the same source. */
   const fillPaper = (id: string, fill: MetadataFill, replaceTitle: string | null): string[] => {
     const paper = byId.get(id)
@@ -691,6 +702,7 @@ export function createFixtureStore(
     if (written.length === 0) return []
     const filled: PaperRow = { ...paper, ...write, updated: today() }
     byId.set(id, filled)
+    fills.set(id, { ...fills.get(id), ...write })
     const source = sourceOf.get(id)
     later = later.map((entry) => (entry.paper === source
       ? laterWithMetadata(entry, filled, write.title !== undefined)
@@ -853,6 +865,16 @@ export function createFixtureStore(
     importPaper: storeUpload,
 
     fillPaperMetadata: fillPaper,
+
+    fillPaperPublication(id, publication) {
+      const write = publicationFillOf(id, publication)
+      if (Object.keys(write).length === 0) return []
+      byId.set(id, { ...byId.get(id)!, ...write, updated: today() })
+      fills.set(id, { ...fills.get(id), ...write })
+      return Object.keys(write)
+    },
+
+    publicationFillOf,
 
     paperReading(id) {
       if (!byId.has(id)) throw new CallError('not-found', `论文不存在：${id}`)

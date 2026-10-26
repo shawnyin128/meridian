@@ -14,7 +14,7 @@ import type {
   HarnessPaperWikiRejectionFeedback, HarnessPendingPaperWikiResult, HarnessPlan,
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
-  MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
+  MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow, PublicationFillResult,
   Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation,
   OptionalRecordedChange, ReadingRecordedChange, RecordedChange,
   ResearchIdea,
@@ -153,6 +153,8 @@ export const papers = {
   import: (filename: string, bytes: Uint8Array) =>
     call<PaperImportResult>('papers.import', { filename, bytes }),
   /** Parses the metadata of an upload whose lookup failed again; progress shows in jobs.status. */
+  /** Fills the papers' publication venue and year from Semantic Scholar; how many papers changed. */
+  fillPublication: () => call<PublicationFillResult>('papers.fillPublication', {}),
   retryMetadata: (id: string) => call<void>('papers.retryMetadata', { id }),
   reading: (id: string) => call<PaperReading>('papers.reading', { id }),
   mutateReading: (id: string, mutation: ReadingMutation) =>

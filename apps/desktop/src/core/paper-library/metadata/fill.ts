@@ -1,7 +1,11 @@
 import type { PaperRow } from '../../../shared/contract.js'
 import type { RemotePaper } from '../../net/arxiv.js'
+import type { Publication } from '../../net/semantic-metadata.js'
 import type { MetadataFill } from '../../vault.js'
 import type { LaterRecord } from '../../vault/records.js'
+
+/** The venue the arXiv fill writes for a paper arXiv knows no publication of. */
+export const ARXIV_VENUE = 'arXiv'
 
 /** Returns only metadata fields that are still absent from `paper`. */
 export function missingMetadata(paper: PaperRow, fill: MetadataFill, replaceTitle: string | null): MetadataFill {
@@ -34,9 +38,32 @@ export function remoteMetadata(paper: Omit<RemotePaper, 'pdf'>): MetadataFill {
     title: paper.title,
     authors: paper.authors,
     year: Number(paper.submitted.slice(0, 4)),
-    venue: paper.journalRef ?? 'arXiv',
+    venue: paper.journalRef ?? ARXIV_VENUE,
     identifier: `arXiv:${paper.id}`,
     submitted: paper.submitted,
     abstract: paper.abstract,
+  }
+}
+
+/**
+ * Returns the venue and year of `found` that may replace those of `paper`, given `filled`, the values
+ * the App last filled into its fields (undefined for a paper filled before the App recorded them).
+ * The venue may be replaced while it is empty, `arXiv`, or the value the App filled; any other value
+ * is the user's, and then neither field changes. The year may be replaced with it while it is absent
+ * or the value the App filled, or, with no record of it, the year the paper was first submitted.
+ * Fields that would not change are left out.
+ */
+export function publicationFill(
+  paper: Pick<PaperRow, 'venue' | 'year' | 'submitted'>,
+  filled: Record<string, unknown> | undefined,
+  found: Publication,
+): MetadataFill {
+  const venueFilled = paper.venue === '' || paper.venue === ARXIV_VENUE || filled?.['venue'] === paper.venue
+  if (!venueFilled) return {}
+  const yearFilled = paper.year === undefined || filled?.['year'] === paper.year
+    || (filled?.['year'] === undefined && paper.year === Number(paper.submitted?.slice(0, 4)))
+  return {
+    ...(found.year !== undefined && yearFilled && found.year !== paper.year ? { year: found.year } : {}),
+    ...(found.venue !== paper.venue ? { venue: found.venue } : {}),
   }
 }

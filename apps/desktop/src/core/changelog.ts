@@ -832,6 +832,11 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       return wrote({ kind: 'paper', id }, '删掉', 'trash', () => ops.deletePaper(id))
     },
 
+    refreshPaperPublication(id, publication) {
+      if (Object.keys(ops.publicationFillOf(id, publication)).length === 0) return []
+      return wrote({ kind: 'paper', id }, '补全了发表信息', 'snapshot', () => ops.fillPaperPublication(id, publication))
+    },
+
     mutatePaperReading(id, mutation) {
       const change = readingChange(id, mutation)
       return change === undefined

@@ -25,7 +25,7 @@ import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
   emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, liveColumns,
-  missingMetadata, paperImportResult, parsePaperUpload, patchedCustom, readingNoteCount,
+  missingMetadata, paperImportResult, parsePaperUpload, patchedCustom, publicationFill, readingNoteCount,
   remoteMetadata, renamedCell, renamedOptions, restoredColumn, retypedColumn, writePaperFields,
   type PaperWrite,
 } from './paper-library/index.js'
@@ -48,6 +48,7 @@ import {
   type DiscoveryPaper, type DiscoveryPreferences, type RefreshScope,
 } from './recommendation/index.js'
 import type { RemotePaper } from './net/arxiv.js'
+import type { Publication } from './net/semantic-metadata.js'
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
@@ -55,7 +56,7 @@ import type {
 } from './vault/records.js'
 import {
   ChatRecordSchema, DeliveredRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
-  PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
+  MetadataFillRecordSchema, PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import {
@@ -456,6 +457,7 @@ export function createVaultStore(
   let trash = load('trash', TrashRecordSchema)
   let delivered = load('discovery/delivered', DeliveredRecordSchema)
   let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
+  let fills = load('metadata-fills', MetadataFillRecordSchema, 'paper')
   let progress: RefreshProgressRecord[] = load('discovery/progress', RefreshProgressRecordSchema)
 
   /** The identity of the paper a stored inbox entry delivers. */
@@ -888,7 +890,7 @@ export function createVaultStore(
    */
   const atomically = <T>(write: () => T): T => {
     if (syncing !== undefined) return write()
-    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, proposals, changes }
+    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, fills, proposals, changes }
     const indexes = [papers, pagesOf, projectById].map((index: Map<string, unknown>) => ({ index, was: new Map(index) }))
     const synced = new Set<string>()
     syncing = synced
@@ -896,7 +898,7 @@ export function createVaultStore(
     try {
       result = writeAtomically(staging, write)
     } catch (error) {
-      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, proposals, changes } = held)
+      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, fills, proposals, changes } = held)
       for (const { index, was } of indexes) {
         index.clear()
         for (const [key, value] of was) index.set(key, value)
@@ -1177,6 +1179,22 @@ export function createVaultStore(
   }
 
   /** Fills only missing bibliographic fields and updates queued copies of the same source. */
+  /** Records the fields `fill` names as the values the App last filled into paper `id`. */
+  const recordFill = (id: string, fill: MetadataFill): void => {
+    const held = fills.find((record) => record.paper === id)
+    const fields = { ...held?.fields, ...fill }
+    fills = save('metadata-fills', held === undefined
+      ? [...fills, { paper: id, fields }]
+      : fills.map((record) => (record === held ? { ...record, fields } : record)))
+  }
+
+  /** What fillPaperPublication writes onto paper `id` for `publication`. Throws if there is no such paper. */
+  const publicationFillOf = (id: string, publication: Publication): MetadataFill => {
+    const paper = papers.get(id)
+    if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
+    return publicationFill(paper, fills.find((record) => record.paper === id)?.fields, publication)
+  }
+
   const fillPaper = (id: string, fill: MetadataFill, replaceTitle: string | null): string[] => {
     const paper = papers.get(id)
     if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
@@ -1184,6 +1202,7 @@ export function createVaultStore(
     const written = Object.keys(write)
     if (written.length === 0) return []
     writePaper(id, { ...write, updated: today() })
+    recordFill(id, write)
     const filled = papers.get(id)!
     const source = sourceOf(id)
     later = save('later', later.map((entry) => (entry.paper === source
@@ -1421,6 +1440,16 @@ export function createVaultStore(
     importPaper: atomic(storeUpload),
 
     fillPaperMetadata: atomic(fillPaper),
+
+    fillPaperPublication: atomic((id, publication) => {
+      const write = publicationFillOf(id, publication)
+      if (Object.keys(write).length === 0) return []
+      writePaper(id, { ...write, updated: today() })
+      recordFill(id, write)
+      return Object.keys(write)
+    }),
+
+    publicationFillOf,
 
     paperReading(id) {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)

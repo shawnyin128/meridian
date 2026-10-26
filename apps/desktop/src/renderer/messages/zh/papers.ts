@@ -75,6 +75,11 @@ export const papers = {
     optionRenamed: '已重命名选项',
     columnTypeChanged: '已改列类型',
   },
+  publication: {
+    fill: '补全发表信息',
+    filled: (count: number) => `补全了 ${count} 篇的发表信息`,
+    none: '没有查到新的发表信息',
+  },
   upload: {
     tooLarge: 'PDF 不能大于 100 MB',
     alreadyInLibrary: '这份 PDF 已在论文库中',
