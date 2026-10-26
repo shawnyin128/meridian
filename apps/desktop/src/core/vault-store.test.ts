@@ -350,12 +350,12 @@ describe('vault store', () => {
     expect(reopened.paperReading(added.id).notes[0]?.text).toBe('第一条笔记')
   })
 
-  it('论文行带上记着它的项目,按项目名能筛能分组,结论数加上引它的项目结论', () => {
+  it('论文行带上记着它的项目,按项目名能筛能分组,结论数加上引它的项目结论', async () => {
     const before = store.getPaper(WITH_SOURCE).conclusionCount
     store.createProject('项目甲')
     const id = store.listProjects().find((project) => project.name === '项目甲')!.id
-    store.addPaper(id, WITH_SOURCE)
-    store.createConclusion(id, '引了这一篇', { paper: WITH_SOURCE })
+    await store.addPaper(id, WITH_SOURCE)
+    await store.createConclusion(id, '引了这一篇', { paper: WITH_SOURCE })
     expect(store.getPaper(WITH_SOURCE).projects).toEqual([{ id, name: '项目甲' }])
     expect(store.getPaper(WITH_SOURCE).conclusionCount).toBe(before + 1)
     expect(store.listPapers({ page: 1, size: 5, filter: '项目甲' }).rows.map((paper) => paper.id))
@@ -365,15 +365,15 @@ describe('vault store', () => {
     expect(store.listPapers({
       page: 1, size: 5, facet: { field: 'projects', value: '项目甲' },
     }).total).toBe(1)
-    store.updateProject(id, { name: '项目乙' })
+    await store.updateProject(id, { name: '项目乙' })
     expect(store.getPaper(WITH_SOURCE).projects).toEqual([{ id, name: '项目乙' }])
   })
 
-  it('项目发现档案从关联论文取种子,结果与反馈重开后仍保留', () => {
+  it('项目发现档案从关联论文取种子,结果与反馈重开后仍保留', async () => {
     store.updatePaper(WITH_SOURCE, { identifier: 'arXiv:2211.17192' })
     store.createProject('发现项目')
     const projectId = store.listProjects().find((project) => project.name === '发现项目')!.id
-    store.addPaper(projectId, WITH_SOURCE)
+    await store.addPaper(projectId, WITH_SOURCE)
     expect(store.listDiscoveryProfiles()).toContainEqual({
       id: projectId, name: '发现项目', seedCount: 1, positiveCount: 0, negativeCount: 0,
       intentCount: 1, lastFetchedAt: null,
@@ -401,14 +401,14 @@ describe('vault store', () => {
       .toEqual(['ARXIV:2211.17192', 'semantic-new'])
   })
 
-  it('项目发现的锚点带上项目的每一个领域,没有领域时不带新项目的默认值', () => {
+  it('项目发现的锚点带上项目的每一个领域,没有领域时不带新项目的默认值', async () => {
     const id = store.createProject('发现锚点')
     expect(store.discoveryProfile(id).anchorText).not.toContain(DEFAULT_PROJECT_TOPIC)
-    store.updateProject(id, { topics: ['KV cache', '低比特量化'] })
+    await store.updateProject(id, { topics: ['KV cache', '低比特量化'] })
     expect(store.discoveryProfile(id).anchorText).toMatch(/KV cache · 低比特量化/)
   })
 
-  it('推荐方向的核心与启停偏好重开后仍保留,且不写入 Wiki 页面', () => {
+  it('推荐方向的核心与启停偏好重开后仍保留,且不写入 Wiki 页面', async () => {
     store.updatePaper(WITH_SOURCE, { identifier: 'arXiv:2211.17192' })
     const imported = store.importPaper(
       'second.pdf', minimalPdf({ lines: ['Unrelated Graph Retrieval'] }),
@@ -419,8 +419,8 @@ describe('vault store', () => {
     }, imported.title)
     store.createProject('方向偏好')
     const projectId = store.listProjects().find((project) => project.name === '方向偏好')!.id
-    store.addPaper(projectId, WITH_SOURCE)
-    store.addPaper(projectId, imported.id)
+    await store.addPaper(projectId, WITH_SOURCE)
+    await store.addPaper(projectId, imported.id)
     const projectPage = join(vault, 'wiki', 'projects', `${projectId}.md`)
     const beforeWiki = readFileSync(projectPage, 'utf8')
     const before = store.listDiscoveryProfiles().find((profile) => profile.id === projectId)!
@@ -438,45 +438,45 @@ describe('vault store', () => {
     expect(readFileSync(projectPage, 'utf8')).toBe(beforeWiki)
   })
 
-  it('阻塞:写上就在页上多一行,清掉就把那一行去掉,撤销放回原样', () => {
+  it('阻塞:写上就在页上多一行,清掉就把那一行去掉,撤销放回原样', async () => {
     store.createProject('阻塞')
     const id = store.listProjects().find((project) => project.name === '阻塞')!.id
     const file = join(vault, 'wiki', 'projects', `${id}.md`)
     const before = readFileSync(file, 'utf8')
-    expect(store.updateProject(id, { block: '等 A100 机时' }).block).toBe('等 A100 机时')
+    expect((await store.updateProject(id, { block: '等 A100 机时' })).block).toBe('等 A100 机时')
     expect(readFileSync(file, 'utf8')).toMatch(/^block: "等 A100 机时"$/m)
     expect(store.listProjects().find((project) => project.id === id)!.block).toBe('等 A100 机时')
-    const cleared = store.updateProject(id, { block: null })
+    const cleared = await store.updateProject(id, { block: null })
     expect('block' in cleared).toBe(false)
     expect(readFileSync(file, 'utf8')).toBe(before)
     store.undoChange(store.listChanges()[0]!.id)
-    expect(createVaultStore(vault).getProject(id).block).toBe('等 A100 机时')
+    expect((await createVaultStore(vault).getProject(id)).block).toBe('等 A100 机时')
   })
 
-  it('随笔里有 #、## 或 ### 开头的行:存下、重开都是整段随笔,撤销后页上只剩改之前那段', () => {
+  it('随笔里有 #、## 或 ### 开头的行:存下、重开都是整段随笔,撤销后页上只剩改之前那段', async () => {
     store.createProject('随笔小标题')
     const id = store.listProjects().find((project) => project.name === '随笔小标题')!.id
     const file = join(vault, 'wiki', 'projects', `${id}.md`)
-    store.updateProject(id, { memo: '改之前的想法' })
+    await store.updateProject(id, { memo: '改之前的想法' })
     const before = readFileSync(file, 'utf8')
     const memo = '## 小结\n\n小结下面的话\n\n# 一级标题\n### 三级标题'
-    store.updateProject(id, { memo })
-    expect(createVaultStore(vault).getProject(id).memo).toBe(memo)
+    await store.updateProject(id, { memo })
+    expect((await createVaultStore(vault).getProject(id)).memo).toBe(memo)
     store.undoChange(store.listChanges()[0]!.id)
-    expect(createVaultStore(vault).getProject(id).memo).toBe('改之前的想法')
+    expect((await createVaultStore(vault).getProject(id)).memo).toBe('改之前的想法')
     expect(readFileSync(file, 'utf8')).toBe(before)
   })
 
-  it('领域:给几个时页上 topic 是第一个、topics 是全部,清空回到新项目的默认值;重开库读出来一样', () => {
+  it('领域:给几个时页上 topic 是第一个、topics 是全部,清空回到新项目的默认值;重开库读出来一样', async () => {
     const id = store.createProject('领域')
     const file = join(vault, 'wiki', 'projects', `${id}.md`)
     const before = readFileSync(file, 'utf8')
-    expect(store.updateProject(id, { topics: ['KV cache', '量化'] })).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
+    expect(await store.updateProject(id, { topics: ['KV cache', '量化'] })).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
     expect(readFileSync(file, 'utf8')).toMatch(/^topic: "KV cache"\n[^]*^topics:\n {2}- "KV cache"\n {2}- "量化"\n/m)
-    expect(createVaultStore(vault).getProject(id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
+    expect(await createVaultStore(vault).getProject(id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
     expect(store.listProjects().find((project) => project.id === id)).toMatchObject({ topics: ['KV cache', '量化'] })
     expect(store.overviewProjects().find((project) => project.id === id)).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
-    const cleared = store.updateProject(id, { topics: [] })
+    const cleared = await store.updateProject(id, { topics: [] })
     expect(cleared.topic).toBe(DEFAULT_PROJECT_TOPIC)
     expect('topics' in cleared).toBe(false)
     expect(readFileSync(file, 'utf8')).toBe(before)
@@ -1111,12 +1111,12 @@ describe('vault store', () => {
     expect(reopened.getPaper(WITH_SOURCE).custom).toEqual({ note: '手写的一段' })
   })
 
-  it('项目页手改得科研图的边指向不存在的节点:撤销对它的改动报出这个原因,不当项目已经不在', () => {
+  it('项目页手改得科研图的边指向不存在的节点:撤销对它的改动报出这个原因,不当项目已经不在', async () => {
     store.createProject('图')
     const id = store.listProjects().find((p) => p.name === '图')!.id
-    const from = store.createNode(id, '甲', null).graph.nodes.at(-1)!.id
-    const to = store.createNode(id, '乙', from).graph.nodes.at(-1)!.id
-    store.updateProject(id, { focus: '改过的焦点' })
+    const from = (await store.createNode(id, '甲', null)).graph.nodes.at(-1)!.id
+    const to = (await store.createNode(id, '乙', from)).graph.nodes.at(-1)!.id
+    await store.updateProject(id, { focus: '改过的焦点' })
     const file = join(vault, 'wiki', 'projects', `${id}.md`)
     writeFileSync(file, readFileSync(file, 'utf8').replace(`to: "${to}"`, 'to: "gone"'))
     const reopened = createVaultStore(vault)
@@ -1125,13 +1125,13 @@ describe('vault store', () => {
       .toThrow(`科研图的边指向不存在的节点：${from} → gone`)
   })
 
-  it('删掉的项目撤销删除之后原样回来', () => {
+  it('删掉的项目撤销删除之后原样回来', async () => {
     store.createProject('要删的项目')
     const id = store.listProjects().find((p) => p.name === '要删的项目')!.id
-    const before = store.getProject(id)
+    const before = await store.getProject(id)
     store.deleteProject(id)
     store.undoChange(store.listChanges()[0]!.id)
-    expect(store.getProject(id)).toEqual(before)
+    expect(await store.getProject(id)).toEqual(before)
   })
 
   it('一列删掉之后,这一篇别的格子照样改得动,那一列留下的值原样待在页上', () => {
@@ -1452,11 +1452,11 @@ describe('vault store on the aggregation layout', () => {
     expect(store.wikiCards().map((c) => c.id)).toEqual(fixture.wikiCards().map((c) => c.id))
   })
 
-  it('项目的论文数只数库里还在的那几篇,标题取完整标题', () => {
+  it('项目的论文数只数库里还在的那几篇,标题取完整标题', async () => {
     store.createProject('论文数')
     const id = store.listProjects().find((p) => p.name === '论文数')!.id
-    store.putProject({ ...store.getProject(id), papers: ['2404.00456', 'no-such-paper'] })
-    const detail = store.getProject(id)
+    await store.putProject({ ...await store.getProject(id), papers: ['2404.00456', 'no-such-paper'] })
+    const detail = await store.getProject(id)
     expect(detail.papers).toEqual(['2404.00456', 'no-such-paper'])
     expect(detail.paperTitles).toEqual({ '2404.00456': store.getPaper('2404.00456').title })
     expect(detail.paperTitles['2404.00456']).toMatch(/^QuaRot: /)
@@ -1465,30 +1465,30 @@ describe('vault store on the aggregation layout', () => {
     const page = readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')
     expect(page).toContain('papers:\n  - "2404.00456"\n  - "no-such-paper"\n')
     expect(page).not.toMatch(/^paper_count:/m)
-    expect(createVaultStore(vault).getProject(id).paperCount).toBe(1)
+    expect((await createVaultStore(vault).getProject(id)).paperCount).toBe(1)
   })
 
-  it('项目任务的两小时窗口写进页面,重开仍在,也能清回全天', () => {
+  it('项目任务的两小时窗口写进页面,重开仍在,也能清回全天', async () => {
     store.createProject('分时规划')
     const id = store.listProjects().find((project) => project.name === '分时规划')!.id
-    const made = store.createTask(id, {
+    const made = await store.createTask(id, {
       title: '实现窗口控制', start: '2026-09-10', end: '2026-09-10',
       window: { start: '14:00', end: '18:00' }, state: 'plan', priority: 'p0',
     })
     const task = made.tasks[0]!
-    expect(createVaultStore(vault).getProject(id).tasks[0]!.window)
+    expect((await createVaultStore(vault).getProject(id)).tasks[0]!.window)
       .toEqual({ start: '14:00', end: '18:00' })
-    store.updateTask(id, task.id, { window: null })
-    expect(createVaultStore(vault).getProject(id).tasks[0]!.window).toBeUndefined()
+    await store.updateTask(id, task.id, { window: null })
+    expect((await createVaultStore(vault).getProject(id)).tasks[0]!.window).toBeUndefined()
   })
 
-  it('任务备注写进页面并同步进共享计划面,重开仍在;多行、带引号反斜杠和 --- 也一字不差', () => {
+  it('任务备注写进页面并同步进共享计划面,重开仍在;多行、带引号反斜杠和 --- 也一字不差', async () => {
     store.createProject('备注项目')
     const id = store.listProjects().find((project) => project.name === '备注项目')!.id
     const repo = join(vault, 'note-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
-    const made = store.createTask(id, {
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const made = await store.createTask(id, {
       title: '需要写备注的任务', start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p0',
     })
     const task = made.tasks[0]!
@@ -1499,47 +1499,47 @@ describe('vault store on the aggregation layout', () => {
       '---',
       '上面那行 --- 不是 frontmatter 的收口',
     ].join('\n')
-    store.updateTask(id, task.id, { note })
-    expect(createVaultStore(vault).getProject(id).tasks[0]!.note).toBe(note)
+    await store.updateTask(id, task.id, { note })
+    expect((await createVaultStore(vault).getProject(id)).tasks[0]!.note).toBe(note)
     const plan = JSON.parse(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')) as {
       tasks: { note?: string }[]
     }
     expect(plan.tasks[0]!.note).toBe(note)
   })
 
-  it('拖拽重排的任务顺序写进页面并刷新共享计划面,重开也保持这个顺序', () => {
+  it('拖拽重排的任务顺序写进页面并刷新共享计划面,重开也保持这个顺序', async () => {
     store.createProject('排序项目')
     const id = store.listProjects().find((project) => project.name === '排序项目')!.id
     const titles = ['第一个任务', '第二个任务', '第三个任务']
     for (const title of titles) {
-      store.createTask(id, { title, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+      await store.createTask(id, { title, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
     }
-    const [first, second, third] = store.getProject(id).tasks
+    const [first, second, third] = (await store.getProject(id)).tasks
     const reordered = [third!.id, first!.id, second!.id]
-    const after = store.reorderTasks(id, reordered)
+    const after = await store.reorderTasks(id, reordered)
     expect(after.tasks.map((t) => t.id)).toEqual(reordered)
-    expect(createVaultStore(vault).getProject(id).tasks.map((t) => t.id)).toEqual(reordered)
+    expect((await createVaultStore(vault).getProject(id)).tasks.map((t) => t.id)).toEqual(reordered)
 
     const repo = join(vault, 'sort-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const flipped = [second!.id, third!.id, first!.id]
-    store.reorderTasks(id, flipped)
+    await store.reorderTasks(id, flipped)
     const plan = JSON.parse(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')) as {
       tasks: { id: string }[]
     }
     expect(plan.tasks.map((task) => task.id)).toEqual(flipped)
   })
 
-  it('节点结论:列进项目结论,验证后是已验证并存在项目页上,写进 Wiki 后看得到页与版本,结论改了回到待验证', () => {
+  it('节点结论:列进项目结论,验证后是已验证并存在项目页上,写进 Wiki 后看得到页与版本,结论改了回到待验证', async () => {
     store.createProject('结论链')
     const id = store.listProjects().find((p) => p.name === '结论链')!.id
-    const task = store.createTask(id, {
+    const task = (await store.createTask(id, {
       title: '跑宽度扫描', start: '2026-09-10', end: '2026-09-10', state: 'done', priority: 'p1',
-    }).tasks[0]!.id
+    })).tasks[0]!.id
     const repo = join(vault, 'chain-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const graph = (text: string) => {
       mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
       writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
@@ -1550,7 +1550,7 @@ describe('vault store on the aggregation layout', () => {
       }))
     }
     graph('宽树在 B≥8 时净赚')
-    const shown = store.getProject(id).projectConclusions!
+    const shown = (await store.getProject(id)).projectConclusions!
     expect(shown).toEqual([{
       id: 't.A', node: 't.A', text: '宽树在 B≥8 时净赚', date: '2026-09-09', state: 'pending',
       fingerprint: expect.stringMatching(/^[0-9a-f]{16}$/),
@@ -1566,29 +1566,29 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.verifyConclusion(id, 't.B', shown[0]!.fingerprint!)).toThrow(/t.B/)
     expect(counts()).toEqual({ verified: 0, pending: 1, conflicting: 0 })
 
-    store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)
-    expect(createVaultStore(vault).getProject(id).projectConclusions![0]).toMatchObject({ state: 'verified', verifiedOn: '2026-09-10' })
+    await store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)
+    expect((await createVaultStore(vault).getProject(id)).projectConclusions![0]).toMatchObject({ state: 'verified', verifiedOn: '2026-09-10' })
     expect(counts()).toEqual({ verified: 1, pending: 0, conflicting: 0 })
     write()
     expect(store.wikiAggregation('topics/ptq').claims.find((c) => c.id === 'wide-b8')!.evidence[0]!.point).toBe('宽树')
-    expect(store.getProject(id).projectConclusions![0]!.wiki).toEqual([{
+    expect((await store.getProject(id)).projectConclusions![0]!.wiki).toEqual([{
       page: 'topics/ptq', title: store.wikiAggregation('topics/ptq').title, claim: 'wide-b8', version: 1,
     }])
 
     graph('宽树在 B≥16 时才净赚')
-    expect(store.getProject(id).projectConclusions![0]!.state).toBe('pending')
+    expect((await store.getProject(id)).projectConclusions![0]!.state).toBe('pending')
     expect(() => store.verifyConclusion(id, 't.A', shown[0]!.fingerprint!)).toThrow(/在你打开之后又被改过/)
   })
 
-  it('手动给任务设的科研节点存在项目页顶层并写进共享计划面,重开仍在,结论按它算;清掉就回到 agent 连的节点', () => {
+  it('手动给任务设的科研节点存在项目页顶层并写进共享计划面,重开仍在,结论按它算;清掉就回到 agent 连的节点', async () => {
     store.createProject('手动节点')
     const id = store.listProjects().find((p) => p.name === '手动节点')!.id
-    const task = store.createTask(id, {
+    const task = (await store.createTask(id, {
       title: '跑宽度扫描', start: '2026-09-10', end: '2026-09-10', state: 'done', priority: 'p1',
-    }).tasks[0]!.id
+    })).tasks[0]!.id
     const repo = join(vault, 'task-node-repo')
     mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const conclusion = { text: '宽树净赚', date: '2026-09-09', evidence: [] }
     writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
       schema: 'meridian.lab.graph.v1', edges: [],
@@ -1598,28 +1598,28 @@ describe('vault store on the aggregation layout', () => {
     const planNode = () => (JSON.parse(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')) as {
       tasks: { id: string; node?: string }[]
     }).tasks.find((t) => t.id === task)!.node
-    const tasksOf = (node: string) => store.getProject(id).projectConclusions!
+    const tasksOf = (node: string) => store.heldProject(id).projectConclusions!
       .find((c) => c.node === node)!.tasks.map((t) => t.id)
 
-    store.setTaskNode(id, task, 't.B')
+    await store.setTaskNode(id, task, 't.B')
     expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')).toContain(`task_nodes:\n  ${task}: "t.B"\n`)
-    expect(createVaultStore(vault).getProject(id).taskNodes).toEqual({ [task]: 't.B' })
+    expect((await createVaultStore(vault).getProject(id)).taskNodes).toEqual({ [task]: 't.B' })
     expect(planNode()).toBe('t.B')
     expect([tasksOf('t.A'), tasksOf('t.B')]).toEqual([[], [task]])
 
-    store.setTaskNode(id, task, null)
+    await store.setTaskNode(id, task, null)
     expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')).not.toContain('task_nodes:')
     expect(planNode()).toBeUndefined()
     expect([tasksOf('t.A'), tasksOf('t.B')]).toEqual([[task], []])
     expect(() => store.setTaskNode(id, task, 't.missing')).toThrow(/t.missing/)
   })
 
-  it('agent 请求加的任务:进计划、标明 agent 加的、记一条能撤销的变动;每条只收一次,删掉或撤销都不回来', () => {
+  it('agent 请求加的任务:进计划、标明 agent 加的、记一条能撤销的变动;每条只收一次,删掉或撤销都不回来', async () => {
     store.createProject('agent 任务')
     const id = store.listProjects().find((p) => p.name === 'agent 任务')!.id
     const repo = join(vault, 'agent-task-repo')
     mkdirSync(join(repo, '.meridian', 'tasks'), { recursive: true })
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const requests = (tasks: unknown[]) => writeFileSync(join(repo, '.meridian', 'tasks', 'tasks.json'), JSON.stringify({
       schema_version: 'meridian.workspace-agent-tasks.v1', tasks,
     }))
@@ -1629,7 +1629,7 @@ describe('vault store on the aggregation layout', () => {
     ])
 
     store.absorbAgentTasks(id)
-    const tasks = store.getProject(id).tasks
+    const tasks = (await store.getProject(id)).tasks
     // Each request lands at the front of the plan as it is absorbed, so the request
     // processed last (write-up) ends up ahead of the one processed first (rerun-sweep).
     expect(tasks.map(({ title, start, end, state, priority, origin, note }) => ({ title, start, end, state, priority, origin, note }))).toEqual([
@@ -1647,22 +1647,22 @@ describe('vault store on the aggregation layout', () => {
     ])
 
     store.absorbAgentTasks(id)
-    expect(store.getProject(id).tasks).toHaveLength(2)
+    expect((await store.getProject(id)).tasks).toHaveLength(2)
     // changes[0] is the most recently logged change, which added the write-up task (tasks[0]).
     store.undoChange(changes[0]!.id)
-    store.deleteTask(id, tasks[1]!.id)
+    await store.deleteTask(id, tasks[1]!.id)
     store.absorbAgentTasks()
-    expect(createVaultStore(vault).getProject(id).tasks).toEqual([])
+    expect((await createVaultStore(vault).getProject(id)).tasks).toEqual([])
   })
 
-  it('agent 任务文件里一条坏了：其余照常进计划，坏的那条连同第几条和原因报到 stderr、跳过，文件一字不改', () => {
+  it('agent 任务文件里一条坏了：其余照常进计划，坏的那条连同第几条和原因报到 stderr、跳过，文件一字不改', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       store.createProject('一条坏任务')
       const id = store.listProjects().find((p) => p.name === '一条坏任务')!.id
       const repo = join(vault, 'one-bad-task-repo')
       mkdirSync(join(repo, '.meridian', 'tasks'), { recursive: true })
-      store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+      await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
       const file = join(repo, '.meridian', 'tasks', 'tasks.json')
       const text = JSON.stringify({
         schema_version: 'meridian.workspace-agent-tasks.v1',
@@ -1674,7 +1674,7 @@ describe('vault store on the aggregation layout', () => {
       writeFileSync(file, text)
 
       store.absorbAgentTasks(id)
-      expect(store.getProject(id).tasks.map((task) => task.title)).toEqual(['在 B=16 重跑宽度扫描'])
+      expect((await store.getProject(id)).tasks.map((task) => task.title)).toEqual(['在 B=16 重跑宽度扫描'])
       const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(file))
       expect(reported).toEqual([expect.stringContaining('第 2 条')])
       expect(reported[0]).toContain('"date"')
@@ -1684,13 +1684,13 @@ describe('vault store on the aggregation layout', () => {
     }
   })
 
-  it('旧版本记下的项目变动在没验证过结论的项目上照样能撤销', () => {
+  it('旧版本记下的项目变动在没验证过结论的项目上照样能撤销', async () => {
     store.createProject('旧记录')
     const id = store.listProjects().find((p) => p.name === '旧记录')!.id
-    store.updateProject(id, { focus: '新的当前目标' })
+    await store.updateProject(id, { focus: '新的当前目标' })
     const file = join(vault, '.meridian', 'changelog.json')
     const rows = JSON.parse(readFileSync(file, 'utf8')) as { target: { id: string } | null; after: string }[]
-    const detail = store.getProject(id)
+    const detail = await store.getProject(id)
     const older = ['name', 'status', 'priority', 'topic', 'focus', 'block', 'start', 'due', 'memo',
       'papers', 'tasks', 'milestones', 'events', 'relations', 'attachments', 'agentSessions'] as const
     const after = createHash('sha256')
@@ -1698,25 +1698,25 @@ describe('vault store on the aggregation layout', () => {
     writeFileSync(file, JSON.stringify(rows.map((row) => (row.target?.id === id ? { ...row, after } : row))))
     const reopened = createVaultStore(vault, () => '2026-09-10')
     reopened.undoChange(reopened.listChanges().find((c) => c.title.includes('改了字段'))!.id)
-    expect(reopened.getProject(id).focus).not.toBe('新的当前目标')
+    expect((await reopened.getProject(id)).focus).not.toBe('新的当前目标')
   })
 
-  it('验证与取消验证都进最近变动,撤销逐项还原;没验证过的项目页不多出这一项', () => {
+  it('验证与取消验证都进最近变动,撤销逐项还原;没验证过的项目页不多出这一项', async () => {
     store.createProject('验证撤销')
     const id = store.listProjects().find((p) => p.name === '验证撤销')!.id
     const repo = join(vault, 'undo-repo')
     mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
       schema: 'meridian.lab.graph.v1', edges: [], nodes: [{ id: 't.A', title: '宽树', state: 'supported' }],
       node_details: { 't.A': { conclusion: { text: '宽树净赚', date: '2026-09-09', evidence: ['exp-1'], revision: 'r1' } } },
     }))
     const page = join(vault, 'wiki', 'projects', `${id}.md`)
     const before = readFileSync(page, 'utf8')
-    const state = () => store.getProject(id).projectConclusions![0]!.state
-    store.verifyConclusion(id, 't.A', store.getProject(id).projectConclusions![0]!.fingerprint!)
+    const state = () => store.heldProject(id).projectConclusions![0]!.state
+    await store.verifyConclusion(id, 't.A', (await store.getProject(id)).projectConclusions![0]!.fingerprint!)
     expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('验证实验结论'), undoable: true })
-    store.unverifyConclusion(id, 't.A')
+    await store.unverifyConclusion(id, 't.A')
     expect(state()).toBe('pending')
     expect(store.listChanges()[0]).toMatchObject({ title: expect.stringContaining('取消验证实验结论'), undoable: true })
     store.undoChange(store.listChanges()[0]!.id)
@@ -1726,26 +1726,26 @@ describe('vault store on the aggregation layout', () => {
     expect(readFileSync(page, 'utf8')).toBe(before)
   })
 
-  it('重排顺序与项目现有任务不是同一批 id 时拒绝写入', () => {
+  it('重排顺序与项目现有任务不是同一批 id 时拒绝写入', async () => {
     store.createProject('排序校验项目')
     const id = store.listProjects().find((project) => project.name === '排序校验项目')!.id
-    store.createTask(id, { title: '唯一任务', start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
-    const realId = store.getProject(id).tasks[0]!.id
+    await store.createTask(id, { title: '唯一任务', start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+    const realId = (await store.getProject(id)).tasks[0]!.id
     expect(() => store.reorderTasks(id, [realId, 'no-such-task'])).toThrow(/任务顺序/)
     expect(() => store.reorderTasks(id, [])).toThrow(/任务顺序/)
   })
 
-  it('项目连接代码目录后，任务与里程碑每次修改都刷新共享计划面', () => {
+  it('项目连接代码目录后，任务与里程碑每次修改都刷新共享计划面', async () => {
     store.createProject('协议项目')
     const id = store.listProjects().find((project) => project.name === '协议项目')!.id
     const repo = join(vault, 'bound-repo')
     mkdirSync(repo)
-    const connected = store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    const connected = await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     expect(connected.workspace).toMatchObject({ state: 'ready' })
-    store.createTask(id, {
+    await store.createTask(id, {
       title: '共享任务', start: '2026-09-15', end: '2026-09-15', state: 'act', priority: 'p1',
     })
-    store.createMilestone(id, { date: '2026-09-20', title: '共享里程碑', done: false })
+    await store.createMilestone(id, { date: '2026-09-20', title: '共享里程碑', done: false })
     const planFile = join(repo, '.meridian/control/plan.json')
     const plan = JSON.parse(readFileSync(planFile, 'utf8')) as {
       tasks: { title: string }[]
@@ -1753,24 +1753,24 @@ describe('vault store on the aggregation layout', () => {
     }
     expect(plan.tasks.map((task) => task.title)).toContain('共享任务')
     expect(plan.milestones.map((milestone) => milestone.title)).toContain('共享里程碑')
-    expect(createVaultStore(vault).getProject(id).workspace).toMatchObject({ state: 'ready' })
-    store.bindProjectWorkspace(id, null)
-    expect(store.getProject(id).workspace).toBeUndefined()
+    expect((await createVaultStore(vault).getProject(id)).workspace).toMatchObject({ state: 'ready' })
+    await store.bindProjectWorkspace(id, null)
+    expect((await store.getProject(id)).workspace).toBeUndefined()
     expect(existsSync(planFile)).toBe(true)
   })
 
-  it('删除科研节点会同步解除想法节点关联，不在变动列表留下悬空引用', () => {
+  it('删除科研节点会同步解除想法节点关联，不在变动列表留下悬空引用', async () => {
     store.createProject('增量想法')
     const projectId = store.listProjects().find((project) => project.name === '增量想法')!.id
-    const node = store.createNode(projectId, '待删除节点', null).graph.nodes[0]!
+    const node = (await store.createNode(projectId, '待删除节点', null)).graph.nodes[0]!
     const repo = join(vault, 'idea-change-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(projectId, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(projectId, { kind: 'local', root: repo })
     const session = store.createChat('节点想法来源', true)
     const idea = store.createIdea(session.id, '验证节点', '删除节点后不应保留关联')
     store.updateIdea(idea.id, { project: projectId, node: node.id })
 
-    store.deleteNode(projectId, node.id)
+    await store.deleteNode(projectId, node.id)
 
     const changes = JSON.parse(
       readFileSync(join(repo, '.meridian/control/changes.json'), 'utf8'),
@@ -1788,12 +1788,12 @@ describe('vault store on the aggregation layout', () => {
     })
   })
 
-  it('总览只读本地工作区的科研路径与事件，不把整张图跨到界面', () => {
+  it('总览只读本地工作区的科研路径与事件，不把整张图跨到界面', async () => {
     store.createProject('本地科研投影')
     const id = store.listProjects().find((project) => project.name === '本地科研投影')!.id
     const repo = join(vault, 'overview-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     mkdirSync(join(repo, '.meridian/graph'), { recursive: true })
     writeFileSync(join(repo, '.meridian/graph/graph.json'), JSON.stringify({
       schema: 'meridian.lab.graph.v1',
@@ -1834,40 +1834,40 @@ describe('vault store on the aggregation layout', () => {
     expect(overview).not.toHaveProperty('workspace')
   })
 
-  it('最近推进是最新的那一天:页上的记录、工作区事件与记进最近变动的改动都算,只调顺序的不算;列表、详情与总览是同一天', () => {
+  it('最近推进是最新的那一天:页上的记录、工作区事件与记进最近变动的改动都算,只调顺序的不算;列表、详情与总览是同一天', async () => {
     let day = '2026-09-01'
     const dated = createVaultStore(vault, () => day)
     dated.createProject('推进日')
     const id = dated.listProjects().find((project) => project.name === '推进日')!.id
-    const progress = () => [
+    const progress = async () => [
       dated.listProjects().find((project) => project.id === id)!.lastProgress,
-      dated.getProject(id).lastProgress,
+      (await dated.getProject(id)).lastProgress,
       dated.overviewProjects().find((project) => project.id === id)!.lastProgress,
     ]
-    expect(progress()).toEqual(['2026-09-01', '2026-09-01', '2026-09-01'])
+    expect(await progress()).toEqual(['2026-09-01', '2026-09-01', '2026-09-01'])
 
     day = '2026-09-05'
     for (const title of ['第一个任务', '第二个任务']) {
-      dated.createTask(id, { title, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
+      await dated.createTask(id, { title, start: '2026-09-10', end: '2026-09-10', state: 'plan', priority: 'p1' })
     }
-    for (const text of ['第一条关联', '第二条关联']) dated.createRelation(id, { group: 'Wiki', text })
-    expect(progress()).toEqual(['2026-09-05', '2026-09-05', '2026-09-05'])
+    for (const text of ['第一条关联', '第二条关联']) await dated.createRelation(id, { group: 'Wiki', text })
+    expect(await progress()).toEqual(['2026-09-05', '2026-09-05', '2026-09-05'])
 
     day = '2026-09-07'
-    expect(dated.updateProject(id, { memo: '换用更小的草稿模型' }).lastProgress).toBe('2026-09-07')
-    expect(progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
+    expect((await dated.updateProject(id, { memo: '换用更小的草稿模型' })).lastProgress).toBe('2026-09-07')
+    expect(await progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
 
     day = '2026-09-09'
-    const [first, second] = dated.getProject(id).tasks
-    expect(dated.reorderTasks(id, [second!.id, first!.id]).lastProgress).toBe('2026-09-07')
-    const moved = dated.getProject(id).relations[0]!.items[1]!.id
-    expect(dated.moveRelation(id, moved, 0).lastProgress).toBe('2026-09-07')
+    const [first, second] = (await dated.getProject(id)).tasks
+    expect((await dated.reorderTasks(id, [second!.id, first!.id])).lastProgress).toBe('2026-09-07')
+    const moved = (await dated.getProject(id)).relations[0]!.items[1]!.id
+    expect((await dated.moveRelation(id, moved, 0)).lastProgress).toBe('2026-09-07')
     dated.undoChange(dated.listChanges()[0]!.id)
-    expect(progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
+    expect(await progress()).toEqual(['2026-09-07', '2026-09-07', '2026-09-07'])
 
     const repo = join(vault, 'progress-repo')
     mkdirSync(join(repo, '.meridian/events'), { recursive: true })
-    dated.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await dated.bindProjectWorkspace(id, { kind: 'local', root: repo })
     writeFileSync(join(repo, '.meridian/events/events.json'), JSON.stringify({
       schema_version: 'meridian.workspace-events.v1',
       events: [
@@ -1875,7 +1875,7 @@ describe('vault store on the aggregation layout', () => {
         { id: 'early', date: '2026-09-03', text: '开始推进 延迟探针', source: 'src/probe.py' },
       ],
     }), 'utf8')
-    expect(progress()).toEqual(['2026-09-12', '2026-09-12', '2026-09-12'])
+    expect(await progress()).toEqual(['2026-09-12', '2026-09-12', '2026-09-12'])
 
     // The derived day is never stored, not even in an undo snapshot.
     const stored = JSON.parse(readFileSync(join(vault, '.meridian/changelog.json'), 'utf8')) as
@@ -1885,12 +1885,12 @@ describe('vault store on the aggregation layout', () => {
     for (const snapshot of snapshots) expect(snapshot).not.toHaveProperty('lastProgress')
   })
 
-  it('项目列表的最近记录把关联工作区的事件也算进去:取页上与工作区里最新的三条,最新的在最后', () => {
+  it('项目列表的最近记录把关联工作区的事件也算进去:取页上与工作区里最新的三条,最新的在最后', async () => {
     store.createProject('最近记录')
     const id = store.listProjects().find((project) => project.name === '最近记录')!.id
     const repo = join(vault, 'recent-repo')
     mkdirSync(join(repo, '.meridian/events'), { recursive: true })
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     writeFileSync(join(repo, '.meridian/events/events.json'), JSON.stringify({
       schema_version: 'meridian.workspace-events.v1',
       events: [
@@ -1905,14 +1905,14 @@ describe('vault store on the aggregation layout', () => {
     ])
   })
 
-  it('关联仓库里 coding agent 新写的科研记录进动态的「实验」，旧的不刷屏，同一条只进一次', () => {
+  it('关联仓库里 coding agent 新写的科研记录进动态的「实验」，旧的不刷屏，同一条只进一次', async () => {
     let clock = new Date('2026-09-22T10:00:00.000Z')
     const timed = createVaultStore(vault, () => '2026-09-22', () => clock)
     timed.createProject('动态实验流')
     const id = timed.listProjects().find((project) => project.name === '动态实验流')!.id
     const repo = join(vault, 'feed-lab-repo')
     mkdirSync(join(repo, '.meridian/events'), { recursive: true })
-    timed.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await timed.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const writeEvents = (events: { id: string; text: string }[]) => writeFileSync(
       join(repo, '.meridian/events/events.json'),
       JSON.stringify({
@@ -1940,7 +1940,7 @@ describe('vault store on the aggregation layout', () => {
     expect(labTexts()).toHaveLength(1)
   })
 
-  it('项目的结论分档从页上的结论列表数出来,页上不再存计数', () => {
+  it('项目的结论分档从页上的结论列表数出来,页上不再存计数', async () => {
     store.createProject('结论计数')
     const id = store.listProjects().find((project) => project.name === '结论计数')!.id
     const file = join(vault, 'wiki', 'projects', `${id}.md`)
@@ -1957,17 +1957,17 @@ describe('vault store on the aggregation layout', () => {
     ].join('\n')))
     const reopened = createVaultStore(vault)
     const counts = { verified: 1, pending: 0, conflicting: 2 }
-    expect(reopened.getProject(id).conclusions).toEqual(counts)
+    expect((await reopened.getProject(id)).conclusions).toEqual(counts)
     expect(reopened.listProjects().find((project) => project.id === id)!.conclusions).toEqual(counts)
     expect(reopened.overviewProjects().find((project) => project.id === id)!.conclusions).toEqual(counts)
   })
 
-  it('结论:新建是待验证、记来源与所引论文,改档与删除都落在项目页上,不记最近变动', () => {
+  it('结论:新建是待验证、记来源与所引论文,改档与删除都落在项目页上,不记最近变动', async () => {
     store.createProject('结论')
     const id = store.listProjects().find((project) => project.name === '结论')!.id
     const session = store.createChat('宽树拐点', true)
     const changes = store.listChanges().length
-    const made = store.createConclusion(id, '拐点是 batch size 的函数', {
+    const made = await store.createConclusion(id, '拐点是 batch size 的函数', {
       chat: session.id, paper: '2404.00456',
     })
     const item = made.conclusionList.at(-1)!
@@ -1976,13 +1976,13 @@ describe('vault store on the aggregation layout', () => {
       source: '对话「宽树拐点」', paper: '2404.00456',
     })
     expect(made.conclusions).toEqual({ verified: 0, pending: 1, conflicting: 0 })
-    expect(store.createConclusion(id, '手写的一条', {}).conclusionList.at(-1)!.source)
+    expect((await store.createConclusion(id, '手写的一条', {})).conclusionList.at(-1)!.source)
       .toBe('手动添加')
-    store.setConclusionState(id, item.id, 'conflicting')
-    expect(createVaultStore(vault).getProject(id).conclusions)
+    await store.setConclusionState(id, item.id, 'conflicting')
+    expect((await createVaultStore(vault).getProject(id)).conclusions)
       .toEqual({ verified: 0, pending: 1, conflicting: 1 })
-    store.deleteConclusion(id, item.id)
-    expect(createVaultStore(vault).getProject(id).conclusionList.map((conclusion) => conclusion.text))
+    await store.deleteConclusion(id, item.id)
+    expect((await createVaultStore(vault).getProject(id)).conclusionList.map((conclusion) => conclusion.text))
       .toEqual(['手写的一条'])
     expect(store.listChanges()).toHaveLength(changes)
     expect(() => store.createConclusion(id, 'x', { paper: 'no-such-paper' })).toThrow(/no-such-paper/)
@@ -2010,12 +2010,12 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === created.id)).toEqual(created)
   })
 
-  it('coding agent 在项目工作区里记下的想法进到想法列表:记下是在哪个项目里冒出来的,agent 挂的节点只是候选,不算放进这个项目;只收一次,删了不再回来', () => {
+  it('coding agent 在项目工作区里记下的想法进到想法列表:记下是在哪个项目里冒出来的,agent 挂的节点只是候选,不算放进这个项目;只收一次,删了不再回来', async () => {
     store.createProject('agent 想法项目')
     const id = store.listProjects().find((project) => project.name === 'agent 想法项目')!.id
     const repo = join(vault, 'agent-ideas-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const file = join(repo, '.meridian/ideas/ideas.json')
     mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
     writeFileSync(file, JSON.stringify({
@@ -2047,12 +2047,12 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).listIdeas().filter((idea) => idea.source.agent === true)).toEqual([])
   })
 
-  it('agent 想法的标题、正文和来源里像 Lab 结构的文字原样进想法列表和工作区的变更文件', () => {
+  it('agent 想法的标题、正文和来源里像 Lab 结构的文字原样进想法列表和工作区的变更文件', async () => {
     store.createProject('结构文字项目')
     const id = store.listProjects().find((project) => project.name === '结构文字项目')!.id
     const repo = join(vault, 'structure-ideas-repo')
     mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const title = '### Node X: - evidence: 复用距离'
     const body = '按复用距离打分。\n### Node X: 注入\n- evidence: exp-1\n- mode: `dead`\n\n## Graph Relations'
     const context = '- evidence: ### 前缀缓存'
@@ -2131,24 +2131,24 @@ describe('vault store on the aggregation layout', () => {
     expect(store.updateIdea(idea.id, { relations: { projects: [], pages: [] } })).not.toHaveProperty('relations')
   })
 
-  it('agent 想法文件格式不对时,想法列表照常列出,不把坏文件当想法', () => {
+  it('agent 想法文件格式不对时,想法列表照常列出,不把坏文件当想法', async () => {
     store.createProject('坏文件项目')
     const id = store.listProjects().find((project) => project.name === '坏文件项目')!.id
     const repo = join(vault, 'bad-ideas-repo')
     mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     writeFileSync(join(repo, '.meridian/ideas/ideas.json'), '{"schema_version":"meridian.workspace-agent-ideas.v1","ideas":[{"id":"x"}]}')
     expect(store.listIdeas().filter((idea) => idea.source.agent === true)).toEqual([])
   })
 
-  it('agent 想法文件里一条坏了：其余照常进想法列表，坏的那条连同第几条和原因报到 stderr、跳过，文件一字不改', () => {
+  it('agent 想法文件里一条坏了：其余照常进想法列表，坏的那条连同第几条和原因报到 stderr、跳过，文件一字不改', async () => {
     const error = vi.spyOn(console, 'error').mockImplementation(() => {})
     try {
       store.createProject('一条坏想法项目')
       const id = store.listProjects().find((project) => project.name === '一条坏想法项目')!.id
       const repo = join(vault, 'one-bad-idea-repo')
       mkdirSync(join(repo, '.meridian/ideas'), { recursive: true })
-      store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+      await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
       const file = join(repo, '.meridian/ideas/ideas.json')
       const text = JSON.stringify({
         schema_version: 'meridian.workspace-agent-ideas.v1',
@@ -2209,13 +2209,13 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault, () => '2026-09-18').listIdeas()).toEqual([])
   })
 
-  it('项目完成会归档关联想法，删除的想法可从垃圾桶恢复', () => {
+  it('项目完成会归档关联想法，删除的想法可从垃圾桶恢复', async () => {
     store.createProject('想法落地项目')
     const projectId = store.listProjects().find((project) => project.name === '想法落地项目')!.id
     const session = store.createChat('想法来源', true)
     const created = store.createIdea(session.id, '一个方向', '验证这个方向')
     expect(store.updateIdea(created.id, { project: projectId }).project).toBe(projectId)
-    store.updateProject(projectId, { status: '已完成' })
+    await store.updateProject(projectId, { status: '已完成' })
     expect(createVaultStore(vault).listIdeas().find((idea) => idea.id === created.id)?.archived).toBe(true)
     store.deleteIdea(created.id)
     const deleted = store.listTrash().find((entry) => entry.kind === 'idea')!
@@ -2377,7 +2377,7 @@ describe('vault store on the aggregation layout', () => {
     })
   })
 
-  it('记入科研记录:写进项目、把按钮记成已记,再记一次就抛,重开库仍是已记', () => {
+  it('记入科研记录:写进项目、把按钮记成已记,再记一次就抛,重开库仍是已记', async () => {
     store.createProject('记录目标')
     const projectId = store.listProjects().find((project) => project.name === '记录目标')!.id
     const session = store.createChat('记录会话', true)
@@ -2389,7 +2389,7 @@ describe('vault store on the aggregation layout', () => {
       }],
     }])
     const message = store.chatMessages(session.id).at(-1)!
-    const after = store.recordAction(session.id, message.id)
+    const after = await store.recordAction(session.id, message.id)
     expect(after.events.at(-1)!.text).toBe('[对话] 拐点是 batch size 的函数')
     expect(store.listChanges()[0]!.title).toBe('项目「记录目标」· 记入科研记录')
     expect(createVaultStore(vault).chatMessages(session.id).at(-1)!.actions[0]!.done).toBe(true)
@@ -2397,10 +2397,10 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.recordAction(session.id, 'no-such-message')).toThrow(/no-such-message/)
   })
 
-  it('关联论文按 id 记在项目页上,重复关联与移除没关联的都抛,两笔都记进最近变动并撤得动', () => {
+  it('关联论文按 id 记在项目页上,重复关联与移除没关联的都抛,两笔都记进最近变动并撤得动', async () => {
     store.createProject('关联论文')
     const id = store.listProjects().find((project) => project.name === '关联论文')!.id
-    const after = store.addPaper(id, '2404.00456')
+    const after = await store.addPaper(id, '2404.00456')
     expect(after.papers).toEqual(['2404.00456'])
     expect(after.paperCount).toBe(1)
     expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8'))
@@ -2408,32 +2408,32 @@ describe('vault store on the aggregation layout', () => {
     expect(store.listChanges()[0]!.title).toBe('项目「关联论文」· 关联论文')
     expect(() => store.addPaper(id, '2404.00456')).toThrow(/已经关联/)
     expect(() => store.addPaper(id, 'no-such-paper')).toThrow(/no-such-paper/)
-    store.removePaper(id, '2404.00456')
-    expect(createVaultStore(vault).getProject(id).papers).toEqual([])
+    await store.removePaper(id, '2404.00456')
+    expect((await createVaultStore(vault).getProject(id)).papers).toEqual([])
     expect(store.listChanges()[0]!.title).toBe('项目「关联论文」· 移除关联论文')
     expect(() => store.removePaper(id, '2404.00456')).toThrow(/没有关联/)
     store.undoChange(store.listChanges()[0]!.id)
-    expect(store.getProject(id).papers).toEqual(['2404.00456'])
+    expect((await store.getProject(id)).papers).toEqual(['2404.00456'])
   })
 
-  it('关联 Wiki 条目可以带一页聚合,带了不存在的页就抛', () => {
+  it('关联 Wiki 条目可以带一页聚合,带了不存在的页就抛', async () => {
     store.createProject('关联页')
     const id = store.listProjects().find((project) => project.name === '关联页')!.id
     const page = store.wikiCards()[0]!
-    const after = store.createRelation(id, { group: 'Wiki', text: page.title, page: page.id })
+    const after = await store.createRelation(id, { group: 'Wiki', text: page.title, page: page.id })
     expect(after.relations.find((relation) => relation.group === 'Wiki')!.items.at(-1))
       .toMatchObject({ text: page.title, page: page.id })
-    expect(createVaultStore(vault).getProject(id).relations[0]!.items[0]!.page).toBe(page.id)
+    expect((await createVaultStore(vault).getProject(id)).relations[0]!.items[0]!.page).toBe(page.id)
     expect(() => store.createRelation(id, {
       group: 'Wiki', text: 'x', page: 'topics/nope',
     })).toThrow(/topics\/nope/)
   })
 
-  it('反向链接只读：正文链到这一页的页、关联它的项目、关联它的想法、读它或 @ 它的对话，读的时候磁盘一个字节不变；从论文对话里来的想法不挂在论文页下', () => {
+  it('反向链接只读：正文链到这一页的页、关联它的项目、关联它的想法、读它或 @ 它的对话，读的时候磁盘一个字节不变；从论文对话里来的想法不挂在论文页下', async () => {
     store.createProject('引用 QuaRot')
     const id = store.listProjects().find((project) => project.name === '引用 QuaRot')!.id
-    store.addPaper(id, '2404.00456')
-    store.createRelation(id, { group: 'Wiki', text: 'PTQ', page: 'topics/ptq' })
+    await store.addPaper(id, '2404.00456')
+    await store.createRelation(id, { group: 'Wiki', text: 'PTQ', page: 'topics/ptq' })
     const reading = store.chatForPaper('2404.00456')
     store.appendChatMessages(reading.id, [{ role: 'you', runs: [{ kind: 'text', text: '旋转之后还要校准吗' }], actions: [] }])
     const idea = store.createIdea(reading.id, '旋转与 KV 量化叠加', '先旋转再按 token 量化')
@@ -2472,26 +2472,26 @@ describe('vault store on the aggregation layout', () => {
   const withAttachments = (): string => {
     store.createProject('附件')
     const id = store.listProjects().find((project) => project.name === '附件')!.id
-    for (const name of ['a.csv', 'b.csv', 'c.csv']) store.createAttachment(id, { name, size: '1 KB', path: join(vault, name) })
+    for (const name of ['a.csv', 'b.csv', 'c.csv']) void store.createAttachment(id, { name, size: '1 KB', path: join(vault, name) })
     return id
   }
 
-  it('删掉的附件从垃圾桶恢复、或撤销这次删除时,回到它原来的位置', () => {
+  it('删掉的附件从垃圾桶恢复、或撤销这次删除时,回到它原来的位置', async () => {
     const id = withAttachments()
-    const before = store.getProject(id).attachments
+    const before = (await store.getProject(id)).attachments
     expect(before.map((attachment) => attachment.name)).toEqual(['c.csv', 'b.csv', 'a.csv'])
-    store.deleteAttachment(id, before[1]!.id)
+    await store.deleteAttachment(id, before[1]!.id)
     store.restoreTrash(store.listTrash()[0]!.id)
-    expect(store.getProject(id).attachments).toEqual(before)
+    expect((await store.getProject(id)).attachments).toEqual(before)
     const { change } = recordChange(store, () => store.deleteAttachment(id, before[1]!.id))
     store.undoChange(change)
-    expect(createVaultStore(vault).getProject(id).attachments).toEqual(before)
+    expect((await createVaultStore(vault).getProject(id)).attachments).toEqual(before)
   })
 
-  it('旧版本记下的附件垃圾不带位置,恢复时照旧放回末尾', () => {
+  it('旧版本记下的附件垃圾不带位置,恢复时照旧放回末尾', async () => {
     const id = withAttachments()
-    const [c, b, a] = store.getProject(id).attachments
-    store.deleteAttachment(id, b!.id)
+    const [c, b, a] = (await store.getProject(id)).attachments
+    await store.deleteAttachment(id, b!.id)
     const file = join(vault, '.meridian', 'trash.json')
     const written = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>[]
     writeFileSync(file, JSON.stringify(written.map((record) => Object.fromEntries(
@@ -2499,17 +2499,17 @@ describe('vault store on the aggregation layout', () => {
     ))))
     const reopened = createVaultStore(vault, () => '2026-09-10', () => new Date('2026-09-10T16:05:04.003Z'))
     reopened.restoreTrash(reopened.listTrash()[0]!.id)
-    expect(reopened.getProject(id).attachments).toEqual([c, a, b])
+    expect((await reopened.getProject(id)).attachments).toEqual([c, a, b])
   })
 
-  it('附件记下本机绝对路径,相对路径不收', () => {
+  it('附件记下本机绝对路径,相对路径不收', async () => {
     store.createProject('附件')
     const id = store.listProjects().find((project) => project.name === '附件')!.id
     const file = join(vault, 'sweep.csv')
-    expect(store.createAttachment(id, {
+    expect((await store.createAttachment(id, {
       name: 'sweep.csv', size: '1 KB', path: file,
-    }).attachments.at(-1)).toMatchObject({ name: 'sweep.csv', path: file })
-    expect(createVaultStore(vault).getProject(id).attachments.at(-1)!.path).toBe(file)
+    })).attachments.at(-1)).toMatchObject({ name: 'sweep.csv', path: file })
+    expect((await createVaultStore(vault).getProject(id)).attachments.at(-1)!.path).toBe(file)
     expect(() => store.createAttachment(id, {
       name: 'y.csv', size: '1 KB', path: 'y.csv',
     })).toThrow(/绝对路径/)
@@ -2905,25 +2905,25 @@ describe('vault store on the aggregation layout', () => {
     expect(store.wikiPaper(id).body).toBe('## 读后\n第一笔。')
   })
 
-  it('科研图:新建节点摆好位并连上前一个,改名改状态,删节点连带它的边;记录可以挂在节点上;节点的写不记变动', () => {
+  it('科研图:新建节点摆好位并连上前一个,改名改状态,删节点连带它的边;记录可以挂在节点上;节点的写不记变动', async () => {
     store.createProject('科研图')
     const id = store.listProjects().find((project) => project.name === '科研图')!.id
     const changes = store.listChanges().length
-    const root = store.createNode(id, '起点', null).graph.nodes.at(-1)!
+    const root = (await store.createNode(id, '起点', null)).graph.nodes.at(-1)!
     expect(root).toMatchObject({
       label: '起点', state: 'idle', x: 12, y: 12, width: 100, writebacks: [],
     })
-    const next = store.createNode(id, '宽树实验', root.id)
+    const next = await store.createNode(id, '宽树实验', root.id)
     const child = next.graph.nodes.at(-1)!
     expect(child).toMatchObject({ x: 162, y: 12 })
     expect(next.graph.edges).toEqual([[root.id, child.id]])
-    store.updateNode(id, child.id, { label: '宽树 B≥8', state: 'act' })
-    expect(store.createEvent(id, '跑通 B=8', child.id).events.at(-1))
+    await store.updateNode(id, child.id, { label: '宽树 B≥8', state: 'act' })
+    expect((await store.createEvent(id, '跑通 B=8', child.id)).events.at(-1))
       .toMatchObject({ text: '跑通 B=8', node: child.id })
-    expect(createVaultStore(vault).getProject(id).graph.nodes.find((node) => node.id === child.id))
+    expect((await createVaultStore(vault).getProject(id)).graph.nodes.find((node) => node.id === child.id))
       .toMatchObject({ label: '宽树 B≥8', state: 'act' })
-    store.deleteNode(id, root.id)
-    expect(store.getProject(id).graph).toEqual({
+    await store.deleteNode(id, root.id)
+    expect((await store.getProject(id)).graph).toEqual({
       nodes: [expect.objectContaining({ id: child.id })], edges: [],
     })
     expect(store.listChanges()).toHaveLength(changes + 1)

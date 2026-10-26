@@ -22,7 +22,7 @@ function seededProject(
     store.fillPaperMetadata(imported.id, {
       title: seed.title, authors: seed.authors, abstract: seed.abstract, identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
-    store.addPaper(project.id, imported.id)
+    void store.addPaper(project.id, imported.id)
   }
   return project.id
 }
@@ -53,7 +53,7 @@ describe('project recommendation service', () => {
         abstract: seed.abstract,
         identifier: `arXiv:${seed.arxiv}`,
       }, imported.title)
-      store.addPaper(project.id, imported.id)
+      await store.addPaper(project.id, imported.id)
     }
 
     const recommend = vi.fn(async (positive: RecommendationSeed[]) => (
@@ -115,7 +115,7 @@ describe('project recommendation service', () => {
       title: seed.title, authors: seed.authors, abstract: seed.abstract,
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
-    store.addPaper(project.id, imported.id)
+    await store.addPaper(project.id, imported.id)
     store.setDeliverySettings({ maxItemsPerRun: 1 })
     const papers = [0, 1, 2].map((at) => ({
       ...ON_POLICY_DISTILLATION_SAMPLE.expected,
@@ -141,7 +141,7 @@ describe('project recommendation service', () => {
       title: seed.title, authors: seed.authors, abstract: seed.abstract,
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
-    store.addPaper(project.id, imported.id)
+    await store.addPaper(project.id, imported.id)
     store.addDiscoveryEntries(project.id, [ON_POLICY_DISTILLATION_SAMPLE.expected])
     const rejected = store.listInbox({ kind: 'discovery', project: project.id })[0]!
     store.feedbackDiscovery(rejected.id, 'less')
@@ -179,7 +179,7 @@ describe('project recommendation service', () => {
       title: seed.title, authors: seed.authors, abstract: seed.abstract,
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
-    store.addPaper(project.id, imported.id)
+    await store.addPaper(project.id, imported.id)
     let now = 1_000
     const recommend = vi.fn(async () => [])
     const service = createRecommendationService({
@@ -213,7 +213,7 @@ describe('project recommendation service', () => {
         title: seed.title, authors: seed.authors, abstract: seed.abstract,
         identifier: `arXiv:${seed.arxiv}`,
       }, imported.title)
-      store.addPaper(project.id, imported.id)
+      await store.addPaper(project.id, imported.id)
     }
     let round = 1
     let call = 0
@@ -255,7 +255,7 @@ describe('project recommendation service', () => {
       title: seed.title, authors: seed.authors, abstract: seed.abstract,
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
-    store.addPaper(project.id, imported.id)
+    await store.addPaper(project.id, imported.id)
     const service = createRecommendationService({
       store,
       provider: { recommend: async () => { throw new Error('temporary outage') } },
@@ -402,7 +402,7 @@ describe('project recommendation service', () => {
       title: seed.title, authors: seed.authors, abstract: seed.abstract,
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
-    store.addPaper(project.id, imported.id)
+    await store.addPaper(project.id, imported.id)
     let now = 1
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [])
     const service = createRecommendationService({
@@ -435,7 +435,7 @@ describe('project recommendation service', () => {
       title: seed.title, authors: seed.authors, abstract: seed.abstract,
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
-    store.addPaper(project.id, imported.id)
+    await store.addPaper(project.id, imported.id)
     const intent = store.discoveryIntents(project.id)[0]!
     store.setDiscoverySchedule(project.id, {
       lastFetchedAt: 1, cursor: 0, requests: { [intent.id]: fetchedRecord(intent, 1) },

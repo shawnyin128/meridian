@@ -98,48 +98,48 @@ describe('vault app state', () => {
   })
 
   describe('项目', () => {
-    it('新建的项目落成 wiki/projects 下的一页,重开之后还是同一个项目', () => {
+    it('新建的项目落成 wiki/projects 下的一页,重开之后还是同一个项目', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
       expect(existsSync(join(vault, 'wiki', 'projects', `${id}.md`))).toBe(true)
-      expect(reopen().getProject(id)).toEqual(store.getProject(id))
+      expect(await reopen().getProject(id)).toEqual(await store.getProject(id))
     })
 
-    it('改一个字段,项目那一页里只有那一行变了', () => {
+    it('改一个字段,项目那一页里只有那一行变了', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
       const before = read(`wiki/projects/${id}.md`).split('\n')
-      store.updateProject(id, { status: '搁置' })
+      await store.updateProject(id, { status: '搁置' })
       const after = read(`wiki/projects/${id}.md`).split('\n')
       expect(after.length).toBe(before.length)
       expect(after.filter((row, i) => row !== before[i])).toEqual(['status: "搁置"'])
-      expect(reopen().getProject(id).status).toBe('搁置')
+      expect((await reopen().getProject(id)).status).toBe('搁置')
     })
 
-    it('任务、里程碑、关联与附件的增删都落在那一页上', () => {
+    it('任务、里程碑、关联与附件的增删都落在那一页上', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
-      store.createTask(id, { title: '宽树实验', start: '2026-09-01', end: '2026-09-10', state: 'act', priority: 'p0' })
-      store.createMilestone(id, { date: '2026-09-20', title: '阶段汇报', done: false })
-      store.createRelation(id, { group: 'Wiki', text: '树宽收益拐点' })
-      store.createAttachment(id, {
+      await store.createTask(id, { title: '宽树实验', start: '2026-09-01', end: '2026-09-10', state: 'act', priority: 'p0' })
+      await store.createMilestone(id, { date: '2026-09-20', title: '阶段汇报', done: false })
+      await store.createRelation(id, { group: 'Wiki', text: '树宽收益拐点' })
+      await store.createAttachment(id, {
         name: 'width-sweep.csv', size: '412 KB', path: join(vault, 'width-sweep.csv'),
       })
-      const reopened = reopen().getProject(id)
+      const reopened = await reopen().getProject(id)
       expect(reopened.tasks.map((t) => t.title)).toEqual(['宽树实验'])
       expect(reopened.milestones.map((m) => m.title)).toEqual(['阶段汇报'])
       expect(reopened.relations).toEqual([{ group: 'Wiki', items: [{ id: expect.any(String), text: '树宽收益拐点' }] }])
       expect(reopened.attachments.map((a) => a.name)).toEqual(['width-sweep.csv'])
 
-      store.deleteTask(id, reopened.tasks[0]!.id)
-      expect(reopen().getProject(id).tasks).toEqual([])
+      await store.deleteTask(id, reopened.tasks[0]!.id)
+      expect((await reopen().getProject(id)).tasks).toEqual([])
     })
 
-    it('指向链接的关联连同显示名落在那一页上,重开后还在', () => {
+    it('指向链接的关联连同显示名落在那一页上,重开后还在', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
-      store.createRelation(id, { group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft' })
-      expect(reopen().getProject(id).relations).toEqual([{
+      await store.createRelation(id, { group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft' })
+      expect((await reopen().getProject(id)).relations).toEqual([{
         group: 'links',
         items: [{ id: expect.any(String), text: '实验看板', url: 'https://wandb.ai/team/draft' }],
       }])
@@ -148,41 +148,41 @@ describe('vault app state', () => {
       })).toThrow()
     })
 
-    it('改过的关联落在那一页上,重开后还是改过的样子,别的行不动', () => {
+    it('改过的关联落在那一页上,重开后还是改过的样子,别的行不动', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
-      store.createRelation(id, { group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft' })
-      const item = store.createRelation(id, { group: 'links', text: '旧看板', url: 'https://wandb.ai/team/old' })
+      await store.createRelation(id, { group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft' })
+      const item = (await store.createRelation(id, { group: 'links', text: '旧看板', url: 'https://wandb.ai/team/old' }))
         .relations[0]!.items[0]!
       const before = read(`wiki/projects/${id}.md`).split('\n')
-      store.updateRelation(id, item.id, { text: '新看板', url: 'https://wandb.ai/team/new' })
+      await store.updateRelation(id, item.id, { text: '新看板', url: 'https://wandb.ai/team/new' })
       const after = read(`wiki/projects/${id}.md`).split('\n')
       expect(after.filter((row, i) => row !== before[i])).toEqual([
         '        text: "新看板"', '        url: "https://wandb.ai/team/new"',
       ])
-      expect(reopen().getProject(id).relations[0]!.items).toEqual([
+      expect((await reopen().getProject(id)).relations[0]!.items).toEqual([
         { id: item.id, text: '新看板', url: 'https://wandb.ai/team/new' },
         { id: expect.any(String), text: '实验看板', url: 'https://wandb.ai/team/draft' },
       ])
     })
 
-    it('关联顺序的调整落在那一页上,重开后顺序还在', () => {
+    it('关联顺序的调整落在那一页上,重开后顺序还在', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
-      store.createRelation(id, { group: 'Wiki', text: '甲' })
+      await store.createRelation(id, { group: 'Wiki', text: '甲' })
       // New items go to the front of their group, so the second one created sits ahead of the first.
-      const first = store.createRelation(id, { group: 'Wiki', text: '乙' }).relations[0]!.items[1]!
-      store.moveRelation(id, first.id, 0)
-      expect(reopen().getProject(id).relations[0]!.items.map((i) => i.text)).toEqual(['甲', '乙'])
+      const first = (await store.createRelation(id, { group: 'Wiki', text: '乙' })).relations[0]!.items[1]!
+      await store.moveRelation(id, first.id, 0)
+      expect((await reopen().getProject(id)).relations[0]!.items.map((i) => i.text)).toEqual(['甲', '乙'])
     })
 
-    it('科研记录追在正文里,一条一行', () => {
+    it('科研记录追在正文里,一条一行', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
-      store.createEvent(id, '开始这条研究线')
+      await store.createEvent(id, '开始这条研究线')
       expect(read(`wiki/projects/${id}.md`))
         .toContain('## 科研记录\n\n- 2026-09-08 [kind:project] 创建项目\n- 2026-09-08 [kind:note] 开始这条研究线\n')
-      expect(reopen().getProject(id).events).toEqual([
+      expect((await reopen().getProject(id)).events).toEqual([
         { date: '2026-09-08', text: '创建项目', kind: 'project' },
         { date: '2026-09-08', text: '开始这条研究线', kind: 'note' },
       ])
@@ -215,13 +215,13 @@ describe('vault app state', () => {
       expect(read(`wiki/projects/${second!.id}.md`)).toContain('created: "2026-09-08"')
     })
 
-    it('科研记录的正文带换行时被拒,项目一个字都没改', () => {
+    it('科研记录的正文带换行时被拒,项目一个字都没改', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
       const page = read(`wiki/projects/${id}.md`)
       expect(() => store.createEvent(id, '第一行\n第二行')).toThrow(/换行/)
       expect(read(`wiki/projects/${id}.md`)).toBe(page)
-      expect(store.getProject(id).events.map((e) => e.text)).toEqual(['创建项目'])
+      expect((await store.getProject(id)).events.map((e) => e.text)).toEqual(['创建项目'])
     })
 
     it('删掉的项目那一页搬进垃圾桶,恢复之后逐字节回到原处', () => {
@@ -240,13 +240,13 @@ describe('vault app state', () => {
       expect(store.listTrash()).toEqual([])
     })
 
-    it('附件的原项目也被删掉时放不回去,项目恢复之后又放得回去了', () => {
+    it('附件的原项目也被删掉时放不回去,项目恢复之后又放得回去了', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
-      const project = store.createAttachment(id, {
+      const project = await store.createAttachment(id, {
         name: 'width-sweep.csv', size: '412 KB', path: join(vault, 'width-sweep.csv'),
       })
-      store.deleteAttachment(id, project.attachments[0]!.id)
+      await store.deleteAttachment(id, project.attachments[0]!.id)
       store.deleteProject(id)
       const attachment = store.listTrash().find((t) => t.kind === 'attachment')!
       expect(attachment.restorable).toBe(false)
@@ -255,7 +255,7 @@ describe('vault app state', () => {
       const deleted = store.listTrash().find((t) => t.kind === 'project')!
       store.restoreTrash(deleted.id)
       store.restoreTrash(attachment.id)
-      expect(store.getProject(id).attachments.map((a) => a.name)).toEqual(['width-sweep.csv'])
+      expect((await store.getProject(id)).attachments.map((a) => a.name)).toEqual(['width-sweep.csv'])
     })
   })
 
@@ -641,11 +641,11 @@ describe('vault app state', () => {
   })
 
   describe('变动记录与撤销', () => {
-    it('记录存进 .meridian,重开之后还撤得动,页逐字节回到改之前', () => {
+    it('记录存进 .meridian,重开之后还撤得动,页逐字节回到改之前', async () => {
       store.createProject('draft 效率')
       const id = store.listProjects()[0]!.id
       const page = read(`wiki/projects/${id}.md`)
-      store.updateProject(id, { status: '搁置', focus: '换个焦点' })
+      await store.updateProject(id, { status: '搁置', focus: '换个焦点' })
       expect(read(`wiki/projects/${id}.md`)).not.toBe(page)
 
       const stored = JSON.parse(read('.meridian/changelog.json')) as { title: string }[]
@@ -656,16 +656,16 @@ describe('vault app state', () => {
       expect(change).toMatchObject({ undoable: true, undone: false })
       back.undoChange(change.id)
       expect(read(`wiki/projects/${id}.md`)).toBe(page)
-      expect(back.getProject(id)).toMatchObject({ status: '进行中', focus: '定义第一步' })
+      expect(await back.getProject(id)).toMatchObject({ status: '进行中', focus: '定义第一步' })
       expect(reopen().listChanges()[1]).toMatchObject({ id: change.id, undone: true })
     })
 
-    it('撤销之后项目仍排在原来的位置:建立日期没被写回时抹掉', () => {
+    it('撤销之后项目仍排在原来的位置:建立日期没被写回时抹掉', async () => {
       store.createProject('先建的')
       day = '2026-09-10'
       store.createProject('后建的')
       const first = store.listProjects().find((p) => p.name === '先建的')!.id
-      store.updateProject(first, { status: '搁置' })
+      await store.updateProject(first, { status: '搁置' })
       store.undoChange(store.listChanges()[0]!.id)
       expect(reopen().listProjects().map((p) => p.name)).toEqual(['后建的', '先建的'])
       expect(read(`wiki/projects/${first}.md`)).toContain('created: "2026-09-08"')

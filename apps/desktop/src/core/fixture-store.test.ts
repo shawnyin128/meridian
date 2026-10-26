@@ -67,11 +67,11 @@ describe('fixture store', () => {
     expect(createFixtureStore(() => '2027-01-31').today()).toBe('2027-01-31')
   })
 
-  it('fixture 的日期跟着库里的今天走:换一天建库,每个日期平移同样多天', () => {
+  it('fixture 的日期跟着库里的今天走:换一天建库,每个日期平移同样多天', async () => {
     const days = 100
     const moved = createFixtureStore(() => afterEpoch(days))
-    const before = store.getProject('draft')
-    const after = moved.getProject('draft')
+    const before = await store.getProject('draft')
+    const after = await moved.getProject('draft')
 
     expect(daysBetween(before.start, after.start)).toBe(days)
     expect(daysBetween(before.due, after.due)).toBe(days)
@@ -90,7 +90,7 @@ describe('fixture store', () => {
     expect(moved.listLater().map((e) => e.day)).toEqual(store.listLater().map((e) => e.day))
   })
 
-  it('连着 400 天每天照系统日期建一次库,分段与每个日期离今天的距离都不变', () => {
+  it('连着 400 天每天照系统日期建一次库,分段与每个日期离今天的距离都不变', async () => {
     const shapes = new Set<string>()
     const days: string[] = []
     for (let i = 0; i < 400; i++) {
@@ -105,7 +105,7 @@ describe('fixture store', () => {
           ...p.milestones.map((m) => daysBetween(day.today(), m.date)),
           ...p.events.map((e) => daysBetween(day.today(), e.date)),
         ]),
-        tasks: day.getProject('draft').tasks
+        tasks: (await day.getProject('draft')).tasks
           .map((t) => [daysBetween(day.today(), t.start), daysBetween(day.today(), t.end)]),
       }))
       vi.useRealTimers()
@@ -219,9 +219,9 @@ describe('fixture store', () => {
     expect(store.getPaper(paper.id).title).toBe(paper.title)
   })
 
-  it('删掉的附件进垃圾桶,恢复后又回到项目', () => {
-    const attachment = store.getProject('draft').attachments[0]!
-    store.deleteAttachment('draft', attachment.id)
+  it('删掉的附件进垃圾桶,恢复后又回到项目', async () => {
+    const attachment = (await store.getProject('draft')).attachments[0]!
+    await store.deleteAttachment('draft', attachment.id)
 
     const entries = store.listTrash()
     expect(entries).toHaveLength(1)
@@ -230,18 +230,18 @@ describe('fixture store', () => {
 
     store.restoreTrash(entries[0]!.id)
     expect(store.listTrash()).toEqual([])
-    expect(store.getProject('draft').attachments).toContainEqual(attachment)
+    expect((await store.getProject('draft')).attachments).toContainEqual(attachment)
   })
 
-  it('删掉的附件从垃圾桶恢复、或撤销这次删除时,回到它原来的位置', () => {
-    const before = store.getProject('draft').attachments
+  it('删掉的附件从垃圾桶恢复、或撤销这次删除时,回到它原来的位置', async () => {
+    const before = (await store.getProject('draft')).attachments
     expect(before.length).toBeGreaterThan(1)
-    store.deleteAttachment('draft', before[0]!.id)
+    await store.deleteAttachment('draft', before[0]!.id)
     store.restoreTrash(store.listTrash()[0]!.id)
-    expect(store.getProject('draft').attachments).toEqual(before)
-    store.deleteAttachment('draft', before[0]!.id)
+    expect((await store.getProject('draft')).attachments).toEqual(before)
+    await store.deleteAttachment('draft', before[0]!.id)
     store.undoChange(store.listChanges()[0]!.id)
-    expect(store.getProject('draft').attachments).toEqual(before)
+    expect((await store.getProject('draft')).attachments).toEqual(before)
   })
 
   it('删掉的论文重新导入后占了原来的 id，从垃圾桶恢复被拒，新导入的那篇不动，垃圾桶里那一条还在', () => {
@@ -260,9 +260,9 @@ describe('fixture store', () => {
     expect(store.listTrash().find((item) => item.id === entry.id)!.restorable).toBe(true)
   })
 
-  it('原项目也被删掉时那条附件恢复不了,项目恢复回来它跟着能恢复', () => {
-    const attachment = store.getProject('draft').attachments[0]!
-    store.deleteAttachment('draft', attachment.id)
+  it('原项目也被删掉时那条附件恢复不了,项目恢复回来它跟着能恢复', async () => {
+    const attachment = (await store.getProject('draft')).attachments[0]!
+    await store.deleteAttachment('draft', attachment.id)
     store.deleteProject('draft')
 
     const orphan = store.listTrash().find((e) => e.kind === 'attachment')!
@@ -274,7 +274,7 @@ describe('fixture store', () => {
     store.restoreTrash(store.listTrash().find((e) => e.kind === 'project')!.id)
     expect(store.listTrash().find((e) => e.id === orphan.id)!.restorable).toBe(true)
     store.restoreTrash(orphan.id)
-    expect(store.getProject('draft').attachments).toContainEqual(attachment)
+    expect((await store.getProject('draft')).attachments).toContainEqual(attachment)
   })
 
   it('垃圾桶里最新删掉的排在最前', () => {
@@ -394,11 +394,11 @@ describe('fixture store', () => {
     expect(store.listPapers({ page: 1, size: 1 }).total).toBe(290)
   })
 
-  it('清空垃圾桶后一条不剩,清掉的东西也恢复不回来', () => {
+  it('清空垃圾桶后一条不剩,清掉的东西也恢复不回来', async () => {
     const paper = store.listPapers({ page: 1, size: 1 }).rows[0]!
-    const attachment = store.getProject('draft').attachments[0]!
+    const attachment = (await store.getProject('draft')).attachments[0]!
     store.deletePaper(paper.id)
-    store.deleteAttachment('draft', attachment.id)
+    await store.deleteAttachment('draft', attachment.id)
     const ids = store.listTrash().map((e) => e.id)
     expect(ids).toHaveLength(2)
 
@@ -406,10 +406,10 @@ describe('fixture store', () => {
     expect(store.listTrash()).toEqual([])
     for (const id of ids) expect(() => store.restoreTrash(id)).toThrow(new RegExp(id))
     expect(() => store.getPaper(paper.id)).toThrow(new RegExp(paper.id))
-    expect(store.getProject('draft').attachments.some((a) => a.id === attachment.id)).toBe(false)
+    expect((await store.getProject('draft')).attachments.some((a) => a.id === attachment.id)).toBe(false)
   })
 
-  it('垃圾桶的返回值与恢复出来的东西都不与 store 里的共用对象', () => {
+  it('垃圾桶的返回值与恢复出来的东西都不与 store 里的共用对象', async () => {
     const paper = store.listPapers({ page: 1, size: 1 }).rows[0]!
     store.deletePaper(paper.id)
     const entries = store.listTrash()
@@ -421,72 +421,72 @@ describe('fixture store', () => {
     restored.topics.push('篡改的话题')
     expect(store.getPaper(paper.id).topics).not.toContain('篡改的话题')
 
-    const attachment = store.getProject('draft').attachments[0]!
-    store.deleteAttachment('draft', attachment.id)
+    const attachment = (await store.getProject('draft')).attachments[0]!
+    await store.deleteAttachment('draft', attachment.id)
     store.restoreTrash(store.listTrash()[0]!.id)
-    const project = store.getProject('draft')
+    const project = await store.getProject('draft')
     project.attachments[0]!.name = '篡改后的附件'
-    expect(store.getProject('draft').attachments[0]!.name).toBe(attachment.name)
+    expect((await store.getProject('draft')).attachments[0]!.name).toBe(attachment.name)
   })
 
-  it('新建的任务带上了 id 并进入项目', () => {
-    const before = store.getProject('draft').tasks.length
-    const after = store.createTask('draft', {
+  it('新建的任务带上了 id 并进入项目', async () => {
+    const before = (await store.getProject('draft')).tasks.length
+    const after = await store.createTask('draft', {
       title: '宽树实验补 B≥8', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
     })
     expect(after.tasks).toHaveLength(before + 1)
     const created = after.tasks[0]!
     expect(created.id).not.toBe('')
     expect(created.title).toBe('宽树实验补 B≥8')
-    expect(store.getProject('draft').tasks[0]?.id).toBe(created.id)
+    expect((await store.getProject('draft')).tasks[0]?.id).toBe(created.id)
   })
 
-  it('新建任务不带备注,后来补写的备注能读回和改写', () => {
-    const created = store.createTask('draft', {
+  it('新建任务不带备注,后来补写的备注能读回和改写', async () => {
+    const created = (await store.createTask('draft', {
       title: '写备注的任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
-    }).tasks[0]!
+    })).tasks[0]!
     expect(created.note).toBeUndefined()
-    const withNote = store.updateTask('draft', created.id, { note: '先跑 A/B 两组,再看结论' })
+    const withNote = await store.updateTask('draft', created.id, { note: '先跑 A/B 两组,再看结论' })
     expect(withNote.tasks.find((t) => t.id === created.id)?.note).toBe('先跑 A/B 两组,再看结论')
-    expect(store.getProject('draft').tasks.find((t) => t.id === created.id)?.note)
+    expect((await store.getProject('draft')).tasks.find((t) => t.id === created.id)?.note)
       .toBe('先跑 A/B 两组,再看结论')
   })
 
-  it('新建的里程碑带上了 id 并进入项目', () => {
-    const before = store.getProject('draft').milestones.length
-    const after = store.createMilestone('draft', { date: '2026-09-01', title: '补齐基线', done: false })
+  it('新建的里程碑带上了 id 并进入项目', async () => {
+    const before = (await store.getProject('draft')).milestones.length
+    const after = await store.createMilestone('draft', { date: '2026-09-01', title: '补齐基线', done: false })
     expect(after.milestones).toHaveLength(before + 1)
     const created = after.milestones[0]!
     expect(created.id).not.toBe('')
-    expect(store.getProject('draft').milestones[0]?.title).toBe('补齐基线')
+    expect((await store.getProject('draft')).milestones[0]?.title).toBe('补齐基线')
   })
 
-  it('两次新建拿到的 id 不相同', () => {
+  it('两次新建拿到的 id 不相同', async () => {
     const fields = { title: '同名任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1' } as const
-    const first = store.createTask('draft', fields).tasks[0]!.id
-    const second = store.createTask('draft', fields).tasks[0]!.id
+    const first = (await store.createTask('draft', fields)).tasks[0]!.id
+    const second = (await store.createTask('draft', fields)).tasks[0]!.id
     expect(second).not.toBe(first)
   })
 
-  it('删除任务后项目里没有它', () => {
-    const after = store.deleteTask('draft', 't2')
+  it('删除任务后项目里没有它', async () => {
+    const after = await store.deleteTask('draft', 't2')
     expect(after.tasks.some((t) => t.id === 't2')).toBe(false)
-    expect(store.getProject('draft').tasks.some((t) => t.id === 't2')).toBe(false)
+    expect((await store.getProject('draft')).tasks.some((t) => t.id === 't2')).toBe(false)
   })
 
   it('删不存在的任务会抛出而不是静默无事发生', () => {
     expect(() => store.deleteTask('draft', 'no-such-task')).toThrow(/no-such-task/)
   })
 
-  it('任务的科研节点可以手动设、改、清;手动设的节点优先于图里连的那个,结论里也按它算', () => {
-    const tasksOf = (node: string) => store.getProject('draft').projectConclusions!
+  it('任务的科研节点可以手动设、改、清;手动设的节点优先于图里连的那个,结论里也按它算', async () => {
+    const tasksOf = (node: string) => store.heldProject('draft').projectConclusions!
       .find((c) => c.node === node)!.tasks.map((t) => t.id)
     expect(tasksOf('knee')).toEqual(['t4'])
-    expect(store.setTaskNode('draft', 't4', 'stop').taskNodes).toEqual({ t4: 'stop' })
+    expect((await store.setTaskNode('draft', 't4', 'stop')).taskNodes).toEqual({ t4: 'stop' })
     expect([tasksOf('knee'), tasksOf('stop')]).toEqual([[], ['t4']])
-    expect(store.setTaskNode('draft', 't4', 'bucket').taskNodes).toEqual({ t4: 'bucket' })
+    expect((await store.setTaskNode('draft', 't4', 'bucket')).taskNodes).toEqual({ t4: 'bucket' })
     expect([tasksOf('stop'), tasksOf('bucket')]).toEqual([[], ['t1', 't4']])
-    expect(store.setTaskNode('draft', 't4', null).taskNodes).toBeUndefined()
+    expect((await store.setTaskNode('draft', 't4', null)).taskNodes).toBeUndefined()
     expect(tasksOf('knee')).toEqual(['t4'])
   })
 
@@ -495,44 +495,44 @@ describe('fixture store', () => {
     expect(() => store.setTaskNode('draft', 't2', 'no-such-node')).toThrow(/no-such-node/)
   })
 
-  it('按给定顺序重排任务,并且重新读取项目也是这个顺序', () => {
-    const ids = store.getProject('draft').tasks.map((t) => t.id)
+  it('按给定顺序重排任务,并且重新读取项目也是这个顺序', async () => {
+    const ids = (await store.getProject('draft')).tasks.map((t) => t.id)
     const reordered = [ids[2]!, ids[0]!, ids[1]!, ...ids.slice(3)]
-    const after = store.reorderTasks('draft', reordered)
+    const after = await store.reorderTasks('draft', reordered)
     expect(after.tasks.map((t) => t.id)).toEqual(reordered)
-    expect(store.getProject('draft').tasks.map((t) => t.id)).toEqual(reordered)
+    expect((await store.getProject('draft')).tasks.map((t) => t.id)).toEqual(reordered)
   })
 
-  it('顺序缺任务或多出未知 id 时拒绝重排', () => {
-    const ids = store.getProject('draft').tasks.map((t) => t.id)
+  it('顺序缺任务或多出未知 id 时拒绝重排', async () => {
+    const ids = (await store.getProject('draft')).tasks.map((t) => t.id)
     expect(() => store.reorderTasks('draft', ids.slice(1))).toThrow(/任务顺序/)
     expect(() => store.reorderTasks('draft', [...ids, 'no-such-task'])).toThrow(/任务顺序/)
   })
 
-  it('删除里程碑后项目里没有它', () => {
-    const after = store.deleteMilestone('draft', 'm2')
+  it('删除里程碑后项目里没有它', async () => {
+    const after = await store.deleteMilestone('draft', 'm2')
     expect(after.milestones.some((m) => m.id === 'm2')).toBe(false)
-    expect(store.getProject('draft').milestones.some((m) => m.id === 'm2')).toBe(false)
+    expect((await store.getProject('draft')).milestones.some((m) => m.id === 'm2')).toBe(false)
   })
 
   it('删不存在的里程碑会抛出而不是静默无事发生', () => {
     expect(() => store.deleteMilestone('draft', 'no-such-milestone')).toThrow(/no-such-milestone/)
   })
 
-  it('新建的关联条目带上了 id 并排在这一组的最前面', () => {
-    const before = store.getProject('draft').relations.find((r) => r.group === 'Wiki')!.items.length
-    const after = store.createRelation('draft', { group: 'Wiki', text: '前缀读取与验证共调度' })
+  it('新建的关联条目带上了 id 并排在这一组的最前面', async () => {
+    const before = (await store.getProject('draft')).relations.find((r) => r.group === 'Wiki')!.items.length
+    const after = await store.createRelation('draft', { group: 'Wiki', text: '前缀读取与验证共调度' })
     const group = after.relations.find((r) => r.group === 'Wiki')!
     expect(group.items).toHaveLength(before + 1)
     expect(group.items[0]!.id).not.toBe('')
     expect(group.items[0]!.text).toBe('前缀读取与验证共调度')
-    expect(store.getProject('draft').relations.find((r) => r.group === 'Wiki')?.items[0]?.text)
+    expect((await store.getProject('draft')).relations.find((r) => r.group === 'Wiki')?.items[0]?.text)
       .toBe('前缀读取与验证共调度')
   })
 
-  it('关联 Wiki 条目带上的页要是 wiki 里的一页聚合', () => {
+  it('关联 Wiki 条目带上的页要是 wiki 里的一页聚合', async () => {
     const page = store.wikiCards()[0]!
-    const after = store.createRelation('draft', { group: 'Wiki', text: page.title, page: page.id })
+    const after = await store.createRelation('draft', { group: 'Wiki', text: page.title, page: page.id })
     expect(after.relations.find((relation) => relation.group === 'Wiki')!.items[0]!.page)
       .toBe(page.id)
     expect(() => store.createRelation('draft', {
@@ -540,8 +540,8 @@ describe('fixture store', () => {
     })).toThrow(/topics\/nope/)
   })
 
-  it('关联可以指向一个链接,显示名和地址一起留下;同时指向 Wiki 页和链接会被拒绝', () => {
-    const after = store.createRelation('draft', {
+  it('关联可以指向一个链接,显示名和地址一起留下;同时指向 Wiki 页和链接会被拒绝', async () => {
+    const after = await store.createRelation('draft', {
       group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft',
     })
     expect(after.relations.find((relation) => relation.group === 'links')!.items).toEqual([
@@ -553,58 +553,58 @@ describe('fixture store', () => {
     })).toThrow(/同时/)
   })
 
-  it('关联里的一项可以挪到同一行的别的位置,越界就贴到末尾;论文也一样', () => {
-    const wiki = store.getProject('draft').relations.find((r) => r.group === 'Wiki')!
+  it('关联里的一项可以挪到同一行的别的位置,越界就贴到末尾;论文也一样', async () => {
+    const wiki = (await store.getProject('draft')).relations.find((r) => r.group === 'Wiki')!
     expect(wiki.items.length).toBeGreaterThan(1)
     const last = wiki.items.at(-1)!
-    const after = store.createRelation('draft', { group: '实验', text: '别的组' })
-    const moved = store.moveRelation('draft', last.id, 0)
+    const after = await store.createRelation('draft', { group: '实验', text: '别的组' })
+    const moved = await store.moveRelation('draft', last.id, 0)
     expect(moved.relations.find((r) => r.group === 'Wiki')!.items[0]!.id).toBe(last.id)
     expect(moved.relations.find((r) => r.group === '实验')).toEqual(after.relations.find((r) => r.group === '实验'))
 
-    const papers = store.getProject('draft').papers
+    const papers = (await store.getProject('draft')).papers
     const first = papers[0]!
-    expect(store.moveRelation('draft', first, 99).papers.at(-1)).toBe(first)
+    expect((await store.moveRelation('draft', first, 99)).papers.at(-1)).toBe(first)
     expect(() => store.moveRelation('draft', 'rel-nope', 0)).toThrow(/rel-nope/)
   })
 
-  it('关联条目落在没见过的组名上时新开一组,排在最后', () => {
-    const before = store.getProject('draft').relations.length
-    const after = store.createRelation('draft', { group: '实验', text: '宽树 B≥8' })
+  it('关联条目落在没见过的组名上时新开一组,排在最后', async () => {
+    const before = (await store.getProject('draft')).relations.length
+    const after = await store.createRelation('draft', { group: '实验', text: '宽树 B≥8' })
     expect(after.relations).toHaveLength(before + 1)
     expect(after.relations.at(-1)!.group).toBe('实验')
     expect(after.relations.at(-1)!.items.map((i) => i.text)).toEqual(['宽树 B≥8'])
   })
 
-  it('删除关联条目后项目里没有它,空掉的那一组还在', () => {
-    const id = store.getProject('draft').relations.find((r) => r.group === '论文')!.items[0]!.id
-    const after = store.deleteRelation('draft', id)
+  it('删除关联条目后项目里没有它,空掉的那一组还在', async () => {
+    const id = (await store.getProject('draft')).relations.find((r) => r.group === '论文')!.items[0]!.id
+    const after = await store.deleteRelation('draft', id)
     const group = after.relations.find((r) => r.group === '论文')
     expect(group?.items.some((i) => i.id === id)).toBe(false)
     expect(group).toBeDefined()
-    expect(store.getProject('draft').relations.flatMap((r) => r.items).some((i) => i.id === id)).toBe(false)
+    expect((await store.getProject('draft')).relations.flatMap((r) => r.items).some((i) => i.id === id)).toBe(false)
   })
 
   it('删不存在的关联条目会抛出而不是静默无事发生', () => {
     expect(() => store.deleteRelation('draft', 'no-such-relation')).toThrow(/no-such-relation/)
   })
 
-  it('改一条关联就换成给的名字和指向,id、所在组和位置都不变', () => {
-    const before = store.getProject('draft').relations
+  it('改一条关联就换成给的名字和指向,id、所在组和位置都不变', async () => {
+    const before = (await store.getProject('draft')).relations
     const target = before.find((r) => r.group === 'Wiki')!.items.at(-1)!
     const page = store.wikiCards()[0]!
-    const after = store.updateRelation('draft', target.id, { text: page.title, page: page.id })
+    const after = await store.updateRelation('draft', target.id, { text: page.title, page: page.id })
     expect(after.relations).toEqual(before.map((r) => ({
       ...r,
       items: r.items.map((i) => (i.id === target.id ? { id: target.id, text: page.title, page: page.id } : i)),
     })))
-    const relinked = store.updateRelation('draft', target.id, { text: '实验看板', url: 'https://wandb.ai/team/draft' })
+    const relinked = await store.updateRelation('draft', target.id, { text: '实验看板', url: 'https://wandb.ai/team/draft' })
     expect(relinked.relations.flatMap((r) => r.items).find((i) => i.id === target.id))
       .toEqual({ id: target.id, text: '实验看板', url: 'https://wandb.ai/team/draft' })
   })
 
-  it('改关联和新增一样校验指向,改不存在的条目会抛出', () => {
-    const id = store.getProject('draft').relations.find((r) => r.group === 'Wiki')!.items[0]!.id
+  it('改关联和新增一样校验指向,改不存在的条目会抛出', async () => {
+    const id = (await store.getProject('draft')).relations.find((r) => r.group === 'Wiki')!.items[0]!.id
     expect(() => store.updateRelation('draft', id, { text: 'x', page: 'topics/nope' })).toThrow(/topics\/nope/)
     expect(() => store.updateRelation('draft', id, {
       text: 'x', page: store.wikiCards()[0]!.id, url: 'https://example.com',
@@ -612,14 +612,14 @@ describe('fixture store', () => {
     expect(() => store.updateRelation('draft', 'no-such-relation', { text: 'x' })).toThrow(/no-such-relation/)
   })
 
-  it('新建的附件带上了 id 并进入项目', () => {
-    const before = store.getProject('draft').attachments.length
+  it('新建的附件带上了 id 并进入项目', async () => {
+    const before = (await store.getProject('draft')).attachments.length
     const path = resolve(VAULT, 'sweep.csv')
-    const after = store.createAttachment('draft', { name: 'sweep.csv', size: '12 KB', path })
+    const after = await store.createAttachment('draft', { name: 'sweep.csv', size: '12 KB', path })
     expect(after.attachments).toHaveLength(before + 1)
     expect(after.attachments[0]!.id).not.toBe('')
-    expect(store.getProject('draft').attachments[0]?.name).toBe('sweep.csv')
-    expect(store.getProject('draft').attachments[0]?.path).toBe(path)
+    expect((await store.getProject('draft')).attachments[0]?.name).toBe('sweep.csv')
+    expect((await store.getProject('draft')).attachments[0]?.path).toBe(path)
   })
 
   it('附件的路径要是绝对路径', () => {
@@ -628,25 +628,25 @@ describe('fixture store', () => {
     })).toThrow(/绝对路径/)
   })
 
-  it('删除附件后项目里没有它', () => {
-    const id = store.getProject('draft').attachments[0]!.id
-    const after = store.deleteAttachment('draft', id)
+  it('删除附件后项目里没有它', async () => {
+    const id = (await store.getProject('draft')).attachments[0]!.id
+    const after = await store.deleteAttachment('draft', id)
     expect(after.attachments.some((a) => a.id === id)).toBe(false)
-    expect(store.getProject('draft').attachments.some((a) => a.id === id)).toBe(false)
+    expect((await store.getProject('draft')).attachments.some((a) => a.id === id)).toBe(false)
   })
 
   it('删不存在的附件会抛出而不是静默无事发生', () => {
     expect(() => store.deleteAttachment('draft', 'no-such-attachment')).toThrow(/no-such-attachment/)
   })
 
-  it('改项目随笔后读回的是新原文', () => {
-    expect(store.getProject('draft').memo).not.toBe('')
-    expect(store.updateProject('draft', { memo: '新的随笔' }).memo).toBe('新的随笔')
-    expect(store.getProject('draft').memo).toBe('新的随笔')
+  it('改项目随笔后读回的是新原文', async () => {
+    expect((await store.getProject('draft')).memo).not.toBe('')
+    expect((await store.updateProject('draft', { memo: '新的随笔' })).memo).toBe('新的随笔')
+    expect((await store.getProject('draft')).memo).toBe('新的随笔')
   })
 
-  it('项目带着 agent 已完成的会话,步骤与产出都在', () => {
-    const sessions = store.getProject('draft').agentSessions
+  it('项目带着 agent 已完成的会话,步骤与产出都在', async () => {
+    const sessions = (await store.getProject('draft')).agentSessions
     expect(sessions).toHaveLength(1)
     expect(sessions[0]!.title).toBe('实验 #3 · 分桶统计脚本固化')
     expect(sessions[0]!.when).toBe('2026-08-05')
@@ -666,8 +666,9 @@ describe('fixture store', () => {
     expect(() => store.getPaper('no-such-paper')).toThrow(/no-such-paper/)
   })
 
-  it('项目详情符合契约', () => {
-    expect(() => ProjectDetailSchema.parse(store.getProject('draft'))).not.toThrow()
+  it('项目详情符合契约', async () => {
+    const detail = await store.getProject('draft')
+    expect(() => ProjectDetailSchema.parse(detail)).not.toThrow()
   })
 
   it('列出项目给出 fixture 里的每一个,次序与 fixture 一致', () => {
@@ -683,15 +684,16 @@ describe('fixture store', () => {
       .toEqual(['moe', 'draft', 'timeline-demo', 'repro', 'sched', 'fa'])
   })
 
-  it('列出来的每个项目都读得到详情,详情也符合契约', () => {
+  it('列出来的每个项目都读得到详情,详情也符合契约', async () => {
     for (const { id } of store.listProjects()) {
-      expect(() => ProjectDetailSchema.parse(store.getProject(id)), id).not.toThrow()
+      const detail = await store.getProject(id)
+      expect(() => ProjectDetailSchema.parse(detail), id).not.toThrow()
     }
   })
 
-  it('概要里的里程碑只留日期与完成与否,科研记录只留末三条、与详情同序', () => {
+  it('概要里的里程碑只留日期与完成与否,科研记录只留末三条、与详情同序', async () => {
     const summary = store.listProjects().find((p) => p.id === 'draft')!
-    const full = store.getProject('draft')
+    const full = await store.getProject('draft')
     expect(full.events.length).toBeGreaterThan(3)
     expect(summary.milestones).toEqual(full.milestones.map(({ date, done }) => ({ date, done })))
     // Summary events carry date, text, and origin (for the overview's "agent" tag); node
@@ -701,32 +703,32 @@ describe('fixture store', () => {
     })))
   })
 
-  it('概要、详情与总览的最近推进是同一天:改任务算进去,调任务顺序与删掉再恢复项目不算', () => {
+  it('概要、详情与总览的最近推进是同一天:改任务算进去,调任务顺序与删掉再恢复项目不算', async () => {
     let day = '2026-08-25'
     const dated = createFixtureStore(() => day)
-    const progress = () => [
+    const progress = async () => [
       dated.listProjects().find((p) => p.id === 'draft')!.lastProgress,
-      dated.getProject('draft').lastProgress,
+      (await dated.getProject('draft')).lastProgress,
       dated.overviewProjects().find((p) => p.id === 'draft')!.lastProgress,
     ]
-    const latest = dated.getProject('draft').events.map((event) => event.date).sort().at(-1)!
-    expect(progress()).toEqual([latest, latest, latest])
+    const latest = (await dated.getProject('draft')).events.map((event) => event.date).sort().at(-1)!
+    expect(await progress()).toEqual([latest, latest, latest])
 
     day = '2026-08-26'
-    const ids = dated.getProject('draft').tasks.map((t) => t.id)
-    dated.reorderTasks('draft', [...ids].reverse())
+    const ids = (await dated.getProject('draft')).tasks.map((t) => t.id)
+    await dated.reorderTasks('draft', [...ids].reverse())
     dated.deleteProject('draft')
     dated.restoreTrash(dated.listTrash()[0]!.id)
-    expect(progress()).toEqual([latest, latest, latest])
+    expect(await progress()).toEqual([latest, latest, latest])
 
-    expect(dated.updateTask('draft', ids[0]!, { title: '改过的任务' }).lastProgress).toBe('2026-08-26')
-    expect(progress()).toEqual(['2026-08-26', '2026-08-26', '2026-08-26'])
+    expect((await dated.updateTask('draft', ids[0]!, { title: '改过的任务' })).lastProgress).toBe('2026-08-26')
+    expect(await progress()).toEqual(['2026-08-26', '2026-08-26', '2026-08-26'])
   })
 
-  it('新记一条科研记录之后,概要的末位与详情的末位都是它', () => {
-    store.createEvent('draft', '[对话] 最新的一条')
+  it('新记一条科研记录之后,概要的末位与详情的末位都是它', async () => {
+    await store.createEvent('draft', '[对话] 最新的一条')
     const summary = store.listProjects().find((p) => p.id === 'draft')!
-    expect(store.getProject('draft').events.at(-1)?.text).toBe('[对话] 最新的一条')
+    expect((await store.getProject('draft')).events.at(-1)?.text).toBe('[对话] 最新的一条')
     expect(summary.recentEvents.at(-1)?.text).toBe('[对话] 最新的一条')
   })
 
@@ -736,13 +738,13 @@ describe('fixture store', () => {
     expect(byId.get('draft')).not.toHaveProperty('block')
   })
 
-  it('总览列出每个项目,带计划、科研记录与紧凑科研图投影', () => {
+  it('总览列出每个项目,带计划、科研记录与紧凑科研图投影', async () => {
     const rows = store.overviewProjects()
     expect(rows.map((p) => p.id)).toEqual(['draft', 'timeline-demo', 'repro', 'sched', 'moe', 'fa'])
     for (const row of rows) expect(() => ProjectOverviewSchema.parse(row), row.id).not.toThrow()
 
     const draft = rows.find((p) => p.id === 'draft')!
-    const full = store.getProject('draft')
+    const full = await store.getProject('draft')
     expect(full.milestones.length).toBeGreaterThan(1)
     expect(full.events.length).toBeGreaterThan(3)
     expect(draft.tasks).toEqual(full.tasks)
@@ -759,19 +761,19 @@ describe('fixture store', () => {
     expect(byId.get('draft')).not.toHaveProperty('block')
   })
 
-  it('阻塞可以清掉,也可以写上;总览读到的跟着变', () => {
-    expect('block' in store.updateProject('repro', { block: null })).toBe(false)
+  it('阻塞可以清掉,也可以写上;总览读到的跟着变', async () => {
+    expect('block' in await store.updateProject('repro', { block: null })).toBe(false)
     expect(store.overviewProjects().find((project) => project.id === 'repro')!.block)
       .toBeUndefined()
-    expect(store.updateProject('draft', { block: '等数据集' }).block).toBe('等数据集')
+    expect((await store.updateProject('draft', { block: '等数据集' })).block).toBe('等数据集')
   })
 
-  it('新建的项目进总览,删掉的离开总览', () => {
+  it('新建的项目进总览,删掉的离开总览', async () => {
     store.createProject('宽树消融')
     const id = store.listProjects()[0]!.id
     const added = store.overviewProjects().find((p) => p.id === id)
     expect(added).toMatchObject({ name: '宽树消融', status: '进行中' })
-    expect(added?.events).toEqual(store.getProject(id).events)
+    expect(added?.events).toEqual((await store.getProject(id)).events)
 
     store.deleteProject(id)
     expect(store.overviewProjects().map((p) => p.id)).not.toContain(id)
@@ -789,14 +791,14 @@ describe('fixture store', () => {
     expect(JSON.stringify(store.overviewProjects())).toBe(before)
   })
 
-  it('新建的项目带上了 id、进入列表,其余各项是新项目的起始值', () => {
+  it('新建的项目带上了 id、进入列表,其余各项是新项目的起始值', async () => {
     const before = store.listProjects().length
     store.createProject('宽树消融')
 
     expect(store.listProjects().map((p) => p.id)).toHaveLength(before + 1)
     const id = store.listProjects()[0]!.id
     expect(id).not.toBe('')
-    const created = store.getProject(id)
+    const created = await store.getProject(id)
     expect(() => ProjectDetailSchema.parse(created)).not.toThrow()
     expect(created).toMatchObject({
       name: '宽树消融',
@@ -832,14 +834,14 @@ describe('fixture store', () => {
     expect(added.some((id) => fixtureIds.has(id))).toBe(false)
   })
 
-  it('fixture 项目的论文数按记着的论文 id 数,进了垃圾桶的那一篇不算', () => {
-    const draft = store.getProject('draft')
+  it('fixture 项目的论文数按记着的论文 id 数,进了垃圾桶的那一篇不算', async () => {
+    const draft = await store.getProject('draft')
     expect(draft.papers).toHaveLength(4)
     expect(draft.paperCount).toBe(4)
     store.deletePaper(draft.papers[0]!)
-    expect(store.getProject('draft').paperCount).toBe(3)
+    expect((await store.getProject('draft')).paperCount).toBe(3)
     expect(store.listProjects().find((p) => p.id === 'draft')!.paperCount).toBe(3)
-    expect(store.getProject('draft').papers).toEqual(draft.papers)
+    expect((await store.getProject('draft')).papers).toEqual(draft.papers)
   })
 
   it('fixture 论文行的项目由项目那一侧记着的论文得出', () => {
@@ -853,14 +855,14 @@ describe('fixture store', () => {
       .toBe(4)
   })
 
-  it('fixture 项目的结论分档数的是结论视图里的每一条:节点结论加旧版结论', () => {
-    const draft = store.getProject('draft')
+  it('fixture 项目的结论分档数的是结论视图里的每一条:节点结论加旧版结论', async () => {
+    const draft = await store.getProject('draft')
     expect(draft.projectConclusions!.map((c) => [c.id, c.state]).sort()).toEqual([
       ['bucket', 'pending'], ['c1', 'verified'], ['c2', 'conflicting'], ['knee', 'pending'], ['stop', 'pending'],
     ])
     expect(draft.conclusions).toEqual({ verified: 1, pending: 3, conflicting: 1 })
     expect(store.listProjects().find((project) => project.id === 'draft')!.conclusions).toEqual(draft.conclusions)
-    expect(store.getProject('draft').conclusionList.map((conclusion) => conclusion.state))
+    expect((await store.getProject('draft')).conclusionList.map((conclusion) => conclusion.state))
       .toEqual(['verified', 'conflicting'])
     expect(store.listProjects().find((project) => project.id === 'repro')!.conclusions)
       .toEqual({ verified: 0, pending: 1, conflicting: 0 })
@@ -868,55 +870,55 @@ describe('fixture store', () => {
       .toEqual({ verified: 1, pending: 0, conflicting: 0 })
   })
 
-  it('照快照写回项目不碰结论列表', () => {
-    const snapshot = store.getProject('draft')
-    store.putProject({ ...snapshot, conclusionList: [], focus: '快照里的下一步' })
-    expect(store.getProject('draft').conclusionList).toEqual(snapshot.conclusionList)
-    expect(store.getProject('draft').focus).toBe('快照里的下一步')
+  it('照快照写回项目不碰结论列表', async () => {
+    const snapshot = await store.getProject('draft')
+    await store.putProject({ ...snapshot, conclusionList: [], focus: '快照里的下一步' })
+    expect((await store.getProject('draft')).conclusionList).toEqual(snapshot.conclusionList)
+    expect((await store.getProject('draft')).focus).toBe('快照里的下一步')
   })
 
-  it('结论的新建、改档与删除都改到项目上,分档跟着变', () => {
+  it('结论的新建、改档与删除都改到项目上,分档跟着变', async () => {
     const session = store.listChats()[0]!
-    const made = store.createConclusion('draft', '新的一条', { chat: session.id })
+    const made = await store.createConclusion('draft', '新的一条', { chat: session.id })
     const item = made.conclusionList.at(-1)!
     expect(item).toMatchObject({
       state: 'pending', date: EPOCH, source: `对话「${session.title}」`,
     })
     expect(made.conclusions).toEqual({ verified: 1, pending: 4, conflicting: 1 })
-    expect(store.setConclusionState('draft', item.id, 'verified').conclusions)
+    expect((await store.setConclusionState('draft', item.id, 'verified')).conclusions)
       .toEqual({ verified: 2, pending: 3, conflicting: 1 })
-    expect(store.deleteConclusion('draft', item.id).conclusionList.some(
+    expect((await store.deleteConclusion('draft', item.id)).conclusionList.some(
       (conclusion) => conclusion.id === item.id,
     )).toBe(false)
     expect(() => store.createConclusion('nope', 'x', {})).toThrow(/nope/)
   })
 
-  it('存下结论之后,项目上更早那一笔仍撤得动,撤销也不带走那条结论', () => {
-    const focus = store.getProject('draft').focus
-    store.updateProject('draft', { focus: '改过的下一步' })
+  it('存下结论之后,项目上更早那一笔仍撤得动,撤销也不带走那条结论', async () => {
+    const focus = (await store.getProject('draft')).focus
+    await store.updateProject('draft', { focus: '改过的下一步' })
     const change = store.listChanges()[0]!
-    store.createConclusion('draft', '撤销之后还在', {})
+    await store.createConclusion('draft', '撤销之后还在', {})
     store.undoChange(change.id)
-    expect(store.getProject('draft').focus).toBe(focus)
-    expect(store.getProject('draft').conclusionList.at(-1)!.text).toBe('撤销之后还在')
+    expect((await store.getProject('draft')).focus).toBe(focus)
+    expect((await store.getProject('draft')).conclusionList.at(-1)!.text).toBe('撤销之后还在')
   })
 
-  it('项目关联一篇论文、再移除,论文数跟着变;进了垃圾桶的那一篇仍然移除得掉', () => {
-    const before = store.getProject('repro').paperCount
-    expect(store.addPaper('repro', '2305.17888').paperCount).toBe(before + 1)
+  it('项目关联一篇论文、再移除,论文数跟着变;进了垃圾桶的那一篇仍然移除得掉', async () => {
+    const before = (await store.getProject('repro')).paperCount
+    expect((await store.addPaper('repro', '2305.17888')).paperCount).toBe(before + 1)
     store.deletePaper('2305.17888')
-    expect(store.removePaper('repro', '2305.17888').papers).not.toContain('2305.17888')
+    expect((await store.removePaper('repro', '2305.17888')).papers).not.toContain('2305.17888')
     expect(() => store.addPaper('repro', 'no-such-paper')).toThrow(/no-such-paper/)
   })
 
-  it('论文改了标题不挡住项目上更早那一笔的撤销', () => {
-    const draft = store.getProject('draft')
-    store.updateProject('draft', { focus: '改过的下一步' })
+  it('论文改了标题不挡住项目上更早那一笔的撤销', async () => {
+    const draft = await store.getProject('draft')
+    await store.updateProject('draft', { focus: '改过的下一步' })
     const change = store.listChanges()[0]!
     store.updatePaper(draft.papers[1]!, { title: '换了标题的论文' })
-    expect(store.getProject('draft').paperTitles[draft.papers[1]!]).toBe('换了标题的论文')
+    expect((await store.getProject('draft')).paperTitles[draft.papers[1]!]).toBe('换了标题的论文')
     store.undoChange(change.id)
-    expect(store.getProject('draft').focus).toBe(draft.focus)
+    expect((await store.getProject('draft')).focus).toBe(draft.focus)
   })
 
   it('删除项目后列表与详情里都读不到它', () => {
@@ -930,8 +932,8 @@ describe('fixture store', () => {
     expect(store.listProjects().map((p) => p.id)).toContain('moe')
   })
 
-  it('删掉的项目进垃圾桶,恢复后又回到列表', () => {
-    const before = store.getProject('moe')
+  it('删掉的项目进垃圾桶,恢复后又回到列表', async () => {
+    const before = await store.getProject('moe')
     store.deleteProject('moe')
 
     const entry = store.listTrash()[0]!
@@ -940,29 +942,29 @@ describe('fixture store', () => {
 
     store.restoreTrash(entry.id)
     expect(store.listTrash()).toHaveLength(0)
-    expect(store.getProject('moe')).toEqual(before)
+    expect(await store.getProject('moe')).toEqual(before)
   })
 
-  it('恢复项目拿到的不是 store 里的那份对象', () => {
+  it('恢复项目拿到的不是 store 里的那份对象', async () => {
     store.deleteProject('moe')
     store.restoreTrash(store.listTrash()[0]!.id)
-    const restored = store.getProject('moe')
+    const restored = await store.getProject('moe')
     restored.milestones.push({ id: 'm9', date: '2026-09-01', title: '篡改的里程碑', done: false })
-    expect(store.getProject('moe').milestones).not.toContainEqual(
+    expect((await store.getProject('moe')).milestones).not.toContainEqual(
       { id: 'm9', date: '2026-09-01', title: '篡改的里程碑', done: false },
     )
   })
 
-  it('改过项目属性之后列表里读到的是新值', () => {
-    store.updateProject('repro', { status: '已完成', focus: '改过的下一步' })
+  it('改过项目属性之后列表里读到的是新值', async () => {
+    await store.updateProject('repro', { status: '已完成', focus: '改过的下一步' })
     const summary = store.listProjects().find((p) => p.id === 'repro')
     expect(summary?.status).toBe('已完成')
     expect(summary?.focus).toBe('改过的下一步')
   })
 
-  it('新建里程碑之后概要里的里程碑跟着多一格', () => {
+  it('新建里程碑之后概要里的里程碑跟着多一格', async () => {
     const before = store.listProjects().find((p) => p.id === 'sched')!.milestones.length
-    store.createMilestone('sched', { date: '2026-09-20', title: '新里程碑', done: false })
+    await store.createMilestone('sched', { date: '2026-09-20', title: '新里程碑', done: false })
     expect(store.listProjects().find((p) => p.id === 'sched')!.milestones)
       .toHaveLength(before + 1)
   })
@@ -1206,13 +1208,13 @@ describe('fixture store', () => {
     expect(store.getPaper(a!).custom).toEqual({ note: '  ' })
   })
 
-  it('改任务后返回的项目里该任务已更新', () => {
-    const after = store.updateTask('draft', 't2', { priority: 'p1' })
+  it('改任务后返回的项目里该任务已更新', async () => {
+    const after = await store.updateTask('draft', 't2', { priority: 'p1' })
     expect(after.tasks.find((t) => t.id === 't2')?.priority).toBe('p1')
   })
 
-  it('分时任务可创建、修改窗口并清回全天,同日倒置窗口整次拒绝', () => {
-    const made = store.createTask('timeline-demo', {
+  it('分时任务可创建、修改窗口并清回全天,同日倒置窗口整次拒绝', async () => {
+    const made = await store.createTask('timeline-demo', {
       title: '新增分时任务', start: EPOCH, end: EPOCH,
       window: { start: '14:00', end: '16:00' }, state: 'act', priority: 'p1',
     })
@@ -1221,80 +1223,80 @@ describe('fixture store', () => {
     expect(() => store.updateTask('timeline-demo', task.id, {
       window: { start: '18:00', end: '16:00' },
     })).toThrow(/结束时间/)
-    expect(store.updateTask('timeline-demo', task.id, { window: null }).tasks[0]!.window)
+    expect((await store.updateTask('timeline-demo', task.id, { window: null })).tasks[0]!.window)
       .toBeUndefined()
   })
 
-  it('新建结束早于开始的任务被拒绝', () => {
-    const before = store.getProject('draft').tasks.length
+  it('新建结束早于开始的任务被拒绝', async () => {
+    const before = (await store.getProject('draft')).tasks.length
     expect(() => store.createTask('draft', {
       title: '倒着排的任务', start: '2026-08-31', end: '2026-08-25', state: 'act', priority: 'p1',
     })).toThrow(/2026-08-31/)
-    expect(store.getProject('draft').tasks).toHaveLength(before)
+    expect((await store.getProject('draft')).tasks).toHaveLength(before)
   })
 
-  it('只改结束日期时按合并后的结果判断,越过开始就被拒绝', () => {
+  it('只改结束日期时按合并后的结果判断,越过开始就被拒绝', async () => {
     // t2 spans 2026-08-18 through 2026-08-28; an end-only patch must validate against the stored start.
     expect(() => store.updateTask('draft', 't2', { end: '2026-08-01' })).toThrow(/2026-08-18/)
-    const kept = store.getProject('draft').tasks.find((t) => t.id === 't2')
+    const kept = (await store.getProject('draft')).tasks.find((t) => t.id === 't2')
     expect(kept?.end).toBe('2026-08-28')
   })
 
-  it('只改开始日期时按合并后的结果判断,越过结束就被拒绝', () => {
+  it('只改开始日期时按合并后的结果判断,越过结束就被拒绝', async () => {
     expect(() => store.updateTask('draft', 't2', { start: '2026-09-30' })).toThrow(/2026-08-28/)
-    expect(store.getProject('draft').tasks.find((t) => t.id === 't2')?.start).toBe('2026-08-18')
+    expect((await store.getProject('draft')).tasks.find((t) => t.id === 't2')?.start).toBe('2026-08-18')
   })
 
-  it('只改一个端点但没越界的更新照常通过', () => {
-    const after = store.updateTask('draft', 't2', { start: '2026-08-28' })
+  it('只改一个端点但没越界的更新照常通过', async () => {
+    const after = await store.updateTask('draft', 't2', { start: '2026-08-28' })
     expect(after.tasks.find((t) => t.id === 't2')?.start).toBe('2026-08-28')
   })
 
-  it('改里程碑后返回的项目里该里程碑已更新', () => {
-    const after = store.updateMilestone('draft', 'm2', { done: true })
+  it('改里程碑后返回的项目里该里程碑已更新', async () => {
+    const after = await store.updateMilestone('draft', 'm2', { done: true })
     expect(after.milestones.find((m) => m.id === 'm2')?.done).toBe(true)
-    expect(store.getProject('draft').milestones.find((m) => m.id === 'm2')?.done).toBe(true)
+    expect((await store.getProject('draft')).milestones.find((m) => m.id === 'm2')?.done).toBe(true)
   })
 
   it('改不存在的里程碑会抛出而不是静默无事发生', () => {
     expect(() => store.updateMilestone('draft', 'no-such-milestone', { done: true })).toThrow(/no-such-milestone/)
   })
 
-  it('改项目属性后读回的是新值', () => {
-    expect(store.updateProject('draft', { status: '搁置' }).status).toBe('搁置')
-    expect(store.getProject('draft').status).toBe('搁置')
+  it('改项目属性后读回的是新值', async () => {
+    expect((await store.updateProject('draft', { status: '搁置' })).status).toBe('搁置')
+    expect((await store.getProject('draft')).status).toBe('搁置')
   })
 
   it('改不存在的项目会抛出而不是静默无事发生', () => {
     expect(() => store.updateProject('no-such-project', { status: '搁置' })).toThrow(/no-such-project/)
   })
 
-  it('只改项目截止日期时按合并后的结果判断,越过开始就被拒绝', () => {
+  it('只改项目截止日期时按合并后的结果判断,越过开始就被拒绝', async () => {
     // draft spans 2026-06-02 through 2026-09-15; a due-only patch must validate against the stored start.
     expect(() => store.updateProject('draft', { due: '2026-05-01' })).toThrow(/2026-06-02/)
-    expect(store.getProject('draft').due).toBe('2026-09-15')
+    expect((await store.getProject('draft')).due).toBe('2026-09-15')
   })
 
-  it('只改项目开始日期时按合并后的结果判断,越过截止就被拒绝', () => {
+  it('只改项目开始日期时按合并后的结果判断,越过截止就被拒绝', async () => {
     expect(() => store.updateProject('draft', { start: '2026-12-01' })).toThrow(/2026-09-15/)
-    expect(store.getProject('draft').start).toBe('2026-06-02')
+    expect((await store.getProject('draft')).start).toBe('2026-06-02')
   })
 
-  it('两个端点一起改时按合并后的结果判断', () => {
+  it('两个端点一起改时按合并后的结果判断', async () => {
     expect(() => store.updateProject('draft', { start: '2026-10-01', due: '2026-09-30' })).toThrow(/2026-10-01/)
-    const after = store.updateProject('draft', { start: '2026-07-01', due: '2026-10-30' })
+    const after = await store.updateProject('draft', { start: '2026-07-01', due: '2026-10-30' })
     expect(after.start).toBe('2026-07-01')
     expect(after.due).toBe('2026-10-30')
   })
 
-  it('只改项目一个端点但没越界的更新照常通过', () => {
-    expect(store.updateProject('draft', { due: '2026-10-30' }).due).toBe('2026-10-30')
+  it('只改项目一个端点但没越界的更新照常通过', async () => {
+    expect((await store.updateProject('draft', { due: '2026-10-30' })).due).toBe('2026-10-30')
   })
 
-  it('改返回值不会影响 store 后续返回的内容,包括嵌套字段', () => {
-    const project = store.getProject('draft')
+  it('改返回值不会影响 store 后续返回的内容,包括嵌套字段', async () => {
+    const project = await store.getProject('draft')
     project.milestones[0]!.title = '篡改后的标题'
-    expect(store.getProject('draft').milestones[0]!.title).not.toBe('篡改后的标题')
+    expect((await store.getProject('draft')).milestones[0]!.title).not.toBe('篡改后的标题')
 
     const paperId = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
     const paper = store.getPaper(paperId)
@@ -1305,65 +1307,65 @@ describe('fixture store', () => {
     row.topics.push('篡改的话题')
     expect(store.listPapers({ page: 1, size: 1 }).rows[0]!.topics).not.toContain('篡改的话题')
 
-    const updated = store.updateTask('draft', 't2', { priority: 'p1' })
+    const updated = await store.updateTask('draft', 't2', { priority: 'p1' })
     updated.tasks.find((t) => t.id === 't2')!.priority = 'p2'
-    expect(store.getProject('draft').tasks.find((t) => t.id === 't2')?.priority).toBe('p1')
+    expect((await store.getProject('draft')).tasks.find((t) => t.id === 't2')?.priority).toBe('p1')
 
-    const withMilestone = store.updateMilestone('draft', 'm2', { done: true })
+    const withMilestone = await store.updateMilestone('draft', 'm2', { done: true })
     withMilestone.milestones.find((m) => m.id === 'm2')!.title = '篡改后的标题'
-    expect(store.getProject('draft').milestones.find((m) => m.id === 'm2')?.title).not.toBe('篡改后的标题')
+    expect((await store.getProject('draft')).milestones.find((m) => m.id === 'm2')?.title).not.toBe('篡改后的标题')
 
-    const withStatus = store.updateProject('draft', { status: '搁置' })
+    const withStatus = await store.updateProject('draft', { status: '搁置' })
     withStatus.milestones[0]!.title = '篡改后的标题'
     withStatus.tasks[0]!.title = '篡改后的标题'
-    expect(store.getProject('draft').milestones[0]!.title).not.toBe('篡改后的标题')
-    expect(store.getProject('draft').tasks[0]!.title).not.toBe('篡改后的标题')
+    expect((await store.getProject('draft')).milestones[0]!.title).not.toBe('篡改后的标题')
+    expect((await store.getProject('draft')).tasks[0]!.title).not.toBe('篡改后的标题')
 
-    const withTask = store.createTask('draft', {
+    const withTask = await store.createTask('draft', {
       title: '新任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
     })
     const newTaskId = withTask.tasks[0]!.id
     withTask.tasks[0]!.title = '篡改后的标题'
     withTask.milestones[0]!.title = '篡改后的标题'
-    expect(store.getProject('draft').tasks.find((t) => t.id === newTaskId)?.title).toBe('新任务')
-    expect(store.getProject('draft').milestones[0]!.title).not.toBe('篡改后的标题')
+    expect((await store.getProject('draft')).tasks.find((t) => t.id === newTaskId)?.title).toBe('新任务')
+    expect((await store.getProject('draft')).milestones[0]!.title).not.toBe('篡改后的标题')
 
-    const withMs = store.createMilestone('draft', { date: '2026-09-01', title: '新里程碑', done: false })
+    const withMs = await store.createMilestone('draft', { date: '2026-09-01', title: '新里程碑', done: false })
     const newMsId = withMs.milestones[0]!.id
     withMs.milestones[0]!.date = '2030-01-01'
-    expect(store.getProject('draft').milestones.find((m) => m.id === newMsId)?.date).toBe('2026-09-01')
+    expect((await store.getProject('draft')).milestones.find((m) => m.id === newMsId)?.date).toBe('2026-09-01')
 
-    const afterDelete = store.deleteTask('draft', newTaskId)
+    const afterDelete = await store.deleteTask('draft', newTaskId)
     afterDelete.milestones[0]!.title = '篡改后的标题'
-    expect(store.getProject('draft').milestones[0]!.title).not.toBe('篡改后的标题')
+    expect((await store.getProject('draft')).milestones[0]!.title).not.toBe('篡改后的标题')
 
-    const withRelation = store.createRelation('draft', { group: 'Wiki', text: '新关联' })
+    const withRelation = await store.createRelation('draft', { group: 'Wiki', text: '新关联' })
     withRelation.relations[0]!.items[0]!.text = '篡改后的关联'
     withRelation.graph.nodes[0]!.label = '篡改后的节点'
     withRelation.conclusions.verified = -1
-    expect(store.getProject('draft').relations[0]!.items[0]!.text).not.toBe('篡改后的关联')
-    expect(store.getProject('draft').graph.nodes[0]!.label).not.toBe('篡改后的节点')
-    expect(store.getProject('draft').conclusions.verified).not.toBe(-1)
+    expect((await store.getProject('draft')).relations[0]!.items[0]!.text).not.toBe('篡改后的关联')
+    expect((await store.getProject('draft')).graph.nodes[0]!.label).not.toBe('篡改后的节点')
+    expect((await store.getProject('draft')).conclusions.verified).not.toBe(-1)
 
-    const withAttachment = store.createAttachment('draft', {
+    const withAttachment = await store.createAttachment('draft', {
       name: '新附件.csv', size: '1 KB', path: resolve(VAULT, '新附件.csv'),
     })
     withAttachment.attachments[0]!.name = '篡改后的附件'
     withAttachment.graph.edges[0]![0] = '篡改后的起点'
     withAttachment.agentSessions[0]!.steps[0]!.text = '篡改后的步骤'
-    expect(store.getProject('draft').attachments[0]!.name).not.toBe('篡改后的附件')
-    expect(store.getProject('draft').graph.edges[0]![0]).not.toBe('篡改后的起点')
-    expect(store.getProject('draft').agentSessions[0]!.steps[0]!.text).not.toBe('篡改后的步骤')
+    expect((await store.getProject('draft')).attachments[0]!.name).not.toBe('篡改后的附件')
+    expect((await store.getProject('draft')).graph.edges[0]![0]).not.toBe('篡改后的起点')
+    expect((await store.getProject('draft')).agentSessions[0]!.steps[0]!.text).not.toBe('篡改后的步骤')
 
-    const read = store.getProject('draft')
+    const read = await store.getProject('draft')
     read.relations[0]!.items[0]!.text = '篡改后的关联'
     read.attachments[0]!.name = '篡改后的附件'
     read.graph.nodes[0]!.label = '篡改后的节点'
     read.agentSessions[0]!.steps[0]!.text = '篡改后的步骤'
-    expect(store.getProject('draft').relations[0]!.items[0]!.text).not.toBe('篡改后的关联')
-    expect(store.getProject('draft').attachments[0]!.name).not.toBe('篡改后的附件')
-    expect(store.getProject('draft').graph.nodes[0]!.label).not.toBe('篡改后的节点')
-    expect(store.getProject('draft').agentSessions[0]!.steps[0]!.text).not.toBe('篡改后的步骤')
+    expect((await store.getProject('draft')).relations[0]!.items[0]!.text).not.toBe('篡改后的关联')
+    expect((await store.getProject('draft')).attachments[0]!.name).not.toBe('篡改后的附件')
+    expect((await store.getProject('draft')).graph.nodes[0]!.label).not.toBe('篡改后的节点')
+    expect((await store.getProject('draft')).agentSessions[0]!.steps[0]!.text).not.toBe('篡改后的步骤')
 
     const summaries = store.listProjects()
     const draftSummary = summaries.find((p) => p.id === 'draft')!
@@ -1371,7 +1373,7 @@ describe('fixture store', () => {
     draftSummary.recentEvents[0]!.text = '篡改后的记录'
     draftSummary.conclusions.verified = -1
     const reread = store.listProjects().find((p) => p.id === 'draft')!
-    expect(reread.milestones[0]!.done).toBe(store.getProject('draft').milestones[0]!.done)
+    expect(reread.milestones[0]!.done).toBe((await store.getProject('draft')).milestones[0]!.done)
     expect(reread.recentEvents[0]!.text).not.toBe('篡改后的记录')
     expect(reread.conclusions.verified).not.toBe(-1)
 
@@ -1393,18 +1395,18 @@ describe('fixture store', () => {
     }
   })
 
-  it('一个 store 的写不会渗到另一个 store', () => {
+  it('一个 store 的写不会渗到另一个 store', async () => {
     const other = createFixtureStore()
-    const milestonesBefore = other.getProject('draft').milestones.length
+    const milestonesBefore = (await other.getProject('draft')).milestones.length
     const id = store.listPapers({ page: 1, size: 1 }).rows[0]!.id
 
     store.setPaperTopic(id, '篡改的话题', true)
-    store.createMilestone('draft', { date: '2026-09-01', title: '新里程碑', done: false })
+    await store.createMilestone('draft', { date: '2026-09-01', title: '新里程碑', done: false })
     store.deletePaper(id)
 
     expect(other.getPaper(id).topics).not.toContain('篡改的话题')
     expect(other.wikiCards().map((card) => card.title)).not.toContain('篡改的话题')
-    expect(other.getProject('draft').milestones).toHaveLength(milestonesBefore)
+    expect((await other.getProject('draft')).milestones).toHaveLength(milestonesBefore)
     expect(other.listPapers({ page: 1, size: 1 }).total).toBe(291)
   })
 
@@ -1928,8 +1930,8 @@ describe('fixture store', () => {
     expect(JSON.parse(migratedAgain.readPages(['papers/2210.17323'])[0]!.text!)).toEqual(matched)
   })
 
-  it('项目把界面上那几处 wiki 跳转的目标一起带过来', () => {
-    const draft = store.getProject('draft')
+  it('项目把界面上那几处 wiki 跳转的目标一起带过来', async () => {
+    const draft = await store.getProject('draft')
     expect(draft.conflictPage).toBe('topics/ptq-weight-activation')
     expect(draft.graph.nodes.filter((n) => n.writebacks.length > 0)
       .map((n) => [n.id, n.writebacks.map((w) => w.page)]))
@@ -1942,29 +1944,29 @@ describe('fixture store', () => {
     expect(store.listProjects().find((p) => p.id === 'sched')!.conflictPage).toBeUndefined()
   })
 
-  it('科研记录往后追一行,日期是库里的今天', () => {
-    const before = store.getProject('draft').events.length
-    const after = store.createEvent('draft', '[对话] 来自对话的结论')
+  it('科研记录往后追一行,日期是库里的今天', async () => {
+    const before = (await store.getProject('draft')).events.length
+    const after = await store.createEvent('draft', '[对话] 来自对话的结论')
     expect(after.events).toHaveLength(before + 1)
     expect(after.events.at(-1)).toEqual({ date: '2026-08-25', text: '[对话] 来自对话的结论', kind: 'note' })
-    expect(store.getProject('draft').events.at(-1)!.text).toBe('[对话] 来自对话的结论')
+    expect((await store.getProject('draft')).events.at(-1)!.text).toBe('[对话] 来自对话的结论')
     expect(() => store.createEvent('nope', '不存在的项目')).toThrow()
   })
 
-  it('建了节点之后,项目上更早那一笔仍撤得动,撤销也不带走节点', () => {
-    store.updateProject('sched', { focus: '改过的下一步' })
+  it('建了节点之后,项目上更早那一笔仍撤得动,撤销也不带走节点', async () => {
+    await store.updateProject('sched', { focus: '改过的下一步' })
     const change = store.listChanges()[0]!
-    store.createNode('sched', '新节点', null)
+    await store.createNode('sched', '新节点', null)
     store.undoChange(change.id)
-    expect(store.getProject('sched').graph.nodes.map((node) => node.label)).toEqual(['新节点'])
+    expect((await store.getProject('sched')).graph.nodes.map((node) => node.label)).toEqual(['新节点'])
   })
 
-  it('科研记录的正文带换行时被拒,一个字都不写进去', () => {
-    const before = store.getProject('draft').events
+  it('科研记录的正文带换行时被拒,一个字都不写进去', async () => {
+    const before = (await store.getProject('draft')).events
     for (const text of ['第一行\n第二行', '\n开头就换行', '结尾换行\n']) {
       expect(() => store.createEvent('draft', text)).toThrow(/换行/)
     }
-    expect(store.getProject('draft').events).toEqual(before)
+    expect((await store.getProject('draft')).events).toEqual(before)
   })
 
   it('新记的动态排在最前,落在今天这一段', () => {
@@ -2091,12 +2093,12 @@ describe('fixture store', () => {
     expect(new Set(after)).toEqual(new Set(before))
   })
 
-  it('示例想法可关联项目，项目完成后自动归档，并可删除恢复', () => {
+  it('示例想法可关联项目，项目完成后自动归档，并可删除恢复', async () => {
     const seeded = store.listIdeas().find((idea) => idea.id === 'idea-dynamic-tree-budget')!
     expect(seeded).toMatchObject({ project: 'draft', archived: false })
-    store.updateProject('draft', { status: '已完成' })
+    await store.updateProject('draft', { status: '已完成' })
     expect(store.listIdeas().find((idea) => idea.id === seeded.id)?.archived).toBe(true)
-    store.updateProject('draft', { status: '进行中' })
+    await store.updateProject('draft', { status: '进行中' })
     expect(store.listIdeas().find((idea) => idea.id === seeded.id)?.archived).toBe(true)
     expect(store.updateIdea(seeded.id, { project: null, archived: false })).toMatchObject({
       archived: false,
@@ -2108,14 +2110,14 @@ describe('fixture store', () => {
     expect(store.listIdeas().find((idea) => idea.id === seeded.id)?.title).toBe(seeded.title)
   })
 
-  it('记入科研记录只记一次', () => {
+  it('记入科研记录只记一次', async () => {
     const session = store.createChat('想法', true)
     store.appendChatMessages(session.id, [{
       role: 'ai', runs: [],
       actions: [{ kind: 'writeBack', label: '记入科研记录', project: 'draft', text: '一句' }],
     }])
     const message = store.chatMessages(session.id).at(-1)!
-    expect(store.recordAction(session.id, message.id).events.at(-1)!.text).toBe('[对话] 一句')
+    expect((await store.recordAction(session.id, message.id)).events.at(-1)!.text).toBe('[对话] 一句')
     expect(() => store.recordAction(session.id, message.id)).toThrow(/已经记入/)
   })
 
@@ -2301,7 +2303,7 @@ describe('fixture store', () => {
       }),
       'project.updateTask': () => store.updateTask('draft', 't2', {}),
       'project.deleteTask': () => store.deleteTask('draft', 't2'),
-      'project.reorderTasks': () => store.reorderTasks('draft', store.getProject('draft').tasks.map((t) => t.id)),
+      'project.reorderTasks': () => store.reorderTasks('draft', store.heldProject('draft').tasks.map((t) => t.id)),
       'project.setTaskNode': () => store.setTaskNode('draft', 't3', 'knee'),
       'project.createMilestone': () => store.createMilestone('draft', {
         date: '2026-09-01', title: '新里程碑', done: false,
@@ -2310,14 +2312,14 @@ describe('fixture store', () => {
       'project.deleteMilestone': () => store.deleteMilestone('draft', 'm2'),
       'project.createRelation': () => store.createRelation('draft', { group: 'Wiki', text: '新关联' }),
       'project.deleteRelation': () =>
-        store.deleteRelation('draft', store.getProject('draft').relations[0]!.items[0]!.id),
+        store.deleteRelation('draft', store.heldProject('draft').relations[0]!.items[0]!.id),
       'project.updateRelation': () =>
-        store.updateRelation('draft', store.getProject('draft').relations[0]!.items[0]!.id, { text: '改名' }),
+        store.updateRelation('draft', store.heldProject('draft').relations[0]!.items[0]!.id, { text: '改名' }),
       'project.createAttachment': () => store.createAttachment('draft', {
         name: '新附件.csv', size: '1 KB', path: resolve(VAULT, '新附件.csv'),
       }),
       'project.deleteAttachment': () =>
-        store.deleteAttachment('draft', store.getProject('draft').attachments[0]!.id),
+        store.deleteAttachment('draft', store.heldProject('draft').attachments[0]!.id),
       'project.createEvent': () => store.createEvent('draft', '[对话] 来自对话的结论'),
       'project.createNode': () => store.createNode('draft', '新节点', null),
       'project.updateNode': () => store.updateNode('draft', 'knee', { state: 'done' }),
@@ -2371,20 +2373,20 @@ describe('fixture store', () => {
       'trash.clear': () => store.clearTrash(),
       'changelog.list': () => store.listChanges(),
       'changelog.undo': () => {
-        store.updateProject('draft', { focus: '撤销要用的那一笔' })
+        void store.updateProject('draft', { focus: '撤销要用的那一笔' })
         store.undoChange(store.listChanges()[0]!.id)
       },
       'changelog.archive': () => {
-        store.updateProject('draft', { focus: '归档要用的那一笔' })
+        void store.updateProject('draft', { focus: '归档要用的那一笔' })
         store.archiveChange(store.listChanges()[0]!.id)
       },
       'changelog.archiveAll': () => store.archiveAllChanges(),
       'changelog.delete': () => {
-        store.updateProject('draft', { focus: '删除变动记录所用的一笔' })
+        void store.updateProject('draft', { focus: '删除变动记录所用的一笔' })
         store.deleteChange(store.listChanges()[0]!.id)
       },
       'changelog.clearArchived': () => {
-        store.updateProject('draft', { focus: '清空归档记录所用的一笔' })
+        void store.updateProject('draft', { focus: '清空归档记录所用的一笔' })
         store.archiveChange(store.listChanges()[0]!.id)
         store.clearArchivedChanges()
       },
@@ -2452,13 +2454,13 @@ describe('fixture store', () => {
       },
       'project.addPaper': () => store.addPaper('draft', '2305.17888'),
       'project.removePaper': () => store.removePaper('draft', '13979-STAR-Speculative-Decodin'),
-      'project.moveRelation': () => store.moveRelation('draft', store.getProject('draft').relations[0]!.items[0]!.id, 1),
+      'project.moveRelation': () => store.moveRelation('draft', store.heldProject('draft').relations[0]!.items[0]!.id, 1),
       'project.reorder': () => store.reorderProjects(store.listProjects().map((p) => p.id)),
       'project.createConclusion': () => store.createConclusion('draft', '新结论', {}),
       'project.setConclusionState': () => store.setConclusionState('draft', 'c1', 'pending'),
       'project.deleteConclusion': () => store.deleteConclusion('draft', 'c2'),
       'project.verifyConclusion': () => store.verifyConclusion(
-        'draft', 'knee', store.getProject('draft').projectConclusions!.find((c) => c.node === 'knee')!.fingerprint!,
+        'draft', 'knee', store.heldProject('draft').projectConclusions!.find((c) => c.node === 'knee')!.fingerprint!,
       ),
       'project.unverifyConclusion': () => store.unverifyConclusion('draft', 'knee'),
       'delivery.settings': () => store.deliverySettings(),

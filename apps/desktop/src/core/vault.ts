@@ -295,7 +295,14 @@ export interface VaultStore {
    * vault holds them. Throws if no such project exists, or its research graph
    * holds an edge either of whose ends is not among its nodes.
    */
-  getProject(id: string): ProjectDetail
+  getProject(id: string): Promise<ProjectDetail>
+
+  /**
+   * Returns the project with the given id as getProject does, without reading its workspace again: a
+   * local workspace is read as it stands, an SSH one as getProject last found it. Throws as
+   * getProject does.
+   */
+  heldProject(id: string): ProjectDetail
 
   /** Returns whether the vault holds a project with the given id, even one whose research graph getProject rejects. */
   hasProject(id: string): boolean
@@ -304,7 +311,7 @@ export interface VaultStore {
    * Connects a project to a local or SSH repository and materializes the App-owned planning
    * surface. Passing null only removes the connection; files already in the repository remain.
    */
-  bindProjectWorkspace(id: string, binding: ProjectWorkspaceBinding | null): ProjectDetail
+  bindProjectWorkspace(id: string, binding: ProjectWorkspaceBinding | null): Promise<ProjectDetail>
 
   /**
    * Merges patch into the project with the given id, keeping its place among
@@ -314,7 +321,7 @@ export interface VaultStore {
    * project's due date precedes its start date; a rejected patch leaves the
    * project untouched. A `block` of null removes the project's blocker.
    */
-  updateProject(id: string, patch: Partial<ProjectFields>): ProjectDetail
+  updateProject(id: string, patch: Partial<ProjectFields>): Promise<ProjectDetail>
 
   /**
    * Moves the project with the given id into the trash; it can no longer be
@@ -330,7 +337,7 @@ export interface VaultStore {
    * project. Throws if no such project exists, or the task's end date
    * precedes its start date.
    */
-  createTask(projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail
+  createTask(projectId: string, task: TaskFields, origin?: 'agent'): Promise<ProjectDetail>
 
   /**
    * The task requests coding agents left in bound local workspaces (only project
@@ -343,7 +350,7 @@ export interface VaultStore {
    * planned task on its date marked as added by an agent, and records the request as taken with
    * the task it became. Throws as createTask does.
    */
-  addAgentTask(projectId: string, request: WorkspaceAgentTask): ProjectDetail
+  addAgentTask(projectId: string, request: WorkspaceAgentTask): Promise<ProjectDetail>
 
   /**
    * Takes every pending agent task request (only project `projectId`'s when given) into its plan
@@ -360,21 +367,21 @@ export interface VaultStore {
    * task exists inside it, or the merged task's end date precedes its start
    * date; a rejected patch leaves the task untouched.
    */
-  updateTask(projectId: string, taskId: string, patch: TaskPatch): ProjectDetail
+  updateTask(projectId: string, taskId: string, patch: TaskPatch): Promise<ProjectDetail>
 
   /**
    * Removes the task with the given taskId from the project with the given
    * projectId and returns the updated project. Throws if no such project
    * exists, or no such task exists inside it.
    */
-  deleteTask(projectId: string, taskId: string): ProjectDetail
+  deleteTask(projectId: string, taskId: string): Promise<ProjectDetail>
 
   /**
    * Reorders the project with the given projectId's tasks to match `order`, its one stored task
    * order read by both the task list and the Gantt chart. Returns the updated project. Throws if no
    * such project exists, or `order` is not exactly a permutation of the project's current task ids.
    */
-  reorderTasks(projectId: string, order: readonly string[]): ProjectDetail
+  reorderTasks(projectId: string, order: readonly string[]): Promise<ProjectDetail>
 
   /**
    * Gives the task with the given taskId inside the project with the given
@@ -384,7 +391,7 @@ export interface VaultStore {
    * such project or task exists, or the project's research graph has no node
    * nodeId.
    */
-  setTaskNode(projectId: string, taskId: string, nodeId: string | null): ProjectDetail
+  setTaskNode(projectId: string, taskId: string, nodeId: string | null): Promise<ProjectDetail>
 
   /**
    * Adds a milestone built from the given fields to the front of the project
@@ -392,7 +399,7 @@ export interface VaultStore {
    * that project, and returns the updated project. Throws if no such project
    * exists.
    */
-  createMilestone(projectId: string, milestone: MilestoneFields): ProjectDetail
+  createMilestone(projectId: string, milestone: MilestoneFields): Promise<ProjectDetail>
 
   /**
    * Merges patch into the milestone with the given milestoneId inside the
@@ -403,14 +410,14 @@ export interface VaultStore {
    */
   updateMilestone(
     projectId: string, milestoneId: string, patch: Partial<MilestoneFields>,
-  ): ProjectDetail
+  ): Promise<ProjectDetail>
 
   /**
    * Removes the milestone with the given milestoneId from the project with the
    * given projectId and returns the updated project. Throws if no such project
    * exists, or no such milestone exists inside it.
    */
-  deleteMilestone(projectId: string, milestoneId: string): ProjectDetail
+  deleteMilestone(projectId: string, milestoneId: string): Promise<ProjectDetail>
 
   /**
    * Adds a relation item carrying the given text to the front of the group
@@ -420,7 +427,7 @@ export interface VaultStore {
    * group. A page has to name an aggregation the vault holds. Throws if no
    * such project or aggregation exists.
    */
-  createRelation(projectId: string, relation: RelationFields): ProjectDetail
+  createRelation(projectId: string, relation: RelationFields): Promise<ProjectDetail>
 
   /**
    * Removes the relation item with the given relationId from the project with
@@ -428,7 +435,7 @@ export interface VaultStore {
    * stays, empty. Throws if no such project exists, or no such relation item
    * exists inside it.
    */
-  deleteRelation(projectId: string, relationId: string): ProjectDetail
+  deleteRelation(projectId: string, relationId: string): Promise<ProjectDetail>
 
   /**
    * Replaces the text and target of the relation item with the given
@@ -439,19 +446,19 @@ export interface VaultStore {
    */
   updateRelation(
     projectId: string, relationId: string, relation: Omit<RelationFields, 'group'>,
-  ): ProjectDetail
+  ): Promise<ProjectDetail>
 
   /** Links an existing paper to a project. */
-  addPaper(projectId: string, paperId: string): ProjectDetail
+  addPaper(projectId: string, paperId: string): Promise<ProjectDetail>
 
   /** Removes a recorded paper id from a project, even if the paper is currently trashed. */
-  removePaper(projectId: string, paperId: string): ProjectDetail
+  removePaper(projectId: string, paperId: string): Promise<ProjectDetail>
 
   /**
    * Moves a linked paper or a relation item to `index` among its row's siblings, clamped to the row.
    * Throws when neither a linked paper nor a relation item has that id.
    */
-  moveRelation(projectId: string, id: string, index: number): ProjectDetail
+  moveRelation(projectId: string, id: string, index: number): Promise<ProjectDetail>
 
   /**
    * Adds an attachment built from the given fields to the front of the
@@ -460,7 +467,7 @@ export interface VaultStore {
    * records the file's absolute path; the file is not copied. Throws if no
    * such project exists or the path is not absolute.
    */
-  createAttachment(projectId: string, attachment: AttachmentFields): ProjectDetail
+  createAttachment(projectId: string, attachment: AttachmentFields): Promise<ProjectDetail>
 
   /**
    * Moves the attachment with the given attachmentId out of the project with
@@ -468,7 +475,7 @@ export interface VaultStore {
    * Restoring its trash entry appends it back to that project. Throws if no
    * such project exists, or no such attachment exists inside it.
    */
-  deleteAttachment(projectId: string, attachmentId: string): ProjectDetail
+  deleteAttachment(projectId: string, attachmentId: string): Promise<ProjectDetail>
 
   /**
    * Appends an event carrying the given text, dated the vault's today, after
@@ -479,14 +486,14 @@ export interface VaultStore {
    * untouched. A `node` attaches the event to that research-graph node and
    * must name a node in the project.
    */
-  createEvent(projectId: string, text: string, node?: string): ProjectDetail
+  createEvent(projectId: string, text: string, node?: string): Promise<ProjectDetail>
 
   /**
    * Adds a node labelled `label` to the project's research graph, placed by
    * placeNode and optionally joined from `after`. Node edits are not recorded
    * as undoable project changes. Throws if the project or `after` node is absent.
    */
-  createNode(projectId: string, label: string, after: string | null): ProjectDetail
+  createNode(projectId: string, label: string, after: string | null): Promise<ProjectDetail>
 
   /**
    * Merges `patch` into a research-graph node without moving it. Node edits
@@ -494,36 +501,36 @@ export interface VaultStore {
    */
   updateNode(
     projectId: string, nodeId: string, patch: Partial<Pick<GraphNode, 'label' | 'state'>>,
-  ): ProjectDetail
+  ): Promise<ProjectDetail>
 
   /**
    * Removes a research-graph node and every edge touching it. Existing event
    * text remains. Node edits are not recorded as undoable project changes.
    */
-  deleteNode(projectId: string, nodeId: string): ProjectDetail
+  deleteNode(projectId: string, nodeId: string): Promise<ProjectDetail>
 
   /** Appends a pending conclusion to a project. This research-state write is not undoable. */
   createConclusion(
     projectId: string, text: string, from: { chat?: string; paper?: string },
-  ): ProjectDetail
+  ): Promise<ProjectDetail>
 
   /** Changes one project conclusion's state. This research-state write is not undoable. */
   setConclusionState(
     projectId: string, conclusionId: string, state: ConclusionState,
-  ): ProjectDetail
+  ): Promise<ProjectDetail>
 
   /** Removes one project conclusion. This research-state write is not undoable. */
-  deleteConclusion(projectId: string, conclusionId: string): ProjectDetail
+  deleteConclusion(projectId: string, conclusionId: string): Promise<ProjectDetail>
 
   /**
    * Records that the user verified the conclusion node `node` holds, whose fingerprint the user saw as
    * `fingerprint`; any later change to it makes it pending again. Throws when the node is not a closed
    * node holding a conclusion, or with CONCLUSION_CHANGED when its fingerprint is no longer `fingerprint`.
    */
-  verifyConclusion(projectId: string, node: string, fingerprint: string): ProjectDetail
+  verifyConclusion(projectId: string, node: string, fingerprint: string): Promise<ProjectDetail>
 
   /** Withdraws the user's verification of node `node`'s conclusion; nothing changes when there is none. */
-  unverifyConclusion(projectId: string, node: string): ProjectDetail
+  unverifyConclusion(projectId: string, node: string): Promise<ProjectDetail>
 
   /**
    * Returns the inbox entries a watch brought in and that have not left the
@@ -876,7 +883,7 @@ export interface VaultStore {
    * stays. Undo writes a snapshot back through it, and no contract method
    * reaches it. Throws if no project with that id exists.
    */
-  putProject(project: ProjectDetail): void
+  putProject(project: ProjectDetail): Promise<void>
 
   /**
    * Returns the change entries, the most recently recorded one first. Every
@@ -1023,7 +1030,7 @@ export interface VaultStore {
    * CHAT_EVENT_PREFIX event, marks that action done, and returns the project.
    * An action can only be recorded once.
    */
-  recordAction(id: string, messageId: string): ProjectDetail
+  recordAction(id: string, messageId: string): Promise<ProjectDetail>
 
   /**
    * Sets whether the session with the given id is archived. Throws if no such

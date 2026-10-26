@@ -190,9 +190,9 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
     }),
     tool('project_summary', 'Read a project summary', 'Read the summary of one project in the vault: its state, focus, '
       + 'milestones, conclusions, newest research records and papers.', ProjectSummaryArgs,
-    ({ id }) => {
+    async ({ id }) => {
       if (!store.hasProject(id)) return refuse(`The vault has no project ${id}.`)
-      const project = store.getProject(id)
+      const project = await store.getProject(id)
       return answer({
         id, name: project.name, status: project.status, priority: project.priority, areas: projectAreas(project),
         focus: clip(project.focus, ITEM_CHARS), ...(project.block === undefined ? {} : { block: clip(project.block, ITEM_CHARS) }),

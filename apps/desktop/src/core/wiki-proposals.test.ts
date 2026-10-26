@@ -40,9 +40,9 @@ const addClaim = (id: string, page = 'topics/qat'): ProposalOp => ({
 })
 
 /** Verifies the conclusion node `node` of project `project` holds, as the user would from the Conclusions view. */
-const verify = (store: VaultStore, project: string, node: string): void => {
-  const shown = store.getProject(project).projectConclusions!.find((c) => c.node === node)!
-  store.verifyConclusion(project, node, shown.fingerprint!)
+const verify = async (store: VaultStore, project: string, node: string): Promise<void> => {
+  const shown = (await store.getProject(project)).projectConclusions!.find((c) => c.node === node)!
+  await store.verifyConclusion(project, node, shown.fingerprint!)
 }
 
 const claimOn = (store: VaultStore, page: string, id: string): WikiClaim | undefined =>
@@ -57,18 +57,18 @@ describe('review queue on the fixture library', () => {
     queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
   })
 
-  it('fixture 队列:一条能用、一条已过期排队,一条已拒绝;读出来带要写的页、现在是否过期、页名项目名节点名与结论原文', () => {
-    const list = queue.list()
+  it('fixture 队列:一条能用、一条已过期排队,一条已拒绝;读出来带要写的页、现在是否过期、页名项目名节点名与结论原文', async () => {
+    const list = await queue.list()
     for (const item of list) WikiProposalSchema.parse(item)
     expect(list.map((p) => [p.status, p.staleNow])).toEqual([['queued', false], ['queued', true], ['rejected', false]])
     expect(list[0]!.titles).toEqual({ 'topics/kv-cache-quantization': 'KV cache quantization', 'projects/draft': 'draft 效率', 'projects/draft#knee': '树宽收益拐点' })
     expect(list[0]!.claimTexts).toEqual({ 'topics/kv-cache-quantization#prefix-schedule': 'KV cache 量化之后,前缀读取与验证可以共调度,吞吐与基线持平' })
     expect(list[0]!.pages).toEqual(['topics/kv-cache-quantization'])
-    expect(queue.list('rejected').map((p) => p.reason?.kind)).toEqual(['declined'])
+    expect((await queue.list('rejected')).map((p) => p.reason?.kind)).toEqual(['declined'])
   })
 
-  it('过期的提案带上它依据的页里先改过的那一页,没过期的不带', () => {
-    expect(queue.list().map((p) => p.stalePage)).toEqual([undefined, 'topics/ptq-weight-only', undefined])
+  it('过期的提案带上它依据的页里先改过的那一页,没过期的不带', async () => {
+    expect((await queue.list()).map((p) => p.stalePage)).toEqual([undefined, 'topics/ptq-weight-only', undefined])
   })
 
   it('结论以外的改动也带上名字:归入的页和那一页的列、上级、新建页的种类', async () => {
@@ -77,7 +77,7 @@ describe('review queue on the fixture library', () => {
       { op: 'createAggregation', kind: 'topic', id: 'topics/new', title: '新页', parents: ['topics/quantization'], columns: [], describe: 'd' },
       { op: 'setParents', page: 'topics/qat', parents: ['topics/ptq'] },
     ]))
-    const listed = queue.list().find((p) => p.proposal?.ops[0]?.op === 'setMembership')!
+    const listed = (await queue.list()).find((p) => p.proposal?.ops[0]?.op === 'setMembership')!
     expect(listed.status).toBe('rejected')
     expect(listed.titles).toMatchObject({
       'topics/ptq-weight-only': 'Weight-only PTQ', 'topics/ptq-weight-only#bits': '位宽', 'topics/ptq-weight-only#backprop': '需要反向传播',
@@ -91,7 +91,7 @@ describe('review queue on the fixture library', () => {
     expect(store.proposalRecords()).toHaveLength(before)
   })
 
-  it('一条记录读不出来时单独报出,其余照常列出', () => {
+  it('一条记录读不出来时单独报出,其余照常列出', async () => {
     const broken: VaultStore = {
       ...store,
       pageVersion: (id) => {
@@ -99,15 +99,15 @@ describe('review queue on the fixture library', () => {
         return store.pageVersion(id)
       },
     }
-    const list = createWikiProposals({ store: broken, pdf: fakePdf(null), now: () => NOW }).list()
+    const list = await createWikiProposals({ store: broken, pdf: fakePdf(null), now: () => NOW }).list()
     expect(list.map((p) => [p.status, p.proposal === null, p.notice])).toEqual([
       ['queued', true, '这一页读不了'], ['queued', false, null], ['rejected', false, null],
     ])
   })
 
   it('应用:按提出者写入并记一条「实验」来源的变动,记录变成 applied 并指向那条变动;撤销还原', async () => {
-    verify(store, 'draft', 'knee')
-    const [valid] = queue.list('queued')
+    await verify(store, 'draft', 'knee')
+    const [valid] = await queue.list('queued')
     const before = store.wikiAggregation('topics/kv-cache-quantization').claims
     const receipt = await queue.decide(valid!.id, 'apply')
     expect(receipt).toEqual({ id: valid!.id, status: 'applied', reason: null })
@@ -118,7 +118,7 @@ describe('review queue on the fixture library', () => {
     const change = store.listChanges()[0]!
     expect(change).toMatchObject({ source: '实验', title: 'Wiki · KV cache quantization · 修订结论' })
     expect(change.diff[0]).toMatch(/^~ topics\/kv-cache-quantization#prefix-schedule v2→v3:/)
-    const record = queue.list().find((p) => p.id === valid!.id)!
+    const record = (await queue.list()).find((p) => p.id === valid!.id)!
     expect(record).toMatchObject({ status: 'applied', change: change.id, decided: { at: NOW, by: '我' } })
     await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('这条提案已经处理过了')
     store.undoChange(change.id)
@@ -126,24 +126,24 @@ describe('review queue on the fixture library', () => {
   })
 
   it('引用了没验证的项目结论:照样排队,列表标出待验证的结论,应用被拒且留在队列;验证之后能应用', async () => {
-    const [valid] = queue.list('queued')
+    const [valid] = await queue.list('queued')
     expect(valid!.unverified).toEqual(['projects/draft#knee'])
     await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('实验结论待验证：projects/draft#knee。验证之后再应用')
-    expect(queue.list().find((p) => p.id === valid!.id)!.status).toBe('queued')
+    expect((await queue.list()).find((p) => p.id === valid!.id)!.status).toBe('queued')
     expect((await queue.propose(envelope(store, [addClaim('unverified')]))).status).toBe('queued')
-    verify(store, 'draft', 'knee')
-    expect(queue.list('queued')[0]!.unverified).toEqual([])
+    await verify(store, 'draft', 'knee')
+    expect((await queue.list('queued'))[0]!.unverified).toEqual([])
     expect((await queue.decide(valid!.id, 'apply')).status).toBe('applied')
   })
 
   it('应用一条过期的提案:拒收为 stale,Wiki 一个字不动;拒绝时记下理由', async () => {
-    const [, stale] = queue.list('queued')
+    const [, stale] = await queue.list('queued')
     const before = store.wikiAggregation('topics/ptq-weight-only')
     const receipt = await queue.decide(stale!.id, 'apply')
     expect(receipt.status).toBe('rejected')
     expect(receipt.reason).toMatchObject({ kind: 'stale', message: expect.stringContaining('提案过期：topics/ptq-weight-only') })
     expect(store.wikiAggregation('topics/ptq-weight-only')).toEqual(before)
-    const [valid] = queue.list('queued')
+    const [valid] = await queue.list('queued')
     expect(await queue.decide(valid!.id, 'decline', '证据不够')).toEqual({
       id: valid!.id, status: 'rejected', reason: { kind: 'declined', message: '证据不够' },
     })
@@ -154,13 +154,13 @@ describe('review queue on the fixture library', () => {
     const proposal = envelope(store, [addClaim('fresh')])
     const receipt = await queue.propose(proposal)
     expect(receipt).toMatchObject({ status: 'queued', reason: null })
-    expect(queue.list()[0]).toMatchObject({ id: receipt.id, received: NOW, path: 'review', decided: null })
+    expect((await queue.list())[0]).toMatchObject({ id: receipt.id, received: NOW, path: 'review', decided: null })
     expect(claimOn(store, 'topics/qat', 'fresh')).toBeUndefined()
-    const count = queue.list().length
+    const count = (await queue.list()).length
     expect(await queue.propose(structuredClone(proposal))).toEqual(receipt)
-    expect(queue.list()).toHaveLength(count)
+    expect(await queue.list()).toHaveLength(count)
     await expect(queue.propose({ ...proposal, title: '换了标题' })).rejects.toThrow(/同一个 key 已经提交过内容不同的提案/)
-    expect(queue.list()).toHaveLength(count)
+    expect(await queue.list()).toHaveLength(count)
   })
 
   it('提交:agent 只能提结论;要给出点名的每一页的版本;过期的拒收;人工的走 wiki.apply', async () => {
@@ -173,7 +173,7 @@ describe('review queue on the fixture library', () => {
       .toMatchObject({ kind: 'stale', message: expect.stringContaining('没有落盘。按现在的页重新生成。') })
     expect(await outcome({ ...envelope(store, [addClaim('c')], { key: 'c' }), producer: { kind: 'human' } }))
       .toEqual({ kind: 'invalid', message: '人工的改动走 wiki.apply' })
-    const rejected = queue.list('rejected')[0]!
+    const rejected = (await queue.list('rejected'))[0]!
     expect(rejected.decided).toEqual({ at: NOW, by: 'policy' })
   })
 
@@ -195,11 +195,11 @@ describe('review queue on the fixture library', () => {
   })
 
   it('新版本多写的字段不拒收,记录里原样留着', async () => {
-    verify(store, 'draft', 'knee')
+    await verify(store, 'draft', 'knee')
     const op = { ...addClaim('future'), confidence: 0.9 } as ProposalOp
     const receipt = await queue.propose({ ...envelope(store, [op]), priority: 'high' })
     expect(receipt.status).toBe('queued')
-    const record = queue.list().find((p) => p.id === receipt.id)!
+    const record = (await queue.list()).find((p) => p.id === receipt.id)!
     expect(record.proposal).toMatchObject({ priority: 'high', ops: [{ confidence: 0.9 }] })
     await queue.decide(receipt.id, 'apply')
     expect(claimOn(store, 'topics/qat', 'future')).toMatchObject({ text: '结论 future' })
@@ -210,7 +210,7 @@ describe('review queue on the fixture library', () => {
     const op = { op: 'addClaim', page: 'topics/qat', claim: { id: 'q', text: 'x', evidence: [{ kind: 'experiment', project: 'draft', node: 'knee' }, source] } } as ProposalOp
     const receipt = await queue.propose(envelope(store, [op]))
     expect(receipt.status).toBe('queued')
-    expect(queue.list()[0]!.notice).toBe('这些引句没有文字层可核对：papers/2305.17888 p.1')
+    expect((await queue.list())[0]!.notice).toBe('这些引句没有文字层可核对：papers/2305.17888 p.1')
     const strict = createWikiProposals({ store, pdf: fakePdf('Nothing about that here.'), now: () => NOW })
     expect((await strict.propose(envelope(store, [op], { key: 'strict' }))).reason)
       .toEqual({ kind: 'invalid', message: '引句在原文第 1 页找不到：papers/2305.17888' })
@@ -261,7 +261,7 @@ describe('review queue on a vault', () => {
    * A project bound to a workspace whose Lab graph has one supported node holding a conclusion, and
    * one verified legacy conclusion, for experiment evidence.
    */
-  const project = (): { id: string; node: string; conclusion: string } => {
+  const project = async (): Promise<{ id: string; node: string; conclusion: string }> => {
     store.createProject('写回')
     const id = store.listProjects().find((p) => p.name === '写回')!.id
     const root = join(vault, 'repo')
@@ -271,15 +271,15 @@ describe('review queue on a vault', () => {
       schema: 'meridian.lab.graph.v1', nodes: [{ id: node, title: '宽树', state: 'supported' }], edges: [],
       node_details: { [node]: { conclusion: { text: '宽树在 B≥8 时净赚', date: '2026-09-20', evidence: ['exp-1'] } } },
     }))
-    store.bindProjectWorkspace(id, { kind: 'local', root })
-    verify(store, id, node)
-    const conclusion = store.createConclusion(id, '宽树在 B≥8 时净赚', {}).conclusionList[0]!.id
-    store.setConclusionState(id, conclusion, 'verified')
+    await store.bindProjectWorkspace(id, { kind: 'local', root })
+    await verify(store, id, node)
+    const conclusion = (await store.createConclusion(id, '宽树在 B≥8 时净赚', {})).conclusionList[0]!.id
+    await store.setConclusionState(id, conclusion, 'verified')
     return { id, node, conclusion }
   }
 
   it('真实跨进程:Python 提交的结论带 wiki 证据,base 里有那一页,App 收下排队', async () => {
-    const { id, node } = project()
+    const { id, node } = await project()
     const ops = [{ op: 'addClaim', page: 'topics/speculative-decoding', claim: {
       id: 'cross', text: '跨进程的一条', evidence: [
         { kind: 'experiment', project: id, node }, { kind: 'wiki', ref: 'topics/draft-acceptance#batch-wins' },
@@ -296,11 +296,11 @@ describe('review queue on a vault', () => {
     })
     const queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
     await queue.scanInbox()
-    expect(queue.list().map((p) => [p.status, p.reason])).toEqual([['queued', null]])
+    expect((await queue.list()).map((p) => [p.status, p.reason])).toEqual([['queued', null]])
   })
 
   it('收件箱:合格、坏 JSON、过期三份各记一条,文件都删掉;临时文件不碰', async () => {
-    const { id, node } = project()
+    const { id, node } = await project()
     const queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
     const op: ProposalOp = { op: 'addClaim', page: 'topics/speculative-decoding', claim: {
       id: 'wide', text: '宽树结论', evidence: [{ kind: 'experiment', project: id, node }],
@@ -312,7 +312,7 @@ describe('review queue on a vault', () => {
     writeFileSync(join(inbox(), 'd-writing.json.tmp'), '{')
     await queue.scanInbox()
     expect(readdirSync(inbox())).toEqual(['d-writing.json.tmp'])
-    const records = queue.list()
+    const records = await queue.list()
     expect(records.map((r) => [r.status, r.reason?.kind ?? null])).toEqual([['rejected', 'stale'], ['rejected', 'invalid'], ['queued', null]])
     expect(records[1]).toMatchObject({ proposal: null, reason: { message: expect.stringMatching(/^b-broken\.json:/) } })
     expect(records[2]!.titles[`projects/${id}#${node}`]).toBe('宽树')
@@ -324,7 +324,7 @@ describe('review queue on a vault', () => {
 
   it('另一个版本写的队列:多出来的字段留着,读不了的那一条原样保留,其余照常', async () => {
     const queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
-    const { id, node } = project()
+    const { id, node } = await project()
     const receipt = await queue.propose(envelope(store, [{ op: 'addClaim', page: 'topics/draft-acceptance', claim: {
       id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: id, node }],
     } }]))
@@ -335,7 +335,7 @@ describe('review queue on a vault', () => {
     vi.spyOn(console, 'error').mockImplementation(() => {})
     const reopened = createVaultStore(vault, () => TODAY, () => new Date(NOW))
     const again = createWikiProposals({ store: reopened, pdf: fakePdf(null), now: () => NOW })
-    expect(again.list().map((r) => r.id)).toEqual([receipt.id])
+    expect((await again.list()).map((r) => r.id)).toEqual([receipt.id])
     await again.decide(receipt.id, 'decline', '先不写')
     const saved = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>[]
     expect(saved).toHaveLength(2)
@@ -377,13 +377,13 @@ describe('review queue on a vault', () => {
     expect(pages.map((f) => readFileSync(f, 'utf8'))).toEqual(before)
   })
 
-  it('项目结论写回 Wiki:experiment 证据指向结论,项目详情看得到它写到了哪条', () => {
-    const { id, conclusion } = project()
-    expect(store.getProject(id).conclusionClaims).toBeUndefined()
+  it('项目结论写回 Wiki:experiment 证据指向结论,项目详情看得到它写到了哪条', async () => {
+    const { id, conclusion } = await project()
+    expect((await store.getProject(id)).conclusionClaims).toBeUndefined()
     store.applyProposal({ source: 'user', title: '写入 Wiki', ops: [
       { op: 'addClaim', page: 'topics/draft-acceptance', claim: { id: 'b8', text: '宽树在 B≥8 时净赚', evidence: [{ kind: 'experiment', project: id, conclusion }] } },
     ] })
-    expect(store.getProject(id).conclusionClaims).toEqual({ [conclusion]: ['topics/draft-acceptance#b8'] })
+    expect((await store.getProject(id)).conclusionClaims).toEqual({ [conclusion]: ['topics/draft-acceptance#b8'] })
     expect(claimOn(store, 'topics/draft-acceptance', 'b8')!.evidence[0]).toMatchObject({ title: '写回', evidence: { conclusion } })
   })
 

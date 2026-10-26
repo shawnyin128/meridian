@@ -148,7 +148,7 @@ export function createWikiProposals({ store, pdf, now }: {
    * WikiProposalSchema), read from the vault as it stands; a page, project, node, column, kind or claim
    * that is gone gets no entry.
    */
-  const labelsOf = (proposal: AgentProposal, pages: string[]): Pick<WikiProposal, 'titles' | 'claimTexts'> => {
+  const labelsOf = async (proposal: AgentProposal, pages: string[]): Promise<Pick<WikiProposal, 'titles' | 'claimTexts'>> => {
     const titles: Record<string, string> = {}
     const claimTexts: Record<string, string> = {}
     const aggregations = new Map(store.wikiCards().map((card) => [card.id, card.title]))
@@ -165,9 +165,13 @@ export function createWikiProposals({ store, pdf, now }: {
       const found = store.wikiAggregation(id).claims.find((c) => c.id === claimId)
       if (found !== undefined) claimTexts[ref] = found.text
     }
+    const named: { id: string; part: { node?: string | undefined; conclusion?: string | undefined } }[] = []
     const project = (id: string, part: { node?: string | undefined; conclusion?: string | undefined }): void => {
+      named.push({ id, part })
+    }
+    const projectTitles = async (id: string, part: { node?: string | undefined; conclusion?: string | undefined }): Promise<void> => {
       if (!store.listProjects().some((p) => p.id === id)) return
-      const held = store.getProject(id)
+      const held = await store.getProject(id)
       titles[`projects/${id}`] = held.name
       const node = [...held.graph.nodes, ...held.workspace?.graph?.nodes ?? []].find((n) => n.id === part.node)
       if (node !== undefined) titles[`projects/${id}#${node.id}`] = node.label
@@ -198,6 +202,7 @@ export function createWikiProposals({ store, pdf, now }: {
           : op.op === 'markConflict' ? [op.conflict.against] : []
       for (const item of items) evidence(item)
     }
+    for (const { id, part } of named) await projectTitles(id, part)
     return { titles, claimTexts }
   }
 
@@ -206,14 +211,14 @@ export function createWikiProposals({ store, pdf, now }: {
    * user has not verified: a node conclusion without a current verification, or a legacy conclusion
    * whose stored state is not verified. A project that is gone is left to validation.
    */
-  const unverifiedOf = (proposal: AgentProposal): string[] => {
+  const unverifiedOf = async (proposal: AgentProposal): Promise<string[]> => {
     const refs: string[] = []
     for (const op of proposal.ops) {
       const items = op.op === 'addClaim' ? op.claim.evidence
         : op.op === 'reviseClaim' || op.op === 'addEvidence' ? op.evidence ?? [] : []
       for (const e of items) {
         if (e.kind !== 'experiment' || !store.listProjects().some((p) => p.id === e.project)) continue
-        const held = store.getProject(e.project)
+        const held = await store.getProject(e.project)
         const verified = e.node !== undefined
           ? held.projectConclusions?.find((c) => c.node === e.node)?.verifiedOn !== undefined
           : held.conclusionList.find((c) => c.id === e.conclusion)?.state === 'verified'
@@ -322,8 +327,8 @@ export function createWikiProposals({ store, pdf, now }: {
      * record whose proposal cannot be read against the vault is listed as unreadable with the cause as
      * its notice, and the others list as usual.
      */
-    list(status?: ProposalStatus): WikiProposal[] {
-      return store.proposalRecords().filter((r) => status === undefined || r.status === status).map((r) => {
+    list(status?: ProposalStatus): Promise<WikiProposal[]> {
+      return Promise.all(store.proposalRecords().filter((r) => status === undefined || r.status === status).map(async (r) => {
         try {
           const pages = r.proposal === null ? [] : store.pagesWritten(r.proposal.ops)
           const changed = r.proposal === null ? null : changedPage(r.proposal)
@@ -332,15 +337,15 @@ export function createWikiProposals({ store, pdf, now }: {
             pages,
             staleNow: changed !== null,
             ...(changed === null ? {} : { stalePage: changed }),
-            unverified: r.proposal === null || r.status !== 'queued' ? [] : unverifiedOf(r.proposal),
-            ...(r.proposal === null ? { titles: {}, claimTexts: {} } : labelsOf(r.proposal, pages)),
+            unverified: r.proposal === null || r.status !== 'queued' ? [] : await unverifiedOf(r.proposal),
+            ...(r.proposal === null ? { titles: {}, claimTexts: {} } : await labelsOf(r.proposal, pages)),
           }
         } catch (error) {
           const cause = error instanceof Error ? error.message : String(error)
           console.error(`[wiki] 提案 ${r.id} 读不出来，其余照常列出：${cause}`)
           return { ...r, proposal: null, notice: cause, pages: [], staleNow: false, titles: {}, claimTexts: {} }
         }
-      })
+      }))
     },
 
     /**
@@ -361,7 +366,7 @@ export function createWikiProposals({ store, pdf, now }: {
         next = { ...record, status: 'rejected', reason: { kind: 'declined', message: reason ?? '' }, decided }
       } else {
         const outcome = await evaluate(proposal)
-        const unverified = unverifiedOf(proposal)
+        const unverified = await unverifiedOf(proposal)
         if (outcome.status === 'rejected') {
           next = { ...record, status: 'rejected', reason: outcome.reason, decided }
         } else if (unverified.length > 0) {
@@ -370,7 +375,7 @@ export function createWikiProposals({ store, pdf, now }: {
           // Recent changes names the change as its card's first line does.
           const [first] = proposal.ops as [ProposalOp, ...ProposalOp[]]
           const target = cardTarget(first)
-          const page = first.op === 'createAggregation' ? first.title : labelsOf(proposal, [target]).titles[target] ?? target
+          const page = first.op === 'createAggregation' ? first.title : (await labelsOf(proposal, [target])).titles[target] ?? target
           store.applyProposal({ source: 'user', title: `${page} · ${PROPOSAL_KIND_NAMES[first.op]}`, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),
           })

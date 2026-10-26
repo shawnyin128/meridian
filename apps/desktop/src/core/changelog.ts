@@ -628,7 +628,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
 
   /**
    * Current entity shape, or undefined when the paper, project or column no longer exists. Any other
-   * failure to read it, such as a project whose research graph getProject rejects, throws.
+   * failure to read it, such as a project whose research graph heldProject rejects, throws.
    */
   const entityOf = (target: ChangeTarget): Entity | undefined => {
     switch (target.kind) {
@@ -637,7 +637,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
           ? { kind: 'paper', paper: ops.getPaper(target.id), snapshot: ops.paperSnapshot(target.id) }
           : undefined
       case 'project':
-        return ops.hasProject(target.id) ? { kind: 'project', project: ops.getProject(target.id) } : undefined
+        return ops.hasProject(target.id) ? { kind: 'project', project: ops.heldProject(target.id) } : undefined
       case 'pages':
         return { kind: 'pages', pages: ops.readPages(target.paths) }
       case 'columnType': {
@@ -765,15 +765,14 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
   }
 
   /**
-   * Project write that records the pre-change project as `keep` says. The project it returns counts
-   * this write's record in `lastProgress`, which the write read before the record existed.
+   * Project write that records the pre-change project as `keep` says; the write and its record land at
+   * once, and the project it settles to counts this write's record in `lastProgress`.
    */
   const onProject = (
-    id: string, what: string, write: () => ProjectDetail, keep: Keep = 'snapshot',
-  ): ProjectDetail => {
-    const project = wrote({ kind: 'project', id }, what, keep, write)
-    return { ...project, ...lastProgressOf(rows, id, [...project.events, ...project.workspace?.events ?? []]) }
-  }
+    id: string, what: string, write: () => Promise<ProjectDetail>, keep: Keep = 'snapshot',
+  ): Promise<ProjectDetail> => wrote({ kind: 'project', id }, what, keep, write).then((project) => (
+    { ...project, ...lastProgressOf(rows, id, [...project.events, ...project.workspace?.events ?? []]) }
+  ))
 
   /** Paper-field write that records the paper's pre-change shape. */
   const updatePaper = (id: string, patch: Partial<PaperFields>): void =>
@@ -1084,7 +1083,7 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
           ops.putPaperReading(restore.paper, { ...held, highlights: putBack(held.highlights, restore.at, restore.highlight) })
         } else if (restore.kind === 'remark') {
           ops.putPaperReading(restore.paper, { ...ops.paperReading(restore.paper), remark: restore.text })
-        } else ops.putProject(restore.project)
+        } else void ops.putProject(restore.project)
       })
 
       rows = rows.map((r) => (r.id === id ? { ...r, undone: true } : r))

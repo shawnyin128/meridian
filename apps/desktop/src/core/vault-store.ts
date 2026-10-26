@@ -836,8 +836,23 @@ export function createVaultStore(
   const conclusionsOf = (project: ProjectRecord, graph: ResearchGraph): ProjectConclusion[] =>
     projectConclusions(project, graph, projectClaims(wikiData, project.id), projectDisputes(wikiData, project.id))
 
-  /** Builds the cross-boundary project detail, deriving paper counts and titles from current vault state. */
-  const detailOf = (project: ProjectRecord): ProjectDetail => {
+  /** Project `id` for its detail. Throws when there is none, or its research graph has an edge to a node it does not hold. */
+  const shownProject = (id: string): ProjectRecord => {
+    const project = projectOf(id)
+    const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
+    for (const [from, to] of project.graph.edges) {
+      if (!nodeIds.has(from) || !nodeIds.has(to)) {
+        throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
+      }
+    }
+    return project
+  }
+
+  /** Each SSH-bound project's workspace as its latest read found it, by project id. */
+  const remoteRead = new Map<string, ProjectDetail['workspace']>()
+
+  /** The cross-boundary project detail of `project` with `workspace`, deriving paper counts and titles from current vault state. */
+  const detailWith = (project: ProjectRecord, workspace: ProjectDetail['workspace']): ProjectDetail => {
     const stored: Omit<ProjectRecord, 'created'> & { created?: string } = structuredClone(project)
     delete stored.created
     delete stored.workspaceRoot
@@ -847,7 +862,6 @@ export function createVaultStore(
       const paper = papers.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
     }))
-    const workspace = readProjectWorkspace(project)
     const claims = conclusionClaims(wikiData, project.id)
     const conclusions = conclusionsOf(project, workspace?.graph ?? project.graph)
     return {
@@ -860,6 +874,16 @@ export function createVaultStore(
       ...(workspace === undefined ? {} : { workspace }),
       ...lastProgressOf(changes, project.id, [...project.events, ...workspace?.events ?? []]),
     }
+  }
+
+  /** The project detail of `project`, reading its workspace afresh. */
+  const detailOf = async (project: ProjectRecord): Promise<ProjectDetail> => {
+    // A write made inside `atomically` queues its workspace sync only once all of it has landed, later
+    // in the same turn; reading in a later turn keeps this read behind that sync.
+    await Promise.resolve()
+    const workspace = await readProjectWorkspace(project)
+    if (project.workspaceSsh !== undefined) remoteRead.set(project.id, workspace)
+    return detailWith(project, workspace)
   }
 
   /** Returns projects in canonical order rather than directory scan or trash-restoration order. */
@@ -1002,28 +1026,41 @@ export function createVaultStore(
     return [...papers.values()].map((row) => withProjectLinks(row, held))
   }
 
-  /** The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask). */
-  const createTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail => {
+  /**
+   * The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask):
+   * writes it at once and returns the project as written.
+   */
+  const addTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectRecord => {
     const project = projectOf(projectId)
     checkSpan(task)
     const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
-    return writeProject({ ...project, tasks: [made, ...project.tasks] }, ['tasks'])
+    const next = { ...project, tasks: [made, ...project.tasks] }
+    landProject(next, ['tasks'])
+    return next
   }
 
   /**
-   * Writes only the modified project fields to its page, archiving the project's ideas when it is
-   * finished, and returns the updated detail. Throws when any of it cannot be written, leaving the page,
-   * the ideas and the record held as they stood and the workspace unsynced.
+   * Writes only the modified project fields to its page and archives the project's ideas when it is
+   * finished, at once. Throws when any of it cannot be written, leaving the page, the ideas and the
+   * record held as they stood and the workspace unsynced.
    */
-  const writeProject = (
-    project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
-  ): ProjectDetail => {
+  const landProject = (project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true): void => {
     atomically(() => {
       writeProjectFields(projectFile(project.id), project, fields, staging)
       projectById.set(project.id, project)
       if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
     })
     if (syncWorkspace) syncProjectWorkspace(project)
+  }
+
+  /**
+   * Writes the project as landProject does, at once, and returns the updated detail. Throws as
+   * landProject does.
+   */
+  const writeProject = (
+    project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
+  ): Promise<ProjectDetail> => {
+    landProject(project, fields, syncWorkspace)
     return detailOf(project)
   }
 
@@ -1057,7 +1094,7 @@ export function createVaultStore(
   })
 
   /** Appends a dated project research-log entry, optionally linked to a research-graph node. */
-  const appendEvent = (projectId: string, text: string, node?: string): ProjectDetail => {
+  const appendEvent = (projectId: string, text: string, node?: string): Promise<ProjectDetail> => {
     const project = projectOf(projectId)
     checkOneLine(text)
     if (node !== undefined && !project.graph.nodes.some((item) => item.id === node)) {
@@ -1591,18 +1628,16 @@ export function createVaultStore(
 
     putProject(project) {
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, project[key]]))
-      writeProject({ ...projectOf(project.id), ...fields }, PROJECT_FIELDS)
+      return writeProject({ ...projectOf(project.id), ...fields }, PROJECT_FIELDS).then(() => {})
     },
 
     getProject(id) {
-      const project = projectOf(id)
-      const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
-      for (const [from, to] of project.graph.edges) {
-        if (!nodeIds.has(from) || !nodeIds.has(to)) {
-          throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
-        }
-      }
-      return detailOf(project)
+      return detailOf(shownProject(id))
+    },
+
+    heldProject(id) {
+      const project = shownProject(id)
+      return detailWith(project, project.workspaceSsh === undefined ? readProjectWorkspace(project) : remoteRead.get(id))
     },
 
     hasProject(id) {
@@ -1661,7 +1696,9 @@ export function createVaultStore(
       })
     }),
 
-    createTask,
+    createTask(projectId, task, origin) {
+      return detailOf(addTask(projectId, task, origin))
+    },
 
     agentTaskRequests(projectId) {
       return projects().filter((project) => projectId === undefined || project.id === projectId).flatMap((project) => {
@@ -1674,12 +1711,11 @@ export function createVaultStore(
 
     addAgentTask: atomic((projectId, request) => {
       const had = new Set(projectOf(projectId).tasks.map((task) => task.id))
-      const made = createTask(projectId, {
+      const project = addTask(projectId, {
         title: request.title, start: request.date, end: request.date, state: 'plan', priority: 'p1',
         ...(request.note === undefined ? {} : { note: request.note }),
       }, 'agent')
-      const task = made.tasks.find((candidate) => !had.has(candidate.id))!.id
-      const project = projectOf(projectId)
+      const task = project.tasks.find((candidate) => !had.has(candidate.id))!.id
       return writeProject({ ...project, agentTasks: { ...project.agentTasks, [request.id]: task } }, ['agentTasks'])
     }),
 
@@ -2607,7 +2643,7 @@ export function createVaultStore(
         if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
         const { attachments } = project
         const at = Math.min(item.position ?? attachments.length, attachments.length)
-        writeProject(
+        landProject(
           { ...project, attachments: [...attachments.slice(0, at), item.attachment, ...attachments.slice(at)] },
           ['attachments'],
         )

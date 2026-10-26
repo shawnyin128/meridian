@@ -44,16 +44,16 @@ describe('change log', () => {
     expect(() => store.undoChange(seeded[0]!.id)).toThrow(/撤不了/)
   })
 
-  it('每一条的 id 在库里唯一:新记的不会撞上 fixture 带进来的那几条', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
-    store.createEvent(PROJECT, '记一笔')
+  it('每一条的 id 在库里唯一:新记的不会撞上 fixture 带进来的那几条', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
+    await store.createEvent(PROJECT, '记一笔')
     store.undoChange(recorded()[0]!.id)
     const ids = store.listChanges().map((c) => c.id)
     expect(new Set(ids).size).toBe(ids.length)
   })
 
-  it('改一个字段记下一条,来源是我,最新的排在最前', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('改一个字段记下一条,来源是我,最新的排在最前', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const rows = recorded()
     expect(rows).toHaveLength(1)
     expect(rows[0]).toMatchObject({
@@ -64,15 +64,15 @@ describe('change log', () => {
     expect(store.listChanges()[0]!.id).toBe(rows[0]!.id)
   })
 
-  it('撤销把数据真的写回改之前,那一条标成已撤销,并多出一条撤销记录', () => {
-    const before = store.getProject(PROJECT)
-    store.updateProject(PROJECT, { focus: '改过的焦点', status: '搁置' })
-    expect(store.getProject(PROJECT).focus).toBe('改过的焦点')
+  it('撤销把数据真的写回改之前,那一条标成已撤销,并多出一条撤销记录', async () => {
+    const before = await store.getProject(PROJECT)
+    await store.updateProject(PROJECT, { focus: '改过的焦点', status: '搁置' })
+    expect((await store.getProject(PROJECT)).focus).toBe('改过的焦点')
     const change = recorded()[0]!
 
     store.undoChange(change.id)
     // Read again to confirm the vault actually returned to the pre-change state.
-    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
+    expect(await store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
 
     const rows = recorded()
     expect(rows).toHaveLength(2)
@@ -88,36 +88,36 @@ describe('change log', () => {
     ])
   })
 
-  it('乱序撤销撞上后来的改动时被拒,说清还有几条更新的,数据一个字没动', () => {
-    store.updateProject(PROJECT, { focus: '第一次改' })
+  it('乱序撤销撞上后来的改动时被拒,说清还有几条更新的,数据一个字没动', async () => {
+    await store.updateProject(PROJECT, { focus: '第一次改' })
     const first = recorded()[0]!
-    store.updateProject(PROJECT, { focus: '第二次改' })
-    const between = store.getProject(PROJECT)
+    await store.updateProject(PROJECT, { focus: '第二次改' })
+    const between = await store.getProject(PROJECT)
 
     expect(() => store.undoChange(first.id)).toThrow(/又被改过 1 次.*先撤销较新的那几条/)
-    expect(store.getProject(PROJECT)).toEqual(between)
+    expect(await store.getProject(PROJECT)).toEqual(between)
     expect(store.listChanges().find((c) => c.id === first.id)).toMatchObject({ undone: false })
 
     // Undo the newer entry first, after which this entry becomes undoable.
     store.undoChange(recorded()[0]!.id)
     store.undoChange(first.id)
-    expect(store.getProject(PROJECT).focus).toBe('宽树实验补 B≥8 + 前缀复用配置')
+    expect((await store.getProject(PROJECT)).focus).toBe('宽树实验补 B≥8 + 前缀复用配置')
   })
 
-  it('这条之后实体在别处变过、又没有更新的记录时,同样拒绝', () => {
+  it('这条之后实体在别处变过、又没有更新的记录时,同样拒绝', async () => {
     // Trash operations are not logged but mutate the same project, so restoration invalidates this record's fingerprint.
-    store.deleteAttachment(PROJECT, store.getProject(PROJECT).attachments[0]!.id)
+    await store.deleteAttachment(PROJECT, (await store.getProject(PROJECT)).attachments[0]!.id)
     const change = recorded()[0]!
     store.restoreTrash(store.listTrash()[0]!.id)
-    const now = store.getProject(PROJECT)
+    const now = await store.getProject(PROJECT)
 
     expect(() => store.undoChange(change.id)).toThrow(/已经不是当时的样子/)
-    expect(store.getProject(PROJECT)).toEqual(now)
+    expect(await store.getProject(PROJECT)).toEqual(now)
     expect(store.listChanges().find((c) => c.id === change.id)).toMatchObject({ undone: false })
   })
 
-  it('快照留 7 天:第 8 天撤不了,第 6 天还撤得了', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('快照留 7 天:第 8 天撤不了,第 6 天还撤得了', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const change = recorded()[0]!
 
     day = '2026-08-26'
@@ -137,8 +137,8 @@ describe('change log', () => {
       .toBe('项目「draft 效率」· 改了字段')
   })
 
-  it('日期是记下的那一天,不跟着今天走;标题下那行灰字跟着今天走', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('日期是记下的那一天,不跟着今天走;标题下那行灰字跟着今天走', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const id = recorded()[0]!.id
     expect(store.listChanges().find((c) => c.id === id))
       .toMatchObject({ date: '2026-08-25', meta: '今天' })
@@ -148,13 +148,13 @@ describe('change log', () => {
       .toMatchObject({ date: '2026-08-25', meta: '本周' })
   })
 
-  it('新记下的一条是没归档的', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('新记下的一条是没归档的', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     expect(recorded()[0]!.archived).toBe(false)
   })
 
-  it('归一条只动它自己,别的条目一个字不变,也不多记一条', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('归一条只动它自己,别的条目一个字不变,也不多记一条', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const before = store.listChanges()
     store.archiveChange(before[0]!.id)
 
@@ -164,8 +164,8 @@ describe('change log', () => {
     expect(after.slice(1)).toEqual(before.slice(1))
   })
 
-  it('归一条已归档的是空操作:不抛,也不改别的', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('归一条已归档的是空操作:不抛,也不改别的', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const id = recorded()[0]!.id
     store.archiveChange(id)
     const after = store.listChanges()
@@ -174,10 +174,10 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(after)
   })
 
-  it('全部归档把没归档的一次归掉,再按一次是空操作', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('全部归档把没归档的一次归掉,再按一次是空操作', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     store.archiveChange(recorded()[0]!.id)
-    store.createEvent(PROJECT, '记一笔')
+    await store.createEvent(PROJECT, '记一笔')
 
     store.archiveAllChanges()
     const after = store.listChanges()
@@ -188,8 +188,8 @@ describe('change log', () => {
     expect(store.listChanges()).toEqual(after)
   })
 
-  it('撤销不动归档:撤一条已归档的,它还在归档里,撤销本身没归档', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('撤销不动归档:撤一条已归档的,它还在归档里,撤销本身没归档', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const change = recorded()[0]!
     store.archiveChange(change.id)
 
@@ -203,23 +203,23 @@ describe('change log', () => {
     expect(() => store.archiveChange('chg-没有这一条')).toThrow(/最近变动里没有这一条/)
   })
 
-  it('删除一条只清掉记录与撤销快照,不改被记录的知识内容', () => {
-    const { lastProgress } = store.getProject(PROJECT)
-    store.updateProject(PROJECT, { focus: '删除记录也保留的改动' })
+  it('删除一条只清掉记录与撤销快照,不改被记录的知识内容', async () => {
+    const { lastProgress } = await store.getProject(PROJECT)
+    await store.updateProject(PROJECT, { focus: '删除记录也保留的改动' })
     const change = recorded()[0]!
-    const project = store.getProject(PROJECT)
+    const project = await store.getProject(PROJECT)
 
     store.deleteChange(change.id)
 
     expect(store.listChanges().some((row) => row.id === change.id)).toBe(false)
     // The deleted record no longer counts as progress.
-    expect(store.getProject(PROJECT)).toEqual({ ...project, lastProgress })
+    expect(await store.getProject(PROJECT)).toEqual({ ...project, lastProgress })
     expect(() => store.undoChange(change.id)).toThrow(/最近变动里没有这一条/)
   })
 
-  it('删除不存在的记录会拒绝,清空已归档只删已归档的', () => {
+  it('删除不存在的记录会拒绝,清空已归档只删已归档的', async () => {
     expect(() => store.deleteChange('chg-没有这一条')).toThrow(/最近变动里没有这一条/)
-    store.updateProject(PROJECT, { focus: '保留的未归档改动' })
+    await store.updateProject(PROJECT, { focus: '保留的未归档改动' })
     const active = recorded()[0]!
     const archived = store.listChanges().find((row) => row.id !== active.id)!
     store.archiveChange(archived.id)
@@ -306,15 +306,15 @@ describe('change log', () => {
       ['project.deleteMilestone', () => store.deleteMilestone(PROJECT, 'm2')],
       ['project.createRelation', () => store.createRelation(PROJECT, { group: 'Wiki', text: '新关联' })],
       ['project.deleteRelation', () =>
-        store.deleteRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id)],
+        store.deleteRelation(PROJECT, store.heldProject(PROJECT).relations[0]!.items[0]!.id)],
       ['project.updateRelation', () =>
-        store.updateRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id, { text: '改名' })],
+        store.updateRelation(PROJECT, store.heldProject(PROJECT).relations[0]!.items[0]!.id, { text: '改名' })],
       ['project.createAttachment', () =>
         store.createAttachment(PROJECT, {
           name: '新附件.csv', size: '1 KB', path: resolve('新附件.csv'),
         })],
       ['project.deleteAttachment', () =>
-        store.deleteAttachment(PROJECT, store.getProject(PROJECT).attachments[0]!.id)],
+        store.deleteAttachment(PROJECT, store.heldProject(PROJECT).attachments[0]!.id)],
       ['project.createEvent', () => store.createEvent(PROJECT, '[对话] 来自对话的结论')],
       ['project.delete', () => store.deleteProject(PROJECT)],
     ]
@@ -454,13 +454,13 @@ describe('change log', () => {
     expect(store.paperReading(READ).highlights).toEqual(before.highlights)
   })
 
-  it('改一条关联记下一条,撤销把它的名字和指向还原', () => {
-    const before = store.getProject(PROJECT).relations
+  it('改一条关联记下一条,撤销把它的名字和指向还原', async () => {
+    const before = (await store.getProject(PROJECT)).relations
     const item = before[0]!.items[0]!
-    store.updateRelation(PROJECT, item.id, { text: '改名', url: 'https://example.com' })
+    await store.updateRelation(PROJECT, item.id, { text: '改名', url: 'https://example.com' })
     expect(recorded()[0]).toMatchObject({ title: '项目「draft 效率」· 改了关联', undoable: true })
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT).relations).toEqual(before)
+    expect((await store.getProject(PROJECT)).relations).toEqual(before)
   })
 
   it('新建的东西撤销之后就不在了,删掉的东西撤销之后回来了', () => {
@@ -488,38 +488,38 @@ describe('change log', () => {
     expect(store.getPaper(paper.id)).toEqual(paper)
   })
 
-  it('撤销一条任务的新增,项目回到没有那条任务的样子', () => {
-    const before = store.getProject(PROJECT)
-    store.createTask(PROJECT, {
+  it('撤销一条任务的新增,项目回到没有那条任务的样子', async () => {
+    const before = await store.getProject(PROJECT)
+    await store.createTask(PROJECT, {
       title: '要撤销的任务', start: '2026-08-25', end: '2026-08-31', state: 'act', priority: 'p1',
     })
-    expect(store.getProject(PROJECT).tasks[0]!.title).toBe('要撤销的任务')
+    expect((await store.getProject(PROJECT)).tasks[0]!.title).toBe('要撤销的任务')
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
+    expect(await store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
   })
 
-  it('撤销一次任务备注的编辑,项目回到写备注之前的样子', () => {
-    const task = store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!
+  it('撤销一次任务备注的编辑,项目回到写备注之前的样子', async () => {
+    const task = (await store.getProject(PROJECT)).tasks.find((t) => t.id === 't2')!
     expect(task.note).toBeUndefined()
-    const before = store.getProject(PROJECT)
-    store.updateTask(PROJECT, 't2', { note: '先确认基线,再改并发数' })
-    expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note)
+    const before = await store.getProject(PROJECT)
+    await store.updateTask(PROJECT, 't2', { note: '先确认基线,再改并发数' })
+    expect((await store.getProject(PROJECT)).tasks.find((t) => t.id === 't2')!.note)
       .toBe('先确认基线,再改并发数')
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
-    expect(store.getProject(PROJECT).tasks.find((t) => t.id === 't2')!.note).toBeUndefined()
+    expect(await store.getProject(PROJECT)).toEqual({ ...before, lastProgress: day })
+    expect((await store.getProject(PROJECT)).tasks.find((t) => t.id === 't2')!.note).toBeUndefined()
   })
 
-  it('同一条撤两次撤不动,库里没有的那条 id 也撤不动', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('同一条撤两次撤不动,库里没有的那条 id 也撤不动', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const change = recorded()[0]!
     store.undoChange(change.id)
     expect(() => store.undoChange(change.id)).toThrow(/已经撤销过/)
     expect(() => store.undoChange('没有这一条')).toThrow(/没有这一条/)
   })
 
-  it('取回的变动是副本,连 diff 那一层改了也渗不回库里', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('取回的变动是副本,连 diff 那一层改了也渗不回库里', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     const rows = store.listChanges()
     rows[0]!.title = '篡改后的标题'
     rows[0]!.diff[0] = '篡改后的 diff'
@@ -542,8 +542,8 @@ describe('change log', () => {
     expect(store.readPages([blank, written])).toEqual(before)
   })
 
-  it('记录不跨边界带快照与指纹:界面只看得到能不能撤、归没归档', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('记录不跨边界带快照与指纹:界面只看得到能不能撤、归没归档', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     expect(Object.keys(store.listChanges()[0]!).sort())
       .toEqual(['archived', 'date', 'diff', 'id', 'lines', 'meta', 'named', 'source', 'title', 'undoable', 'undone'])
   })
@@ -553,8 +553,8 @@ describe('change log', () => {
     ? [change.title]
     : [change.title, change.named.kind, change.named.id, change.title.slice(change.named.from, change.named.to)])
 
-  it('标题点名的论文、项目和 Wiki 页标出名字那一段和打开它的 id;论文表、提案与 fixture 带进来的那几条不点名', () => {
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+  it('标题点名的论文、项目和 Wiki 页标出名字那一段和打开它的 id;论文表、提案与 fixture 带进来的那几条不点名', async () => {
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     store.mutatePaperReading(READ, { kind: 'remark.set', text: '随笔' })
     store.applyProposal({
       source: 'ingest', title: '给 PTQ 记一条',
@@ -829,16 +829,16 @@ describe('change log', () => {
     expect(store.getPaper(a).custom).toEqual({ note: 'x' })
   })
 
-  it('真的不在了的论文、项目和列才算不在:删掉的撤得回来,列移除之后的改动撤不了', () => {
+  it('真的不在了的论文、项目和列才算不在:删掉的撤得回来,列移除之后的改动撤不了', async () => {
     const paper = store.getPaper('Jiang-et-al-2024-Mixtral-of-Experts')
     store.deletePaper(paper.id)
     store.undoChange(recorded()[0]!.id)
     expect(store.getPaper(paper.id)).toEqual(paper)
 
-    const project = store.getProject(PROJECT)
+    const project = await store.getProject(PROJECT)
     store.deleteProject(PROJECT)
     store.undoChange(recorded()[0]!.id)
-    expect(store.getProject(PROJECT)).toEqual(project)
+    expect(await store.getProject(PROJECT)).toEqual(project)
 
     const column = { key: 'du-fa', label: '读法', type: 'select' as const, options: ['精读'] }
     store.setPaperColumns({ ...emptyColumns(), custom: [column] })
@@ -854,7 +854,7 @@ describe('change log', () => {
     expect(() => store.undoChange(retyped.id)).toThrow('这一列之后又改过，撤销会盖掉那次改动')
   })
 
-  it('项目读不出来时,撤销和改动都报出读不出来的原因,不当它已经不在', () => {
+  it('项目读不出来时,撤销和改动都报出读不出来的原因,不当它已经不在', async () => {
     const fixture = createFixtureStore(today)
     const corruption = `科研图的边指向不存在的节点:${PROJECT}.a → ${PROJECT}.gone`
     let corrupt = false
@@ -865,18 +865,22 @@ describe('change log', () => {
         if (corrupt && id === PROJECT) throw new Error(corruption)
         return fixture.getProject(id)
       },
+      heldProject: (id) => {
+        if (corrupt && id === PROJECT) throw new Error(corruption)
+        return fixture.heldProject(id)
+      },
     }, {
       load: () => rows, save: (next) => { rows = next }, nextId: () => `change-${rows.length + 1}`,
       atomically: (write) => write(),
     })
-    logged.updateProject(PROJECT, { focus: '改过的焦点' })
+    await logged.updateProject(PROJECT, { focus: '改过的焦点' })
     const change = logged.listChanges()[0]!
 
     corrupt = true
     expect(() => logged.undoChange(change.id)).toThrow(corruption)
     expect(logged.listChanges()[0]).toMatchObject({ id: change.id, undone: false })
     expect(() => logged.updateProject(PROJECT, { focus: '再改一次' })).toThrow(corruption)
-    expect(fixture.getProject(PROJECT).focus).toBe('改过的焦点')
+    expect((await fixture.getProject(PROJECT)).focus).toBe('改过的焦点')
   })
 })
 
@@ -932,7 +936,7 @@ describe('change lines', () => {
       () => store.updateProject(PROJECT, { status: '搁置', block: '等数据', start: '2026-06-01' }),
       () => store.updateMilestone(PROJECT, 'm3', { done: true, date: '2026-09-06' }),
       () => store.createRelation(PROJECT, { group: 'Wiki', text: '新关联' }),
-      () => store.updateRelation(PROJECT, store.getProject(PROJECT).relations[0]!.items[0]!.id, { text: '改名' }),
+      () => store.updateRelation(PROJECT, store.heldProject(PROJECT).relations[0]!.items[0]!.id, { text: '改名' }),
       () => store.createAttachment(PROJECT, { name: '新附件.csv', size: '1 KB', path: resolve('新附件.csv') }),
       () => store.updateTask(PROJECT, 't3', { window: { start: '08:00', end: '10:00' }, note: '先跑基线', priority: 'p0' }),
       () => store.updatePaper(READ, { rating: 4, authors: ['Albert Q. Jiang', 'Alexandre Sablayrolles'], year: 2023 }),
@@ -988,42 +992,42 @@ describe('change lines', () => {
     })
   })
 
-  it('新记下的一条用各对象的词:阅读状态写待读,项目写领域,新项目的默认领域写未分领域,验证的是实验结论', () => {
+  it('新记下的一条用各对象的词:阅读状态写待读,项目写领域,新项目的默认领域写未分领域,验证的是实验结论', async () => {
     expect(linesOf(() => store.updatePaper(READ, { readState: '稍后阅读' }))).toEqual(['- 阅读状态：未读', '+ 阅读状态：待读'])
     expect(linesOf(() => store.updateProject(PROJECT, { topics: [] })))
       .toEqual(['- 领域：speculative decoding', '+ 领域：未分领域'])
-    const knee = () => store.getProject(PROJECT).projectConclusions!.find((c) => c.node === 'knee')!
-    store.verifyConclusion(PROJECT, 'knee', knee().fingerprint!)
+    const knee = () => store.heldProject(PROJECT).projectConclusions!.find((c) => c.node === 'knee')!
+    await store.verifyConclusion(PROJECT, 'knee', knee().fingerprint!)
     expect(store.listChanges()[0]).toMatchObject({
       title: '项目「draft 效率」· 验证实验结论', diff: [`+ 已验证实验结论：${knee().text}`],
     })
-    store.unverifyConclusion(PROJECT, 'knee')
+    await store.unverifyConclusion(PROJECT, 'knee')
     expect(store.listChanges()[0]!.title).toBe('项目「draft 效率」· 取消验证实验结论')
-    expect(store.getProject(PROJECT).topic).toBe('未分主题')
+    expect((await store.getProject(PROJECT)).topic).toBe('未分主题')
     expect(store.getPaper(READ).readState).toBe('稍后阅读')
   })
 
-  it('领域加一个只记加的那个,去掉一个只记去的那个;撤销回到原来那几个', () => {
+  it('领域加一个只记加的那个,去掉一个只记去的那个;撤销回到原来那几个', async () => {
     expect(linesOf(() => store.updateProject(PROJECT, { topics: ['speculative decoding', 'KV cache'] })))
       .toEqual(['+ 领域：KV cache'])
     const added = store.listChanges()[0]!.id
     expect(linesOf(() => store.updateProject(PROJECT, { topics: ['KV cache'] })))
       .toEqual(['- 领域：speculative decoding'])
     store.undoChange(store.listChanges()[0]!.id)
-    expect(store.getProject(PROJECT)).toMatchObject({ topic: 'speculative decoding', topics: ['speculative decoding', 'KV cache'] })
+    expect(await store.getProject(PROJECT)).toMatchObject({ topic: 'speculative decoding', topics: ['speculative decoding', 'KV cache'] })
     store.undoChange(added)
-    expect(store.getProject(PROJECT).topic).toBe('speculative decoding')
-    expect(store.getProject(PROJECT).topics).toBeUndefined()
+    expect((await store.getProject(PROJECT)).topic).toBe('speculative decoding')
+    expect((await store.getProject(PROJECT)).topics).toBeUndefined()
   })
 
-  it('0.0.16.1 记下的一条:只有一个领域的项目,它存的指纹照样对得上,撤得了', () => {
-    const before = store.getProject(PROJECT)
+  it('0.0.16.1 记下的一条:只有一个领域的项目,它存的指纹照样对得上,撤得了', async () => {
+    const before = await store.getProject(PROJECT)
     delete before.lastProgress
-    store.updateProject(PROJECT, { focus: '改过的焦点' })
+    await store.updateProject(PROJECT, { focus: '改过的焦点' })
     // The fields 0.0.16.1 fingerprinted, `verifiedConclusions` only once set.
     const fields0016 = ['name', 'status', 'priority', 'topic', 'focus', 'block', 'start', 'due', 'memo',
       'papers', 'tasks', 'milestones', 'events', 'relations', 'attachments', 'agentSessions', 'verifiedConclusions'] as const
-    const now = store.getProject(PROJECT)
+    const now = await store.getProject(PROJECT)
     const after = createHash('sha256').update(stableJson(Object.fromEntries(fields0016
       .filter((key) => key !== 'verifiedConclusions' || now[key] !== undefined).map((key) => [key, now[key]]))))
       .digest('hex').slice(0, 16)
@@ -1035,7 +1039,7 @@ describe('change lines', () => {
       load: () => rows, save: (next) => { rows = next }, nextId: () => 'change-2', atomically: (write) => write(),
     })
     logged.undoChange('change-1')
-    expect(store.getProject(PROJECT).focus).toBe(before.focus)
+    expect((await store.getProject(PROJECT)).focus).toBe(before.focus)
   })
 
   it('早先记下的一条用的是旧词:标题与每一行照原样显示', () => {
