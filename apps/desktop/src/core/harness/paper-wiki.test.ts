@@ -310,7 +310,7 @@ function paperWikiRunner(model: HarnessRuntimeModel, cli: CliRunner) {
     model: { runtime: async () => model } as unknown as HarnessModelConfig,
     cli,
     launch: () => child,
-    onLog: (line) => logs.push(line),
+    onLog: (level, line) => logs.push(`${level} ${line}`),
   })
   return { child, runner, logs }
 }
@@ -343,8 +343,8 @@ describe('Paper Wiki run on a subscription CLI', () => {
     child.send({ type: 'response', id: 1, ok: true, result: envelope() })
     await expect(running).resolves.toMatchObject({ state: 'proposal-ready' })
     expect(logs).toEqual([
-      'claude: 86.2 s, 3 turns, 93516 input tokens (87410 cached), 11382 output tokens',
-      'Harness callback model.invoke failed: A run makes one model call',
+      'info claude: 86.2 s, 3 turns, 93516 input tokens (87410 cached), 11382 output tokens',
+      'error Harness callback model.invoke failed: A run makes one model call',
     ])
     runner.close()
   })
@@ -412,13 +412,13 @@ describe('Paper Wiki run on a subscription CLI', () => {
       child.callModel('fails')
       expect(await child.frame()).toMatchObject({ type: 'error', callbackId: 'fails', error: { kind: 'model_error' } })
       expect(logs).toHaveLength(2)
-      expect(logs[0]).toMatch(/^claude failed, exit 1: starting \| .* \| Error: usage limit reached$/)
-      expect(logs[1]).toMatch(/^Harness callback model.invoke failed: /)
+      expect(logs[0]).toMatch(/^error claude failed, exit 1: starting \| .* \| Error: usage limit reached$/)
+      expect(logs[1]).toMatch(/^error Harness callback model.invoke failed: /)
 
       child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败' } })
       await expect(running).rejects.toMatchObject({ reason: 'model' })
       expect(logs).toHaveLength(3)
-      expect(logs[2]).toMatch(/^Paper Wiki run of .+ failed at cli \(failed\): exit 1: starting .* Error: usage limit reached$/)
+      expect(logs[2]).toMatch(/^error Paper Wiki run of .+ failed at cli \(failed\): exit 1: starting .* Error: usage limit reached$/)
       for (const line of logs) expect(line).not.toMatch(/sk-ant|supersecret|researcher@/)
       runner.close()
     } finally {

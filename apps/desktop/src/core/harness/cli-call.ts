@@ -1,6 +1,7 @@
 import type { HarnessCli } from '../../shared/contract.js'
 import { CliRunError } from './cli/child.js'
 import type { CliUsage } from './cli/runner.js'
+import type { CoreLogLevel } from '../core-log.js'
 import { HarnessRpcError } from './rpc.js'
 
 export const CLI_CALL_TIMEOUT_MS = 10 * 60_000
@@ -25,11 +26,11 @@ export function cliUsageLine(cli: HarnessCli, result: { durationMs: number; turn
  * when it is a CliRunError; its exit code and the end of its stderr go to `onLog`. Any other error is
  * returned as it is.
  */
-export function cliCallError(cli: HarnessCli, cause: unknown, onLog?: (line: string) => void): unknown {
+export function cliCallError(cli: HarnessCli, cause: unknown, onLog?: (level: CoreLogLevel, line: string) => void): unknown {
   if (!(cause instanceof CliRunError)) return cause
   if (cause.exitCode !== undefined || cause.stderr !== undefined) {
     const stderr = cause.stderr === undefined || cause.stderr === '' ? '' : `: ${cause.stderr.replace(/\n/g, ' | ')}`
-    onLog?.(`${cli} failed, exit ${String(cause.exitCode ?? 'none')}${stderr}`)
+    onLog?.('error', `${cli} failed, exit ${String(cause.exitCode ?? 'none')}${stderr}`)
   }
   return new HarnessRpcError({ kind: 'model_error', message: cause.message })
 }

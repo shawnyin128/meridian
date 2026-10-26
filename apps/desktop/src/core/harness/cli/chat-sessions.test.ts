@@ -35,7 +35,7 @@ function machine() {
   const logs: string[] = []
   const open = (vault = '/vaults/research') => openCliChatSessions({
     root: join(root, 'user-data', 'cli-chats'), vault, environment, home: join(root, 'home'),
-    binary: async (cli) => (cli === 'codex' ? join(root, 'codex') : null), onLog: (line) => logs.push(line),
+    binary: async (cli) => (cli === 'codex' ? join(root, 'codex') : null), onLog: (level, line) => logs.push(`${level} ${line}`),
   })
   const codexCalls = (): string[][] => (existsSync(record)
     ? readFileSync(record, 'utf8').split('\n').filter((line) => line !== '').map((line) => JSON.parse(line) as string[])
@@ -77,12 +77,12 @@ describe('the CLI sessions of a chat', () => {
     rmSync(claudeFile(CLAUDE_SESSION))
     expect(sessions.resumable('chat-3', OPUS, 'turns-1')).toBeNull()
     expect(logs).toEqual([
-      'chat chat-3: a new claude session, the chat changed',
-      'chat chat-3: a new claude session, the model changed',
-      'chat chat-3: a new claude session, the model changed',
-      'chat chat-3: a new codex session, the model changed',
-      'chat chat-9: a new claude session, no session to resume',
-      'chat chat-3: a new claude session, the session is gone',
+      'info chat chat-3: a new claude session, the chat changed',
+      'info chat chat-3: a new claude session, the model changed',
+      'info chat chat-3: a new claude session, the model changed',
+      'info chat chat-3: a new codex session, the model changed',
+      'info chat chat-9: a new claude session, no session to resume',
+      'info chat chat-3: a new claude session, the session is gone',
     ])
 
     sessions.keep('chat-4', { cli: 'codex', id: CODEX_SESSION, history: 'turns-2' })
@@ -126,7 +126,7 @@ describe('the CLI sessions of a chat', () => {
     touch(claudeFile(CLAUDE_SESSION))
 
     const sessions = open()
-    expect(logs).toEqual([`${file}: 1 chat records cannot be read and are skipped`])
+    expect(logs).toEqual([`warn ${file}: 1 chat records cannot be read and are skipped`])
     expect(sessions.resumable('chat-2', { source: 'cli', cli: 'claude' }, 'turns-1')).toMatchObject({ id: CLAUDE_SESSION })
     sessions.begin('chat-5', 'claude', CLAUDE_SESSION)
     expect(JSON.parse(readFileSync(file, 'utf8')).chats.slice(0, 2)).toEqual([strange, newer])
@@ -138,7 +138,7 @@ describe('the CLI sessions of a chat', () => {
     writeFileSync(file, '{ not json')
 
     expect(open().resumable('chat-3', OPUS, 'turns-1')).toBeNull()
-    expect(logs[0]).toBe(`${file} cannot be read; the chats' CLI sessions start again`)
+    expect(logs[0]).toBe(`warn ${file} cannot be read; the chats' CLI sessions start again`)
   })
 
   it('gives each chat of each vault a working folder of its own under the user-data folder', () => {
@@ -208,7 +208,7 @@ describe('deleting the CLI sessions of chats the vault no longer keeps', () => {
     expect(existsSync(keptFolder)).toBe(true)
     expect(JSON.parse(readFileSync(file, 'utf8')).chats.map((chat: { vault: string; chat: string }) => [chat.vault, chat.chat]))
       .toEqual([['/vaults/other', 'chat-2'], ['/vaults/research', 'chat-1']])
-    expect(logs).toContain('chat chat-2: deleted its 2 CLI sessions')
+    expect(logs).toContain('info chat chat-2: deleted its 2 CLI sessions')
   })
 
   it('removes a Claude project folder its sessions leave empty', async () => {

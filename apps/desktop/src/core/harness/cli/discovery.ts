@@ -4,6 +4,7 @@ import { basename, isAbsolute, join } from 'node:path'
 import type {
   HarnessCli, HarnessCliModel, HarnessModelConnectionCheckResult, HarnessModelConnectionFailure,
 } from '../../../shared/contract.js'
+import type { CoreLogLevel } from '../../core-log.js'
 import { cliUsageLine } from '../cli-call.js'
 import { type ChildOutcome, cliEnvironment, type CliFailureKind, CliRunError, inTemporaryFolder, runChild } from './child.js'
 import { chatTurnFlags } from './chat-turn.js'
@@ -71,7 +72,7 @@ export type DiscoveryOptions = {
   /** How long each command discovery runs the CLI with (version, help, sign-in status) may take; 10 s by default. */
   probeTimeoutMs?: number
   /** Where a line about a CLI that discovery cannot fully read goes. */
-  onLog?: (line: string) => void
+  onLog?: (level: CoreLogLevel, line: string) => void
 }
 
 const isRecord = (value: unknown): value is Record<string, unknown> =>
@@ -222,7 +223,7 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
     const status = await probe(cli === 'claude' ? ['auth', 'status', '--json'] : ['login', 'status'])
     const signIn = cli === 'claude' ? claudeSignIn(status.stdout) : codexSignIn(`${status.stdout}\n${status.stderr}`)
     if (signIn === 'unknown') {
-      options.onLog?.(`${cli} ${version ?? '(no version)'}: its sign-in status is in no form Meridian reads: ${statusShape(status)}`)
+      options.onLog?.('warn', `${cli} ${version ?? '(no version)'}: its sign-in status is in no form Meridian reads: ${statusShape(status)}`)
     }
     return { cli, installed: true, binary, version, missingFlags, signIn }
   })
@@ -239,7 +240,7 @@ export async function discoverCli(cli: HarnessCli, options: DiscoveryOptions = {
  */
 export async function checkCliConnection(
   model: HarnessCliModel,
-  options: DiscoveryOptions & { onLog?: (line: string) => void; run: CliRunner },
+  options: DiscoveryOptions & { onLog?: (level: CoreLogLevel, line: string) => void; run: CliRunner },
 ): Promise<HarnessModelConnectionCheckResult> {
   const { cli } = model
   let version: string | null = null
@@ -258,7 +259,7 @@ export async function checkCliConnection(
   const ready = readiness(found)
   if (!('binary' in ready)) {
     if (found.installed && ready.kind === 'unsupported') {
-      options.onLog?.(`${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
+      options.onLog?.('warn', `${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
     }
     return failed(ready.kind, ready.message)
   }
@@ -266,7 +267,7 @@ export async function checkCliConnection(
     const result = await options.run({
       cli, ...(model.model === undefined ? {} : { model: model.model }), ...CHECK_CALL, signal: new AbortController().signal,
     })
-    options.onLog?.(cliUsageLine(cli, result))
+    options.onLog?.('info', cliUsageLine(cli, result))
   } catch (cause) {
     if (!(cause instanceof CliRunError)) throw cause
     return failed(cause.kind, cause.message)

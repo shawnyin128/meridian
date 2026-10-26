@@ -291,7 +291,7 @@ process.stdin.on('end', () => {
         environment: { ...process.env, ANTHROPIC_API_KEY: 'sk-ant-must-not-cross' },
       }),
       launch: () => launchHarnessProcess(config),
-      onLog: (line) => logs.push(line),
+      onLog: (level, line) => logs.push(`${level} ${line}`),
     })
     try {
       const result = await runner.run({
@@ -317,7 +317,7 @@ process.stdin.on('end', () => {
       expect(seen.stdin).toMatch(/^Authorized Paper Wiki scope:\n\{/)
       expect(seen.stdin).toContain('"scopeDigest":"cli-scope"')
       expect(seen.apiKey).toBeNull()
-      expect(logs).toContainEqual(expect.stringMatching(/^claude: \d+\.\d s, 1 turns, 10 input tokens \(0 cached\), 20 output tokens$/))
+      expect(logs).toContainEqual(expect.stringMatching(/^info claude: \d+\.\d s, 1 turns, 10 input tokens \(0 cached\), 20 output tokens$/))
     } finally {
       runner.close()
       rmSync(folder, { recursive: true, force: true })
