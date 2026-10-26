@@ -37,14 +37,16 @@ describe('the models each configured source offers', () => {
     expect([readCli.mock.calls.length, readApi.mock.calls.length]).toEqual([1, 2])
   })
 
-  it('lists a CLI\'s own default first, then the models it names, each with its efforts, the source\'s default model leading', async () => {
+  it('lists the source\'s default model first, then the others the CLI names, each with its efforts; the CLI\'s own default only when it is the source\'s default', async () => {
     const { lists } = session()
     lists.start()
 
+    const efforts = { levels: ['low', 'medium', 'high', 'xhigh', 'max'] }
     expect(await lists.models('cli:claude')).toEqual({
-      source: 'cli:claude',
-      models: ['opus', '', 'fable', 'sonnet'].map((id) => ({ id, efforts: { levels: ['low', 'medium', 'high', 'xhigh', 'max'] } })),
+      source: 'cli:claude', models: ['opus', 'fable', 'sonnet'].map((id) => ({ id, efforts })),
     })
+    const own = session([{ ...SOURCES[0]!, model: '' }]).lists
+    expect((await own.models('cli:claude')).models).toEqual(['', 'fable', 'opus', 'sonnet'].map((id) => ({ id, efforts })))
     expect((await lists.models('api:openai')).models).toEqual([
       { id: 'gpt-6.1', efforts: { levels: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] } },
       { id: 'gpt-5.5', efforts: { levels: ['none', 'minimal', 'low', 'medium', 'high', 'xhigh', 'max'] } },

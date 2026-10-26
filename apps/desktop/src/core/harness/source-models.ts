@@ -93,8 +93,9 @@ export function createSourceModels(options: {
     /** The status of subscription CLI `cli`, as kept for the session; read once when none is kept yet. */
     status,
     /**
-     * The models configured source `id` offers, its default model first, as kept for the session;
-     * read once when none is kept yet. Throws `not-found` for a source the list does not hold.
+     * The models configured source `id` offers, its default model first, then the others its source
+     * lists, a CLI's own default only when it is the source's default, as kept for the session; read
+     * once when none is kept yet. Throws `not-found` for a source the list does not hold.
      */
     async models(id: string): Promise<HarnessSourceModels> {
       const entry = entryOf(id)
@@ -103,7 +104,8 @@ export function createSourceModels(options: {
       const own = listed.find((model) => model.id === entry.model) ?? { id: entry.model, efforts: defaultEfforts(entry) }
       return {
         source: id,
-        models: [own, ...listed.filter((model) => model.id !== entry.model)].slice(0, MAX_LISTED),
+        // A CLI's own default model ('') is offered only as the source's default, never beside a concrete one.
+        models: [own, ...listed.filter((model) => model.id !== entry.model && model.id !== '')].slice(0, MAX_LISTED),
         ...(error === undefined ? {} : { error }),
       }
     },
