@@ -16,16 +16,18 @@ type TrackStyle = CSSProperties & {
 /**
  * The app-wide single-choice switch between peer views: a track of equal segments with one raised
  * thumb that slides under the picked segment. It is one Tab stop; arrow keys move focus between the
- * segments, and Enter or Space picks the focused one. Picking the current segment again changes
- * nothing, and a `value` that matches no option leaves the track without a thumb. `size` only changes
- * the segment height.
+ * segments, and Enter or Space picks the focused one. Picking the current segment again keeps it and
+ * calls `onReselect`, which takes the view the switch shows back to its top level (useTopLevel). A
+ * `value` that matches no option leaves the track without a thumb. `size` only changes the segment
+ * height.
  */
 export function SegmentedControl<Value extends string>({
-  value, options, onChange, label, size = 'md', className = '',
+  value, options, onChange, onReselect, label, size = 'md', className = '',
 }: {
   value: Value
   options: readonly SegmentedControlOption<Value>[]
   onChange: (value: Value) => void
+  onReselect?: (() => void) | undefined
   label: string
   size?: 'md' | 'sm'
   className?: string
@@ -37,7 +39,7 @@ export function SegmentedControl<Value extends string>({
       type="single" value={value} aria-label={label} style={style}
       className={`segmented-control segmented-control--${size}${className ? ` ${className}` : ''}`}
       // Radix reports '' when the picked segment is pressed again; a segmented control always keeps one.
-      onValueChange={(next) => { if (next !== '') onChange(next as Value) }}
+      onValueChange={(next) => { if (next === '') onReselect?.(); else onChange(next as Value) }}
     >
       {picked < 0 ? null : <span className="segmented-thumb" aria-hidden="true" />}
       {options.map((option) => (

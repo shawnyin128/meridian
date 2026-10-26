@@ -711,3 +711,60 @@ describe('项目的起止日期', () => {
     expect(updates.at(-1)).toEqual({ start: '2026-09-20', due: '2026-09-20' })
   })
 })
+
+describe('再点选中的计划或记录标签', () => {
+  let unmount = () => {}
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    shell.shown = true
+    const held = project({
+      tasks: [{ id: 't1', title: '画路由热力图', start: '2026-08-20', end: '2026-08-28', state: 'act', priority: 'p1' }],
+      projectConclusions: [{ id: 'c1', text: '宽树在 B≥8 时更快', state: 'pending', tasks: [], experiments: [], wiki: [] }],
+    })
+    vi.stubGlobal('meridian', {
+      call: (method: string) => {
+        if (method === 'project.get') return Promise.resolve(structuredClone(held))
+        if (method === 'idea.list' || method === 'chat.list') return Promise.resolve([])
+        return new Promise(() => {})
+      },
+    })
+  })
+
+  afterEach(() => {
+    unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('开着任务或结论的详情时再点它所在的选中标签，详情关上回到列表；没开着时再点什么也不变', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(withMessages(
+        <ProjectScreen projectId="draft" onBack={() => {}} onReturn={() => {}} tab="task" onTab={() => {}} record="concl" onRecord={() => {}} />,
+      ))
+    })
+    unmount = () => { act(() => root.unmount()); host.remove() }
+    await vi.waitFor(() => expect(host.querySelector('[data-row="t1"]')).not.toBeNull())
+    const segment = (switchLabel: string, name: string) => [
+      ...host.querySelectorAll<HTMLButtonElement>(`.segmented-control[aria-label="${switchLabel}"] > button`),
+    ].find((button) => button.textContent === name)!
+    const panel = () => host.querySelector('.project-detail-panel')
+
+    await act(async () => { host.querySelector<HTMLElement>('[data-row="t1"]')!.click() })
+    expect(panel()).not.toBeNull()
+    await act(async () => { segment('计划视图', '任务').click() })
+    expect(panel()).toBeNull()
+    await act(async () => { segment('计划视图', '任务').click() })
+    expect(panel()).toBeNull()
+    expect(segment('计划视图', '任务').getAttribute('aria-checked')).toBe('true')
+
+    await act(async () => { host.querySelector<HTMLElement>('.conclusion-row')!.click() })
+    expect(panel()).not.toBeNull()
+    await act(async () => { segment('科研记录视图', '实验结论').click() })
+    expect(panel()).toBeNull()
+  })
+})

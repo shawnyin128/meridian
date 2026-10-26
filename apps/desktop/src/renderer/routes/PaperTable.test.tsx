@@ -107,6 +107,8 @@ let bumps: number
 let crumbTail: { text: string }[]
 /** The screens the back control returned to, in order. */
 let returnedTo: string[]
+/** What useScreenReentry returns: how many times the sidebar chose the papers screen while it was shown. */
+let reentry: number
 
 vi.mock('../ipc.js', () => ({
   papers: {
@@ -170,7 +172,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useCrumbTail: (tail: { text: string }[]) => { crumbTail = tail },
   useEscapeLayer: () => {},
-  useScreenReentry: () => 0,
+  useScreenReentry: () => reentry,
   useJump: () => ({
     jump: jumpHere,
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
@@ -362,6 +364,7 @@ describe('PaperTable', () => {
     bumps = 0
     crumbTail = []
     returnedTo = []
+    reentry = 0
   })
 
   it('从别的屏点链接打开一篇的详情时屏头左端有返回,按它回到来的那一屏;从论文屏自己的搜索打开时没有', async () => {
@@ -497,6 +500,90 @@ describe('PaperTable', () => {
     expect(host.querySelector('.research-map-groups')?.textContent).toContain('Speculative decoding')
     expect(host.querySelector('.research-map-detail')?.textContent).toContain('主题：Speculative decoding')
     expect(host.querySelector('.pagebar')).toBeNull()
+  })
+
+  it('按项目分组打开一组后，再点选中的「项目」回到组索引；在组索引再点什么也不变', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics', 'projects'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const index = () => [...host.querySelectorAll('.gxrow .gx-t')].map((title) => title.textContent)
+    facetRows = [{ value: 'Kernel', count: 3, newestTitle: '一篇论文' }, { value: 'Wide', count: 2, newestTitle: '一篇论文' }]
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    await flush()
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目', 'Kernel'])
+
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    expect(checkedGroup(host)).toBe('项目')
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目'])
+    expect(index()).toEqual(['Kernel', 'Wide'])
+    expect(host.querySelector('#libList .ptable')).toBeNull()
+
+    const fetched = facetParams.length
+    const listed = listParams.length
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    expect([facetParams.length, listParams.length]).toEqual([fetched, listed])
+    expect(index()).toEqual(['Kernel', 'Wide'])
+  })
+
+  it('开着详情时再点选中的「列表」关上详情；研究地图点开别的组后再点「研究地图」回到第一组', async () => {
+    const host = mount()
+    const mappedRows = [
+      { ...ROW, id: 'p1', title: 'Fast speculative decoding', topics: ['Speculative decoding'] },
+      { ...ROW, id: 'p2', title: 'Reliable speculative decoding', topics: ['Speculative decoding'] },
+      { ...ROW, id: 'p3', title: 'Fast quantization', topics: ['Quantization'] },
+      { ...ROW, id: 'p4', title: 'Reliable quantization', topics: ['Quantization'] },
+    ]
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: mappedRows, total: 4 })
+    getCall.resolve(mappedRows[0]!)
+    await flush()
+    const viewButton = (name: string) => [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
+      .find((button) => button.textContent === name)!
+    await act(async () => { host.querySelector<HTMLElement>('.ptable tbody tr')!.click() })
+    await flush()
+    expect(host.querySelector('.paper-detail-slot')).not.toBeNull()
+    await act(async () => { viewButton('列表').click() })
+    expect(host.querySelector('.paper-detail-slot')).toBeNull()
+
+    await act(async () => { viewButton('研究地图').click() })
+    await flush()
+    const shownGroup = () => host.querySelector('.research-map-detail-name')?.textContent
+    const first = shownGroup()
+    const other = [...host.querySelectorAll<HTMLElement>('.research-map-group')]
+      .find((row) => row.querySelector('.research-map-group-name')?.textContent !== first)!
+    await act(async () => { other.click() })
+    expect(shownGroup()).not.toBe(first)
+    await act(async () => { viewButton('研究地图').click() })
+    expect(shownGroup()).toBe(first)
+    expect(host.querySelector('.research-map')).not.toBeNull()
+  })
+
+  it('侧栏再点论文时，开着的组回到组索引，开着的详情关上', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics', 'projects'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    getCall.resolve(ROW)
+    await flush()
+    facetRows = [{ value: 'Kernel', count: 1, newestTitle: '一篇论文' }]
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.ptable tbody tr')!.click() })
+    await flush()
+    expect(host.querySelector('.paper-detail-slot')).not.toBeNull()
+
+    reentry = 1
+    await act(async () => { mountedRoot!.render(<MessagesProvider><PaperTable /></MessagesProvider>) })
+    await flush()
+    expect(host.querySelector('.paper-detail-slot')).toBeNull()
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目'])
+    expect(checkedGroup(host)).toBe('项目')
   })
 
   it('研究地图的论文行和论文表一样写出评分、短标题和阅读状态，星和状态是论文表的同一组控件，改了写回且不打开详情', async () => {

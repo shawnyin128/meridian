@@ -1237,6 +1237,22 @@ describe('Settings', () => {
   const cancelButton = (dialog: Element) => [...dialog.querySelectorAll<HTMLButtonElement>('.model-settings-card .service-actions button')]
     .find((button) => button.textContent === '取消')
 
+  it('点开一个模型后再点选中的「模型」分类，表单回到添加新模型；没点开时再点什么也不变', async () => {
+    core.seed([officialProfile('openai', '1111'), officialProfile('anthropic', '2222')], [
+      apiModel('openai', 'gpt-a'), apiModel('anthropic', 'claude-b'),
+    ])
+    const dialog = await openModelPage()
+    const category = () => dialog.querySelector<HTMLElement>('[data-setcat="model"]')!
+    await editModel('api:openai')
+    expect([selectedRows(), modelName(dialog), cancelButton(dialog) !== undefined]).toEqual([['api:openai'], 'gpt-a', true])
+
+    await act(async () => { category().click() })
+    expect([selectedRows(), modelName(dialog), cancelButton(dialog)]).toEqual([[], '', undefined])
+    expect(category().classList.contains('on')).toBe(true)
+    await act(async () => { category().click() })
+    expect([selectedRows(), modelName(dialog), cancelButton(dialog)]).toEqual([[], '', undefined])
+  })
+
   it('模型页的右栏自己不滚：标题和表单留在上面，表单下的模型列表占满剩下的高度，放不下时只在列表里滚', async () => {
     core.seed([officialProfile('openai', '1111'), officialProfile('anthropic', '2222')], [
       apiModel('openai', 'gpt-a'), apiModel('anthropic', 'claude-b'), cliModel('claude', 'opus'),

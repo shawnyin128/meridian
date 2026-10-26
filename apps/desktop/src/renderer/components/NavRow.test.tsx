@@ -47,6 +47,30 @@ describe('NavRow', () => {
     host.remove()
   })
 
+  it('reports a click on the selected row as chosen again, and a click on any other row as opening it', () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    const open = vi.fn()
+    const again = vi.fn()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const rows = (selected: 'a' | 'b') => (
+      <>
+        <NavRow data-row="a" selected={selected === 'a'} onActivate={open} onReselect={again}>模型</NavRow>
+        <NavRow data-row="b" selected={selected === 'b'} actions={<span />} onActivate={open} onReselect={again}>外观</NavRow>
+      </>
+    )
+    act(() => root.render(rows('a')))
+    act(() => { host.querySelector<HTMLElement>('[data-row="a"]')!.click() })
+    act(() => { host.querySelector<HTMLElement>('[data-row="b"]')!.click() })
+    expect([open.mock.calls.length, again.mock.calls.length]).toEqual([1, 1])
+    act(() => root.render(rows('b')))
+    act(() => { host.querySelector<HTMLElement>('[data-row="b"]')!.click() })
+    expect([open.mock.calls.length, again.mock.calls.length]).toEqual([1, 2])
+    act(() => root.unmount())
+    host.remove()
+  })
+
   it('puts the fold of the group under a row right after its label, and its count at its end', () => {
     const markup = renderToStaticMarkup(
       <NavRow

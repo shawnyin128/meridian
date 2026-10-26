@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, useState, type ComponentProps } from 'react'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
@@ -17,13 +17,19 @@ const paper = (id: string, title: string, patch: Partial<PaperRow> = {}): PaperR
 /** The rating and reading-status callbacks of a test that changes neither. */
 const NO_WRITES = { onRate: () => {}, onPickReadState: () => {} }
 
+/** The map holding its picked group, as the paper table holds it. */
+function HeldMap(props: Omit<ComponentProps<typeof ResearchMap>, 'selectedId' | 'onSelect'>) {
+  const [selectedId, setSelectedId] = useState<string | null>(null)
+  return <ResearchMap {...props} selectedId={selectedId} onSelect={setSelectedId} />
+}
+
 describe('ResearchMap', () => {
   beforeEach(() => window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh'))
 
   it('还在整理时显示载入占位，不借空状态写一句正在整理', () => {
     const html = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={[]} total={0} loading onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        <HeldMap rows={[]} total={0} loading onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     expect(html).not.toContain('empty-state')
@@ -47,7 +53,7 @@ describe('ResearchMap', () => {
     const root = createRoot(host)
     await act(async () => root.render(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        <HeldMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     ))
 
@@ -72,7 +78,7 @@ describe('ResearchMap', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        <HeldMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     const faded = (selector: string) => [...host.querySelectorAll(`${selector} .fade-text:not(.tag-text, .read-dots)`)].map((line) => line.textContent)
@@ -94,7 +100,7 @@ describe('ResearchMap', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={7} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        <HeldMap rows={rows} total={7} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     expect(host.querySelector('.research-map-limit')?.textContent).toBe('5 / 7 篇')
@@ -121,7 +127,7 @@ describe('ResearchMap', () => {
     const root = createRoot(host)
     await act(async () => root.render(
       <MessagesProvider>
-        <ResearchMap
+        <HeldMap
           rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={() => {}}
           onRate={onRate} onPickReadState={() => {}}
         />
@@ -166,7 +172,7 @@ describe('ResearchMap', () => {
     const root = createRoot(host)
     await act(async () => root.render(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={onReadPaper} {...NO_WRITES} />
+        <HeldMap rows={rows} total={rows.length} loading={false} onOpenPaper={onOpenPaper} onReadPaper={onReadPaper} {...NO_WRITES} />
       </MessagesProvider>,
     ))
 
@@ -189,7 +195,7 @@ describe('ResearchMap', () => {
       const host = document.createElement('div')
       host.innerHTML = renderToStaticMarkup(
         <MessagesProvider>
-          <ResearchMap rows={rows} total={total} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+          <HeldMap rows={rows} total={total} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
         </MessagesProvider>,
       )
       return host.querySelector('.research-map')!
@@ -209,7 +215,7 @@ describe('ResearchMap', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        <HeldMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     const lines = [...host.querySelectorAll('.research-map-groups')[0]!.querySelectorAll('.research-map-group')].map((group) => {
@@ -240,7 +246,7 @@ describe('ResearchMap', () => {
     const root = createRoot(host)
     await act(async () => root.render(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        <HeldMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     ))
 
@@ -283,7 +289,7 @@ describe('ResearchMap', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <ResearchMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
+        <HeldMap rows={rows} total={rows.length} loading={false} onOpenPaper={() => {}} onReadPaper={() => {}} {...NO_WRITES} />
       </MessagesProvider>,
     )
     const names = [...host.querySelectorAll('.research-map-groups')[1]!.querySelectorAll('.research-map-group-name')]

@@ -19,6 +19,7 @@ import { PageError } from '../PageShell.js'
 import { Tag } from '../Tag.js'
 import { useArrival } from '../../hooks/useArrival.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
+import { useTopLevel } from '../../hooks/useTopLevel.js'
 import { ModelForm, type ModelDraft } from './ModelForm.js'
 import { ServiceCard, ServiceError } from './ServiceCard.js'
 
@@ -84,9 +85,10 @@ function ModelMenu({ name, isDefault, onSetDefault, onEdit, onDelete }: {
  * mark, and a … menu to make it the default, edit it or delete it; the list scrolls to the source a
  * save adds or changes and flashes it. The form keeps what is typed for a new source or a source's
  * change as a draft, the key left out. `onCopy` puts a command on the clipboard and resolves whether
- * it did.
+ * it did. Each change of `reselected`, a count of the times its category was chosen again, puts the
+ * form back on a new source and leaves the picked source's draft kept.
  */
-export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
+export function ModelSettings({ onCopy, reselected }: { onCopy: (text: string) => Promise<boolean>; reselected: number }) {
   const m = useMessages()
   const [settings, setSettings] = useState<HarnessModelSettings | null>(null)
   const [editing, setEditing] = useState<string | null>(null)
@@ -101,6 +103,8 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
   const drafts = useDrafts<ModelDraft>(['settings', 'model'], settings === null ? null : [NEW_MODEL, ...settings.models.map((entry) => entry.id)])
 
   useEffect(() => load('settings', harness.modelSettings(), setSettings), [load])
+  const toNew = useTopLevel(editing !== null, () => setEditing(null))
+  useEffect(toNew, [reselected, toNew])
 
   const clis = settings === null ? [] : settings.sources.flatMap((group) => (group.source.kind === 'cli' ? [group.source.cli] : []))
   const clisKey = clis.join(',')

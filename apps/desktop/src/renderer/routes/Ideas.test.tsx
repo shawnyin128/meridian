@@ -69,6 +69,8 @@ const api = vi.hoisted(() => ({
   loading: false,
   jump: null as ScreenJump | null,
   revision: 0,
+  /** How many times the sidebar chose Ideas while it was shown. */
+  reentry: 0,
   returnTo: vi.fn(),
 }))
 
@@ -98,7 +100,7 @@ vi.mock('../ipc.js', () => ({
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useEscapeLayer: () => {},
-  useScreenReentry: () => 0,
+  useScreenReentry: () => api.reentry,
   useJump: () => ({ jump: api.jump, open: api.open, returnTo: api.returnTo }),
   useScreenEntry: () => 0,
   useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
@@ -134,6 +136,7 @@ describe('Ideas', () => {
     act(() => root.unmount())
     api.loading = false
     api.jump = null
+    api.reentry = 0
     vi.unstubAllGlobals()
   })
 
@@ -433,6 +436,23 @@ describe('Ideas', () => {
     } finally {
       api.ideas.pop()
     }
+  })
+
+  it('侧栏再点想法时，开着的详情关上，列表回到顶部；没开着详情时列表留在原处', async () => {
+    const page = () => <MessagesProvider><Ideas /></MessagesProvider>
+    await act(async () => { root.render(page()) })
+    const body = host.querySelector<HTMLElement>('.ideas-body')!
+    body.scrollTop = 120
+    api.reentry = 1
+    await act(async () => { root.render(page()) })
+    expect(body.scrollTop).toBe(120)
+
+    await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-linked"]')!.click() })
+    expect(host.querySelector('.idea-detail-panel')).not.toBeNull()
+    api.reentry = 2
+    await act(async () => { root.render(page()) })
+    expect(host.querySelector('.idea-detail-panel')).toBeNull()
+    expect(body.scrollTop).toBe(0)
   })
 
   it('卡片和行展示判断所需的标题、关联或所在项目、来源和时间，正文留在详情里；点击后在右侧编辑', async () => {

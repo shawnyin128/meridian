@@ -14,7 +14,7 @@ export type TabbedSectionTab<Value extends string> = SegmentedControlOption<Valu
  * `error` shows above whichever tab is picked. Throws when `value` names no tab.
  */
 export function TabbedSection<Value extends string>({
-  heading, label, value, tabs, onChange, actions, level = 'section', error, panelClassName, headingRef, panelRef,
+  heading, label, value, tabs, onChange, onReselect, actions, level = 'section', error, panelClassName, headingRef, panelRef,
 }: {
   heading: ReactNode
   /** The switch's accessible name. */
@@ -22,6 +22,8 @@ export function TabbedSection<Value extends string>({
   value: Value
   tabs: readonly TabbedSectionTab<Value>[]
   onChange: (value: Value) => void
+  /** Called when the picked tab is picked again. */
+  onReselect?: (() => void) | undefined
   actions?: ReactNode
   level?: 'section' | 'group'
   error?: string | null | undefined
@@ -37,7 +39,7 @@ export function TabbedSection<Value extends string>({
         ref={headingRef} level={level}
         actions={(
           <>
-            <SegmentedControl size="sm" label={label} value={value} options={tabs} onChange={onChange} />
+            <SegmentedControl size="sm" label={label} value={value} options={tabs} onChange={onChange} onReselect={onReselect} />
             {actions}
           </>
         )}

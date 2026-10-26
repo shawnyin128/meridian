@@ -30,6 +30,7 @@ import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
+import { useTopLevel } from '../../hooks/useTopLevel.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useDragReorder, type ReorderDrag } from '../../hooks/useDragReorder.js'
 import {
@@ -196,6 +197,7 @@ export function PaperTable() {
   const [mapRows, setMapRows] = useState<PaperRow[]>([])
   const [mapTotal, setMapTotal] = useState(0)
   const [mapLoading, setMapLoading] = useState(false)
+  const [mapGroup, setMapGroup] = useState<string | null>(null)
   const [facets, setFacets] = useState<Facet[]>([])
   const [q, setQ] = useState('')
   const [group, setGroup] = useState('none')
@@ -348,9 +350,18 @@ export function PaperTable() {
     return () => { active = false }
   }, [view, filter, revision, report])
 
-  // Clicking the sidebar while this screen is shown lands on the plain table: an open detail panel closes.
+  // Choosing the group switch's current grouping again goes back to its group index; choosing the
+  // current view again, or the sidebar's Papers row while this screen is shown, also closes the detail
+  // and takes the research map back to its first group.
+  const libList = useRef<HTMLDivElement>(null)
+  const toGroupIndex = useTopLevel(sel !== null, () => { setSel(null); setPage(1) }, libList)
+  const toViewTop = useTopLevel(detail !== null || (view === 'table' ? sel !== null : mapGroup !== null), () => {
+    setDetail(null)
+    if (view === 'research-map') setMapGroup(null)
+    else if (sel !== null) { setSel(null); setPage(1) }
+  }, libList)
   const reentry = useScreenReentry()
-  useEffect(() => { setDetail(null) }, [reentry])
+  useEffect(toViewTop, [reentry, toViewTop])
 
   // A jump from another screen lands on a paper title: put it in the filter box and go back to the
   // first page, like `go` in the demo's search. A jump that asks for the import opens the PDF picker;
@@ -934,7 +945,7 @@ export function PaperTable() {
                 { value: 'table', label: m.papers.views.table },
                 { value: 'research-map', label: m.papers.views.researchMap },
               ]}
-              onChange={(next) => { setView(next); setDetail(null) }}
+              onChange={(next) => { setView(next); setDetail(null) }} onReselect={toViewTop}
             />
             <div className="libbar">
               <SearchField
@@ -950,7 +961,7 @@ export function PaperTable() {
                     value={group}
                     options={['none', ...columns.groups.filter((k) => k !== 'readState' && groupable.has(k))]
                       .map((k) => ({ value: k, label: labelOf(k) }))}
-                    onChange={(value) => { setGroup(value); setSel(null); setPage(1) }}
+                    onChange={(value) => { setGroup(value); setSel(null); setPage(1) }} onReselect={toGroupIndex}
                   />
                 </FieldRow>
                 {columns.groups.includes('readState')
@@ -975,11 +986,11 @@ export function PaperTable() {
             onOpenPaper={openDetail}
           />
 
-          <div id="libList">
+          <div id="libList" ref={libList}>
             {view === 'research-map'
               ? (
                 <ResearchMap
-                  rows={mapRows} total={mapTotal} loading={mapLoading}
+                  rows={mapRows} total={mapTotal} loading={mapLoading} selectedId={mapGroup} onSelect={setMapGroup}
                   onOpenPaper={(paper) => openDetail(paper.id)}
                   onReadPaper={(paper) => open('reader', paper.id)}
                   onRate={setRating} onPickReadState={setReadState}

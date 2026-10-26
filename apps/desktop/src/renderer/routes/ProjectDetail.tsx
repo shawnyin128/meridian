@@ -70,6 +70,7 @@ import { Tooltip } from '../components/Tooltip.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
+import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useScreenPoll } from '../hooks/useScreenPoll.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -384,6 +385,12 @@ export function ProjectDetail({
   const clearIdea = useCallback(() => setSelectedIdeaId(null), [])
   const clearTask = useCallback(() => setSelectedTaskId(null), [])
   const clearConclusion = useCallback(() => setSelectedConclusion(null), [])
+  // Picking the current plan or record tab again closes the detail opened from that tab.
+  const toPlanTop = useTopLevel(selectedTaskId !== null, clearTask)
+  const toRecordTop = useTopLevel(
+    record === 'graph' ? selectedNode !== null : record === 'concl' && selectedConclusion !== null,
+    record === 'graph' ? clearNode : clearConclusion,
+  )
   /** The task panel shares the right-side slot with the node/idea/conclusion panels: opening a task
    * is the only place that sets it, so every other opener needs no change of its own to give it up
    * -- the effect below clears it back out whenever one of those three becomes selected instead. */
@@ -867,7 +874,7 @@ export function ProjectDetail({
               projectId={projectId} project={project} tab={tab} today={today} creating={creating}
               flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
               listRef={planList} draftRef={planDraft} addRef={planAdd} timelineAddRef={ganttAdd}
-              onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
+              onTab={onTab} onReselectTab={toPlanTop} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
               onCreating={setCreating} onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
               onCreateTask={({ window, ...draft }) => writeProject(
@@ -890,7 +897,7 @@ export function ProjectDetail({
 
             <TabbedSection
               heading={m.project.sections.records} label={m.project.recordViewLabel} value={record}
-              headingRef={recordHeading} panelClassName="record-view" error={project.workspace?.issue}
+              headingRef={recordHeading} panelClassName="record-view" error={project.workspace?.issue} onReselect={toRecordTop}
               onChange={(value) => {
                 holdRecordHeading()
                 onRecord(value)
