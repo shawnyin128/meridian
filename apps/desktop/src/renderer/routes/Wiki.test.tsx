@@ -39,6 +39,11 @@ const fixture = vi.hoisted(() => ({
   /** What papers.reading and wiki.cards reject with instead of answering, when a test makes them fail. */
   readingError: null as unknown,
   cardsError: null as unknown,
+  /** What wiki.home answers instead of HOME, and the papers papers.list pages through instead of the one paper. */
+  home: null as WikiHome | null,
+  papers: null as { id: string; title: string }[] | null,
+  /** The page and size of each papers.list call, in order. */
+  listed: [] as { page: number; size: number }[],
 }))
 
 const HOME: WikiHome = {
@@ -73,15 +78,20 @@ const PAPER: WikiPaper = {
 
 vi.mock('../ipc.js', () => ({
   papers: {
-    list: () => Promise.resolve({
-      rows: [{ id: 'p1', title: 'EAGLE-2', venue: 'ICML', topics: [], noteCount: 0, conclusionCount: 0 }], total: 1,
-    }),
+    list: ({ page, size }: { page: number; size: number }) => {
+      fixture.listed.push({ page, size })
+      const all = fixture.papers ?? [{ id: 'p1', title: 'EAGLE-2' }]
+      return Promise.resolve({
+        rows: all.slice((page - 1) * size, page * size).map((p) => ({ ...p, venue: 'ICML', topics: [], noteCount: 0, conclusionCount: 0 })),
+        total: all.length,
+      })
+    },
     reading: () => (fixture.readingError === null ? new Promise(() => {}) : Promise.reject(fixture.readingError)),
     get: (id: string) => Promise.resolve({ id, title: id === 'p1' ? 'EAGLE-2' : id }),
   },
   project: { list: () => Promise.resolve([{ id: 'p-47', name: '推测解码加速' }]) },
   wiki: {
-    home: () => Promise.resolve(HOME),
+    home: () => Promise.resolve(fixture.home ?? HOME),
     proposals: fixture.proposals,
     signals: fixture.signals,
     aggregation: fixture.aggregation,
@@ -694,5 +704,185 @@ describe('论文对比表的五行上限', () => {
     layOut([36, 36, 50, 36, 36])
     const wrap = await open(5)
     expect(wrap.style.maxHeight).toBe('')
+  })
+})
+
+describe('Wiki 首页各节各自翻页', () => {
+  let root: Root | null = null
+  let host: HTMLDivElement
+
+  beforeEach(async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    fixture.proposals.mockReset().mockResolvedValue([])
+    fixture.signals.mockReset().mockResolvedValue([])
+    fixture.home = {
+      aggregationCount: 15,
+      kinds: [{ key: 'topic', label: '主题', dir: 'topics', count: 13 }, { key: 'method', label: '方法', dir: 'methods', count: 2 }],
+      roots: [
+        ...Array.from({ length: 13 }, (_, at) => card(`topics/t${at + 1}`, `主题${at + 1}`)),
+        ...Array.from({ length: 2 }, (_, at) => ({ ...card(`methods/m${at + 1}`, `方法${at + 1}`), kind: 'method', kindLabel: '方法' })),
+      ],
+    }
+    fixture.papers = Array.from({ length: 30 }, (_, at) => ({ id: `p${at + 1}`, title: `论文${at + 1}` }))
+    fixture.listed = []
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => {
+      root!.render(<MessagesProvider><Wiki /></MessagesProvider>)
+      await Promise.resolve()
+    })
+  })
+
+  afterEach(() => {
+    if (root !== null) act(() => root!.unmount())
+    root = null
+    fixture.home = null
+    fixture.papers = null
+    vi.unstubAllGlobals()
+  })
+
+  const grid = (section: string) => host.querySelector(`.list[data-stack-section="${section}"]`)!
+  const titles = (section: string) => [...grid(section).querySelectorAll('.tt')].map((title) => title.textContent)
+  const pagerOf = (section: string) => {
+    const next = grid(section).nextElementSibling
+    return next?.classList.contains('pagebar') ? next : null
+  }
+  const next = async (section: string) => {
+    await act(async () => {
+      pagerOf(section)!.querySelector<HTMLButtonElement>('[aria-label="下一页"]')!.click()
+      await Promise.resolve()
+    })
+  }
+
+  it('主题、方法和论文各有自己的翻页条，紧跟在各自的卡片后，页脚里没有翻页条', () => {
+    expect(host.querySelector('.desk-foot .pagebar')).toBeNull()
+    expect(pagerOf('topic')!.querySelector('.pginfo')!.textContent).toBe('共 13 条')
+    expect(pagerOf('method')).toBeNull()
+    expect(pagerOf('papers')!.querySelector('.pginfo')!.textContent).toBe('共 30 条')
+  })
+
+  it('翻主题那一节只换主题的卡片，论文那一节不动，反过来也一样', async () => {
+    expect(titles('topic')).toHaveLength(12)
+    await next('topic')
+    expect(titles('topic')).toEqual(['主题13'])
+    expect(titles('papers')[0]).toBe('论文1')
+    expect(fixture.listed.at(-1)).toMatchObject({ page: 1 })
+
+    await next('papers')
+    expect(fixture.listed.at(-1)).toMatchObject({ page: 2 })
+    expect(titles('papers')[0]).toBe('论文13')
+    expect(titles('topic')).toEqual(['主题13'])
+    expect(titles('method')).toEqual(['方法1', '方法2'])
+  })
+})
+
+describe('聚合页的细分卡片翻页', () => {
+  let root: Root | null = null
+  let host: HTMLDivElement
+
+  /** The topic page `id` with `count` subdivisions and its one compared paper. */
+  const withChildren = (id: string, count: number): WikiAggregation => ({
+    ...AGG, id,
+    children: Array.from({ length: count }, (_, at) => card(`topics/c${at + 1}`, `细分${at + 1}`)),
+  })
+
+  const open = async () => {
+    await act(async () => {
+      root!.render(<MessagesProvider><Wiki /></MessagesProvider>)
+      await Promise.resolve()
+    })
+    await act(async () => {
+      host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!.click()
+      await Promise.resolve()
+    })
+  }
+  const grid = () => host.querySelector('.wkmain .list[data-stack-section]')!
+  const titles = () => [...grid().querySelectorAll('.tt')].map((title) => title.textContent)
+  const pager = () => (grid().nextElementSibling?.classList.contains('pagebar') ? grid().nextElementSibling : null)
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    fixture.aggregation.mockReset().mockImplementation((id: string) => Promise.resolve(withChildren(id, 14)))
+    fixture.backlinks.mockReset().mockResolvedValue([])
+    fixture.proposals.mockReset().mockResolvedValue([])
+    fixture.signals.mockReset().mockResolvedValue([])
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    if (root !== null) act(() => root!.unmount())
+    root = null
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('细分卡片超出一页时下面有它自己的翻页条，翻页只换细分卡片，论文对比表不动', async () => {
+    await open()
+    expect(titles()).toHaveLength(12)
+    expect(pager()!.querySelector('.pginfo')!.textContent).toBe('共 14 条')
+    const compared = () => [...host.querySelectorAll('.cmp tbody tr')].map((row) => row.textContent)
+    const before = compared()
+    expect(before).toHaveLength(1)
+
+    await act(async () => {
+      pager()!.querySelector<HTMLButtonElement>('[aria-label="下一页"]')!.click()
+      await Promise.resolve()
+    })
+    expect(titles()).toEqual(['细分13', '细分14'])
+    expect(compared()).toEqual(before)
+    expect(host.querySelectorAll('.wkmain .pagebar')).toHaveLength(1)
+  })
+
+  it('进另一个聚合页时细分从第一页开始', async () => {
+    await open()
+    await act(async () => {
+      pager()!.querySelector<HTMLButtonElement>('[aria-label="下一页"]')!.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      host.querySelector<HTMLElement>('[data-wk="topics/c13"] .tt')!.click()
+      await Promise.resolve()
+    })
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/c13')
+    expect(titles()[0]).toBe('细分1')
+    expect(pager()!.querySelector('.pgbtn.on')!.textContent).toBe('1')
+  })
+
+  it('每页的细分卡片行数按页面主栏的可见高度来定', async () => {
+    // The main column shows 500 px; each heading is 40 px, a card 100 px, a pager 30 px, stacked from its top.
+    const tall = (element: Element): number => (element.classList.contains('section-heading') ? 40
+      : element.classList.contains('pagebar') ? 30
+        : element.classList.contains('list') ? element.querySelectorAll(':scope > .item').length * 100 : 0)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('wkmain') ? 500 : 0
+    })
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const main = this.closest('.wkmain')
+      const at = (top: number, height: number) => ({ top, bottom: top + height, height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+      if (main === null) return at(0, 0)
+      if (this === main) return at(0, 500)
+      let top = 0
+      for (const child of main.children) {
+        if (child === this) return at(top, tall(child))
+        if (child.contains(this)) {
+          return child.classList.contains('list') ? at(top + [...child.children].indexOf(this) * 100, 100) : at(top, 0)
+        }
+        top += tall(child)
+      }
+      return at(0, 0)
+    })
+    await open()
+    // 460 px under the heading: four rows of one card and the 30 px pager.
+    expect(titles()).toEqual(['细分1', '细分2', '细分3', '细分4'])
+    expect(pager()!.querySelector('.pginfo')!.textContent).toBe('共 14 条')
   })
 })

@@ -29,6 +29,7 @@ import { PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar } fr
 import { useDrafts, useKeptTargets } from '../../hooks/useDrafts.js'
 import { useUndo } from '../../hooks/useUndo.js'
 import { useJumpOrigin } from '../../hooks/useJumpOrigin.js'
+import { useListPaging } from '../../hooks/useListPaging.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { useTopLevel } from '../../hooks/useTopLevel.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
@@ -96,8 +97,8 @@ const DEFAULT_WIDTHS: Record<'t' | BodyKey, number> = {
 /** Custom column width, as in the demo: a column that was never resized stays this wide. */
 const CUSTOM_WIDTH = 140
 
-const MIN_PAGE_SIZE = 20
-const PAGE_SIZES = [MIN_PAGE_SIZE, 30, 50]
+/** Rows a page holds until the table has measured how many fit. */
+const FIRST_PAGE_SIZE = 20
 const RESEARCH_MAP_LIMIT = 200
 
 /**
@@ -205,8 +206,8 @@ export function PaperTable() {
   const [sel, setSel] = useState<string | null>(null)
   // The toolbar's filters, at most one value per field; they narrow the rows whatever the grouping.
   const [filters, setFilters] = useState<FieldValue[]>([])
-  const [page, setPage] = useState(1)
-  const [size, setSize] = useState(MIN_PAGE_SIZE)
+  const paging = useListPaging(FIRST_PAGE_SIZE)
+  const { page, size, setPage } = paging
   const [sort, setSort] = useState<SortKey>('addedAt')
   const [direction, setDirection] = useState<SortDirection>('desc')
   const [columns, setColumns] = useState<PaperColumns>(
@@ -847,6 +848,7 @@ export function PaperTable() {
   const paperTable = (
     <Table
       className="ptable" columns={tableColumns}
+      onFit={paging.fit}
       draft={newCol
         ? (
           <NewColumnHead
@@ -1054,8 +1056,7 @@ export function PaperTable() {
       {view === 'table' && listed
         ? (
           <Pager
-            total={total} page={shownPage} size={size} sizes={PAGE_SIZES}
-            onPage={setPage} onSize={setSize}
+            total={total} page={shownPage} size={size} onPage={setPage}
             {...(detail ? { className: 'withdetail' } : {})}
           />
         )

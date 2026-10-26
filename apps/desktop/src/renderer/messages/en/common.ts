@@ -60,8 +60,6 @@ export const common = {
   sshFolders: { up: 'Enclosing folder', path: 'Folder path' },
   pager: {
     total: (n: number) => `${n} ${pluralEn(n, { one: 'item', other: 'items' })} total`,
-    perPage: 'Items per page',
-    perPageOption: (n: number) => `${n} / page`,
     page: (n: number) => `Page ${n}`,
     previous: 'Previous page',
     next: 'Next page',

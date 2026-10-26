@@ -1,4 +1,4 @@
-import { Fragment, useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
   PaperFields, PaperReading, PaperRow, Proposal, WikiAggregation, WikiAggregationCard, WikiBacklink, WikiCell, WikiColumn,
@@ -30,10 +30,11 @@ import { Property, PropertyList } from '../components/PropertyList.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
 import { headingsOf, MarkdownBox } from '../components/Markdown.js'
-import { Pager } from '../components/Pager.js'
+import { PagedSection } from '../components/PagedSection.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
+import { pageItems, useStackPaging } from '../hooks/useListPaging.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -51,7 +52,6 @@ import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
 import { Item, ItemOpen } from '../components/Item.js'
-import { List } from '../components/List.js'
 import { Table, TableCell, TableRow, type TableColumn } from '../components/Table.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
@@ -61,8 +61,10 @@ import { CommitActions } from '../components/CommitActions.js'
 import './shell.css'
 import './Wiki.css'
 
-/** Papers per page, as in the demo's pagerHTML('wkp', …, [12,24,48]). */
-const PAGE_SIZES = [12, 24, 48]
+/** Cards a page of a home section holds until the section has measured how many fit. */
+const FIRST_PAGE_SIZE = 12
+/** The key of the home's papers section, beside the aggregation kinds' keys. */
+const PAPERS_SECTION = 'papers'
 
 /** The page shown: null is the Wiki home, REVIEW the review queue, TIDY the tidying list, any other value a page id. */
 type Place = string | null
@@ -334,7 +336,8 @@ function Toc({ body, main }: { body: string; main: RefObject<HTMLDivElement | nu
 
 /**
  * Wiki: two kinds of aggregation over a base of papers. The home shows one grid of root cards per
- * kind, then the paginated papers; an aggregation card opens its aggregation page, and a paper card
+ * kind, then the papers, each section paging on its own and all of them sized together to fill the
+ * window; an aggregation card opens its aggregation page, and a paper card
  * or a paper comparison row title opens that paper's page. An aggregation page has fixed sections
  * (subpages, paper comparison) under its title, then a Markdown body that can be edited in place. A
  * paper page has only the user's reading notes and the body. The contents list in the right rail
@@ -360,8 +363,6 @@ export function Wiki() {
   const [home, setHome] = useState<WikiHome | null>(null)
   const [rows, setRows] = useState<PaperRow[]>([])
   const [total, setTotal] = useState(0)
-  const [page, setPage] = useState(1)
-  const [size, setSize] = useState(PAGE_SIZES[0]!)
   const [agg, setAgg] = useState<WikiAggregation | null>(null)
   const [paper, setPaper] = useState<WikiPaper | null>(null)
   const [reading, setReading] = useState<PaperReading | null>(null)
@@ -375,6 +376,12 @@ export function Wiki() {
   const consumed = useRef(0)
   const main = useRef<HTMLDivElement>(null)
   const body = useRef<HTMLDivElement>(null)
+  const homeKinds = home?.kinds.flatMap((k) => {
+    const count = home.roots.filter((c) => c.kind === k.key).length
+    return count === 0 ? [] : [{ key: k.key, total: count }]
+  }) ?? []
+  const section = useStackPaging(body, [...homeKinds, { key: PAPERS_SECTION, total }], FIRST_PAGE_SIZE)
+  const { page, size } = section(PAPERS_SECTION)
   /** The step a Back returned to, until its page shows its content and gets its scroll offset back. */
   const returning = useRef<{ place: Place; scroll: number } | null>(null)
   const { error, failure, load, report } = useScreenLoad(['reading'])
@@ -540,6 +547,11 @@ export function Wiki() {
   }
 
   const shownAgg = agg !== null && place === agg.id ? agg : null
+  // Each aggregation page pages its subdivisions on its own, from its first page.
+  const childrenKey = `children:${shownAgg?.id ?? ''}`
+  const childSection = useStackPaging(
+    main, shownAgg === null ? [] : [{ key: childrenKey, total: shownAgg.children.length }], FIRST_PAGE_SIZE,
+  )
   const shownPaper = paper !== null && place === paper.id ? paper : null
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
     ? reading : null
@@ -768,46 +780,43 @@ export function Wiki() {
           ? (
             <SplitPage columns="rail" className="wkpage">
               <SplitColumn className="wkmain" ref={main}>
-                <SectionHeading
+                <PagedSection
+                  heading={m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
                   actions={(
                     <AddAction
                       size="compact" ref={childBtn} disabled={pending}
                       label={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
                     >{shownAgg.kindLabel}</AddAction>
                   )}
-                >{m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
-                </SectionHeading>
-                {shownAgg.children.length === 0 && adding !== 'child'
-                  ? <EmptyState variant="section" />
-                  : (
-                    <List variant="embedded" rows="all" grid className="wkgrid">
-                      {shownAgg.children.map((c) => (
-                        <AggregationCard
-                          key={c.id} card={c} pending={pending}
-                          onOpen={() => go(c.id)} onRemove={() => unmount(c)}
-                        />
-                      ))}
-                      {adding === 'child'
-                        ? (
-                          <DraftSlot
-                            as="card" className="wkcard newcard" slot={addRow}
-                            leading={<Tag className="wkind">{shownAgg.kindLabel}</Tag>}
-                            title={(
-                              <PickRow
-                                row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
-                                placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
-                                suggest={suggestChildren} onPick={mount} onNew={create}
-                                onCancel={() => setAdding(null)} onError={report}
-                                kept={{ drafts: adds, target: 'add-child' }}
-                              />
-                            )}
-                          >
-                            <div className="wf" />
-                          </DraftSlot>
-                        )
-                        : null}
-                    </List>
-                  )}
+                  total={shownAgg.children.length} paging={childSection(childrenKey)} className="wkgrid"
+                  empty={shownAgg.children.length === 0 && adding !== 'child' ? <EmptyState variant="section" /> : undefined}
+                >
+                  {pageItems(shownAgg.children, childSection(childrenKey)).map((c) => (
+                    <AggregationCard
+                      key={c.id} card={c} pending={pending}
+                      onOpen={() => go(c.id)} onRemove={() => unmount(c)}
+                    />
+                  ))}
+                  {adding === 'child'
+                    ? (
+                      <DraftSlot
+                        as="card" className="wkcard newcard" slot={addRow}
+                        leading={<Tag className="wkind">{shownAgg.kindLabel}</Tag>}
+                        title={(
+                          <PickRow
+                            row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
+                            placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
+                            suggest={suggestChildren} onPick={mount} onNew={create}
+                            onCancel={() => setAdding(null)} onError={report}
+                            kept={{ drafts: adds, target: 'add-child' }}
+                          />
+                        )}
+                      >
+                        <div className="wf" />
+                      </DraftSlot>
+                    )
+                    : null}
+                </PagedSection>
                 <SectionHeading
                   actions={(
                     <AddAction
@@ -1083,33 +1092,20 @@ export function Wiki() {
             <>
               {home.kinds.map((k) => {
                 const roots = home.roots.filter((c) => c.kind === k.key)
+                const paging = section(k.key)
                 return roots.length === 0 ? null : (
-                  <Fragment key={k.key}>
-                    <SectionHeading>{k.label}</SectionHeading>
-                    <List variant="embedded" rows="all" grid className="wkgrid">
-                      {roots.map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
-                    </List>
-                  </Fragment>
+                  <PagedSection key={k.key} heading={k.label} total={roots.length} paging={paging} className="wkgrid">
+                    {pageItems(roots, paging).map((c) => <AggregationCard key={c.id} card={c} onOpen={() => go(c.id)} />)}
+                  </PagedSection>
                 )
               })}
-
-              <SectionHeading>{m.project.sections.papers}</SectionHeading>
-              <List variant="embedded" rows="all" grid className="wkgrid">
+              <PagedSection heading={m.project.sections.papers} total={total} paging={section(PAPERS_SECTION)} className="wkgrid">
                 {rows.map((p) => <PaperCard key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)} />)}
-              </List>
+              </PagedSection>
             </>
           )
           : null}
       </PageBody>
-
-      {place === null
-        ? (
-          <Pager
-            total={total} page={page} size={size} sizes={PAGE_SIZES}
-            onPage={setPage} onSize={setSize}
-          />
-        )
-        : null}
 
     </PageShell>
   )

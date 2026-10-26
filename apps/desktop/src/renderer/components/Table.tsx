@@ -93,19 +93,55 @@ function SortArrow({ direction }: { direction: SortDirection }) {
  * in the actions column: its header cell holds `actions` (null for nothing) and each row its own.
  * `draft` is the header cell of a column being created (a `TableDraftHead`), placed after the
  * columns; while it is open every row leaves a cell under it. `className` only names the table.
- * `children` are the body rows, each a `TableRow`.
+ * `children` are the body rows, each a `TableRow`. A filling table with `onFit` reports, after every
+ * render and whenever its box changes size, how many body rows its box shows below the header.
  */
-export function Table({ columns, rows = 'fill', actions, draft = null, className, children }: {
+export function Table({ columns, rows = 'fill', actions, draft = null, className, onFit, children }: {
   columns: readonly TableColumn[]
   rows?: 'fill' | 'capped'
   actions?: ReactNode
   draft?: ReactNode
   className?: string | undefined
+  onFit?: ((rows: number) => void) | undefined
   children: ReactNode
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement | null>(null)
   const cap = useRowCap(box, bodyRows, rows === 'capped' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
+  const fit = useRef(onFit)
+  fit.current = onFit
+  // The room below the header the row count was last worked out for, and that count.
+  const fitted = useRef<{ room: number; rows: number } | null>(null)
+  const fits = onFit !== undefined
+  useLayoutEffect(() => {
+    const node = box.current
+    if (!fits || node === null) return undefined
+    const measure = () => {
+      // A hidden screen lays the box out zero high.
+      if (node.clientHeight === 0) return
+      const table = node.querySelector<HTMLTableElement>(':scope > table')!
+      const room = node.clientHeight - table.tHead!.getBoundingClientRect().height - (parseFloat(getComputedStyle(table).marginBottom) || 0)
+      const heights = bodyRows(node).map((row) => row.getBoundingClientRect().height)
+      let rows: number
+      if (fitted.current?.room !== room) {
+        // Rows lay out a fraction of a pixel apart from the row-height token, so the tallest row shown
+        // sets the count, once for each room; before the first row shows, the token stands in.
+        const row = Math.max(parseFloat(getComputedStyle(node).getPropertyValue('--row-table-h')) || 0, ...heights)
+        if (!(row > 0)) return
+        rows = Math.max(1, Math.floor(room / row))
+      } else {
+        // A page whose rows run taller than the count allowed for gives up its last row.
+        rows = fitted.current.rows
+        if (rows > 1 && heights.length >= rows && heights.slice(0, rows).reduce((sum, height) => sum + height, 0) > room) rows -= 1
+      }
+      fitted.current = { room, rows }
+      fit.current?.(rows)
+    }
+    measure()
+    const observer = new ResizeObserver(measure)
+    observer.observe(node)
+    return () => observer.disconnect()
+  })
   const drag = useRef<WidthDrag | null>(null)
   const [widths, setWidths] = useState<ReadonlyMap<Slot, number>>(new Map())
   const hasActions = actions !== undefined

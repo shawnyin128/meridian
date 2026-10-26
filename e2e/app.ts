@@ -165,6 +165,29 @@ export async function gotoPapers(win: Page): Promise<void> {
   await win.locator('[data-desk="papers"]').click()
 }
 
+/**
+ * Waits until the shown Papers table holds its page, and returns how many rows that is: the rows fit the
+ * room its scroll box shows below the header, and one more row would not, give or take the fraction of
+ * a pixel rows lay out apart; a box too short for one row still holds one.
+ */
+export async function fittedPage(win: Page): Promise<number> {
+  const box = win.locator('.screenslot:not([hidden]) .table-scroll:has(> .ptable)')
+  await expect(box.locator('tbody tr').first()).toBeVisible()
+  let rows = 0
+  await expect.poll(() => box.evaluate((el) => {
+    const table = el.querySelector('table')!
+    const heights = [...table.tBodies[0]!.rows].map((row) => row.getBoundingClientRect().height)
+    const room = el.clientHeight - table.tHead!.getBoundingClientRect().height - parseFloat(getComputedStyle(table).marginBottom)
+    const used = heights.reduce((sum, height) => sum + height, 0)
+    const fits = heights.length === 1 || (used <= room && room - used < Math.max(...heights) + 2)
+    return { shown: heights.length, fits }
+  }).then(({ shown, fits }) => {
+    rows = shown
+    return fits
+  })).toBe(true)
+  return rows
+}
+
 /** The distinct `offsetHeight` values of the elements, ascending; a single value means equal heights. */
 export function uniqueHeights(rows: Locator): Promise<number[]> {
   return rows.evaluateAll((els) => [
