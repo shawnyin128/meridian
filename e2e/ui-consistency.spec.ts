@@ -80,6 +80,32 @@ test('内嵌列表和表格不画外框线:末行下方与首行上方都没有�
     .toHaveCSS('border-bottom-width', '0px')
 })
 
+test('几行加载占位正好占几行字高:关于窗口的更新框在检查和下载时一样高', async ({ win }) => {
+  const heights = await win.evaluate(() => {
+    const host = document.createElement('div')
+    host.style.cssText = 'position:fixed;left:0;top:0;width:360px;visibility:hidden'
+    document.body.append(host)
+    const lines = (n: number) => `<div class="loading-placeholder loading-placeholder--lines">${'<span></span>'.repeat(n)}</div>`
+    const words = (n: number) => Array.from({ length: n }, () => '0.0.21.1 · 43%').join('<br>')
+    const statusBox = (inner: string) => `<div class="inline-message inline-message--box inline-message--info"><div class="inline-message-text">${inner}</div></div>`
+    const reading = (inner: string) => `<div style="font-size:var(--fs-read);line-height:var(--lh-read)">${inner}</div>`
+    const measure = (html: string) => {
+      host.innerHTML = html
+      return host.firstElementChild!.getBoundingClientRect().height
+    }
+    const pairs = {
+      '关于窗口的更新框,1 行': [measure(statusBox(lines(1))), measure(statusBox(words(1)))],
+      '正文,2 行': [measure(`<div>${lines(2)}</div>`), measure(`<div>${words(2)}</div>`)],
+      '阅读正文,3 行': [measure(reading(lines(3))), measure(reading(words(3)))],
+    }
+    host.remove()
+    return pairs
+  })
+  for (const [where, [placeholder, text]] of Object.entries(heights)) {
+    expect(placeholder, `${where}:占位 ${placeholder}px,文字 ${text}px`).toBeCloseTo(text!, 0)
+  }
+})
+
 test('撤不回来的动作才弹确认,弹出来的都是同一个对话框', async ({ win }) => {
   test.slow()
   await win.locator('[data-inbox="all"] > .nav-row-label').click()
