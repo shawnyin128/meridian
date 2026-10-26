@@ -57,19 +57,22 @@ function useChatChoice(chat: string | null, settings: HarnessModelSettings | nul
  * as set up, and the sources that hold one, besides the model the chat runs on now. A pick changes
  * only this chat, the way Core saves a chat's own choice: a new source runs its default entry, a new
  * model drops the chat's own effort, and an effort is the chat's own unless it is the one the model
- * runs at anyway. A refused change shows as a refusal notice. While no model is set up it is the shared "AI not
- * connected" tag; nothing can be picked while there is no chat.
+ * runs at anyway. A refused change shows as a refusal notice. They show while some configured model
+ * can run, the chat's own model or the default included when it cannot; while none can, or the chat
+ * has no model to run, it is the shared "AI not connected" tag. Nothing can be picked while there
+ * is no chat.
  */
 export function ModelChips({ chat }: { chat: string | null }) {
   const m = useMessages()
   const notice = useNotice()
-  const { connected, settings } = useModelStatus()
+  const { anyRuns, settings } = useModelStatus()
   const { openCategory } = useSettingsOpen()
   const { choice, adopt } = useChatChoice(chat, settings)
   const shown = choice?.model ?? settings?.defaultModel ?? null
   const entry = settings?.models.find((model) => model.id === shown) ?? null
   const status = useCliStatus(entry?.source.kind === 'cli' ? entry.source.cli : null)
-  if (connected !== true || settings === null || entry === null) return <ModelStatusTag />
+  if (settings === null) return null
+  if (anyRuns !== true || entry === null) return <ModelStatusTag connected={false} />
 
   const group = settings.sources.find((held) => held.entries.includes(entry.id))!
   const save = (model: string, effort?: string) => {

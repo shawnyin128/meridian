@@ -351,7 +351,8 @@ describe('subscription choice', () => {
 
     const reopened = await createHarnessModelConfig(root, credentialVault())
 
-    expect(reopened.settings()).toMatchObject({ configured: true, subscription: { active: null, error: reason } })
+    expect(reopened.settings()).toMatchObject({ configured: false, subscription: { active: null, error: reason } })
+    expect(reopened.settings().models.map((entry) => entry.configured)).toEqual([false])
     expect(reopened.settings()).not.toHaveProperty('error')
     expect(reopened.planModel().configured).toBe(false)
     await expect(reopened.runtime()).rejects.toThrow()
@@ -389,6 +390,16 @@ describe('model list', () => {
   const shown = (settings: HarnessModelSettings) => settings.models.map((entry) => [
     entry.source.kind === 'api' ? entry.source.profile : entry.source.cli, entry.model, entry.effort ?? null, entry.configured,
   ])
+
+  it('names a default that cannot run as not set up in a run\'s plan, though a CLI model a chat can switch to can run', async () => {
+    const config = await createHarnessModelConfig(mkdtempSync(join(tmpdir(), 'meridian-model-config-')), credentialVault())
+    await config.addModel({ source: openai, model: 'gpt-6.1' })
+    await config.addModel({ source: claude, model: 'opus', effort: 'high' })
+
+    expect([config.settings().configured, config.settings().models.map((entry) => entry.configured)]).toEqual([false, [false, true]])
+    expect(config.planModel()).toMatchObject({ provider: 'OpenAI', name: 'gpt-6.1', configured: false })
+    expect(config.configured()).toBe(false)
+  })
 
   it('starts from every API profile with a model and every CLI chosen or with a model, the model in use the default, and writes no list until one is saved', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))

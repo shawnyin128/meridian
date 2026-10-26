@@ -56,7 +56,7 @@ vi.mock('../ipc.js', () => ({
   harness: {
     modelSettings: () => Promise.resolve({
       configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } },
-      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: true }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
+      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: api.configured }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
     }),
     subscriptionStatus: () => Promise.resolve({ state: 'missing' }),
   },

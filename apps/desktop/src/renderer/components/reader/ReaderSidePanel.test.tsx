@@ -24,7 +24,7 @@ const { ReaderSidePanel } = await import('./ReaderSidePanel.js')
 const { GenerationsContext } = await import('../../hooks/useGenerations.js')
 const { ModelStatusContext } = await import('../../hooks/useModelStatus.js')
 /** A shell whose model status says a model is set up. */
-const CONNECTED: import('../../hooks/useModelStatus.js').ModelStatus = { connected: true, source: 'api', settings: null, track: (send) => send }
+const CONNECTED: import('../../hooks/useModelStatus.js').ModelStatus = { connected: true, anyRuns: true, settings: null, track: (send) => send }
 /** A shell in which Core is generating nothing. */
 const IDLE = {
   running: () => false, run: async (work: Promise<unknown>) => { await work }, stop: vi.fn(),

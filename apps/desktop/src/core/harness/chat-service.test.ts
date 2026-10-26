@@ -43,6 +43,24 @@ describe('Core chat service', () => {
     expect(detail.length).toBeLessThanOrEqual(500)
   })
 
+  it('runs a chat on its own model while the default cannot run, and finds no model for a chat without one', async () => {
+    const model = await createHarnessModelConfig(mkdtempSync(join(tmpdir(), 'meridian-chat-model-')), vault)
+    await model.addModel({
+      source: { kind: 'api', provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', authentication: 'api-key' },
+      model: 'gpt-6.1',
+    })
+    const opus = (await model.addModel({ source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' }))
+      .models.find((entry) => entry.model === 'opus')!.id
+    const runner: ChatHarnessRunner = { checkConnection: vi.fn(), answer: vi.fn(async () => '回答'), close: vi.fn() }
+    const service = createChatService({
+      store: createFixtureStore(), model, runner, choiceOf: (id) => (id === 'amortize' ? { model: opus } : null),
+    })
+
+    expect(model.settings().configured).toBe(false)
+    await expect(service.send('amortize', written('测试'))).resolves.toEqual({ id: 'amortize', state: 'complete' })
+    await expect(service.send('widthknee', written('测试'))).resolves.toEqual({ id: 'widthknee', state: 'failed', reason: 'no-model' })
+  })
+
   it('persists one explicit user turn and one validated Harness answer', async () => {
     const store = createFixtureStore()
     const runner: ChatHarnessRunner = {
