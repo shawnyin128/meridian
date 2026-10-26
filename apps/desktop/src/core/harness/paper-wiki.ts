@@ -443,6 +443,7 @@ export function createPaperWikiHarnessRunner(options: {
         result = await options.cli({
           cli: model.cli,
           ...(model.model === undefined ? {} : { model: model.model }),
+          ...(model.effort === undefined ? {} : { effort: model.effort }),
           ...call,
           timeoutMs: CLI_CALL_TIMEOUT_MS,
           signal,

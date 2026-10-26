@@ -334,6 +334,7 @@ export function createChatHarnessRunner(options: {
         result = await options.cli({
           cli: model.cli,
           ...(model.model === undefined ? {} : { model: model.model }),
+          ...(model.effort === undefined ? {} : { effort: model.effort }),
           system,
           prompt: resumed === null ? prompt : message,
           session: resumed !== null ? { resume: resumed.id } : start === undefined ? {} : { start },
@@ -383,9 +384,12 @@ export function createChatHarnessRunner(options: {
       }
       if ('source' in model) return options.checkCli(model)
       const secrets = model.apiKey === undefined ? [] : [model.apiKey]
+      // The check runs at the provider's own default effort.
+      const checked = { ...model }
+      delete checked.effort
       try {
         const result = HarnessModelConnectionCheckResultSchema.parse(await rpc.request('model.check', {
-          model,
+          model: checked,
         }))
         return result.state === 'connected'
           ? result

@@ -345,6 +345,24 @@ describe('Paper Wiki run on a subscription CLI', () => {
     runner.close()
   })
 
+  it('makes the run\'s CLI call at the reasoning effort the run\'s model sets', async () => {
+    const calls: CliCall[] = []
+    const { child, runner } = paperWikiRunner({ source: 'cli', cli: 'codex', model: 'gpt-6.1-sol', effort: 'high' }, async (call) => {
+      calls.push(call)
+      return { output: { draft: 'candidate' }, durationMs: 1_000 }
+    })
+    const running = runner.run(execution())
+    child.ready()
+    await child.frame()
+    child.callModel('first')
+    await child.frame()
+    child.send({ type: 'response', id: 1, ok: true, result: envelope() })
+    await expect(running).resolves.toMatchObject({ state: 'proposal-ready' })
+
+    expect(calls).toEqual([expect.objectContaining({ cli: 'codex', model: 'gpt-6.1-sol', effort: 'high' })])
+    runner.close()
+  })
+
   it('passes a CLI failure to Harness as a model error in its own words', async () => {
     const { child, runner } = paperWikiRunner(CLI_MODEL, async () => {
       throw new CliRunError('failed', 'claude 运行失败：Claude AI usage limit reached')

@@ -145,6 +145,32 @@ describe('model connection check', () => {
     expect(checked).toEqual([{ source: 'cli', cli: 'codex', model: 'gpt-6-luna' }])
     runner.close()
   })
+
+  it('checks an API model at the provider\'s own default effort, whatever effort its profile sets', async () => {
+    const child = new FakeHarness()
+    const model = {
+      provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1',
+      authentication: 'api-key', apiKey: 'sk-test', effort: 'xhigh',
+    }
+    const runner = createChatHarnessRunner({
+      store: {} as VaultStore,
+      model: { runtime: async () => model } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+
+    const checking = runner.checkConnection()
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { state: 'connected', modelCalls: 1, maxOutputTokens: 1 } })
+
+    await expect(checking).resolves.toMatchObject({ state: 'connected' })
+    expect(request).toMatchObject({ method: 'model.check', params: { model: { provider: 'openai', model: 'gpt-6.1' } } })
+    expect((request['params'] as { model: object }).model).not.toHaveProperty('effort')
+    runner.close()
+  })
 })
 
 class FakeHarness extends EventEmitter implements HarnessChild {
@@ -384,6 +410,21 @@ describe('a chat turn on a subscription CLI', () => {
     child.send({ type: 'response', id: 1, ok: true, result: { answer: 'EAGLE reaches 3.76x [p. 6].' } })
     await expect(answering).resolves.toBe('EAGLE reaches 3.76x [p. 6].')
     expect(logs).toContainEqual('claude: 6.7 s, 24182 input tokens (23327 cached), 88 output tokens')
+    close()
+  })
+
+  it('makes the turn\'s CLI call at the reasoning effort the model sets', async () => {
+    const calls: CliChatCall[] = []
+    const { child, runner, chat, close } = chatRunner({ source: 'cli', cli: 'claude', model: 'opus', effort: 'max' }, async (call) => {
+      calls.push(call)
+      return { answer: 'Yes.', durationMs: 1_000 }
+    })
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    await child.answerTurn('Why?')
+    await expect(answering).resolves.toBe('Yes.')
+
+    expect(calls).toEqual([expect.objectContaining({ cli: 'claude', model: 'opus', effort: 'max' })])
     close()
   })
 

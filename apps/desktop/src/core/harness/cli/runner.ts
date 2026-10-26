@@ -25,6 +25,8 @@ export type CliCall = {
   cli: HarnessCli
   /** The CLI's model for this call; without it the CLI uses its own default. */
   model?: string
+  /** The reasoning effort for this call; without it the CLI uses its own default. */
+  effort?: string
   system: string
   prompt: string
   /** The JSON Schema the output must follow. */
@@ -146,12 +148,17 @@ export function strictSchema(schema: unknown): unknown {
   return node
 }
 
+/** The flag that sets a call's reasoning effort on `cli`, Codex's as a TOML string in a `-c` override. */
+export const effortArgs = (cli: HarnessCli, effort: string | undefined): string[] => (effort === undefined ? []
+  : cli === 'claude' ? [`--effort=${effort}`] : ['-c', `model_reasoning_effort=${JSON.stringify(effort)}`])
+
 function claudeArgs(call: CliCall, schema: unknown, mcp: InternalMcp | null = null): string[] {
   return [
     '-p', '--output-format', 'json', '--json-schema', JSON.stringify(schema),
     '--tools', '', '--strict-mcp-config', '--setting-sources', 'project',
     '--no-session-persistence', '--system-prompt', call.system,
     ...(call.model === undefined ? [] : [`--model=${call.model}`]),
+    ...effortArgs('claude', call.effort),
     ...(mcp?.claudeArgs ?? []),
   ]
 }
@@ -165,6 +172,7 @@ function codexArgs(
     '--output-schema', files.schema, '-o', files.output, '-C', files.work, '-c', 'web_search="disabled"',
     ...CODEX_DISABLED_FEATURES.flatMap((feature) => ['--disable', feature]),
     ...(call.model === undefined ? [] : [`--model=${call.model}`]),
+    ...effortArgs('codex', call.effort),
     ...(mcp?.codexArgs ?? []),
     '-',
   ]
@@ -176,7 +184,8 @@ function codexArgs(
  */
 export function runnerFlags(cli: HarnessCli): string[] {
   const call: CliCall = {
-    cli, model: 'model', system: 'system', prompt: 'prompt', schema: {}, timeoutMs: 0, signal: new AbortController().signal,
+    cli, model: 'model', effort: 'effort', system: 'system', prompt: 'prompt', schema: {}, timeoutMs: 0,
+    signal: new AbortController().signal,
   }
   const lookup: InternalMcp = {
     ...internalMcpArgs({ configFile: 'config', server: { command: 'server', args: [] }, env: {}, tools: ['tool'] }),
