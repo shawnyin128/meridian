@@ -55,11 +55,12 @@ function useSourceModels(source: string | null, settings: HarnessModelSettings |
  * The composer's three pickers for chat `chat`: the source, the model of that source and the
  * reasoning effort of that model, each text with a caret. The source picker offers the configured
  * sources that can run, besides the chat's own; the model picker every model that source offers, as
- * Core keeps them for the session, its default model marked, then the model settings command; the
- * effort picker the levels of the chosen model. A pick changes only this chat, the way Core saves a
- * chat's own choice: a new source runs at its defaults, a new model drops the chat's own effort, and
- * picking the source's default model or the effort a run takes anyway keeps none of the chat's own. While a source's
- * models are not known yet the model and effort pickers are busy. A refused change shows as a
+ * Core keeps them for the session, its default model marked unless it is the CLI's own default, whose
+ * name says so, then the model settings command; the effort picker the levels of the chosen model. A
+ * pick changes only this chat, the way Core saves a chat's own choice: a new source runs at its
+ * defaults, a new model drops the chat's own effort, and picking the source's default model or the
+ * effort a run takes anyway keeps none of the chat's own. While a source's models are not known yet
+ * the model and effort pickers are busy. A refused change shows as a
  * refusal notice. They show while some configured source can run, the chat's own or the default
  * included when it cannot; while none can, or the chat has no source to run, it is the shared "AI
  * not connected" tag. Nothing shows before the chat's choice is read; without a chat they show the
@@ -104,7 +105,7 @@ export function ModelChips({ chat }: { chat: string | null }) {
         appearance="text" disabled={chat === null} busy={offers === null}
         aria-label={m.chat.modelPicker(modelEntryLabel(m, { model }))}
         value={model} options={models} label={(id) => modelEntryLabel(m, { model: id })}
-        note={(id) => (id === entry.model ? m.chat.defaultMark : undefined)}
+        note={(id) => (id === entry.model && id !== '' ? m.chat.defaultMark : undefined)}
         onPick={(id) => {
           if (id !== model) save({ source: entry.id, ...(id === entry.model ? {} : { model: id }) })
         }}

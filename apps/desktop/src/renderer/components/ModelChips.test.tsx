@@ -74,7 +74,7 @@ const OFFERS: Record<string, HarnessSourceModels> = {
   'api:local': { source: 'api:local', models: [{ id: 'qwen3:32b', efforts: { levels: [] } }] },
   'cli:claude': {
     source: 'cli:claude',
-    models: [{ id: 'opus', efforts: CLAUDE_LEVELS }, { id: '', efforts: CLAUDE_LEVELS }, { id: 'sonnet', efforts: CLAUDE_LEVELS }],
+    models: [{ id: 'opus', efforts: CLAUDE_LEVELS }, { id: 'sonnet', efforts: CLAUDE_LEVELS }],
   },
   'cli:codex': {
     source: 'cli:codex',
@@ -171,16 +171,16 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     expect(options().map(([text]) => text)).toEqual(['OpenAI API', 'Anthropic API', 'Ollama 本地', 'Claude 订阅', 'ChatGPT 订阅'])
   })
 
-  it('模型列出来源提供的每一个模型，来源的默认模型排第一、行尾标默认，最后是模型设置…', async () => {
+  it('模型列出来源提供的每一个模型，来源的默认模型排第一、行尾标默认；CLI 自己的默认模型名字已说是默认，不再标；最后是模型设置…', async () => {
     await mount({ source: 'cli:codex' })
     open(1)
-    expect(options()).toEqual([['默认模型默认', true], ['gpt-6.1', false], ['gpt-6.1-mini', false]])
+    expect(options()).toEqual([['默认模型', true], ['gpt-6.1', false], ['gpt-6.1-mini', false]])
     await choose('模型设置…')
     expect(core.openCategory).toHaveBeenCalledExactlyOnceWith('model')
 
     await mount({ source: 'cli:claude' })
     open(1)
-    expect(options()).toEqual([['opus默认', true], ['默认模型', false], ['sonnet', false]])
+    expect(options()).toEqual([['opus默认', true], ['sonnet', false]])
   })
 
   it('来源的模型列表读不出来时照样提供默认模型，这条对话自己的模型不在其中时也列上它', async () => {
