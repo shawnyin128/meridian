@@ -932,6 +932,7 @@ shell.sidebar.toggle action
 shell.sidebar.toggleGroup action
 shell.titlebar.about action
 shell.titlebar.checkUpdates action
+shell.titlebar.logs action
 shell.titlebar.palette action
 shell.titlebar.settings action
 shell.update.available state

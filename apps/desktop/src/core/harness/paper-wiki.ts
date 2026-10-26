@@ -15,6 +15,7 @@ import type { CliResult, CliRunner } from './cli/runner.js'
 import type { HarnessExecution, HarnessRunner } from './cost-gate.js'
 import type { HarnessModelConfig } from './model-config.js'
 import { launchHarnessProcess } from './process.js'
+import { failureDetail, failureLine } from './failure-detail.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
 
 /** What Harness names as the detail of a model error whose output failed the draft schema or cited outside the run's scope. */
@@ -480,6 +481,7 @@ export function createPaperWikiHarnessRunner(options: {
         } : { timeoutMs: execution.requestTimeoutMs }),
       }))
     } catch (cause) {
+      options.onLog?.(failureLine(`Paper Wiki run of ${execution.plan.targetId}`, failureDetail(failure ?? cause)))
       throw failure === undefined
         ? paperWikiHarnessError(cause)
         : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })

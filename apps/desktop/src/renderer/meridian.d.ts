@@ -22,6 +22,7 @@ declare global {
         onChange(handler: (status: AppUpdateStatus) => void): () => void
       }
       restartApp(): void
+      revealLogs(): void
       toggleMaximize(): void
       onFullScreen(handler: (on: boolean) => void): () => void
       readonly platform: string

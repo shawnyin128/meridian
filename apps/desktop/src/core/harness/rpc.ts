@@ -52,14 +52,19 @@ type Dependencies = {
 
 const MAX_HARNESS_STDERR_DETAIL = 4_000
 
+/** Where a Harness call failed: while the Harness process started and shook hands, or in the request itself. */
+export type HarnessRpcStep = 'start' | 'request'
+
 export class HarnessRpcError extends Error {
   readonly kind: HarnessErrorKind
   readonly detail?: unknown
+  readonly step: HarnessRpcStep
 
-  constructor(error: HarnessProtocolError) {
+  constructor(error: HarnessProtocolError, step: HarnessRpcStep = 'request') {
     super(error.message)
     this.name = 'HarnessRpcError'
     this.kind = error.kind
+    this.step = step
     if ('detail' in error) this.detail = error.detail
   }
 }
@@ -124,6 +129,7 @@ export function createHarnessRpc(deps: Dependencies) {
     }
     const handler = held.callbacks?.[message.method] ?? callbacks[message.method]
     if (handler === undefined) {
+      deps.onLog?.(`refused Harness callback ${message.method}`)
       writeTo(target, {
         type: 'error', id: message.id, callbackId: message.callbackId, ok: false,
         error: { kind: 'bad_request', message: `Harness callback is not allowed: ${message.method}` },
@@ -138,6 +144,7 @@ export function createHarnessRpc(deps: Dependencies) {
         } satisfies HarnessCallbackResultMessage)
       },
       (cause: unknown) => {
+        deps.onLog?.(`Harness callback ${message.method} failed: ${cause instanceof Error ? cause.message : String(cause)}`)
         if (!pending.has(message.id) || child !== target) return
         writeTo(target, {
           type: 'error', id: message.id, callbackId: message.callbackId, ok: false,
@@ -171,14 +178,14 @@ export function createHarnessRpc(deps: Dependencies) {
           retire(target, new HarnessRpcError({
             kind: 'bad_request',
             message: cause instanceof Error ? cause.message : 'Harness ready event is malformed',
-          }), true)
+          }, 'start'), true)
           return
         }
         if (data.protocol !== HARNESS_PROTOCOL_VERSION) {
           retire(target, new HarnessRpcError({
             kind: 'bad_request',
             message: `Unsupported Harness protocol: ${data.protocol}`,
-          }), true)
+          }, 'start'), true)
           return
         }
         const missing = (deps.requiredCapabilities ?? [])
@@ -187,7 +194,7 @@ export function createHarnessRpc(deps: Dependencies) {
           retire(target, new HarnessRpcError({
             kind: 'bad_request',
             message: `Harness is missing required capabilities: ${missing.join(', ')}`,
-          }), true)
+          }, 'start'), true)
           return
         }
         if (readyTimer !== null) clearTimeout(readyTimer)
@@ -239,7 +246,7 @@ export function createHarnessRpc(deps: Dependencies) {
       const cause = new HarnessRpcError({
         kind: 'harness_gone', message: 'Harness did not become ready',
         ...(detail === '' ? {} : { detail }),
-      })
+      }, 'start')
       retire(launched, cause, true)
     }, readyTimeoutMs)
     readyTimer.unref()
@@ -267,7 +274,7 @@ export function createHarnessRpc(deps: Dependencies) {
       retire(launched, new HarnessRpcError({
         kind: 'harness_gone', message: `Harness process exited with ${suffix}`,
         ...(detail === '' ? {} : { detail }),
-      }))
+      }, rejectReady === null ? 'request' : 'start'))
     })
     return starting
   }

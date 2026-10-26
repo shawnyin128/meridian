@@ -121,6 +121,7 @@ import {
 import { projectAreas } from '../shared/project-signals.js'
 import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { answerCall, CallError, callFailure } from './call-error.js'
+import { openCoreLog, teeConsole } from './core-log.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
 import { createBackground } from './background.js'
@@ -149,7 +150,7 @@ import {
   checkCliConnection, createChatHarnessRunner, createChatService, createCliChatRunner, createCliRunner,
   createHarnessCostGate, createHarnessModelConfig, createHarnessProposalAudit, createInternalMcp,
   createMainCredentialVault, createPaperWikiHarnessRunner, createSourceModels, discoverCli, followCliState, listCliModels, openChatModels,
-  openCliChatSessions, sourceIdOfInput, subscriptionStatus,
+  openCliChatSessions, redactSecrets, sourceIdOfInput, subscriptionStatus,
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
@@ -193,6 +194,7 @@ const locationRoot = vaultRoot ?? process.env['MERIDIAN_LIBRARY_ROOT'] ?? proces
 const configHome = process.env['MERIDIAN_CONFIG_HOME'] ?? join(homedir(), '.meridian')
 const userData = process.env['MERIDIAN_USER_DATA']
 if (userData === undefined) throw new Error('Core 没有收到 App 的用户数据目录（MERIDIAN_USER_DATA）')
+teeConsole(openCoreLog({ dir: join(userData, 'logs'), redact: (text) => redactSecrets(text) }))
 const harnessModel = await createHarnessModelConfig(configHome, createMainCredentialVault())
 const semanticKey = await openSemanticKeyStore({
   file: join(configHome, 'semantic-scholar.json'), vault: createMainCredentialVault(),
@@ -595,6 +597,7 @@ registerHandler('harness.checkModelConnection', async (params) => {
   // A check of a CLI is how its sign-in is read again after the user signs in outside the App.
   const checked = model ?? harnessModel.settings().defaultModel
   if (checked !== null && checked.startsWith('cli:')) sourceModels.refresh(checked)
+  if (result.state === 'failed') console.error(`[harness] connection check of ${checked ?? 'no model'} failed (${result.reason}): ${result.detail}`)
   return result
 })
 registerHandler('harness.sourceModels', (params) => sourceModels.models(HarnessSourceModelsParamsSchema.parse(params).source))

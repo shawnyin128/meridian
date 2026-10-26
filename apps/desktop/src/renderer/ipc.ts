@@ -68,6 +68,8 @@ export const appMenu = {
   chooseWorkspaceRoot: () => window.meridian.chooseWorkspaceRoot(),
   /** Restarts the app once the user confirms switching to the new vault, so Core opens it at startup. */
   restartApp: () => { window.meridian.restartApp() },
+  /** Opens the folder of the App's log files in the system file manager. */
+  revealLogs: () => { window.meridian.revealLogs() },
   /** The self-drawn title bar switches between maximized and restored when double-clicked. */
   toggleMaximize: () => { window.meridian.toggleMaximize() },
   /**

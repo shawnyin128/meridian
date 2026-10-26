@@ -119,6 +119,9 @@ contextBridge.exposeInMainWorld('meridian', {
   restartApp(): void {
     ipcRenderer.send('meridian:restart-app')
   },
+  revealLogs(): void {
+    ipcRenderer.send('meridian:reveal-logs')
+  },
   toggleMaximize(): void {
     ipcRenderer.send('meridian:toggle-maximize')
   },

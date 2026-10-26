@@ -52,7 +52,7 @@ export const shell = {
     manageChat: (title: string) => `管理对话：${title}`,
     archive: '归档',
   },
-  titlebar: { settings: '设置…', palette: '命令面板…', checkUpdates: '检查更新…', about: '关于 Meridian' },
+  titlebar: { settings: '设置…', palette: '命令面板…', checkUpdates: '检查更新…', logs: '显示日志', about: '关于 Meridian' },
   about: { releases: '发布记录', version: (version: string) => `版本 ${version}` },
   bootFailure: {
     title: '论文库打不开',

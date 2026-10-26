@@ -22,9 +22,9 @@ import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcEr
 const MAX_MODEL_CONNECTION_DETAIL = 500
 const MAX_ANSWER_TOKENS = 2_000
 const MODEL_CONNECTION_REDACTIONS = [
-  /(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)[^\s,'"}\]]+/gi,
-  /(\b(?:api[-_ ]?key|x-api-key|access[-_ ]?token|secret)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)[^\s,'"}\]]+/gi,
-  /([?&](?:api[-_]?key|key|token|access_token|secret)=)[^&#\s]+/gi,
+  /(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
+  /(\b(?:api[-_ ]?key|x-api-key|access[-_ ]?token|secret)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
+  /([?&](?:api[-_]?key|key|token|access_token|secret)=)(?!\[redacted\])[^&#\s]+/gi,
 ] as const
 const MODEL_CONNECTION_TOKEN = /\b(?:sk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{20,})\b/g
 
@@ -102,15 +102,20 @@ function clipTail(value: string, limit: number): string {
   return `…${text.slice(-(limit - 1))}`
 }
 
-/** Keep diagnostics useful while preventing a provider or client from echoing credentials. */
-export function sanitizeModelConnectionDetail(value: string, secrets: readonly string[] = []): string {
+/** `value` with every key, token and credential it shows, and every one of `secrets`, replaced by `[redacted]`. */
+export function redactSecrets(value: string, secrets: readonly string[] = []): string {
   let detail = value
   for (const pattern of MODEL_CONNECTION_REDACTIONS) detail = detail.replace(pattern, '$1[redacted]')
   detail = detail.replace(MODEL_CONNECTION_TOKEN, '[redacted]')
   for (const secret of secrets) {
     if (secret !== '') detail = detail.split(secret).join('[redacted]')
   }
-  detail = detail.replace(/\s+/g, ' ').trim()
+  return detail
+}
+
+/** Keep diagnostics useful while preventing a provider or client from echoing credentials. */
+export function sanitizeModelConnectionDetail(value: string, secrets: readonly string[] = []): string {
+  const detail = redactSecrets(value, secrets).replace(/\s+/g, ' ').trim()
   if (detail.length > MAX_MODEL_CONNECTION_DETAIL) {
     return `${detail.slice(0, MAX_MODEL_CONNECTION_DETAIL - 1).trimEnd()}…`
   }
@@ -223,20 +228,20 @@ export class ChatFailure extends Error {}
  * reaches it. An error from outside the Harness call, such as an unreadable key, is returned as it is.
  */
 export function chatHarnessError(cause: unknown): Error {
-  if (cause instanceof ZodError) return new ChatFailure('模型的回答读不出来')
+  if (cause instanceof ZodError) return new ChatFailure('模型的回答读不出来', { cause })
   if (!(cause instanceof HarnessRpcError)) {
     return cause instanceof Error ? cause : new Error(String(cause))
   }
-  if (cause.kind === 'cancelled') return new ChatFailure('已停止生成')
-  if (cause.kind === 'harness_gone') return new ChatFailure('AI 服务停了')
-  if (cause.kind === 'bad_request') return new ChatFailure('对话太长，或这次请求模型不支持')
-  if (cause.kind === 'no_model') return new ChatFailure('还没有连上模型')
+  if (cause.kind === 'cancelled') return new ChatFailure('已停止生成', { cause })
+  if (cause.kind === 'harness_gone') return new ChatFailure('AI 服务停了', { cause })
+  if (cause.kind === 'bad_request') return new ChatFailure('对话太长，或这次请求模型不支持', { cause })
+  if (cause.kind === 'no_model') return new ChatFailure('还没有连上模型', { cause })
   if (cause.kind === 'model_error' && cause.detail === 'structured_output') {
     return new CallError('malformed-output', cause.message, { cause })
   }
   // The Harness words a model's own failure plainly and safely (ModelInvocationError).
-  if (cause.kind === 'model_error') return new ChatFailure(cause.message)
-  return new ChatFailure('AI 服务出了错')
+  if (cause.kind === 'model_error') return new ChatFailure(cause.message, { cause })
+  return new ChatFailure('AI 服务出了错', { cause })
 }
 
 /**

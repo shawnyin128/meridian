@@ -1,10 +1,12 @@
-import { mkdtempSync } from 'node:fs'
+import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
 import { callFailure } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
-import { ChatFailure, sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
+import { openCoreLog, teeConsole } from '../core-log.js'
+import { ChatFailure, chatHarnessError, redactSecrets, sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
+import { HarnessRpcError } from './rpc.js'
 import { createChatService } from './chat-service.js'
 import type { CredentialVault } from './credential-vault.js'
 import { createHarnessModelConfig } from './model-config.js'
@@ -334,6 +336,25 @@ describe('Core chat service', () => {
       ['you', '第一问'], ['status', '生成失败：模型服务请求超时'],
       ['you', '第二问'], ['status', '生成失败：模型服务调用失败'],
     ])
+  })
+
+  it('writes a turn that failed in the Harness request to the log file with its step, kind and detail, and not the question', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'meridian-chat-log-'))
+    const printers = { error: console.error, warn: console.warn, info: console.info, log: console.log }
+    const quiet = vi.spyOn(console, 'error').mockImplementation(() => {})
+    try {
+      teeConsole(openCoreLog({ dir, redact: (text) => redactSecrets(text) }), console)
+      const rejected = new HarnessRpcError({ kind: 'bad_request', message: 'Core returned an invalid chat context', detail: 'Authorization: Bearer sk-live-1234567890abcdef' })
+      const service = createChatService({ store: createFixtureStore(), model: await configuredModel(), runner: runnerOf(chatHarnessError(rejected)) })
+      await service.send('amortize', written('不该进日志的问题'))
+    } finally {
+      Object.assign(console, printers)
+      quiet.mockRestore()
+    }
+    const log = readFileSync(join(dir, 'core.log'), 'utf8')
+    expect(log).toContain('error [chat] chat amortize failed at request (bad_request): Core returned an invalid chat context (Authorization: [redacted]\n')
+    expect(log).not.toContain('sk-live-1234567890abcdef')
+    expect(log).not.toContain('不该进日志的问题')
   })
 
   it('重试一轮没回答的问题:再问模型一次同一个问题,问题不再写一遍,回答接在状态行后面', async () => {

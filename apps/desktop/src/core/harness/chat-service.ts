@@ -5,6 +5,7 @@ import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { trashedEntry } from '../write-receipts.js'
 import { ChatFailure, type ChatHarnessRunner } from './chat.js'
+import { failureDetail, failureLine } from './failure-detail.js'
 import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 
 const textRun = (text: string) => [{ kind: 'text' as const, text }]
@@ -70,7 +71,7 @@ export function createChatService(options: {
       return { id, state: 'complete' }
     } catch (cause) {
       if (controller.signal.aborted) return { id, state: 'cancelled' }
-      console.error(`[chat] ${id} 生成失败：${cause instanceof Error ? cause.message : String(cause)}`)
+      console.error(`[chat] ${failureLine(`chat ${id}`, failureDetail(cause))}`)
       const plain = cause instanceof ChatFailure || cause instanceof CallError ? cause.message : '模型服务调用失败'
       options.store.appendChatMessages(id, [statusMessage(`生成失败：${plain}`)])
       const failure = callFailure(cause)

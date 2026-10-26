@@ -134,7 +134,7 @@ test('preload 仍是窄接口:页面上没有任何收得下 channel 名的口�
   expect(surface.meridian).toEqual([
     'call:function', 'chooseLibraryRoot:function', 'chooseWorkspaceRoot:function', 'onAppCommand:function',
     'onFullScreen:function', 'onOpenAgentTutorial:function', 'onOpenPalette:function', 'onOpenSettings:function',
-    'pathForFile:function', 'platform:string', 'restartApp:function', 'revealFile:function', 'setLocale:function',
+    'pathForFile:function', 'platform:string', 'restartApp:function', 'revealFile:function', 'revealLogs:function', 'setLocale:function',
     'setMenuState:function', 'setTitleBarTheme:function', 'toggleMaximize:function', 'updates:object',
   ])
   expect(surface.escapes).toEqual([

@@ -2435,6 +2435,17 @@ export const ChatSetModelParamsSchema = z.object({
  */
 export const ChatWritingSchema = z.object({ text: z.string(), model: ChatAnswerModelSchema, since: IsoTimestamp }).strict()
 
+/**
+ * Where an AI call failed: `start`, while the AI service started; `request`, in the AI service's
+ * request; `cli`, in the subscription CLI's run; `core`, in the App itself. `kind` is the failure's
+ * own kind as that step names it, and `detail` what it says, with keys and tokens redacted.
+ */
+export const HarnessFailureDetailSchema = z.object({
+  step: z.enum(['start', 'request', 'cli', 'core']),
+  kind: z.string().min(1).max(64),
+  detail: z.string().min(1).max(500),
+}).strict()
+
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
 export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
@@ -2921,6 +2932,7 @@ export type ChatWriting = z.infer<typeof ChatWritingSchema>
 export type ChatMessageFields = z.infer<typeof ChatMessageFieldsSchema>
 export type ChatSession = z.infer<typeof ChatSessionSchema>
 export type ChatSendResult = z.infer<typeof ChatSendResultSchema>
+export type HarnessFailureDetail = z.infer<typeof HarnessFailureDetailSchema>
 export type ChatCancelResult = z.infer<typeof ChatCancelResultSchema>
 export type ResearchIdea = z.infer<typeof ResearchIdeaSchema>
 export type IdeaRelations = z.infer<typeof IdeaRelationsSchema>
