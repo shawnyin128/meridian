@@ -199,8 +199,9 @@ const CLI_MODEL: HarnessRuntimeModel = { source: 'cli', cli: 'claude', model: 'o
  * Stand-in `claude` and `codex` that keep sessions the way the real CLIs do: one file per session,
  * named by its id, under the folder `CLAUDE_CONFIG_DIR` or `CODEX_HOME` names. A turn that resumes a
  * session whose file is gone fails as the CLI does. Each answers `Answer <n>`, n counting the turns
- * its session holds, streams it, and records what it saw; `codex delete --force <id>` deletes the
- * session's file.
+ * its session holds, streams it, and records what it saw and its pid; `codex delete --force <id>`
+ * deletes the session's file. While the file `STAND_IN_HOLD` names exists, a turn writes `Half an
+ * answer` and then runs until it is ended.
  */
 const SESSION_CLI = `#!${process.execPath}
 const fs = require('node:fs')
@@ -220,7 +221,7 @@ process.stdin.on('end', () => {
     }
     return
   }
-  fs.appendFileSync(process.env.STAND_IN_RECORD, JSON.stringify({ argv, stdin, cwd: process.cwd() }) + '\\n')
+  fs.appendFileSync(process.env.STAND_IN_RECORD, JSON.stringify({ argv, stdin, cwd: process.cwd(), pid: process.pid }) + '\\n')
   const claude = path.basename(process.argv[1]) === 'claude'
   const resume = claude ? (argv.includes('--resume') ? after('--resume') : undefined) : (argv[1] === 'resume' ? argv.at(-2) : undefined)
   const folder = claude
@@ -237,6 +238,17 @@ process.stdin.on('end', () => {
   fs.appendFileSync(fileOf(id), JSON.stringify({ stdin }) + '\\n')
   if (!claude) fs.appendFileSync(fileOf(id), JSON.stringify({ timestamp: 't', type: 'turn_context', payload: { model: 'gpt-6.1-sol' } }) + '\\n')
   const turns = fs.readFileSync(fileOf(id), 'utf8').split('\\n').filter((line) => line.startsWith('{"stdin"')).length
+  if (fs.existsSync(process.env.STAND_IN_HOLD)) {
+    if (claude) {
+      print({ type: 'system', subtype: 'init', session_id: id, model: 'claude-opus-5-5[1m]' })
+      print({ type: 'stream_event', event: { type: 'content_block_delta', delta: { type: 'text_delta', text: 'Half an answer' } } })
+    } else {
+      print({ type: 'thread.started', thread_id: id })
+      print({ type: 'item.completed', item: { id: 'item_0', type: 'agent_message', text: 'Half an answer' } })
+    }
+    setInterval(() => {}, 1000)
+    return
+  }
   const answer = 'Answer ' + turns
   if (claude) {
     print({ type: 'system', subtype: 'init', session_id: id, model: 'claude-opus-5-5[1m]' })
@@ -251,13 +263,13 @@ process.stdin.on('end', () => {
 })
 `
 
-/** What a stand-in CLI saw on one turn. */
-type SeenTurn = { argv: string[]; stdin: string; cwd: string }
+/** What a stand-in CLI saw on one turn, and its pid. */
+type SeenTurn = { argv: string[]; stdin: string; cwd: string; pid: number }
 
 /**
  * A chat of the fixture vault answered through `model`, which a test may change between turns, by
  * the stand-in CLIs, with the session store, the chat service, a stand-in Harness and a user-data
- * folder and CLI homes of their own.
+ * folder and CLI homes of their own; creating the file `hold` makes the stand-ins hold their turns.
  */
 function sessionChat(initial: HarnessRuntimeModel) {
   const root = mkdtempSync(join(tmpdir(), 'meridian-chat-session-test-'))
@@ -268,9 +280,10 @@ function sessionChat(initial: HarnessRuntimeModel) {
     chmodSync(join(bin, name), 0o755)
   }
   const record = join(root, 'record.jsonl')
+  const hold = join(root, 'hold')
   const environment = {
     PATH: '/usr/bin:/bin', CLAUDE_CONFIG_DIR: join(root, 'claude-home'), CODEX_HOME: join(root, 'codex-home'),
-    STAND_IN_RECORD: record,
+    STAND_IN_RECORD: record, STAND_IN_HOLD: hold,
   }
   const store = createFixtureStore()
   const chat = store.createChat('Speculative decoding', true).id
@@ -323,7 +336,7 @@ function sessionChat(initial: HarnessRuntimeModel) {
   }
   /** Deletes the CLI sessions of the chats the vault no longer keeps, the way Core does after the trash changes. */
   const prune = () => sessions.prune(new Set(store.chatIds()))
-  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close, prune }
+  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close, prune, service, child, hold }
 }
 
 const sessionOf = (turn: SeenTurn) => (turn.argv.includes('--resume') ? turn.argv[turn.argv.indexOf('--resume') + 1]
@@ -502,6 +515,23 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
+  it('cancels the Harness call of a chat on an API model when the user stops the chat', async () => {
+    const { child, runner, chat, close } = chatRunner({
+      provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-5', authentication: 'api-key', apiKey: 'sk-test',
+    }, vi.fn<CliChatRunner>())
+    const controller = new AbortController()
+    const answering = runner.answer(chat, 'Why?', controller.signal)
+    child.ready()
+    const id = (await child.frame())['id'] as number
+
+    const cancelled = child.frame()
+    controller.abort()
+    await expect(cancelled).resolves.toEqual({ type: 'cancel', id })
+    await expect(answering).rejects.toThrow('已停止生成')
+    close()
+  })
+
   it('offers no model call to a chat on an API model', async () => {
     const cli = vi.fn<CliChatRunner>()
     const { child, runner, chat, close } = chatRunner({
@@ -649,6 +679,54 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
       chat.close()
     }
   })
+})
+
+describe('stopping a chat turn on a subscription CLI', () => {
+  for (const [cli, model] of [
+    ['claude', { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' }],
+    ['codex', { route: 'subscription', cli: 'codex' }],
+  ] as const) {
+    it(`ends the ${cli} child, keeps what it wrote as the answer, and the next turn starts a new session with the whole turn`, async () => {
+      const chat = sessionChat({ source: 'cli', cli })
+      try {
+        await chat.send('What is EAGLE?')
+        writeFileSync(chat.hold, '')
+        const stopped = chat.service.send(chat.chat, [{ kind: 'text', text: 'And its speedup?' }])
+        const id = (await chat.child.frame())['id'] as number
+        chat.child.callModel(`call-${id}`, id, {
+          system: 'Chat rules and context', prompt: 'History, then: And its speedup?', message: 'And its speedup?',
+        })
+        await vi.waitFor(() => expect(chat.service.writing(chat.chat)?.text).toBe('Half an answer'))
+        const held = chat.seen()[1]!
+        expect(process.kill(held.pid, 0)).toBe(true)
+
+        const cancelled = chat.child.frame()
+        chat.service.cancel(chat.chat)
+        await expect(cancelled).resolves.toEqual({ type: 'cancel', id })
+        await expect(stopped).resolves.toMatchObject({ state: 'cancelled' })
+        await vi.waitFor(() => expect(() => process.kill(held.pid, 0)).toThrow(expect.objectContaining({ code: 'ESRCH' })))
+        rmSync(chat.hold)
+        await expect(chat.send('Go on')).resolves.toMatchObject({ state: 'complete' })
+
+        const next = chat.seen()[2]!
+        expect([resumes(held), resumes(next)]).toEqual([true, false])
+        expect(sessionOf(next)).not.toBe(sessionOf(held))
+        expect(next.stdin).toBe(cli === 'claude' ? 'History, then: Go on' : 'Chat rules and context\n\nHistory, then: Go on')
+        expect(chat.logs).toContain(`chat ${chat.chat}: a new ${cli} session, no session to resume`)
+        expect(chat.store.chatMessages(chat.chat).map(({ role, runs, model: by }) => ({ role, text: runs[0]!.text, ...(by === undefined ? {} : { by }) })))
+          .toEqual([
+            { role: 'you', text: 'What is EAGLE?' },
+            { role: 'ai', text: 'Answer 1', by: expect.anything() },
+            { role: 'you', text: 'And its speedup?' },
+            { role: 'ai', text: 'Half an answer', by: model },
+            { role: 'you', text: 'Go on' },
+            { role: 'ai', text: 'Answer 1', by: expect.anything() },
+          ])
+      } finally {
+        chat.close()
+      }
+    })
+  }
 })
 
 describe('deleting a chat on a subscription CLI', () => {

@@ -181,6 +181,45 @@ describe('Core chat service', () => {
     ])
   })
 
+  it('stopping a turn keeps the text it had written as its answer, with the model writing it, and nothing it answers after the stop', async () => {
+    const store = createFixtureStore()
+    const model = { route: 'subscription' as const, cli: 'codex' as const, id: 'gpt-6.1' }
+    const writes: string[] = []
+    let finish: (answer: string) => void = () => {}
+    const runner: ChatHarnessRunner = {
+      checkConnection: vi.fn(async () => ({
+        state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
+      })),
+      // Names its model, writes what `writes` holds, and resolves only when the test says so, stopped or not.
+      answer: vi.fn((_id, _text, _signal, progress) => new Promise<string>((resolve) => {
+        progress?.onModel(model)
+        for (const text of writes) progress?.onText(text)
+        finish = resolve
+      })),
+      close: vi.fn(),
+    }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    const before = store.chatMessages('amortize').length
+
+    writes.push('EAGLE reaches', 'EAGLE reaches 3.76x')
+    const stopped = service.send('amortize', written('EAGLE 快多少'))
+    expect(service.cancel('amortize')).toEqual({ id: 'amortize', cancelled: true })
+    finish('EAGLE reaches 3.76x [p. 6].')
+    await expect(stopped).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
+
+    writes.length = 0
+    const silent = service.send('amortize', written('再问一句'))
+    expect(service.cancel('amortize')).toEqual({ id: 'amortize', cancelled: true })
+    finish('停止之后才到的回答')
+    await expect(silent).resolves.toEqual({ id: 'amortize', state: 'cancelled' })
+
+    expect(store.chatMessages('amortize').slice(before)).toEqual([
+      { id: expect.any(String), role: 'you', runs: [{ kind: 'text', text: 'EAGLE 快多少' }], actions: [] },
+      { id: expect.any(String), role: 'ai', runs: [{ kind: 'text', text: 'EAGLE reaches 3.76x' }], actions: [], model },
+      { id: expect.any(String), role: 'you', runs: [{ kind: 'text', text: '再问一句' }], actions: [] },
+    ])
+  })
+
   it('deleting a chat that is generating stops the generation before the chat goes to the trash, and the late answer never lands', async () => {
     const store = createFixtureStore()
     let signal: AbortSignal | undefined
