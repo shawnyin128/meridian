@@ -851,14 +851,14 @@ test('删掉一个附件,提示里的撤销把它放回', async ({ win }) => {
   expect((await removable(win)).attachments).toEqual(before)
 })
 
-test('移除一个领域,提示里的撤销把它放回', async ({ win }) => {
+test('移除一个主题,提示里的撤销把它放回', async ({ win }) => {
   await win.locator('[data-desk="resproj"]').waitFor()
   await call(win, 'project.update', { id: 'draft', patch: { topics: ['speculative decoding', 'kv cache eviction'] } })
   await gotoProject(win)
-  const chips = win.locator('.screenslot:not([hidden]) .project-areas .tagchip:not(.tagadd)')
+  const chips = win.locator('.screenslot:not([hidden]) .project-topics .tagchip:not(.tagadd)')
   await expect(chips).toHaveCount(2)
   await rowAction(chips.first(), '.rx')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新领域')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新主题')
   await expect(chips).toHaveText(['kv cache eviction'])
 
   await undoFromNotice(win)
@@ -1420,10 +1420,10 @@ test('属性栏多行的值(当前目标)进入编辑时,编辑框整个露在�
   expect((await textBox(input)).left).toBe(before.left)
 })
 
-test('属性栏点一个领域就地改它:编辑框里是它的字,整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
+test('属性栏点一个主题就地改它:编辑框里是它的字,整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const field = side.locator('.property-label:text-is("领域") + .property-value > .project-areas')
+  const field = side.locator('.property-label:text-is("主题") + .property-value > .project-topics')
   const chip = field.locator('.tagchip-open').first()
   const text = await chip.innerText()
   const before = await textBox(chip.locator('.tagchip-text'))

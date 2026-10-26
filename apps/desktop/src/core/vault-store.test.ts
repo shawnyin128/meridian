@@ -401,7 +401,7 @@ describe('vault store', () => {
       .toEqual(['ARXIV:2211.17192', 'semantic-new'])
   })
 
-  it('项目发现的锚点带上项目的每一个领域,没有领域时不带新项目的默认值', () => {
+  it('项目发现的锚点带上项目的每一个主题,没有主题时不带新项目的默认值', () => {
     const id = store.createProject('发现锚点')
     expect(store.discoveryProfile(id).anchorText).not.toContain(DEFAULT_PROJECT_TOPIC)
     store.updateProject(id, { topics: ['KV cache', '低比特量化'] })
@@ -467,8 +467,8 @@ describe('vault store', () => {
     expect(readFileSync(file, 'utf8')).toBe(before)
   })
 
-  it('领域:给几个时页上 topic 是第一个、topics 是全部,清空回到新项目的默认值;重开库读出来一样', () => {
-    const id = store.createProject('领域')
+  it('主题:给几个时页上 topic 是第一个、topics 是全部,清空回到新项目的默认值;重开库读出来一样', () => {
+    const id = store.createProject('几个主题')
     const file = join(vault, 'wiki', 'projects', `${id}.md`)
     const before = readFileSync(file, 'utf8')
     expect(store.updateProject(id, { topics: ['KV cache', '量化'] })).toMatchObject({ topic: 'KV cache', topics: ['KV cache', '量化'] })
@@ -480,6 +480,113 @@ describe('vault store', () => {
     expect(cleared.topic).toBe(DEFAULT_PROJECT_TOPIC)
     expect('topics' in cleared).toBe(false)
     expect(readFileSync(file, 'utf8')).toBe(before)
+  })
+
+  describe('项目的主题是 Wiki 的主题页', () => {
+    /** The text of project `id`'s page. */
+    const pageOf = (id: string) => readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')
+    /** Rewrites project `id`'s page the way App 0.0.21.4 stores areas: `topic`, `topics` while several, and no `topic_pages`. */
+    const asOldApp = (id: string, areas: string[]) => {
+      const file = join(vault, 'wiki', 'projects', `${id}.md`)
+      const rows = readFileSync(file, 'utf8').split('\n').filter((row) => !/^topics?:|^topic_pages:|^ {2}- "|^ {2}- page:|^ {4}title:/.test(row))
+      const at = rows.indexOf('focus: "定义第一步"')
+      rows.splice(at, 0, `topic: ${JSON.stringify(areas[0] ?? DEFAULT_PROJECT_TOPIC)}`,
+        ...(areas.length > 1 ? ['topics:', ...areas.map((area) => `  - ${JSON.stringify(area)}`)] : []))
+      writeFileSync(file, rows.join('\n'), 'utf8')
+    }
+
+    it('选已有的主题按名字对上那一页,标题用页上的;打一个新名字就新建一个主题页;页上记下每个主题的页', () => {
+      const id = store.createProject('主题')
+      const project = store.updateProject(id, { topics: ['speculative  DECODING', '低比特量化'] })
+      expect(project).toMatchObject({
+        topic: 'Speculative decoding', topics: ['Speculative decoding', '低比特量化'],
+        topicPages: ['topics/speculative-decoding', 'topics/低比特量化'],
+      })
+      expect(store.wikiCards().find((card) => card.id === 'topics/低比特量化')).toMatchObject({ kind: 'topic', title: '低比特量化' })
+      expect(pageOf(id)).toContain([
+        'topic_pages:', '  - page: "topics/speculative-decoding"', '    title: "Speculative decoding"',
+        '  - page: "topics/低比特量化"', '    title: "低比特量化"',
+      ].join('\n'))
+      expect(createVaultStore(vault).getProject(id).topicPages).toEqual(['topics/speculative-decoding', 'topics/低比特量化'])
+    })
+
+    it('新建主题页记一条 Wiki 变动,改项目的主题另记一条;撤销项目那条回到原来的主题', () => {
+      const id = store.createProject('主题撤销')
+      store.updateProject(id, { topics: ['低比特量化'] })
+      expect(store.listChanges().slice(0, 2).map((change) => change.title)).toEqual(['项目「主题撤销」· 改了字段', 'Wiki · 新建主题「低比特量化」'])
+      store.undoChange(store.listChanges()[0]!.id)
+      expect(store.getProject(id)).toMatchObject({ topic: DEFAULT_PROJECT_TOPIC })
+      expect('topicPages' in store.getProject(id)).toBe(false)
+    })
+
+    it('主题页改了名,项目的主题跟着显示新名字,项目页不用改', () => {
+      const id = store.createProject('改名')
+      store.updateProject(id, { topics: ['Draft acceptance'] })
+      const before = pageOf(id)
+      store.applyProposal({ source: 'user', title: '改名', ops: [{ op: 'setAggregationMetadata', page: 'topics/draft-acceptance', title: '草稿接受率', splitOn: null }] })
+      expect(store.getProject(id)).toMatchObject({ topic: '草稿接受率', topicPages: ['topics/draft-acceptance'] })
+      expect(store.listProjects().find((p) => p.id === id)?.topic).toBe('草稿接受率')
+      expect(pageOf(id)).toBe(before)
+    })
+
+    it('打开旧版写的库:每个领域对上同名的主题页,没有的新建一个,未分主题不建;记一条不能撤销的历史;再打开不再写', () => {
+      const [a, b, c] = ['旧一', '旧二', '旧三'].map((name) => store.createProject(name))
+      asOldApp(a!, ['speculative decoding', '推理加速'])
+      asOldApp(b!, ['推理加速'])
+      asOldApp(c!, [])
+      const opened = createVaultStore(vault)
+      expect(opened.getProject(a!)).toMatchObject({
+        topic: 'Speculative decoding', topics: ['Speculative decoding', '推理加速'],
+        topicPages: ['topics/speculative-decoding', 'topics/推理加速'],
+      })
+      expect(opened.getProject(b!).topicPages).toEqual(['topics/推理加速'])
+      expect(opened.getProject(c!)).toMatchObject({ topic: DEFAULT_PROJECT_TOPIC })
+      expect(opened.wikiCards().filter((card) => card.title === '推理加速')).toHaveLength(1)
+      expect(pageOf(a!)).toContain('topic_pages:\n  - page: "topics/speculative-decoding"\n    title: "speculative decoding"\n')
+      expect(pageOf(a!)).toMatch(/^topic: "speculative decoding"$/m)
+      expect(pageOf(c!)).not.toContain('topic_pages:')
+      const [history] = opened.listChanges()
+      expect(history).toMatchObject({ title: '项目的领域并入主题', source: 'Meridian', undoable: false })
+      expect(history!.diff).toEqual(['+ topics/推理加速', `~ projects/${a}`, `~ projects/${b}`])
+      const pages = [a, b, c].map((id) => pageOf(id!))
+      const again = createVaultStore(vault)
+      expect([a, b, c].map((id) => pageOf(id!))).toEqual(pages)
+      expect(again.listChanges()[0]!.id).toBe(history!.id)
+    })
+
+    it('旧版 App 后来又改了领域:再打开时只给改过的那个项目重新对页', () => {
+      const id = store.createProject('旧版又改')
+      store.updateProject(id, { topics: ['Draft acceptance'] })
+      asOldApp(id, ['Draft acceptance', 'KV 量化'])
+      const opened = createVaultStore(vault)
+      expect(opened.getProject(id).topicPages).toEqual(['topics/draft-acceptance', 'topics/kv-量化'])
+      expect(opened.listChanges()[0]!.diff).toEqual(['+ topics/kv-量化', `~ projects/${id}`])
+    })
+
+    it('主题页不在了:项目不显示这个主题,页上照旧记着;页回来了主题也回来;改主题时它不丢', () => {
+      const id = store.createProject('页不在')
+      store.updateProject(id, { topics: ['Draft acceptance', 'Speculative decoding'] })
+      const topicFile = join(vault, 'wiki', 'topics', 'draft-acceptance.md')
+      const text = readFileSync(topicFile, 'utf8')
+      rmSync(topicFile)
+      const opened = createVaultStore(vault)
+      expect(opened.getProject(id)).toMatchObject({ topic: 'Speculative decoding', topicPages: ['topics/speculative-decoding'] })
+      opened.updateProject(id, { topics: ['Speculative decoding', 'Mixtral'] })
+      expect(pageOf(id)).toContain('  - page: "topics/draft-acceptance"\n    title: "Draft acceptance"\n')
+      writeFileSync(topicFile, text, 'utf8')
+      expect(createVaultStore(vault).getProject(id)).toMatchObject({
+        topics: ['Speculative decoding', 'Mixtral', 'Draft acceptance'],
+        topicPages: ['topics/speculative-decoding', 'topics/mixtral', 'topics/draft-acceptance'],
+      })
+    })
+
+    it('项目列表与总览带上主题的范围:主题自己的页和它上面的每一层', () => {
+      store.applyProposal({ source: 'user', title: '归到下面', ops: [{ op: 'setParents', page: 'topics/draft-acceptance', parents: ['topics/speculative-decoding'] }] })
+      const id = store.createProject('范围')
+      store.updateProject(id, { topics: ['Draft acceptance'] })
+      expect(store.listProjects().find((p) => p.id === id)?.topicScope).toEqual(['topics/draft-acceptance', 'topics/speculative-decoding'])
+      expect(store.overviewProjects().find((p) => p.id === id)?.topicScope).toEqual(['topics/draft-acceptance', 'topics/speculative-decoding'])
+    })
   })
 
   it('测试库与新建的库同一个结构,聚合页的生成区就是 Core 回填出来的样子', () => {

@@ -160,6 +160,7 @@ vi.mock('../ipc.js', () => ({
     },
   },
   changelog: { undo: (id: string) => { undone.push(id); return Promise.resolve() } },
+  wiki: { cards: () => Promise.resolve([]) },
   project: {
     list: () => Promise.resolve([]),
     addPaper: () => Promise.resolve(),

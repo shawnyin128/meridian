@@ -121,12 +121,12 @@ describe('全局搜索', () => {
     expect(store.search('项目：')).toEqual([])
   })
 
-  it('新项目存的默认领域在搜索结果里写成未分领域', () => {
+  it('新项目存的默认主题在搜索结果里写成未分主题', () => {
     store.createProject('压缩实验')
-    expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · 未分领域' })
+    expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · 未分主题' })
   })
 
-  it('项目有几个领域时,搜索结果的说明按次序全列出来', () => {
+  it('项目有几个主题时,搜索结果的说明按次序全列出来', () => {
     const id = store.createProject('压缩实验')
     store.updateProject(id, { topics: ['KV cache', '量化'] })
     expect(store.search('压缩实验')[0]).toMatchObject({ kind: 'project', meta: '进行中 · KV cache、量化' })

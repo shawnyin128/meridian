@@ -100,7 +100,7 @@ describe('the internal MCP server\'s vault tools', () => {
       expect(await ask(tools, 'wiki_page', { id })).toEqual({ error: `The vault has no Wiki page ${id}.` })
     }
     expect(await ask(tools, 'project_summary', { id: 'repro' })).toMatchObject({
-      name: '复现 EAGLE-2', focus: '对齐官方实现的评测脚本',
+      name: '复现 EAGLE-2', topics: ['speculative decoding'], focus: '对齐官方实现的评测脚本',
       papers: [{ id: 'papers/2210.17323', title: 'GPTQ: Accurate Post-Training Quantization for Generative Pre-trained Transformers' }],
     })
     expect(await ask(tools, 'project_summary', { id: 'amortize' })).toEqual({ error: 'The vault has no project amortize.' })
