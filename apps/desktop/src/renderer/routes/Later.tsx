@@ -137,7 +137,7 @@ export function Later() {
                 >
                   {g.items.map((x) => (
                     <PaperCard
-                      key={x.id} paperId={x.id} title={x.title}
+                      key={x.id} paperId={x.id} title={x.title} authors={x.authors}
                       actions={(
                         <>
                         {busy.has(x.id)
@@ -165,7 +165,7 @@ export function Later() {
                       ) : null}
                       metadata={(
                         <>
-                        {x.authors}{x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
+                        {x.venue ? <PaperCardBadge>{x.venue}</PaperCardBadge> : null}
                         {grouping === 'time'
                           ? <SourceLabel>{shownSource(x.source)}</SourceLabel>
                           : <PaperCardBadge>{m.common.addedOn(fmt.date(x.added))}</PaperCardBadge>}

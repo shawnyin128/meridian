@@ -3,7 +3,8 @@ import { beforeEach, describe, expect, it } from 'vitest'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { MessagesProvider } from '../../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../../shell/language.js'
-import { PaperCard, PaperCardBadge, PaperCardNotice } from './PaperCard.js'
+import { PaperCard, PaperCardBadge, PaperCardCitations, PaperCardNotice } from './PaperCard.js'
+const AUTHORS = 'Joon Sung Park, Carolyn Q. Zou, Aaron Shaw, Benjamin Mako Hill, Carrie Cai, Meredith Ringel Morris, Robb Willer, Percy Liang'
 
 describe('PaperCard', () => {
   beforeEach(() => { window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh') })
@@ -15,7 +16,7 @@ describe('PaperCard', () => {
           paperId="paper-1" watchId="watch-1" title="A paper"
           actions={<button>稍后阅读</button>}
           notices={<PaperCardNotice action={<button>重试</button>}>下载失败</PaperCardNotice>}
-          metadata={<>Ada<PaperCardBadge>ICLR</PaperCardBadge></>}
+          authors="Ada" metadata={<PaperCardBadge>ICLR</PaperCardBadge>}
           abstract={'A $\\times$ B'} recommendation="与当前课题相关"
         />
       </MessagesProvider>,
@@ -32,7 +33,7 @@ describe('PaperCard', () => {
     const host = document.createElement('div')
     host.innerHTML = renderToStaticMarkup(
       <MessagesProvider>
-        <PaperCard paperId="paper-2" title="A paper" actions={<button>稍后阅读</button>} metadata="Ada" />
+        <PaperCard paperId="paper-2" title="A paper" actions={<button>稍后阅读</button>} authors="Ada" metadata={null} />
       </MessagesProvider>,
     )
     const card = host.querySelector('.paper-card')!
@@ -50,7 +51,7 @@ describe('PaperCard', () => {
   it('标题里的公式与文本命令按 LaTeX 渲染', () => {
     const out = renderToStaticMarkup(
       <MessagesProvider>
-        <PaperCard paperId="paper-3" title={'$\\alpha$-\\textbf{Net}: 50\\% Faster'} actions={null} metadata="Ada" />
+        <PaperCard paperId="paper-3" title={'$\\alpha$-\\textbf{Net}: 50\\% Faster'} actions={null} authors="Ada" metadata={null} />
       </MessagesProvider>,
     )
     expect(out).toMatch(/<h3><span><span class="katex">.*<\/span><\/span>-<strong>Net<\/strong>: 50% Faster<\/h3>/)
@@ -58,10 +59,27 @@ describe('PaperCard', () => {
 
   it('关闭可选能力时不产生空摘要或推荐区', () => {
     const out = renderToStaticMarkup(
-      <MessagesProvider><PaperCard paperId="paper-2" title="Plain" actions={null} metadata="Ada" /></MessagesProvider>,
+      <MessagesProvider><PaperCard paperId="paper-2" title="Plain" actions={null} authors="Ada" metadata={null} /></MessagesProvider>,
     )
     expect(out).not.toContain('摘要')
     expect(out).not.toContain('推荐理由')
+  })
+
+  it('元数据一行依次是作者、会场徽标和引用数：作者是共享的淡出文字，引用数是一行不收缩的文字', () => {
+    document.body.innerHTML = renderToStaticMarkup(
+      <MessagesProvider>
+        <PaperCard
+          paperId="paper-5" title="A paper" actions={<button>稍后阅读</button>} authors={AUTHORS}
+          metadata={<><PaperCardBadge>Nature Human Behaviour</PaperCardBadge><PaperCardCitations count={157} /></>}
+        />
+      </MessagesProvider>,
+    )
+    const meta = document.querySelector('.paper-card .item-meta')!
+    expect([...meta.children].map((child) => [child.className, child.textContent])).toEqual([
+      ['fade-text paper-card-authors', AUTHORS],
+      ['tag tag--label tag--neutral paper-card-badge venue', 'Nature Human Behaviour'],
+      ['fade-text paper-card-citations citations', '157 引用'],
+    ])
   })
 
   it('摘要和推荐理由的小标签都来自词表，跟着界面语言走', () => {
@@ -70,7 +88,7 @@ describe('PaperCard', () => {
       const host = document.createElement('div')
       host.innerHTML = renderToStaticMarkup(
         <MessagesProvider>
-          <PaperCard paperId="paper-4" title="A paper" actions={null} metadata="Ada" abstract="Text" recommendation="Why" />
+          <PaperCard paperId="paper-4" title="A paper" actions={null} authors="Ada" metadata={null} abstract="Text" recommendation="Why" />
         </MessagesProvider>,
       )
       return [...host.querySelectorAll('.paper-card-label')].map((label) => label.textContent)

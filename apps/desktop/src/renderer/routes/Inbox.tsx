@@ -212,7 +212,7 @@ export function Inbox() {
 
   const card = (p: InboxEntry) => (
     <PaperCard
-      key={p.id} paperId={p.id} watchId={p.watch} title={p.title} leaving={leaving.has(p.id)}
+      key={p.id} paperId={p.id} watchId={p.watch} title={p.title} authors={p.authors} leaving={leaving.has(p.id)}
       actions={(
         <>
         {stream === 'discovery' ? (
@@ -254,7 +254,7 @@ export function Inbox() {
       ) : null}
       metadata={(
         <>
-          {p.authors}{p.venue ? <PaperCardBadge>{p.venue}</PaperCardBadge> : null}
+          {p.venue ? <PaperCardBadge>{p.venue}</PaperCardBadge> : null}
           {(p.ranking?.citationCount ?? 0) > 0
             ? <PaperCardCitations count={p.ranking?.citationCount ?? 0} /> : null}
         </>
