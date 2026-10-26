@@ -20,7 +20,7 @@ export const settings = {
     api: 'Third-party services',
     model: 'Models',
     research: 'Research',
-    extensions: 'Extensions',
+    extensions: 'Agent extensions',
     delivery: 'Inmail',
     deliveryWatch: 'Watches',
     deliveryDiscovery: 'Discovery',
@@ -231,7 +231,7 @@ export const settings = {
     },
   },
   extensions: {
-    heading: 'Extensions',
+    heading: 'Agent extensions',
     state: {
       installed: 'Installed',
       'update-required': 'Update needed',
