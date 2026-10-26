@@ -226,7 +226,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     expect([...dialog.querySelectorAll('[data-setcat]')].map((node) => node.textContent))
-      .toEqual(['外观', '存储', '第三方服务', '扩展', '论文推送', '关注', '发现', '归档的对话'])
+      .toEqual(['外观', '存储', '第三方服务', 'Agent 扩展', '论文推送', '关注', '发现', '归档的对话'])
     expect(dialog.querySelector('[data-setcat="delivery-watch"]')?.classList.contains('on')).toBe(true)
     expect(dialog.querySelector('[data-testid="watch-settings"]')).not.toBeNull()
     expect(dialog.querySelector('[data-testid="discovery-settings"]')).toBeNull()
@@ -326,7 +326,7 @@ describe('Settings', () => {
 
   it('设置右栏放不下时，每个分类的标题都留在滚动区上面，标题以外的内容都在滚动区里', async () => {
     const titles: Record<SettingsCategory, string> = {
-      appearance: '外观', storage: '存储', api: '第三方服务', model: '模型', research: '科研', extensions: '扩展',
+      appearance: '外观', storage: '存储', api: '第三方服务', model: '模型', research: '科研', extensions: 'Agent 扩展',
       delivery: '论文推送', 'delivery-watch': '关注', 'delivery-discovery': '发现', archived: '归档的对话 · 0',
     }
     for (const [category, title] of Object.entries(titles) as [SettingsCategory, string][]) {

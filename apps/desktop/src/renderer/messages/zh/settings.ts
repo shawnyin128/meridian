@@ -13,7 +13,7 @@ export const settings = {
     api: '第三方服务',
     model: '模型',
     research: '科研',
-    extensions: '扩展',
+    extensions: 'Agent 扩展',
     delivery: '论文推送',
     deliveryWatch: '关注',
     deliveryDiscovery: '发现',
@@ -221,7 +221,7 @@ export const settings = {
     },
   },
   extensions: {
-    heading: '扩展',
+    heading: 'Agent 扩展',
     state: {
       installed: '已安装',
       'update-required': '需要更新',

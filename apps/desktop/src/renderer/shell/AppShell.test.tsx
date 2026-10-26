@@ -831,7 +831,7 @@ describe('AppShell command palette', () => {
   it('lists 设置 · <pane> right after 设置…, one per pane in the Settings side list\'s order, each opening Settings on its pane', async () => {
     const panes = [
       ['外观', 'appearance'], ['存储', 'storage'], ['第三方服务', 'api'], ['模型', 'model'], ['科研', 'research'],
-      ['扩展', 'extensions'], ['论文推送', 'delivery'], ['关注', 'delivery-watch'], ['发现', 'delivery-discovery'],
+      ['Agent 扩展', 'extensions'], ['论文推送', 'delivery'], ['关注', 'delivery-watch'], ['发现', 'delivery-discovery'],
       ['归档的对话', 'archived'],
     ]
     await mount(<SettingsProbe />)
