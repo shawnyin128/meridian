@@ -265,20 +265,26 @@ export function createHarnessRpc(deps: Dependencies) {
         retire(launched, error, true)
       }
     })
+    const logStderr = (line: string) => {
+      if (line === '') return
+      // A line no Harness logger wrote, such as an uncaught traceback, is a failure.
+      const leveled = HARNESS_LEVEL_LINE.exec(line)
+      if (leveled === null) deps.onLog?.('error', line)
+      else deps.onLog?.(HARNESS_LEVELS[leveled[1] as keyof typeof HARNESS_LEVELS], leveled[2]!)
+    }
+    let stderrLine = ''
     launched.stderr.setEncoding('utf8')
     launched.stderr.on('data', (chunk: string) => {
       if (child !== launched) return
       stderrTail = `${stderrTail}${chunk}`.slice(-MAX_HARNESS_STDERR_DETAIL)
-      for (const line of chunk.split(/\r?\n/)) {
-        if (line === '') continue
-        // A line no Harness logger wrote, such as an uncaught traceback, is a failure.
-        const leveled = HARNESS_LEVEL_LINE.exec(line)
-        if (leveled === null) deps.onLog?.('error', line)
-        else deps.onLog?.(HARNESS_LEVELS[leveled[1] as keyof typeof HARNESS_LEVELS], leveled[2]!)
-      }
+      const received = `${stderrLine}${chunk}`.split(/\r?\n/)
+      stderrLine = received.pop()!
+      for (const line of received) logStderr(line)
     })
     launched.on('error', (cause) => retire(launched, cause))
     launched.on('exit', (code, signal) => {
+      logStderr(stderrLine)
+      stderrLine = ''
       const suffix = signal === null ? `code ${String(code)}` : `signal ${signal}`
       const detail = stderrTail.trim()
       retire(launched, new HarnessRpcError({
