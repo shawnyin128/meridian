@@ -91,7 +91,7 @@ describe('FirstRunChecklist', () => {
     act(() => root.render(
       <MessagesProvider>
         <ModelStatusContext.Provider value={{
-          connected: state.modelKnown ? state.configured : null, source: state.modelKnown && state.configured ? 'api' : null, settings: null, track: (send) => send,
+          connected: state.modelKnown ? state.configured : null, anyRuns: state.modelKnown ? state.configured : null, settings: null, track: (send) => send,
         }}>
           <FirstRunChecklist onError={onError} onShown={onShown} />
         </ModelStatusContext.Provider>

@@ -332,6 +332,11 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     const profile = profileOf(entry.source.profile)
     return profile !== undefined && entry.model !== '' && (profile.authentication === 'none' || profile.credential !== undefined)
   }
+  /**
+   * Whether a run on `entry` goes ahead: it can run as set up, and no run is held back by a
+   * subscription choice that cannot be read while the list still comes from the files older Apps read.
+   */
+  const runs = (entry: ModelRecord): boolean => runnable(entry) && (list.stored || subscriptionError === undefined)
 
   /**
    * The sources the list's models run on, in the order they are shown, each with its models and the one
@@ -362,7 +367,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     })
   }
 
-  const publicEntry = (entry: ModelRecord): HarnessModelEntry => ({ ...entry, configured: runnable(entry) })
+  const publicEntry = (entry: ModelRecord): HarnessModelEntry => ({ ...entry, configured: runs(entry) })
 
   const publicSettings = (): HarnessModelSettings => {
     const chosen = defaultEntry()
@@ -372,7 +377,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     const modelsError = listError ?? unreadable?.failure
     return {
       ...current,
-      configured: chosen !== undefined && runnable(chosen),
+      configured: chosen !== undefined && runs(chosen),
       profiles: value.profiles.map(publicProfile),
       subscription: {
         active: chosen === undefined ? subscription.active : chosen.source.kind === 'cli' ? chosen.source.cli : null,
@@ -658,7 +663,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     /** Whether a run on `choice` has a model that can run as set up. */
     configured(choice?: ModelChoice | null): boolean {
       const resolved = resolve(choice)
-      return resolved !== undefined && runnable(resolved.entry) && (list.stored || subscriptionError === undefined)
+      return resolved !== undefined && runs(resolved.entry)
     },
     /**
      * The model a run on `choice` uses, its chosen model while that is in the list and else the
@@ -714,14 +719,14 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       const effort = chosen.effort === undefined ? {} : { effort: chosen.effort }
       if (chosen.source.kind === 'cli') {
         const cli = chosen.source.cli
-        return { provider: SUBSCRIPTION_LABELS[cli], name: chosen.model || '默认模型', configured: true, billable: false, cli, ...effort }
+        return { provider: SUBSCRIPTION_LABELS[cli], name: chosen.model || '默认模型', configured: runs(chosen), billable: false, cli, ...effort }
       }
       const profile = profileOf(chosen.source.profile)
       const provider = providerOfKey(chosen.source.profile) ?? 'openai'
       return {
         provider: PROVIDERS[provider].label,
         name: chosen.model,
-        configured: runnable(chosen) && (list.stored || subscriptionError === undefined),
+        configured: runs(chosen),
         billable: profile === undefined || !isLocalNoAuth(publicProfile(profile)),
         ...effort,
       }

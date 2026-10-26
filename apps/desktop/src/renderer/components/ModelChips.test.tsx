@@ -1,11 +1,10 @@
 // @vitest-environment jsdom
-import { act } from 'react'
+import { act, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   ChatModelChoice, HarnessModelEntry, HarnessModelSettings, HarnessModelSourceGroup, HarnessSubscriptionStatus,
 } from '../../shared/contract.js'
-import type { ModelStatus } from '../hooks/useModelStatus.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 
@@ -14,6 +13,8 @@ declare global {
 }
 
 const core = vi.hoisted(() => ({
+  /** The model settings Core answers with. */
+  settings: null as unknown as HarnessModelSettings,
   choice: { model: null } as ChatModelChoice,
   setModel: vi.fn(),
   /** Answers each CLI's status read; a test replaces one to hold it. */
@@ -23,7 +24,7 @@ const core = vi.hoisted(() => ({
 }))
 vi.mock('../ipc.js', () => ({
   chat: { model: () => Promise.resolve(core.choice), setModel: core.setModel },
-  harness: { subscriptionStatus: core.status },
+  harness: { modelSettings: () => Promise.resolve(core.settings), subscriptionStatus: core.status },
 }))
 vi.mock('../shell/AppShell.js', () => ({
   useNotice: () => ({ success: vi.fn(), refusal: core.refusal }),
@@ -31,7 +32,7 @@ vi.mock('../shell/AppShell.js', () => ({
 }))
 
 const { ModelChips } = await import('./ModelChips.js')
-const { ModelStatusContext } = await import('../hooks/useModelStatus.js')
+const { ModelStatusContext, useCoreModelStatus } = await import('../hooks/useModelStatus.js')
 
 const OPENAI = { kind: 'api', profile: 'openai' } as const
 const ANTHROPIC = { kind: 'api', profile: 'anthropic' } as const
@@ -66,7 +67,23 @@ const STATUS: Record<'claude' | 'codex', HarnessSubscriptionStatus> = {
   claude: { state: 'found', version: '2.1.300', signIn: 'subscription', models: ['opus', 'sonnet'], efforts: { '': { levels: ['low', 'medium', 'high', 'xhigh', 'max'] } } },
   codex: { state: 'found', version: '0.130.0', signIn: 'subscription', models: [], efforts: { '': { levels: ['low', 'medium', 'high', 'xhigh'], default: 'medium' } } },
 }
-const STATUS_SHOWN: ModelStatus = { connected: true, source: 'subscription', settings: SETTINGS, track: (send) => send }
+/**
+ * SETTINGS with only the models `runs` names able to run and `defaultModel` the default, whose CLI,
+ * if it has one, is the subscription older Apps read as chosen, as Core mirrors it.
+ */
+const settingsWhere = (runs: readonly string[], defaultModel: string) => {
+  const source = MODELS.find((model) => model.id === defaultModel)!.source
+  return {
+    ...SETTINGS, configured: runs.includes(defaultModel), defaultModel,
+    subscription: { ...SETTINGS.subscription, active: source.kind === 'cli' ? source.cli : null },
+    models: MODELS.map((model) => ({ ...model, configured: runs.includes(model.id) })),
+  } as HarnessModelSettings
+}
+
+/** The shell's model status, as AppShell shares it. */
+function Shell({ children }: { children: ReactNode }) {
+  return <ModelStatusContext.Provider value={useCoreModelStatus(false)}>{children}</ModelStatusContext.Provider>
+}
 
 describe('输入框下面的服务来源、模型和推理强度', () => {
   let host: HTMLDivElement
@@ -86,21 +103,18 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     root = null
   })
 
-  /** Shows anew the pickers of chat `chat-1`, which runs on `choice`, and lets Core answer every read. */
-  const mount = async (choice: ChatModelChoice, status: ModelStatus = STATUS_SHOWN) => {
+  /** Shows anew the pickers of chat `chat-1`, which runs on `choice`, with Core's model settings `settings`, and lets Core answer every read. */
+  const mount = async (choice: ChatModelChoice, settings: HarnessModelSettings = SETTINGS) => {
     if (root !== null) act(() => root!.unmount())
     document.body.innerHTML = ''
     host = document.createElement('div')
     document.body.append(host)
     root = createRoot(host)
     core.choice = choice
+    core.settings = settings
     await act(async () => {
-      root!.render(
-        <MessagesProvider>
-          <ModelStatusContext.Provider value={status}><ModelChips chat="chat-1" /></ModelStatusContext.Provider>
-        </MessagesProvider>,
-      )
-      for (let turn = 0; turn < 5; turn += 1) await Promise.resolve()
+      root!.render(<MessagesProvider><Shell><ModelChips chat="chat-1" /></Shell></MessagesProvider>)
+      for (let turn = 0; turn < 10; turn += 1) await Promise.resolve()
     })
   }
   const pickers = () => [...host.querySelectorAll<HTMLButtonElement>('button.choice-text')]
@@ -208,8 +222,19 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     expect([effort().textContent, effort().getAttribute('aria-busy')]).toEqual(['max', 'true'])
   })
 
-  it('还没有能回答的模型时是共享的「AI 未连接」', async () => {
-    await mount({ model: null }, { ...STATUS_SHOWN, connected: false })
+  it('全局默认的模型跑不了、别的模型能跑时，照样是三个选择器，停在这条对话现在用的模型上，它自己选的能跑的模型也一样', async () => {
+    const settings = settingsWhere(['api-opus', 'api-sonnet', 'qwen', 'opus', 'sonnet', 'codex'], 'gpt')
+    await mount({ model: 'gpt' }, settings)
+    expect([read(), host.textContent?.includes('AI 未连接')]).toEqual([['OpenAI API', 'gpt-6.1', 'medium'], false])
+    open(1)
+    expect(options()).toEqual([['gpt-6.1默认', true]])
+
+    await mount({ model: 'sonnet', effort: 'max' }, settings)
+    expect([read(), host.textContent?.includes('AI 未连接')]).toEqual([['Claude 订阅', 'sonnet', 'max'], false])
+  })
+
+  it('一个能跑的模型都没有时才是共享的「AI 未连接」，这条对话自己选的模型也一样跑不了', async () => {
+    await mount({ model: 'sonnet' }, settingsWhere([], 'gpt'))
     expect(pickers()).toEqual([])
     expect(host.textContent).toBe('AI 未连接')
   })

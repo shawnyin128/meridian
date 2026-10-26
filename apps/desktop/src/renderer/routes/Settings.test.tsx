@@ -43,7 +43,7 @@ const core = vi.hoisted(() => {
     const sources = [...new Map(held.models.map((entry) => [sourceKey(entry.source), entry.source])).values()]
       .sort((left, right) => rank(left) - rank(right) || sourceKey(left).localeCompare(sourceKey(right)))
     return {
-      ...(shown ?? held.profiles[0] ?? blank),
+      ...(shown === undefined || chosen === undefined ? held.profiles[0] ?? blank : { ...shown, model: chosen.model }),
       configured: chosen !== undefined && runnable(chosen),
       profiles: [...held.profiles],
       subscription: { active: source?.kind === 'cli' ? source.cli : null, models: { claude: '', codex: '' } },
@@ -438,9 +438,7 @@ describe('Settings', () => {
   })
 
   it('API 总览列出模型和科研的当前状态，点科研进入 Semantic Scholar 页', async () => {
-    api.modelSettings.mockResolvedValueOnce({
-      ...(await api.modelSettings()), model: 'gpt-test', configured: true,
-    })
+    core.seed([officialProfile('openai', '1111')], [apiModel('gpt', 'openai', 'gpt-test')])
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
@@ -453,16 +451,17 @@ describe('Settings', () => {
     expect(dialog.querySelector('.semantic-key-card .service-status-pill')?.textContent).toBe('未配置')
   })
 
-  it('API 总览在选了订阅时写订阅的名字，订阅指定了模型时再写模型', async () => {
-    const shown = async (subscription: { active: HarnessCli; models: { claude: string; codex: string } }) => {
-      api.modelSettings.mockResolvedValueOnce({ ...(await api.modelSettings()), subscription })
-      await act(async () => { root.render(<MessagesProvider key={JSON.stringify(subscription)}><Settings /></MessagesProvider>) })
+  it('API 总览写默认模型：订阅写订阅的名字，订阅指定了模型时再写模型；默认模型跑不了时写未配置，别的模型能跑也一样', async () => {
+    const shown = async (models: HeldModel[]) => {
+      core.seed([officialProfile('openai')], models)
+      await act(async () => { root.render(<MessagesProvider key={JSON.stringify(models)}><Settings /></MessagesProvider>) })
       const dialog = document.querySelector('.setdlg')!
       await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
       return dialog.querySelector('[data-api="model"] .api-state')?.textContent
     }
-    expect(await shown({ active: 'claude', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('Claude 订阅')
-    expect(await shown({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('ChatGPT 订阅 · gpt-5-codex')
+    expect(await shown([cliModel('claude', 'claude', ''), cliModel('codex', 'codex', 'gpt-5-codex')])).toBe('Claude 订阅')
+    expect(await shown([cliModel('codex', 'codex', 'gpt-5-codex'), cliModel('claude', 'claude', '')])).toBe('ChatGPT 订阅 · gpt-5-codex')
+    expect(await shown([apiModel('gpt', 'openai', 'gpt-6.1'), cliModel('claude', 'claude', 'opus')])).toBe('未配置')
   })
 
   it('API 总览还没读到一项的状态时，那一格是载入占位，不写正在读取', async () => {

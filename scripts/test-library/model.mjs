@@ -1,13 +1,15 @@
 /**
  * Seeds the model list through Core, with no credentials: an OpenAI API model at the `medium` effort
- * without a key, the default, so the library keeps its no-model state until a model is chosen in
- * Settings; Claude's `opus` at the `high` effort and `sonnet`; Codex's own default model; and a
- * local OpenAI-compatible service. One chat runs on Claude's `sonnet` at the `max` effort.
+ * without a key, which cannot run; Claude's `opus` at the `high` effort, the default, and `sonnet`;
+ * Codex's own default model; and a local OpenAI-compatible service. One chat runs on Claude's
+ * `sonnet` at the `max` effort.
  */
 export async function seedModelChoice(call) {
   const openai = { kind: 'api', provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', authentication: 'api-key' }
   await call('harness.addModel', { source: openai, model: 'gpt-6.1', effort: 'medium' })
-  await call('harness.addModel', { source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' })
+  const opus = (await call('harness.addModel', { source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' }))
+    .models.find((entry) => entry.model === 'opus')
+  await call('harness.setDefaultModel', { id: opus.id })
   await call('harness.addModel', { source: { kind: 'cli', cli: 'claude' }, model: 'sonnet' })
   await call('harness.addModel', { source: { kind: 'cli', cli: 'codex' }, model: '' })
   const settings = await call('harness.addModel', {

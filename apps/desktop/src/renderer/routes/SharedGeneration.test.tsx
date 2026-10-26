@@ -40,7 +40,7 @@ const core = vi.hoisted(() => {
     configured: true,
     modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({
       configured: core.configured, subscription: { active: null, models: { claude: '', codex: '' } },
-      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: true }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
+      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: core.configured }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
     })),
   }
 })
