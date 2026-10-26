@@ -52,7 +52,6 @@ import { CountBadge } from '../components/CountBadge.js'
 import { Tag, TagButton } from '../components/Tag.js'
 import { DraftSlot, focusDraft } from '../components/DraftSlot.js'
 import { Item, ItemOpen } from '../components/Item.js'
-import { List } from '../components/List.js'
 import { Table, TableCell, TableRow, type TableColumn } from '../components/Table.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { useClipped } from '../hooks/useClipped.js'
@@ -548,6 +547,11 @@ export function Wiki() {
   }
 
   const shownAgg = agg !== null && place === agg.id ? agg : null
+  // Each aggregation page pages its subdivisions on its own, from its first page.
+  const childrenKey = `children:${shownAgg?.id ?? ''}`
+  const childSection = useStackPaging(
+    main, shownAgg === null ? [] : [{ key: childrenKey, total: shownAgg.children.length }], FIRST_PAGE_SIZE,
+  )
   const shownPaper = paper !== null && place === paper.id ? paper : null
   const shownReading = shownPaper !== null && reading?.paperId === shownPaper.id.slice(PAPER_PAGE.length)
     ? reading : null
@@ -776,46 +780,43 @@ export function Wiki() {
           ? (
             <SplitPage columns="rail" className="wkpage">
               <SplitColumn className="wkmain" ref={main}>
-                <SectionHeading
+                <PagedSection
+                  heading={m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
                   actions={(
                     <AddAction
                       size="compact" ref={childBtn} disabled={pending}
                       label={m.wiki.addKind(shownAgg.kindLabel)} onClick={() => open('child')}
                     >{shownAgg.kindLabel}</AddAction>
                   )}
-                >{m.wiki.subdivisionsHeading(shownAgg.kindLabel)}
-                </SectionHeading>
-                {shownAgg.children.length === 0 && adding !== 'child'
-                  ? <EmptyState variant="section" />
-                  : (
-                    <List variant="embedded" rows="all" grid className="wkgrid">
-                      {shownAgg.children.map((c) => (
-                        <AggregationCard
-                          key={c.id} card={c} pending={pending}
-                          onOpen={() => go(c.id)} onRemove={() => unmount(c)}
-                        />
-                      ))}
-                      {adding === 'child'
-                        ? (
-                          <DraftSlot
-                            as="card" className="wkcard newcard" slot={addRow}
-                            leading={<Tag className="wkind">{shownAgg.kindLabel}</Tag>}
-                            title={(
-                              <PickRow
-                                row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
-                                placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
-                                suggest={suggestChildren} onPick={mount} onNew={create}
-                                onCancel={() => setAdding(null)} onError={report}
-                                kept={{ drafts: adds, target: 'add-child' }}
-                              />
-                            )}
-                          >
-                            <div className="wf" />
-                          </DraftSlot>
-                        )
-                        : null}
-                    </List>
-                  )}
+                  total={shownAgg.children.length} paging={childSection(childrenKey)} className="wkgrid"
+                  empty={shownAgg.children.length === 0 && adding !== 'child' ? <EmptyState variant="section" /> : undefined}
+                >
+                  {pageItems(shownAgg.children, childSection(childrenKey)).map((c) => (
+                    <AggregationCard
+                      key={c.id} card={c} pending={pending}
+                      onOpen={() => go(c.id)} onRemove={() => unmount(c)}
+                    />
+                  ))}
+                  {adding === 'child'
+                    ? (
+                      <DraftSlot
+                        as="card" className="wkcard newcard" slot={addRow}
+                        leading={<Tag className="wkind">{shownAgg.kindLabel}</Tag>}
+                        title={(
+                          <PickRow
+                            row={addRow} triggers={[childBtn, paperBtn, colBtn]} allowNew
+                            placeholder={m.wiki.kindNamePlaceholder(shownAgg.kindLabel)}
+                            suggest={suggestChildren} onPick={mount} onNew={create}
+                            onCancel={() => setAdding(null)} onError={report}
+                            kept={{ drafts: adds, target: 'add-child' }}
+                          />
+                        )}
+                      >
+                        <div className="wf" />
+                      </DraftSlot>
+                    )
+                    : null}
+                </PagedSection>
                 <SectionHeading
                   actions={(
                     <AddAction

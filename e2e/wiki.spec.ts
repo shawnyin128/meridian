@@ -344,10 +344,6 @@ test('项目详情的关联 chip 也进对应的聚合页', async ({ win }) => {
 })
 
 test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win, app }) => {
-  // Lower the window so this page really scrolls. Set the content height, not the outer frame: in a
-  // frameless window the two differ only by a 1px border, and this test's premise, "the first heading is
-  // above the viewport", measures the content area, so setting it directly keeps it from drifting.
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1200, 340))
   const agg = await aggFromCore(win, 'topics/ptq-weight-only')
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
@@ -355,6 +351,11 @@ test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win,
   await shown(win).locator('[data-wk="topics/ptq-weight-only"]').click()
   // The page renders only after its data arrives; wait for it before reading the table of contents.
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
+  // Lower the window once on the page, so it really scrolls; on the way there, a window this low pages
+  // each subdivision grid down to one row. Set the content height, not the outer frame: in a frameless
+  // window the two differ only by a 1px border, and this test's premise, "the first heading is above the
+  // viewport", measures the content area, so setting it directly keeps it from drifting.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1200, 340))
 
   const heads = agg.body.split('\n').filter((l) => /^#{1,3}\s/.test(l)).map((l) => l.replace(/^#+\s+/, ''))
   expect(heads.length).toBeGreaterThan(1)

@@ -779,3 +779,110 @@ describe('Wiki 首页各节各自翻页', () => {
     expect(titles('method')).toEqual(['方法1', '方法2'])
   })
 })
+
+describe('聚合页的细分卡片翻页', () => {
+  let root: Root | null = null
+  let host: HTMLDivElement
+
+  /** The topic page `id` with `count` subdivisions and its one compared paper. */
+  const withChildren = (id: string, count: number): WikiAggregation => ({
+    ...AGG, id,
+    children: Array.from({ length: count }, (_, at) => card(`topics/c${at + 1}`, `细分${at + 1}`)),
+  })
+
+  const open = async () => {
+    await act(async () => {
+      root!.render(<MessagesProvider><Wiki /></MessagesProvider>)
+      await Promise.resolve()
+    })
+    await act(async () => {
+      host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!.click()
+      await Promise.resolve()
+    })
+  }
+  const grid = () => host.querySelector('.wkmain .list[data-stack-section]')!
+  const titles = () => [...grid().querySelectorAll('.tt')].map((title) => title.textContent)
+  const pager = () => (grid().nextElementSibling?.classList.contains('pagebar') ? grid().nextElementSibling : null)
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    vi.stubGlobal('ResizeObserver', class { observe() {} unobserve() {} disconnect() {} })
+    fixture.aggregation.mockReset().mockImplementation((id: string) => Promise.resolve(withChildren(id, 14)))
+    fixture.backlinks.mockReset().mockResolvedValue([])
+    fixture.proposals.mockReset().mockResolvedValue([])
+    fixture.signals.mockReset().mockResolvedValue([])
+    document.body.innerHTML = ''
+    host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+  })
+
+  afterEach(() => {
+    if (root !== null) act(() => root!.unmount())
+    root = null
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('细分卡片超出一页时下面有它自己的翻页条，翻页只换细分卡片，论文对比表不动', async () => {
+    await open()
+    expect(titles()).toHaveLength(12)
+    expect(pager()!.querySelector('.pginfo')!.textContent).toBe('共 14 条')
+    const compared = () => [...host.querySelectorAll('.cmp tbody tr')].map((row) => row.textContent)
+    const before = compared()
+    expect(before).toHaveLength(1)
+
+    await act(async () => {
+      pager()!.querySelector<HTMLButtonElement>('[aria-label="下一页"]')!.click()
+      await Promise.resolve()
+    })
+    expect(titles()).toEqual(['细分13', '细分14'])
+    expect(compared()).toEqual(before)
+    expect(host.querySelectorAll('.wkmain .pagebar')).toHaveLength(1)
+  })
+
+  it('进另一个聚合页时细分从第一页开始', async () => {
+    await open()
+    await act(async () => {
+      pager()!.querySelector<HTMLButtonElement>('[aria-label="下一页"]')!.click()
+      await Promise.resolve()
+    })
+    await act(async () => {
+      host.querySelector<HTMLElement>('[data-wk="topics/c13"] .tt')!.click()
+      await Promise.resolve()
+    })
+    expect(fixture.aggregation).toHaveBeenLastCalledWith('topics/c13')
+    expect(titles()[0]).toBe('细分1')
+    expect(pager()!.querySelector('.pgbtn.on')!.textContent).toBe('1')
+  })
+
+  it('每页的细分卡片行数按页面主栏的可见高度来定', async () => {
+    // The main column shows 500 px; each heading is 40 px, a card 100 px, a pager 30 px, stacked from its top.
+    const tall = (element: Element): number => (element.classList.contains('section-heading') ? 40
+      : element.classList.contains('pagebar') ? 30
+        : element.classList.contains('list') ? element.querySelectorAll(':scope > .item').length * 100 : 0)
+    vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('wkmain') ? 500 : 0
+    })
+    vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const main = this.closest('.wkmain')
+      const at = (top: number, height: number) => ({ top, bottom: top + height, height, left: 0, right: 0, width: 0, x: 0, y: top, toJSON: () => ({}) }) as DOMRect
+      if (main === null) return at(0, 0)
+      if (this === main) return at(0, 500)
+      let top = 0
+      for (const child of main.children) {
+        if (child === this) return at(top, tall(child))
+        if (child.contains(this)) {
+          return child.classList.contains('list') ? at(top + [...child.children].indexOf(this) * 100, 100) : at(top, 0)
+        }
+        top += tall(child)
+      }
+      return at(0, 0)
+    })
+    await open()
+    // 460 px under the heading: four rows of one card and the 30 px pager.
+    expect(titles()).toEqual(['细分1', '细分2', '细分3', '细分4'])
+    expect(pager()!.querySelector('.pginfo')!.textContent).toBe('共 14 条')
+  })
+})
