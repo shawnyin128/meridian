@@ -6,7 +6,7 @@ import { createRequire } from 'node:module'
 import { tmpdir } from 'node:os'
 import { join, relative, resolve } from 'node:path'
 import { prepareSelectedLibrary } from '../apps/desktop/src/core/workspace-layout.js'
-import { expect, LAUNCH_SWITCHES, openSettings, test } from './app.js'
+import { expect, LAUNCH_SWITCHES, MOCK_KEYCHAIN, openSettings, test } from './app.js'
 
 const APP_DIR = resolve(import.meta.dirname, '../apps/desktop')
 const FIXTURE_VAULT = resolve(APP_DIR, 'src/core/fixtures/vault')
@@ -103,7 +103,7 @@ test('不传 MERIDIAN_SHOW_WINDOW 时窗口上屏', async ({ configHome, profile
     (e): e is [string, string] => e[1] !== undefined && !e[0].startsWith('MERIDIAN_')))
   // Point at the fixture vault: without it, the app would open the user's real vault from their configuration.
   const app = await electron.launch({
-    args: [APP_DIR, `--user-data-dir=${profile}`], env: { ...env, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT, MERIDIAN_CONFIG_HOME: configHome },
+    args: [APP_DIR, `--user-data-dir=${profile}`, MOCK_KEYCHAIN], env: { ...env, MERIDIAN_LIBRARY_ROOT: FIXTURE_VAULT, MERIDIAN_CONFIG_HOME: configHome },
   })
   try {
     const win = await app.firstWindow()

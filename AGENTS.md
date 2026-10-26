@@ -310,7 +310,8 @@ itself, and the CLI tests need PyYAML.
   screenshot and run end-to-end cases. Every automated launch sets
   `MERIDIAN_SHOW_WINDOW`, `0` for a hidden window and `isolated` for one that
   paints, passes `--force-color-profile=srgb` so screenshots store the page's
-  own colours, and passes its own `--user-data-dir`, a temporary folder removed
+  own colours and `--use-mock-keychain` so no ad-hoc-signed build asks the owner
+  for the login keychain, and passes its own `--user-data-dir`, a temporary folder removed
   afterwards, as the e2e fixture (`LAUNCH_SWITCHES` and `profile` in
   `e2e/app.ts`) and `scripts/test-library/app.mjs` already do. The App refuses
   to start an automated launch on its own user-data folder. On macOS both run the App
@@ -404,7 +405,7 @@ checks. This is the order to follow, on the version's release branch and never o
    and a build sharing that folder quits at once. Unset `ELECTRON_RUN_AS_NODE`
    first; shells started from VS Code extensions set it, and the build then runs
    as plain Node.
-   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<copy>/library MERIDIAN_CONFIG_HOME=<copy>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<copy>/user-data --force-color-profile=srgb`
+   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<copy>/library MERIDIAN_CONFIG_HOME=<copy>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<copy>/user-data --force-color-profile=srgb --use-mock-keychain`
    - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_SHOW_WINDOW = '0'; $env:MERIDIAN_VAULT_ROOT = '<copy>\library'; $env:MERIDIAN_CONFIG_HOME = '<copy>\config'; & '<build>\Meridian.exe' --user-data-dir='<copy>\user-data' --force-color-profile=srgb`
 
    `library.location`, `vault.today`, `project.list`, `project.get` for every
@@ -415,7 +416,7 @@ checks. This is the order to follow, on the version's release branch and never o
    paths it stores at the copy with
    `node scripts/test-library.mjs relocate --out <testlib>`, and launch the build
    on it the same quiet way:
-   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<testlib>/library MERIDIAN_CONFIG_HOME=<testlib>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<testlib>/user-data --force-color-profile=srgb`
+   - macOS: `env -u ELECTRON_RUN_AS_NODE MERIDIAN_SHOW_WINDOW=0 MERIDIAN_VAULT_ROOT=<testlib>/library MERIDIAN_CONFIG_HOME=<testlib>/config <build>/Meridian.app/Contents/MacOS/Meridian --user-data-dir=<testlib>/user-data --force-color-profile=srgb --use-mock-keychain`
    - Windows (PowerShell): `Remove-Item Env:ELECTRON_RUN_AS_NODE -ErrorAction Ignore; $env:MERIDIAN_SHOW_WINDOW = '0'; $env:MERIDIAN_VAULT_ROOT = '<testlib>\library'; $env:MERIDIAN_CONFIG_HOME = '<testlib>\config'; & '<build>\Meridian.exe' --user-data-dir='<testlib>\user-data' --force-color-profile=srgb`
 
    The same calls must succeed there, made the same way.

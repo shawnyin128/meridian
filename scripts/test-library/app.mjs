@@ -61,7 +61,7 @@ function appEnv(out, { show = false, network = false, bootstrap = false, canned 
   }
 }
 
-const appArgs = (out) => [`--user-data-dir=${join(out, 'user-data')}`, '--lang=zh-CN']
+const appArgs = (out) => [`--user-data-dir=${join(out, 'user-data')}`, '--lang=zh-CN', '--use-mock-keychain']
 
 /**
  * Launches `app` isolated on test library `out`, runs `steps` with `call(method, params)`, which
