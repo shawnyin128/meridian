@@ -76,6 +76,7 @@ describe('一轮停下时留下的回答存下的样子', () => {
         signal.addEventListener('abort', () => reject(new Error('cancelled')), { once: true })
       })),
       close: vi.fn(),
+      listModels: vi.fn(),
     }
     const config = await createHarnessModelConfig(join(root, 'config'), vault)
     await config.update({

@@ -68,16 +68,17 @@ export function ModelChips({ chat }: { chat: string | null }) {
   const { anyRuns, settings } = useModelStatus()
   const { openCategory } = useSettingsOpen()
   const { choice, adopt } = useChatChoice(chat, settings)
-  const shown = choice?.model ?? settings?.defaultModel ?? null
+  const shown = choice?.source ?? settings?.defaultModel ?? null
   const entry = settings?.models.find((model) => model.id === shown) ?? null
   const status = useCliStatus(entry?.source.kind === 'cli' ? entry.source.cli : null)
   if (settings === null) return null
   if (anyRuns !== true || entry === null) return <ModelStatusTag connected={false} />
 
   const group = settings.sources.find((held) => held.entries.includes(entry.id))!
-  const save = (model: string, effort?: string) => {
+  const save = (source: string, effort?: string) => {
     if (chat === null) return
-    chatApi.setModel(chat, model, effort).then(adopt).catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
+    chatApi.setModel(chat, source, source === entry.id ? choice?.model : undefined, effort)
+      .then(adopt).catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
   }
   const entryOf = (id: string) => settings.models.find((model) => model.id === id)!
   const offered = (id: string) => id === entry.id || entryOf(id).configured

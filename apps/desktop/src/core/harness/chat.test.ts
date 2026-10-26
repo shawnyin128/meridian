@@ -146,7 +146,7 @@ describe('model connection check', () => {
     runner.close()
   })
 
-  it('checks the configured model it is asked about, or the default without one', async () => {
+  it('checks the configured source it is asked about, or the default without one', async () => {
     const asked: unknown[] = []
     const runner = createChatHarnessRunner({
       store: {} as VaultStore,
@@ -156,10 +156,10 @@ describe('model connection check', () => {
       sessions: {} as CliChatSessions,
     })
 
-    await runner.checkConnection('sol')
+    await runner.checkConnection('cli:codex')
     await runner.checkConnection()
 
-    expect(asked).toEqual([{ model: 'sol' }, undefined])
+    expect(asked).toEqual([{ source: 'cli:codex' }, undefined])
     runner.close()
   })
 
@@ -186,6 +186,37 @@ describe('model connection check', () => {
     await expect(checking).resolves.toMatchObject({ state: 'connected' })
     expect(request).toMatchObject({ method: 'model.check', params: { model: { provider: 'openai', model: 'gpt-6.1' } } })
     expect((request['params'] as { model: object }).model).not.toHaveProperty('effort')
+    runner.close()
+  })
+
+  it('reads an API source\'s model list through Harness with the source\'s runtime model, and names why a read failed', async () => {
+    const child = new FakeHarness()
+    const model = {
+      provider: 'openai-compatible', protocol: 'responses', baseUrl: 'http://127.0.0.1:11434/v1', model: 'qwen3', authentication: 'none',
+    }
+    const asked: unknown[] = []
+    const runner = createChatHarnessRunner({
+      store: {} as VaultStore,
+      model: { runtime: async (choice: unknown) => { asked.push(choice); return model } } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+
+    const listing = runner.listModels('api:openai-compatible:http://127.0.0.1:11434/v1')
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { models: ['qwen3', 'llama4'] } })
+    await expect(listing).resolves.toEqual(['qwen3', 'llama4'])
+    expect([asked, request['method'], request['params']]).toEqual([
+      [{ source: 'api:openai-compatible:http://127.0.0.1:11434/v1' }], 'model.list', { model },
+    ])
+
+    const failing = runner.listModels('api:openai-compatible:http://127.0.0.1:11434/v1')
+    const refused = await child.frame()
+    child.send({ type: 'error', id: refused['id'], ok: false, error: { kind: 'model_error', message: 'too many', detail: 'rate_limit' } })
+    await expect(failing).rejects.toMatchObject({ reason: 'rate-limit' })
     runner.close()
   })
 })
@@ -443,7 +474,7 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
-  it('runs a turn on the model its chat chose, at the chat\'s own effort', async () => {
+  it('runs a turn on the source its chat chose, on the chat\'s own model and at its own effort', async () => {
     const child = new FakeHarness()
     const store = createFixtureStore()
     const chat = store.createChat('Speculative decoding', true).id
@@ -459,7 +490,7 @@ describe('a chat turn on a subscription CLI', () => {
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
       sessions: {} as CliChatSessions,
-      choiceOf: (id) => (id === chat ? { model: 'gpt', effort: 'xhigh' } : null),
+      choiceOf: (id) => (id === chat ? { source: 'api:openai', model: 'gpt-6.1', effort: 'xhigh' } : null),
       launch: () => child,
     })
     const answering = runner.answer(chat, 'Why?', new AbortController().signal)
@@ -468,7 +499,7 @@ describe('a chat turn on a subscription CLI', () => {
     child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Because.' } })
 
     await expect(answering).resolves.toBe('Because.')
-    expect(asked).toEqual([{ model: 'gpt', effort: 'xhigh' }])
+    expect(asked).toEqual([{ source: 'api:openai', model: 'gpt-6.1', effort: 'xhigh' }])
     runner.close()
   })
 

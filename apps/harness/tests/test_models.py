@@ -1,6 +1,8 @@
 """Tests for LangChain model construction without external requests."""
 
 import unittest
+from types import SimpleNamespace
+from unittest import mock
 
 from langchain_anthropic import ChatAnthropic
 from langchain_google_genai import ChatGoogleGenerativeAI
@@ -13,6 +15,7 @@ from meridian_harness.models import (
     ModelInvocationError,
     check_model_connection,
     create_chat_model,
+    list_models,
 )
 
 
@@ -265,6 +268,93 @@ class ModelFactoryTests(unittest.TestCase):
                 "maxOutputTokens": 1,
             },
         )
+
+
+class ModelListTests(unittest.TestCase):
+    """Each provider's official SDK client, replaced by a stand-in that records how it was built."""
+
+    def _client(self, listed: list[object], built: list[dict[str, object]]) -> type:
+        class Client:
+            def __init__(self, **options: object) -> None:
+                built.append(options)
+                self.models = SimpleNamespace(list=lambda **_: iter(listed))
+
+        return Client
+
+    def test_lists_a_compatible_service_with_the_openai_sdk_at_its_base_url_once_per_id(
+        self,
+    ) -> None:
+        built: list[dict[str, object]] = []
+        listed = [SimpleNamespace(id=name) for name in ("qwen3", "llama4", "qwen3", " ")]
+        with mock.patch("openai.OpenAI", self._client(listed, built)):
+            names = list_models(_model("openai-compatible", base_url="http://127.0.0.1:11434/v1/"))
+
+        self.assertEqual(names, ["qwen3", "llama4"])
+        self.assertEqual(
+            built,
+            [{
+                "api_key": "provider-secret",
+                "base_url": "http://127.0.0.1:11434/v1",
+                "max_retries": 0,
+                "timeout": 20.0,
+            }],
+        )
+
+    def test_lists_anthropic_models_with_the_anthropic_sdk(self) -> None:
+        built: list[dict[str, object]] = []
+        listed = [SimpleNamespace(id="claude-opus-5-5"), SimpleNamespace(id="claude-sonnet-5-5")]
+        with mock.patch("anthropic.Anthropic", self._client(listed, built)):
+            names = list_models(
+                _model("anthropic", base_url="https://api.anthropic.com", protocol="messages")
+            )
+
+        self.assertEqual(names, ["claude-opus-5-5", "claude-sonnet-5-5"])
+        self.assertEqual(built[0]["max_retries"], 0)
+
+    def test_lists_only_the_gemini_models_that_generate_content_by_their_ids(self) -> None:
+        built: list[dict[str, object]] = []
+        listed = [
+            SimpleNamespace(
+                name="models/gemini-3-pro", supported_actions=["generateContent", "countTokens"]
+            ),
+            SimpleNamespace(
+                name="models/text-embedding-005", supported_actions=["embedContent"]
+            ),
+        ]
+        with mock.patch("google.genai.Client", self._client(listed, built)):
+            names = list_models(
+                _model(
+                    "google-gemini",
+                    base_url="https://generativelanguage.googleapis.com/v1beta",
+                    protocol="generate-content",
+                )
+            )
+
+        self.assertEqual(names, ["gemini-3-pro"])
+        self.assertEqual(built[0]["api_key"], "provider-secret")
+
+    def test_classifies_a_provider_failure_without_its_own_text(self) -> None:
+        class RefusedError(Exception):
+            status_code = 401
+
+        class Client:
+            def __init__(self, **_: object) -> None:
+                self.models = SimpleNamespace(list=self._refuse)
+
+            def _refuse(self) -> list[object]:
+                raise RefusedError("Incorrect API key provided: provider-secret")
+
+        with mock.patch("openai.OpenAI", Client), self.assertRaises(ModelInvocationError) as raised:
+            list_models(_model("openai"))
+
+        self.assertEqual(raised.exception.detail, "authentication")
+        self.assertNotIn("provider-secret", str(raised.exception))
+
+    def test_rejects_a_model_that_is_not_set_up_before_building_a_client(self) -> None:
+        unset = {**_model("openai"), "apiKey": None}
+        with mock.patch("openai.OpenAI") as client, self.assertRaises(ModelConfigurationError):
+            list_models(unset)
+        client.assert_not_called()
 
 
 def _model(
