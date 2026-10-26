@@ -28,7 +28,7 @@ const state = vi.hoisted(() => ({
 
 vi.mock('../ipc.js', () => ({
   library: { location: () => Promise.resolve({ root: '/libraries/new', openError: state.openError }) },
-  harness: { modelSettings: () => { state.reads += 1; return Promise.resolve({ configured: state.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) } },
+  harness: { modelSettings: () => { state.reads += 1; return Promise.resolve({ configured: state.configured, subscription: { active: null, models: { claude: '', codex: '' }, efforts: {} } }) } },
   extensions: {
     status: () => {
       state.extensionReads += 1

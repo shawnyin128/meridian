@@ -13,7 +13,7 @@ declare global {
 const settings = (configured: boolean): HarnessModelSettings => ({
   provider: 'openai-compatible', protocol: 'chat-completions', baseUrl: 'https://api.deepseek.com', model: configured ? 'deepseek-chat' : '',
   authentication: 'api-key', apiKeyConfigured: configured, configured, profiles: [],
-  subscription: { active: null, models: { claude: '', codex: '' } },
+  subscription: { active: null, models: { claude: '', codex: '' }, efforts: {} },
 })
 
 const core = vi.hoisted(() => ({
@@ -106,7 +106,7 @@ describe('the App\'s model status', () => {
   it('reads a chosen subscription as the source whether or not an endpoint is set up, and a choice it cannot read as none', () => {
     const chosen = (configured: boolean, error?: 'invalid') => ({
       ...settings(configured),
-      subscription: { active: error === undefined ? 'codex' as const : null, models: { claude: '', codex: '' }, ...(error === undefined ? {} : { error }) },
+      subscription: { active: error === undefined ? 'codex' as const : null, models: { claude: '', codex: '' }, efforts: {}, ...(error === undefined ? {} : { error }) },
     })
     expect([modelSourceOf(chosen(false)), modelSourceOf(chosen(true)), modelSourceOf(chosen(true, 'invalid'))])
       .toEqual(['subscription', 'subscription', null])

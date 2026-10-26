@@ -38,7 +38,7 @@ const core = vi.hoisted(() => {
     })),
     /** Whether the model settings set up a model. */
     configured: true,
-    modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({ configured: core.configured, subscription: { active: null, models: { claude: '', codex: '' } } })),
+    modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({ configured: core.configured, subscription: { active: null, models: { claude: '', codex: '' }, efforts: {} } })),
   }
 })
 

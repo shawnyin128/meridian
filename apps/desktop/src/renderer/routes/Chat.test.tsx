@@ -52,7 +52,7 @@ vi.mock('../ipc.js', () => ({
     writing: api.writing,
   },
   feed: { append: api.feedAppend },
-  harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
+  harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' }, efforts: {} } }) },
   idea: { create: api.createIdea },
   jobs: {
     status: (): Promise<JobsStatus> => Promise.resolve({

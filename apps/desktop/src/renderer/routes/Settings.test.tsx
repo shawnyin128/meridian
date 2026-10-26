@@ -31,7 +31,7 @@ const api = vi.hoisted(() => ({
       apiKeyLastFour: undefined as string | undefined, configured: false,
     }],
     subscription: {
-      active: null as HarnessCli | null, models: { claude: '', codex: '' },
+      active: null as HarnessCli | null, models: { claude: '', codex: '' }, efforts: {},
       error: undefined as CallFailure | undefined,
     },
   })),
@@ -42,17 +42,17 @@ const api = vi.hoisted(() => ({
       provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-test',
       authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: 'cret', configured: true,
     }],
-    subscription: { active: null as HarnessCli | null, models: { claude: '', codex: '' }, error: undefined as CallFailure | undefined },
+    subscription: { active: null as HarnessCli | null, models: { claude: '', codex: '' }, efforts: {}, error: undefined as CallFailure | undefined },
   })),
   updateSubscription: vi.fn(async (choice: { cli: HarnessCli; model: string }) => ({
     ...(await api.modelSettings()),
     subscription: {
-      active: choice.cli as HarnessCli | null, models: { claude: '', codex: '', [choice.cli]: choice.model },
+      active: choice.cli as HarnessCli | null, models: { claude: '', codex: '', [choice.cli]: choice.model }, efforts: {},
       error: undefined as CallFailure | undefined,
     },
   })),
   subscriptionStatus: vi.fn<(cli: HarnessCli) => Promise<HarnessSubscriptionStatus>>(async () => ({
-    state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'],
+    state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'], efforts: {},
   })),
   checkModelConnection: vi.fn(async (): Promise<HarnessModelConnectionCheckResult> => ({
     state: 'connected' as const, modelCalls: 1 as const, maxOutputTokens: 1 as const,
@@ -371,15 +371,15 @@ describe('Settings', () => {
   })
 
   it('API 总览在选了订阅时写订阅的名字，订阅指定了模型时再写模型', async () => {
-    const shown = async (subscription: { active: HarnessCli; models: { claude: string; codex: string } }) => {
+    const shown = async (subscription: { active: HarnessCli; models: { claude: string; codex: string }; efforts: { claude?: string; codex?: string } }) => {
       api.modelSettings.mockResolvedValueOnce({ ...(await api.modelSettings()), subscription: { ...subscription, error: undefined } })
       await act(async () => { root.render(<MessagesProvider key={JSON.stringify(subscription)}><Settings /></MessagesProvider>) })
       const dialog = document.querySelector('.setdlg')!
       await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
       return dialog.querySelector('[data-api="model"] .api-state')?.textContent
     }
-    expect(await shown({ active: 'claude', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('Claude 订阅')
-    expect(await shown({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('ChatGPT 订阅 · gpt-5-codex')
+    expect(await shown({ active: 'claude', models: { claude: '', codex: 'gpt-5-codex' }, efforts: {} })).toBe('Claude 订阅')
+    expect(await shown({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, efforts: {} })).toBe('ChatGPT 订阅 · gpt-5-codex')
   })
 
   it('API 总览还没读到一项的状态时，那一格是载入占位，不写正在读取', async () => {
@@ -1167,7 +1167,7 @@ describe('Settings', () => {
         model: 'gpt-test', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'c123', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1207,7 +1207,7 @@ describe('Settings', () => {
         model: 'gpt-test', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'c123', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1243,7 +1243,7 @@ describe('Settings', () => {
         authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'd18b', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
     })
     api.checkModelConnection.mockResolvedValueOnce({
       state: 'failed', reason: 'model-or-endpoint',
@@ -1277,7 +1277,7 @@ describe('Settings', () => {
         model: 'claude-saved', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: '2222', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1539,7 +1539,7 @@ describe('Settings', () => {
         provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-saved',
         authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: '1111', configured: true,
       }],
-      subscription: { active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, error: undefined },
+      subscription: { active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, efforts: {}, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1582,7 +1582,7 @@ describe('Settings', () => {
     expect(rings()).toEqual([['CLI', 'text', true], ['登录', 'tag', true], ['模型 ID', 'field', true]])
     expect(dialog.querySelector('[aria-label="模型名称"]')).toBeNull()
 
-    await act(async () => { answer({ state: 'found', version: '2.1.3', signIn: 'subscription', models: [] }) })
+    await act(async () => { answer({ state: 'found', version: '2.1.3', signIn: 'subscription', models: [], efforts: {} }) })
     expect(dialog.querySelector('.model-settings-card .loading-placeholder')).toBeNull()
     expect(modelRows(dialog)).toEqual([['模型服务', 'Claude 订阅'], ['CLI', 'Claude Code 2.1.3'], ['登录', '已用订阅登录'], ['模型 ID', '']])
     expect(dialog.querySelector('[aria-label="模型名称"]')).not.toBeNull()
@@ -1625,7 +1625,7 @@ describe('Settings', () => {
   })
 
   it('读不出 CLI 的版本时 CLI 一行只写它的名字', async () => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'] }).mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription', models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'], efforts: {} }).mockResolvedValueOnce({ state: 'found', version: null, signIn: 'subscription', models: [], efforts: {} })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1640,7 +1640,7 @@ describe('Settings', () => {
     ['other', '未用订阅登录'],
     ['unknown', '读不出登录状态'],
   ] as const)('CLI 登录方式是 %s 时登录一行是提醒色的标签', async (signIn, text) => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn, models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn, models: [], efforts: {} })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1661,7 +1661,7 @@ describe('Settings', () => {
         model: 'gpt-saved', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: '1111', configured: true,
       }],
-      subscription: { active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' }, error: undefined },
+      subscription: { active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' }, efforts: {}, error: undefined },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1703,7 +1703,7 @@ describe('Settings', () => {
   it('订阅没用订阅登录时卡片里有一条登录命令，和扩展的安装命令同一种：复制后按钮就地亮出对勾', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'signed-out', models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'signed-out', models: [], efforts: {} })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1724,7 +1724,7 @@ describe('Settings', () => {
     ['unknown', 'codex login'],
     ['subscription', null],
   ] as const)('Codex 登录方式是 %s 时登录命令是 %s', async (signIn, command) => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'] }).mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn, models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'], efforts: {} }).mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn, models: [], efforts: {} })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1805,7 +1805,7 @@ describe('Settings', () => {
   })
 
   it('CLI 不列模型时模型列表只有默认', async () => {
-    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'] }).mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn: 'subscription', models: [] })
+    api.subscriptionStatus.mockResolvedValueOnce({ state: 'found', version: '2.1.3', signIn: 'subscription', models: ['opus', 'sonnet'], efforts: {} }).mockResolvedValueOnce({ state: 'found', version: '0.163.0', signIn: 'subscription', models: [], efforts: {} })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1831,7 +1831,7 @@ describe('Settings', () => {
 
   it('存的订阅选择读不出来时只显示原因', async () => {
     api.modelSettings.mockResolvedValueOnce({
-      ...(await api.modelSettings()), subscription: { active: null, models: { claude: '', codex: '' }, error: 'newer-version' },
+      ...(await api.modelSettings()), subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: 'newer-version' },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
