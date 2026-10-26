@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Protocol
+from typing import Annotated, Protocol
 
 from langchain_core.prompt_values import PromptValue
 from langchain_core.prompts import ChatPromptTemplate
@@ -22,6 +22,7 @@ from meridian_harness.models import (
     ModelInvocationError,
     create_chat_model,
     runs_on_cli,
+    structured_output_method,
 )
 from meridian_harness.protocol import ProtocolViolation
 
@@ -129,7 +130,7 @@ class UserObservation(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     text: str = Field(min_length=1, max_length=4_000)
-    reading_refs: list[str] = Field(
+    reading_refs: list[Annotated[str, Field(min_length=1, max_length=200)]] = Field(
         min_length=1,
         max_length=20,
         description="Reading anchors: highlight:<id>, note:<id>, or remark",
@@ -166,7 +167,9 @@ class PaperWikiDraft(BaseModel):
     implementation_hooks: list[ImplementationHook] = Field(min_length=1, max_length=8)
     limitations: list[SourceStatement] = Field(default_factory=list, max_length=8)
     user_observations: list[UserObservation] = Field(default_factory=list, max_length=12)
-    open_questions: list[str] = Field(default_factory=list, max_length=8)
+    open_questions: list[Annotated[str, Field(min_length=1, max_length=1_000)]] = Field(
+        default_factory=list, max_length=8,
+    )
 
     @field_validator("what_to_remember")
     @classmethod
@@ -201,8 +204,8 @@ class PaperWikiDraft(BaseModel):
     @field_validator("open_questions")
     @classmethod
     def validate_open_questions(cls, value: list[str]) -> list[str]:
-        if any(not item.strip() or len(item) > 1_000 for item in value):
-            raise ValueError("Open questions must be non-blank and at most 1000 characters")
+        if any(not item.strip() for item in value):
+            raise ValueError("Open questions must be non-blank")
         if any(not item.rstrip().endswith(("?", "？")) for item in value):
             raise ValueError("Open questions must use question form")
         _require_unique(value, "Open questions")
@@ -376,7 +379,9 @@ def build_draft_chain(model: object, limits: object) -> DraftChain:
     """Compose the LangChain prompt with provider-native structured output."""
 
     chat_model = create_chat_model(model, limits)
-    structured_model = chat_model.with_structured_output(PaperWikiDraft, method="json_schema")
+    structured_model = chat_model.with_structured_output(
+        PaperWikiDraft, method=structured_output_method(model),
+    )
     return PAPER_WIKI_PROMPT | structured_model
 
 
