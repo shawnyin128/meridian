@@ -81,10 +81,9 @@ function ModelMenu({ name, isDefault, onSetDefault, onEdit, onDelete }: {
  * picked by a click or its … menu's Edit, saves that model anew, in its place, with that row
  * selected; then every configured model, grouped by source in the order the sources are shown, each
  * row naming its model, source and reasoning effort, with its state and the default's mark, and a
- * … menu to make it the default, edit it or delete it; the list scrolls to a model a save adds and
- * flashes it. The form keeps what is typed for a new model or a model's change as a draft, the key
- * left out. `onCopy` puts a command on the clipboard and
- * resolves whether it did.
+ * … menu to make it the default, edit it or delete it; the list scrolls to the model a save adds
+ * or changes and flashes it. The form keeps what is typed for a new model or a model's change as a
+ * draft, the key left out. `onCopy` puts a command on the clipboard and resolves whether it did.
  */
 export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<boolean> }) {
   const m = useMessages()
@@ -94,10 +93,10 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
   const [adds, setAdds] = useState(0)
   const [statuses, setStatuses] = useState<Partial<Record<HarnessCli, HarnessSubscriptionStatus>>>({})
   const [actionError, setActionError] = useState<string | null>(null)
-  // The model a save just added, which the list scrolls to and flashes.
-  const [added, setAdded] = useState<{ id: string } | null>(null)
+  // The model a save just added or changed, which the list scrolls to and flashes.
+  const [landing, setLanding] = useState<{ id: string } | null>(null)
   const { error, failure, load } = useScreenLoad(CLI_LOADS)
-  useArrival(added, settings !== null, ({ id }) => document.querySelector(`.model-list [data-model="${CSS.escape(id)}"]`))
+  useArrival(landing, settings !== null, ({ id }) => document.querySelector(`.model-list [data-model="${CSS.escape(id)}"]`))
   const drafts = useDrafts<ModelDraft>(['settings', 'model'], settings === null ? null : [NEW_MODEL, ...settings.models.map((entry) => entry.id)])
 
   useEffect(() => load('settings', harness.modelSettings(), setSettings), [load])
@@ -127,8 +126,8 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
   }
   const saved = (next: HarnessModelSettings) => {
     drafts.drop(target)
-    const fresh = next.models.find((entry) => !byId.has(entry.id))
-    if (fresh !== undefined) setAdded({ id: fresh.id })
+    const id = edited?.id ?? next.models.find((entry) => !byId.has(entry.id))?.id
+    if (id !== undefined) setLanding({ id })
     setSettings(next)
     setEditing(null)
     setAdds((count) => count + 1)
