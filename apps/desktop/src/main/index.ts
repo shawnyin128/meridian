@@ -3,7 +3,7 @@ import {
   utilityProcess,
 } from 'electron'
 import { execFile, spawn } from 'node:child_process'
-import { existsSync, readFileSync, writeFileSync, writeSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, writeFileSync, writeSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, resolve } from 'node:path'
@@ -34,6 +34,7 @@ const CHOOSE_LIBRARY_ROOT = 'meridian:choose-library-root'
 const CHOOSE_WORKSPACE_ROOT = 'meridian:choose-workspace-root'
 const REVEAL_FILE = 'meridian:reveal-file'
 const RESTART_APP = 'meridian:restart-app'
+const REVEAL_LOGS = 'meridian:reveal-logs'
 const TOGGLE_MAXIMIZE = 'meridian:toggle-maximize'
 const SET_LOCALE = 'meridian:set-locale'
 const UPDATE_STATUS = 'meridian:update-status'
@@ -257,6 +258,13 @@ app.whenReady().then(() => {
     if (event.sender !== win.webContents || typeof path !== 'string' || !existsSync(path)) return false
     shell.showItemInFolder(path)
     return true
+  })
+  // Core writes its log files there (core/core-log.ts).
+  ipcMain.on(REVEAL_LOGS, (event) => {
+    if (event.sender !== win.webContents) return
+    const logs = join(app.getPath('userData'), 'logs')
+    mkdirSync(logs, { recursive: true })
+    void shell.openPath(logs).then((failed) => { if (failed !== '') console.error(`[main] logs folder did not open: ${failed}`) })
   })
   // Only packaged builds have a release feed. Squirrel.Mac only updates signed apps, so on macOS
   // the App replaces its own bundle, or offers the release page where it cannot write its location.

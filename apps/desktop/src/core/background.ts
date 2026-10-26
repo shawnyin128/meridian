@@ -158,7 +158,7 @@ export function createBackground(deps: {
           .filter((profile) => profile.seedCount + profile.positiveCount > 0 && profile.intentCount > 0)
           .map((profile) => profile.lastFetchedAt),
         run: () => fetchDiscoveries().catch((error: unknown) => {
-          console.error(`[discovery] 定时刷新论文发现失败：${error instanceof Error ? error.message : String(error)}`)
+          console.error(`[discovery] scheduled discovery refresh failed: ${error instanceof Error ? error.message : String(error)}`)
         }),
       }, deps.now)
       return () => {

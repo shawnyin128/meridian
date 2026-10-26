@@ -120,7 +120,7 @@ export async function listCliModels(
       ]),
     }
   } catch (cause) {
-    console.error(`[harness] codex 的模型目录读不出来：${cause instanceof Error ? cause.message : String(cause)}`)
+    console.error(`[harness] codex's model catalog cannot be read: ${cause instanceof Error ? cause.message : String(cause)}`)
     return { models: [], efforts: {} }
   }
 }

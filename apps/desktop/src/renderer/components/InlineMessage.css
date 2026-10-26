@@ -13,3 +13,5 @@
 .inline-message-lead svg{width:14px;height:14px}
 .inline-message-text{flex:1;min-width:0;overflow-wrap:anywhere}
 .inline-message-action{display:flex;flex:none;align-items:center;gap:var(--sp-8)}
+/* An action at the text follows it on its line: the text keeps to its own width. */
+.inline-message--action-at-text .inline-message-text{flex:0 1 auto}

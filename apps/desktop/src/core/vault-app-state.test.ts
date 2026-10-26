@@ -618,6 +618,20 @@ describe('vault app state', () => {
       expect(back.listFeed()[0]).toMatchObject({ source: 'me', day: '今天', time: '刚刚' })
     })
 
+    it('a retried turn\'s outcome takes the place of the failure line the chat ended with, also after reopening', () => {
+      const chat = store.createChat('新对话', false)
+      const said = (role: 'you' | 'ai' | 'status', text: string) => ({ role, runs: [{ kind: 'text' as const, text }], actions: [] })
+      store.appendChatMessages(chat.id, [said('you', '问'), said('status', '生成失败：AI 服务停了')])
+      store.replaceChatStatus(chat.id, said('status', '生成失败：AI 服务内部出错'))
+      store.replaceChatStatus(chat.id, said('ai', '答'))
+
+      const texts = (held: typeof store) => held.chatMessages(chat.id).map((message) => [message.role, message.runs[0]!.text])
+      expect(texts(store)).toEqual([['you', '问'], ['ai', '答']])
+      expect(texts(reopen())).toEqual([['you', '问'], ['ai', '答']])
+      store.replaceChatStatus(chat.id, said('ai', '再答'))
+      expect(texts(store)).toEqual([['you', '问'], ['ai', '答'], ['ai', '再答']])
+    })
+
     it('论文上下文会话按论文身份复用并跨重启保存', () => {
       const session = store.chatForPaper(PAPER)
       expect(store.listChats()).toEqual([])

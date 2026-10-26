@@ -1,0 +1,12 @@
+/*
+ * The one failure that unfolds into its details. The details start under the summary's text, past
+ * the error mark and its gap, one compact row each: the label in the meta type, then the raw detail in
+ * a code chip that wraps a long detail.
+ */
+.failure-disclosure{display:flex;flex-direction:column;gap:var(--sp-6);min-width:0}
+/* The first column is the 14px error mark's, so each row starts where the summary's text does. */
+.failure-details{display:grid;grid-template-columns:14px minmax(0,1fr);column-gap:var(--sp-8);row-gap:var(--sp-4);margin:0;padding:0;list-style:none}
+.failure-detail{grid-column:2;display:flex;align-items:baseline;gap:var(--sp-8);min-width:0;color:var(--sec);font-size:var(--fs-meta);line-height:var(--lh-ui)}
+.failure-detail-label{flex:none}
+.failure-detail-code{min-width:0;padding:var(--sp-2) var(--sp-8);border-radius:var(--r-sm);background:var(--field);color:var(--sec);
+  font-family:var(--mono);font-size:var(--fs-label);overflow-wrap:anywhere}

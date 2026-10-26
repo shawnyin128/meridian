@@ -2036,6 +2036,20 @@ describe('fixture store', () => {
     expect(store.listChats().find((s) => s.id === created.id)!.title).toBe('@draft 效率 这条')
   })
 
+  it('a retried turn\'s outcome takes the place of the failure line the chat ends with, and follows any other message', () => {
+    const said = (role: 'you' | 'ai' | 'status', text: string) => ({ role, runs: [{ kind: 'text' as const, text }], actions: [] })
+    store.appendChatMessages('amortize', [said('you', '问'), said('status', '生成失败：AI 服务停了')])
+    const before = store.chatMessages('amortize').length
+    store.replaceChatStatus('amortize', said('status', '生成失败：AI 服务内部出错'))
+    store.replaceChatStatus('amortize', said('ai', '答'))
+    store.replaceChatStatus('amortize', said('ai', '再答'))
+    const messages = store.chatMessages('amortize')
+    expect(messages.slice(before - 2).map((message) => [message.role, message.runs[0]!.text]))
+      .toEqual([['you', '问'], ['ai', '答'], ['ai', '再答']])
+    expect(new Set(messages.map((message) => message.id)).size).toBe(messages.length)
+    expect(() => store.replaceChatStatus('nope', said('ai', '答'))).toThrow()
+  })
+
   it('追加的消息接在原有消息后面,id 各不相同', () => {
     store.appendChatMessages('amortize', [
       { role: 'you', runs: [{ kind: 'text', text: '再问一句' }], actions: [] },
@@ -2477,7 +2491,7 @@ describe('fixture store', () => {
       'harness.updateSubscription', 'harness.subscriptionStatus', 'harness.sourceModels',
       'harness.addModel', 'harness.updateModel', 'harness.removeModel', 'harness.setDefaultModel', 'chat.model', 'chat.setModel',
       'harness.applyPaperWiki',
-      'harness.rejectPaperWiki', 'chat.send', 'chat.retry', 'chat.cancel', 'chat.writing',
+      'harness.rejectPaperWiki', 'chat.send', 'chat.retry', 'chat.cancel', 'chat.writing', 'chat.failure',
       'idea.placeOnGraph', 'wiki.propose', 'wiki.proposals', 'wiki.decide',
     ])
     for (const method of CONTRACT_METHODS.filter((candidate) => !coreMethods.has(candidate))) {

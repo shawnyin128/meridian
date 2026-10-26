@@ -138,6 +138,52 @@ describe('ChatMessageView', () => {
     expect([bubble.textContent, bubble.querySelector('.tag')]).toEqual(['@推测解码 里说加速比取决于接受率，长回答也是这样吗？', null])
   })
 
+  it('一轮失败的行收起时只说生成失败,展开符和重试紧跟其后;展开后是原因,有 Core 记下的失败之处时再一行写步骤和代码样式的类型与细节', () => {
+    const failed: ChatMessage = { id: 's1', role: 'status', runs: [{ kind: 'text', text: '生成失败：AI 服务内部出错' }], actions: [] }
+    const retried = vi.fn()
+    act(() => root!.render(
+      <MessagesProvider>
+        <ChatMessageView
+          message={failed} onAct={() => {}} onRetry={retried}
+          failure={{ step: 'request', kind: 'bad_request', detail: 'Core returned an invalid chat context' }}
+        />
+      </MessagesProvider>,
+    ))
+    const row = host.querySelector('.msg .failure-disclosure')!
+    const line = row.querySelector('.inline-message')!
+    expect(line.className).toContain('inline-message--error')
+    expect(line.className).toContain('inline-message--action-at-text')
+    expect([...line.children].map((part) => [part.className, part.textContent])).toEqual([
+      ['inline-message-lead', ''], ['inline-message-text', '生成失败'], ['inline-message-action', '重试'],
+    ])
+    const toggle = row.querySelector<HTMLElement>('.fold-toggle')!
+    expect(toggle.getAttribute('aria-expanded')).toBe('false')
+    expect(row.querySelector('.failure-details')).toBeNull()
+    act(() => toggle.click())
+    expect(toggle.getAttribute('aria-expanded')).toBe('true')
+    expect([...row.querySelectorAll('.failure-detail')].map((detail) => [
+      detail.querySelector('.failure-detail-label')!.textContent, detail.querySelector('code')?.textContent,
+    ])).toEqual([
+      ['AI 服务内部出错', undefined],
+      ['AI 服务处理请求', 'bad_request · Core returned an invalid chat context'],
+    ])
+    act(() => row.querySelector<HTMLElement>('.inline-message-action .btn')!.click())
+    expect(retried).toHaveBeenCalledOnce()
+  })
+
+  it('失败之处没有英文细节时,代码只写它的类型', () => {
+    act(() => root!.render(
+      <MessagesProvider>
+        <ChatMessageView
+          message={{ id: 's1', role: 'status', runs: [{ kind: 'text', text: '生成失败：还没有连上模型' }], actions: [] }}
+          onAct={() => {}} failure={{ step: 'start', kind: 'no_model', detail: 'no_model' }}
+        />
+      </MessagesProvider>,
+    ))
+    act(() => host.querySelector<HTMLElement>('.fold-toggle')!.click())
+    expect([...host.querySelectorAll('.failure-detail')].map((detail) => detail.textContent)).toEqual(['还没有连上模型', '启动 AI 服务no_model'])
+  })
+
   it('状态行以图标开头，没有身份标签', () => {
     show({ id: 'm2', role: 'status', runs: [{ kind: 'text', text: 'AI 尚未接入。' }], actions: [] })
     const line = host.querySelector('.msg .event')!
@@ -149,14 +195,27 @@ describe('ChatMessageView', () => {
     expect(host.querySelector('.source-label')).toBeNull()
   })
 
-  /** The text status line `text` shows in `language`. */
+  /**
+   * What status line `text` shows in `language`: its text, or for a failed turn, what it says folded
+   * and, once unfolded, the reason under it.
+   */
   const statusIn = (language: 'zh' | 'en', text: string) => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, language)
     // The language is read when the App mounts, so each language gets a fresh mount.
     act(() => root!.unmount())
     root = createRoot(host)
     show({ id: 's1', role: 'status', runs: [{ kind: 'text', text }], actions: [] })
-    return host.querySelector('.msg .event')!.textContent
+    const failed = host.querySelector('.msg .failure-disclosure')
+    if (failed === null) return host.querySelector('.msg .event')!.textContent
+    const toggle = failed.querySelector<HTMLElement>('.fold-toggle')!
+    const folded = toggle.textContent
+    act(() => toggle.click())
+    return [folded, ...[...failed.querySelectorAll('.failure-detail')].map((row) => row.textContent)]
+  }
+  /** What a stored line `shown` in `language` reads as: a failed turn's summary and reason, else the line. */
+  const asShown = (language: 'zh' | 'en', shown: string) => {
+    const [summary, separator] = language === 'zh' ? ['生成失败', '：'] : ['Generation failed', ': ']
+    return shown.startsWith(summary + separator) ? [summary, shown.slice(summary.length + separator.length)] : shown
   }
 
   /** Every status line the App has written, as stored, with what an English UI shows for it. */
@@ -169,6 +228,7 @@ describe('ChatMessageView', () => {
     ['生成失败：模型的回答读不出来', 'Generation failed: The model’s answer could not be read'],
     ['生成失败：AI 服务停了', 'Generation failed: The AI service stopped'],
     ['生成失败：对话太长，或这次请求模型不支持', 'Generation failed: The chat is too long, or the model does not support this request'],
+    ['生成失败：AI 服务内部出错', 'Generation failed: The AI service ran into an internal error'],
     ['生成失败：还没有连上模型', 'Generation failed: No model is connected yet'],
     ['生成失败：AI 服务出了错', 'Generation failed: The AI service ran into an error'],
     ['生成失败：模型服务请求过多（429），请稍后重新确认任务', 'Generation failed: Too many requests to the model service (429). Confirm the task again later'],
@@ -184,11 +244,11 @@ describe('ChatMessageView', () => {
   ]
 
   it('英文界面里，App 存下的中文状态行(0.0.19.0 及以前存的也一样)显示成英文', () => {
-    expect(WRITTEN.map(([stored]) => statusIn('en', stored))).toEqual(WRITTEN.map(([, english]) => english))
+    expect(WRITTEN.map(([stored]) => statusIn('en', stored))).toEqual(WRITTEN.map(([, english]) => asShown('en', english)))
   })
 
   it('中文界面里，App 存下的每一种状态行都照存下的原样显示', () => {
-    expect(WRITTEN.map(([stored]) => statusIn('zh', stored))).toEqual(WRITTEN.map(([stored]) => stored))
+    expect(WRITTEN.map(([stored]) => statusIn('zh', stored))).toEqual(WRITTEN.map(([stored]) => asShown('zh', stored)))
   })
 
   it('App 没写过的话照原样显示;生成失败的原因 App 没写过时,只把“生成失败”换成界面的语言', () => {
@@ -199,9 +259,9 @@ describe('ChatMessageView', () => {
       statusIn('en', '生成失败：模型服务返回 HTTP 五百'),
     ]).toEqual([
       'agent 留下的一句话',
-      'Generation failed: Unsupported Harness model provider',
-      '生成失败：Unsupported Harness model provider',
-      'Generation failed: 模型服务返回 HTTP 五百',
+      ['Generation failed', 'Unsupported Harness model provider'],
+      ['生成失败', 'Unsupported Harness model provider'],
+      ['Generation failed', '模型服务返回 HTTP 五百'],
     ])
   })
 })

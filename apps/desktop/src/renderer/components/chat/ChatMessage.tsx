@@ -1,17 +1,18 @@
 import { Fragment } from 'react'
 import type {
-  ChatAction, ChatMessage, ChatMessageFields, ChatRun,
+  ChatAction, ChatMessage, ChatMessageFields, ChatRun, HarnessFailureDetail,
 } from '../../../shared/contract.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { useJump } from '../../shell/AppShell.js'
 import { ElapsedTime } from '../ElapsedTime.js'
+import { FailureDisclosure } from '../FailureDisclosure.js'
 import { ENTITY_SCREEN, EntityLink, opensHere } from '../EntityLink.js'
 import { Icon, RunningRing } from '../icons.js'
 import { InlineMessage } from '../InlineMessage.js'
 import { AgentLabel, ModelLabel } from '../SourceLabel.js'
 import { Tag } from '../Tag.js'
 import { Button } from '../Button.js'
-import { statusLine } from './status-lines.js'
+import { failedReason, statusLine } from './status-lines.js'
 
 export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 'text', text })
 export const said = (runs: ChatRun[]): ChatMessageFields => ({ role: 'you', runs, actions: [] })
@@ -37,6 +38,13 @@ function Mention({ run }: { run: ChatRun }) {
 /** Whether the turn `messages` end with got no answer: the chat ends with its status line, which Retry follows. */
 export const endsUnanswered = (messages: readonly ChatMessage[] | null): boolean => messages?.at(-1)?.role === 'status'
 
+/**
+ * The messages a chat shows of `messages`: all of them, but without the status line they end with
+ * while a turn runs, `running`, which takes its place.
+ */
+export const shownMessages = (messages: readonly ChatMessage[], running: boolean): readonly ChatMessage[] =>
+  (running && endsUnanswered(messages) ? messages.slice(0, -1) : messages)
+
 /** The text of a message; each run renders by its own kind. */
 function Runs({ runs }: { runs: ChatRun[] }) {
   return (
@@ -51,20 +59,43 @@ function Runs({ runs }: { runs: ChatRun[] }) {
 /**
  * One message: what you said sits on the right as a bubble, an answer is unboxed text under the label
  * of the model that wrote it, or of an agent for an answer kept without one, and a status line is an
- * inline note led by an icon that never poses as a model answer. With `onRetry`, given to the status
- * line of a turn that got no answer, the line ends with Retry. With `writingSince`, when its turn
+ * inline note led by an icon that never poses as a model answer. The status line of a failed turn says
+ * only that it failed and unfolds into its reason and, with `failure`, where it failed, its kind and
+ * detail. With `onRetry`, given to the status line of a turn that got no answer, the line ends with
+ * Retry. With `writingSince`, when its turn
  * began, the answer is being written, and until it has text it says the model is thinking and for
  * how long so far, beside the running ring.
  */
-export function ChatMessageView({ message, onAct, onRetry, writingSince }: {
+export function ChatMessageView({ message, onAct, onRetry, failure, writingSince }: {
   message: ChatMessage
   onAct: (action: ChatAction) => void
   onRetry?: (() => void) | undefined
+  failure?: HarnessFailureDetail | null | undefined
   writingSince?: string | undefined
 }) {
   const m = useMessages()
   if (message.role === 'status') {
     const stored = message.runs.map((run) => run.text).join('')
+    const reason = failedReason(stored, m)
+    const retry = onRetry === undefined ? undefined : <Button size="compact" variant="ghost" onClick={onRetry}>{m.common.retry}</Button>
+    if (reason !== null) {
+      return (
+        <div className="mwrap">
+          <div className="msg">
+            <FailureDisclosure
+              summary={m.chat.failure.summary} action={retry}
+              rows={[
+                { label: reason },
+                ...(failure === null || failure === undefined ? [] : [{
+                  label: m.chat.failure.steps[failure.step],
+                  code: failure.detail === failure.kind ? failure.kind : `${failure.kind} · ${failure.detail}`,
+                }]),
+              ]}
+            />
+          </div>
+        </div>
+      )
+    }
     const shown = statusLine(stored, m)
     return (
       <div className="mwrap">
@@ -74,7 +105,7 @@ export function ChatMessageView({ message, onAct, onRetry, writingSince }: {
               <Icon><circle cx="12" cy="12" r="9" /><path d="M12 11v5" /><path d="M12 8h.01" /></Icon>
             </span>
             <span>{shown === stored ? <Runs runs={message.runs} /> : shown}</span>
-            {onRetry === undefined ? null : <Button size="compact" variant="ghost" onClick={onRetry}>{m.common.retry}</Button>}
+            {retry}
           </div>
         </div>
       </div>

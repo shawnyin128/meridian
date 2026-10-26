@@ -1676,7 +1676,7 @@ describe('vault store on the aggregation layout', () => {
       store.absorbAgentTasks(id)
       expect(store.getProject(id).tasks.map((task) => task.title)).toEqual(['在 B=16 重跑宽度扫描'])
       const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(file))
-      expect(reported).toEqual([expect.stringContaining('第 2 条')])
+      expect(reported).toEqual([expect.stringContaining('record 2 ')])
       expect(reported[0]).toContain('"date"')
       expect(readFileSync(file, 'utf8')).toBe(text)
     } finally {
@@ -2162,7 +2162,7 @@ describe('vault store on the aggregation layout', () => {
       expect(store.listIdeas().filter((idea) => idea.source.agent === true).map((idea) => idea.title))
         .toEqual(['按复用距离淘汰前缀缓存'])
       const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(file))
-      expect(reported).toEqual([expect.stringContaining('第 2 条')])
+      expect(reported).toEqual([expect.stringContaining('record 2 ')])
       expect(reported[0]).toContain('"date"')
       expect(readFileSync(file, 'utf8')).toBe(text)
     } finally {
@@ -2976,7 +2976,7 @@ describe('vault store on the aggregation layout', () => {
       const reopened = reopen()
       expect(reopened.listFeed().map((entry) => entry.id)).toEqual(['entry-900'])
       const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(stored('feed')))
-      expect(reported).toEqual([expect.stringContaining('第 2 条')])
+      expect(reported).toEqual([expect.stringContaining('record 2 ')])
       expect(reported[0]).toContain('"source"')
 
       reopened.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] } })
