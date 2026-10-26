@@ -21,9 +21,12 @@ const ENV = Object.fromEntries(Object.entries(process.env).filter(
  * Chromium switches every automated launch passes. A window off every display or hidden paints in the
  * primary display's colour profile and tags its screenshots with it; forced sRGB keeps the stored
  * values equal to the page's own colours, as a window on a display returns them. The main process
- * cannot set this switch: Chromium reads it before the main script runs.
+ * cannot set this switch: Chromium reads it before the main script runs. A mock keychain keeps the
+ * launch off the login keychain: each ad-hoc-signed build would otherwise ask the owner for its Safe
+ * Storage item.
  */
-export const LAUNCH_SWITCHES = ['--force-color-profile=srgb']
+export const MOCK_KEYCHAIN = '--use-mock-keychain'
+export const LAUNCH_SWITCHES = ['--force-color-profile=srgb', MOCK_KEYCHAIN]
 
 /**
  * Each test case gets its own Electron instance: `app` is the main-process handle (used to resize the
