@@ -24,7 +24,7 @@
 /* The Workspace is a connection, not core metadata: its path is truncated, and a dot names its state, in words when it is not connected. */
 .workspace-field{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
 .workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
-.workspace-kinds{margin-bottom:var(--sp-16)}
+.workspace-kinds{margin-bottom:var(--item-gap)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
 .workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
 
