@@ -418,6 +418,28 @@ describe('subscription CLI runner', () => {
     expect(checks).toEqual(['claude', 'claude'])
   })
 
+  it('reports a model the CLI will not run as its own failure, in the CLI\'s words', async () => {
+    const claude = standIns({
+      stdout: claudeResult({
+        is_error: true,
+        result: "There's an issue with the selected model (claude-fable-9). It may not exist or you may not have access to it.",
+      }),
+      exit: 1,
+    })
+    await expect(claude.runner({ ...call('claude'), model: 'claude-fable-9' })).rejects.toMatchObject({
+      kind: 'model-unavailable', message: expect.stringContaining('claude-fable-9'),
+    })
+
+    const codex = standIns({
+      stdout: `${codexEvents()}\n${JSON.stringify({
+        type: 'error',
+        message: '{"type":"error","status":400,"error":{"type":"invalid_request_error","message":"The \'gpt-9\' model is not supported when using Codex with a ChatGPT account."}}',
+      })}`,
+      exit: 1,
+    })
+    await expect(codex.runner({ ...call('codex'), model: 'gpt-9' })).rejects.toMatchObject({ kind: 'model-unavailable', exitCode: 1 })
+  })
+
   it('reports a reached usage limit as its own failure, from the error the CLI reports or the end of its stderr', async () => {
     const claude = standIns({
       stdout: claudeResult({ is_error: true, result: "You've hit your session limit · resets 3pm (Europe/Paris)" }),

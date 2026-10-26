@@ -3,7 +3,7 @@ import { join } from 'node:path'
 import type { HarnessCli } from '../../../shared/contract.js'
 import { type ChildOutcome, cliEnvironment, CliRunError, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
 import type { CliDiscovery } from './discovery.js'
-import { reachedUsageLimit, readiness } from './failure.js'
+import { reachedUsageLimit, readiness, rejectedModel } from './failure.js'
 import { type InternalMcp, internalMcpArgs, type InternalMcpOpener } from './internal-mcp.js'
 import type { VaultToolScope } from './vault-tools.js'
 
@@ -48,8 +48,8 @@ export type CliResult = {
 /**
  * One model call on the user's signed-in CLI. Rejects with a CliRunError when the CLI is not
  * installed, lacks a flag the call passes, is not signed in with the user's subscription, reports
- * the plan's usage limit reached or fails otherwise, runs past the call's timeout, or the call's
- * signal aborts.
+ * the plan's usage limit reached or a model it will not run, or fails otherwise, runs past the call's
+ * timeout, or the call's signal aborts.
  */
 export type CliRunner = (call: CliCall) => Promise<CliResult>
 
@@ -61,9 +61,14 @@ const count = (value: unknown) => (typeof value === 'number' && Number.isFinite(
 /** What a failed call reports beside its message: the CLI's exit code and the redacted end of its stderr. */
 export const failureDetails = (outcome: ChildOutcome) => ({ exitCode: outcome.code, stderr: stderrExcerpt(outcome.stderr) })
 
-/** How a call `cli` failed with `reported`, its own error text if any: at the plan's usage limit, or otherwise. */
-const failedKind = (cli: HarnessCli, outcome: ChildOutcome, reported: unknown = '') =>
-  reachedUsageLimit(cli, `${typeof reported === 'string' ? reported : ''}\n${outcome.stderr}`) ? 'usage-limit' : 'failed'
+/**
+ * How a call `cli` failed with `reported`, its own error text if any: at the plan's usage limit, on a
+ * model the CLI will not run, or otherwise.
+ */
+function failedKind(cli: HarnessCli, outcome: ChildOutcome, reported: unknown = '') {
+  const text = `${typeof reported === 'string' ? reported : ''}\n${outcome.stderr}`
+  return reachedUsageLimit(cli, text) ? 'usage-limit' : rejectedModel(cli, text) ? 'model-unavailable' : 'failed'
+}
 
 const detailOf = (value: unknown) => typeof value === 'string'
   ? value.replace(/\s+/g, ' ').trim().slice(0, MAX_CLI_ERROR_DETAIL)

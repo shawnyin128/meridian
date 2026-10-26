@@ -270,7 +270,7 @@ pruneChatSessions()
 const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
-  checkCli: (cli) => checkCliConnection(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+  checkCli: (model) => checkCliConnection(model, { onLog: (line) => console.error(`[harness] ${line}`), run: cliRunner }),
   cli: createCliChatRunner(cliRunnerDeps),
   sessions: chatSessions,
   onLog: (line) => console.error(`[harness] ${line}`),

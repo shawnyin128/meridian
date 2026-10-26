@@ -10,7 +10,7 @@ export const settings = {
   categories: {
     appearance: '外观',
     storage: '存储',
-    api: 'API',
+    api: '第三方服务',
     model: '模型',
     research: '科研',
     extensions: '扩展',
@@ -92,7 +92,7 @@ export const settings = {
     backupDeleting: '正在删除…',
   },
   api: {
-    heading: 'API',
+    heading: '第三方服务',
     model: '模型',
     research: '科研',
     open: '设置',
@@ -198,7 +198,7 @@ export const settings = {
       action: '测试连接',
       testing: '正在测试…',
       connected: '连接成功 · 最多 1 个输出 token',
-      connectedNoModelCall: '连接成功 · 未调用模型',
+      subscriptionConnected: '连接成功',
       detailLabel: '详情',
       unexpectedDetail: '本地 Harness 没有诊断信息',
       failures: {
@@ -215,6 +215,8 @@ export const settings = {
         'cli-signed-out': '未用订阅登录',
         'cli-sign-in-unknown': '无法确认登录方式',
         'cli-timeout': '运行超时',
+        'cli-usage-limit': '订阅额度已用完',
+        'cli-model-unavailable': '模型不可用',
       },
     },
   },

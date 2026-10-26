@@ -22,6 +22,20 @@ export const USAGE_LIMIT_MESSAGES: readonly { cli: HarnessCli; pattern: RegExp }
   { cli: 'codex', pattern: /Quota exceeded\. Check your plan and billing details/ },
 ]
 
+/**
+ * How each CLI words a model it will not run: Claude Code 2.1.280's errors for a model that is not
+ * found or not available to the account, and the error Codex CLI relays from the server for a model a
+ * ChatGPT sign-in does not include, as openai/codex issues #12295 and #49396 quote it. Either
+ * apostrophe matches.
+ */
+export const MODEL_REJECTED_MESSAGES: readonly { cli: HarnessCli; pattern: RegExp }[] = [
+  { cli: 'claude', pattern: /There['’]s an issue with the selected model/ },
+  { cli: 'claude', pattern: /isn['’]t available for your account yet/ },
+  { cli: 'claude', pattern: /is not currently available for your account/ },
+  { cli: 'claude', pattern: /with 1M context is not available for your account/ },
+  { cli: 'codex', pattern: /model is not supported when using Codex with a ChatGPT account/ },
+]
+
 /** The reason a contract call fails with when its CLI call failed as `kind`; any other failure is a failed model call. */
 export const CLI_CALL_FAILURES = {
   unavailable: 'cli-missing',
@@ -29,6 +43,7 @@ export const CLI_CALL_FAILURES = {
   'signed-out': 'cli-signed-out',
   'sign-in-unknown': 'cli-sign-in-unknown',
   'usage-limit': 'usage-limit',
+  'model-unavailable': 'model',
   timeout: 'cli-timeout',
   cancelled: 'cancelled',
   failed: 'model',
@@ -37,6 +52,11 @@ export const CLI_CALL_FAILURES = {
 /** Whether `text`, what `cli` reported or printed to stderr for a failed call, says the plan's usage limit is reached. */
 export function reachedUsageLimit(cli: HarnessCli, text: string): boolean {
   return USAGE_LIMIT_MESSAGES.some((message) => message.cli === cli && message.pattern.test(text))
+}
+
+/** Whether `text`, what `cli` reported or printed to stderr for a failed call, says it will not run the call's model. */
+export function rejectedModel(cli: HarnessCli, text: string): boolean {
+  return MODEL_REJECTED_MESSAGES.some((message) => message.cli === cli && message.pattern.test(text))
 }
 
 /**

@@ -226,7 +226,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     expect([...dialog.querySelectorAll('[data-setcat]')].map((node) => node.textContent))
-      .toEqual(['外观', '存储', 'API', '扩展', '论文推送', '关注', '发现', '归档的对话'])
+      .toEqual(['外观', '存储', '第三方服务', '扩展', '论文推送', '关注', '发现', '归档的对话'])
     expect(dialog.querySelector('[data-setcat="delivery-watch"]')?.classList.contains('on')).toBe(true)
     expect(dialog.querySelector('[data-testid="watch-settings"]')).not.toBeNull()
     expect(dialog.querySelector('[data-testid="discovery-settings"]')).toBeNull()
@@ -326,7 +326,7 @@ describe('Settings', () => {
 
   it('设置右栏放不下时，每个分类的标题都留在滚动区上面，标题以外的内容都在滚动区里', async () => {
     const titles: Record<SettingsCategory, string> = {
-      appearance: '外观', storage: '存储', api: 'API', model: '模型', research: '科研', extensions: '扩展',
+      appearance: '外观', storage: '存储', api: '第三方服务', model: '模型', research: '科研', extensions: '扩展',
       delivery: '论文推送', 'delivery-watch': '关注', 'delivery-discovery': '发现', archived: '归档的对话 · 0',
     }
     for (const [category, title] of Object.entries(titles) as [SettingsCategory, string][]) {
@@ -1400,7 +1400,7 @@ describe('Settings', () => {
   const testButton = (dialog: Element) => [...dialog.querySelectorAll<HTMLButtonElement>('.model-settings-card button')]
     .find((button) => button.textContent === '测试连接')!
 
-  it('选 Claude 订阅时显示找到的 CLI 版本和完成色的已用订阅登录，不要 API Key；保存后测试连接不调用模型也成功', async () => {
+  it('选 Claude 订阅时显示找到的 CLI 版本和完成色的已用订阅登录，不要 API Key；保存后测试连接成功时只写连接成功', async () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1423,14 +1423,14 @@ describe('Settings', () => {
     expect(api.updateModelSettings).not.toHaveBeenCalled()
     expect(dialog.querySelector('.model-settings-card .service-status-pill')?.textContent).toBe('已配置')
 
-    api.checkModelConnection.mockResolvedValueOnce({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 })
+    api.checkModelConnection.mockResolvedValueOnce({ state: 'connected', modelCalls: 1 })
     await act(async () => { testButton(dialog).click() })
     expect(api.checkModelConnection).toHaveBeenCalledOnce()
-    expect(dialog.querySelector('.service-connection-status')?.textContent).toBe('连接成功 · 未调用模型')
+    expect(dialog.querySelector('.service-connection-status')?.textContent).toBe('连接成功')
     expect(api.subscriptionStatus).toHaveBeenCalledTimes(2)
   })
 
-  it('订阅的连接测试失败时，标题说出 CLI 的问题：没有找到、版本不受支持、未用订阅登录、无法确认登录方式或运行超时', async () => {
+  it('订阅的连接测试失败时，标题说出 CLI 的问题：没有找到、版本不受支持、未用订阅登录、无法确认登录方式、运行超时、额度用完或模型不可用', async () => {
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1441,15 +1441,17 @@ describe('Settings', () => {
     for (const [reason, detail] of [
       ['cli-missing', '没有找到 claude 命令'], ['cli-unsupported', '这个版本的 claude 不支持 Meridian 需要的选项，请更新'],
       ['cli-signed-out', 'claude 还没有登录'], ['cli-sign-in-unknown', '读不出 claude 的登录状态'],
-      ['cli-timeout', 'claude 运行超时，已停止'],
+      ['cli-timeout', 'claude 运行超时，已停止'], ['cli-usage-limit', "claude 运行失败：You've hit your session limit"],
+      ['cli-model-unavailable', "claude 运行失败：There's an issue with the selected model (claude-fable-9)."],
     ] as const) {
-      api.checkModelConnection.mockResolvedValueOnce({ state: 'failed', reason, detail, modelCalls: 0, maxOutputTokens: 1 })
+      api.checkModelConnection.mockResolvedValueOnce({ state: 'failed', reason, detail, modelCalls: 0 })
       await act(async () => { testButton(dialog).click() })
       const status = dialog.querySelector('.model-settings-card .service-connection-status')!
       headlines.push([status.querySelector('.inline-message-text > div')?.textContent, status.textContent?.includes(detail)])
     }
     expect(headlines).toEqual([
       ['没有找到 CLI', true], ['CLI 版本不受支持', true], ['未用订阅登录', true], ['无法确认登录方式', true], ['运行超时', true],
+      ['订阅额度已用完', true], ['模型不可用', true],
     ])
   })
 

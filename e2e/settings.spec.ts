@@ -201,7 +201,7 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   // The left column lists only categories that have content today, with no empty ones as filler.
   const labels = await cats.allInnerTexts()
   console.log(`左栏分类 ${JSON.stringify(labels)}`)
-  expect(labels).toEqual(['外观', '存储', 'API', '扩展', '论文推送', '归档的对话'])
+  expect(labels).toEqual(['外观', '存储', '第三方服务', '扩展', '论文推送', '归档的对话'])
   await expect(win.locator('.setdlg .split-nav .nav-row.on')).toHaveCount(1)
   await expect(win.getByRole('radiogroup', { name: '外观', exact: true }).locator('.appearance-choice')).toHaveText(['浅色', '深色', '跟随系统'])
   await expect(win.getByRole('radiogroup', { name: '外观主题', exact: true }).locator('.appearance-choice'))

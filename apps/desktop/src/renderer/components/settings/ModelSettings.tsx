@@ -321,8 +321,8 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     : settings.configured && activeSelection && settings.subscription.active === null
       && settings.subscription.error === undefined && apiKey.trim() === '' && !clearApiKey
   const connectionStatus = connectionCheck.state === 'connected'
-    ? connectionCheck.modelCalls === 0
-      ? m.settings.model.connection.connectedNoModelCall
+    ? tab === 'subscription'
+      ? m.settings.model.connection.subscriptionConnected
       : m.settings.model.connection.connected
     : connectionCheck.state === 'failed'
       ? m.settings.model.connection.failures[connectionCheck.reason]

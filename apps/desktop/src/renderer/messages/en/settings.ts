@@ -17,7 +17,7 @@ export const settings = {
   categories: {
     appearance: 'Appearance',
     storage: 'Storage',
-    api: 'API',
+    api: 'Third-party services',
     model: 'Models',
     research: 'Research',
     extensions: 'Extensions',
@@ -99,7 +99,7 @@ export const settings = {
     backupDeleting: 'Deleting…',
   },
   api: {
-    heading: 'API',
+    heading: 'Third-party services',
     model: 'Models',
     research: 'Research',
     open: 'Set up',
@@ -208,7 +208,7 @@ export const settings = {
       action: 'Test connection',
       testing: 'Testing…',
       connected: 'Connected · at most 1 output token',
-      connectedNoModelCall: 'Connected · no model call',
+      subscriptionConnected: 'Connected',
       detailLabel: 'Details',
       unexpectedDetail: 'No diagnostic message from the local Harness',
       failures: {
@@ -225,6 +225,8 @@ export const settings = {
         'cli-signed-out': 'Not signed in with subscription',
         'cli-sign-in-unknown': 'Sign-in method unconfirmed',
         'cli-timeout': 'Timed out',
+        'cli-usage-limit': 'Plan usage limit reached',
+        'cli-model-unavailable': 'Model unavailable',
       },
     },
   },
