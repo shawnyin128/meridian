@@ -23,7 +23,7 @@ Every issue carries exactly one type label and one milestone.
 
 | Label | Use it for | Ships in (version position) | Branch prefix |
 |---|---|---|---|
-| `feature` | New functionality | Y for a complete new module, Z otherwise | `feature/` |
+| `feature` | New functionality | Z | `feature/` |
 | `optimization` | Improving something that already works | Z | `feature/` |
 | `bug` | Something that does not work as intended | F | `fix/` |
 
