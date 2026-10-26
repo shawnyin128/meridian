@@ -189,7 +189,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
       })
     }),
     tool('project_summary', 'Read a project summary', 'Read the summary of one project in the vault: its state, focus, '
-      + 'milestones, conclusions, newest research records and papers.', ProjectSummaryArgs,
+      + 'milestones, experiment conclusions, newest research records and papers.', ProjectSummaryArgs,
     ({ id }) => {
       if (!store.hasProject(id)) return refuse(`The vault has no project ${id}.`)
       const project = store.getProject(id)
@@ -198,7 +198,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
         focus: clip(project.focus, ITEM_CHARS), ...(project.block === undefined ? {} : { block: clip(project.block, ITEM_CHARS) }),
         start: project.start, due: project.due, ...(project.lastProgress === undefined ? {} : { lastProgress: project.lastProgress }),
         milestones: project.milestones.slice(0, 20).map(({ title, date, done }) => ({ title: clip(title, ITEM_CHARS), date, done })),
-        conclusions: (project.projectConclusions ?? []).slice(0, 10).map(({ text, state }) => ({ text: clip(text, ITEM_CHARS), state })),
+        experimentConclusions: (project.projectConclusions ?? []).slice(0, 10).map(({ text, state }) => ({ text: clip(text, ITEM_CHARS), state })),
         recentRecords: sortRecordsNewestFirst(project.events).slice(0, 5).map(({ date, text }) => ({ date, text: clip(text, ITEM_CHARS) })),
         papers: Object.entries(project.paperTitles).slice(0, 20).map(([paper, title]) => ({ id: PAPER_PAGE + paper, title })),
       })

@@ -27,6 +27,8 @@ from meridian.lab import initialize_lab_space, validate_lab_space
 from meridian.mcp import adapter as mcp_adapter
 from meridian.mcp import harness as mcp_harness
 from meridian.mcp import server as mcp_server
+from meridian.wiki.claims import ProposalValidationError
+from meridian.wiki.propose import submit_wiki_proposal
 from meridian.setup.runtime import (
     CommandResult,
     RuntimeCandidate,
@@ -356,6 +358,12 @@ class CliTests(unittest.TestCase):
         )["result"]["instructions"]
         surfaces["mcp tools"] = json.dumps(mcp_server.tool_definitions(), ensure_ascii=False)
         surfaces["mcp capabilities"] = json.dumps(mcp_adapter.capabilities(detail="full"), ensure_ascii=False)
+        with self.assertRaises(ProposalValidationError) as missing_project:
+            submit_wiki_proposal(wiki_root=Path("."), ops=[], title="t", project="")
+        surfaces["proposal errors"] = "\n".join([
+            str(missing_project.exception),
+            mcp_adapter.call_chain_error_payload(ProposalValidationError("x"))["next_action"],
+        ])
 
         for name, text in surfaces.items():
             with self.subTest(surface=name):
@@ -368,6 +376,8 @@ class CliTests(unittest.TestCase):
         lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         self.assertIn("The one thing an agent may add is a\n**finding**", wiki)
         self.assertIn("The App lists it under 实验结论", lab)
+        self.assertIn("a finding comes from a project's experiment conclusion", surfaces["proposal errors"])
+        self.assertIn("Fix the proposed finding", surfaces["proposal errors"])
 
     def test_meridian_plugin_skill_frontmatter_is_loader_safe(self) -> None:
         for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):

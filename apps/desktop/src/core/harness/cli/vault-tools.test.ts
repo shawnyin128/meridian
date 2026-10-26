@@ -105,4 +105,12 @@ describe('the internal MCP server\'s vault tools', () => {
     })
     expect(await ask(tools, 'project_summary', { id: 'amortize' })).toEqual({ error: 'The vault has no project amortize.' })
   })
+
+  it('call a project\'s conclusions experiment conclusions, the App\'s word, apart from the Wiki\'s findings', async () => {
+    const tools = vaultTools(createFixtureStore(), {})
+    expect(tools.definitions.find((tool) => tool.name === 'project_summary')!.description).toContain('experiment conclusions')
+    const summary = await ask(tools, 'project_summary', { id: 'draft' })
+    expect(summary['experimentConclusions']).toEqual(expect.arrayContaining([expect.objectContaining({ state: expect.any(String) })]))
+    expect('conclusions' in summary).toBe(false)
+  })
 })

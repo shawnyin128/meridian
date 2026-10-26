@@ -37,7 +37,7 @@ def submit_wiki_proposal(
     if not isinstance(title, str) or not title.strip():
         raise ProposalValidationError("title is required")
     if not isinstance(project, str) or not project.strip():
-        raise ProposalValidationError("trigger.project is required: a conclusion comes from a project")
+        raise ProposalValidationError("trigger.project is required: a finding comes from a project's experiment conclusion")
     validate_claim_ops(ops)
 
     vault_root = resolve_vault_root(wiki_root)

@@ -595,7 +595,7 @@ def call_chain_error_payload(exc: Exception) -> dict[str, Any]:
             "status": "error",
             "error_code": "invalid_proposal",
             "message": str(exc),
-            "next_action": "Fix the claim op and resubmit; agents may only submit the six claim ops.",
+            "next_action": "Fix the proposed finding and resubmit; agents may only submit the six claim ops.",
         }
     if isinstance(exc, WorkspaceProtocolError):
         return {
