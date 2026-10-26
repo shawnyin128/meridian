@@ -149,7 +149,7 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     await mount({ model: 'sonnet', effort: 'max' })
     open(0)
     expect(options()).toEqual([
-      ['Anthropic API', false], ['127.0.0.1:11434', false], ['Claude 订阅', true], ['ChatGPT 订阅', false],
+      ['Anthropic API', false], ['Ollama 本地', false], ['Claude 订阅', true], ['ChatGPT 订阅', false],
     ])
     await choose('Anthropic API')
     expect(core.setModel).toHaveBeenCalledExactlyOnceWith('chat-1', 'api-sonnet', undefined)
@@ -160,7 +160,7 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     await mount({ model: 'gpt' })
     expect(read()).toEqual(['OpenAI API', 'gpt-6.1', 'medium'])
     open(0)
-    expect(options().map(([text]) => text)).toEqual(['OpenAI API', 'Anthropic API', '127.0.0.1:11434', 'Claude 订阅', 'ChatGPT 订阅'])
+    expect(options().map(([text]) => text)).toEqual(['OpenAI API', 'Anthropic API', 'Ollama 本地', 'Claude 订阅', 'ChatGPT 订阅'])
     await mount({ model: 'gpt' })
     open(1)
     expect(options()).toEqual([['gpt-6.1', true]])
@@ -205,7 +205,7 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     expect(options().map(([text]) => text)).toEqual(['默认', 'low', 'medium', 'high', 'xhigh', 'max'])
 
     await mount({ model: 'qwen' })
-    expect(read()).toEqual(['127.0.0.1:11434', 'qwen3:32b'])
+    expect(read()).toEqual(['Ollama 本地', 'qwen3:32b'])
   })
 
   it('CLI 的级别还在读时推理强度里转着运行圈、打不开；这条对话自己的强度已知时直接显示它', async () => {

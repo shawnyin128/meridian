@@ -803,6 +803,8 @@ settings.model.list.apiSource label
 settings.model.list.confirmDelete label
 settings.model.list.defaultMark state
 settings.model.list.defaultModel label
+settings.model.list.localService label
+settings.model.list.localSource label
 settings.model.list.manage aria
 settings.model.list.setDefault action
 settings.model.notConfigured state

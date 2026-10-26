@@ -1278,7 +1278,7 @@ describe('Settings', () => {
     })
     expect(listRows()).toEqual([
       ['gpt-a', 'gpt-a', 'OpenAI API', ['默认', '已配置']], ['added-1', 'gpt-b', 'OpenAI API', ['已配置']],
-      ['qwen3', 'qwen3', '127.0.0.1:11434', ['已配置']], ['opus', 'opus', 'Claude 订阅', ['已用订阅登录']],
+      ['qwen3', 'qwen3', 'Ollama 本地', ['已配置']], ['opus', 'opus', 'Claude 订阅', ['已用订阅登录']],
     ])
     const landed = dialog.querySelector<HTMLElement>('.model-list [data-model="added-1"]')!
     expect([scrolledTo.filter((box) => box.closest('.model-list') !== null).map((box) => box.dataset.model), landed.hasAttribute('data-arrived')])
@@ -1422,6 +1422,32 @@ describe('Settings', () => {
       dialog.querySelector('.model-list [data-model="codex"] .item-tags .tag')?.classList.contains('tag--error'),
       dialog.querySelector('.model-list .loading-placeholder'), dialog.querySelector('.split-main-head .page-error'),
     ]).toEqual([true, null, null])
+  })
+
+  it('用连接模板存的模型：列表行和表单读同一张模板表，行写模板的名字，点开时表单停在那个模板上', async () => {
+    const compatibleProfile = (baseUrl: string, protocol: 'responses' | 'chat-completions', keyed: boolean): HarnessModelProfile => ({
+      provider: 'openai-compatible', protocol, baseUrl, model: '', authentication: keyed ? 'api-key' : 'none',
+      apiKeyConfigured: keyed, ...(keyed ? { apiKeyLastFour: '9999' } : {}), configured: true,
+    })
+    core.seed([
+      compatibleProfile('https://api.deepseek.com', 'chat-completions', true), compatibleProfile('https://openrouter.ai/api/v1', 'chat-completions', true),
+      ollamaProfile, compatibleProfile('http://127.0.0.1:1234/v1', 'responses', false),
+    ], [
+      apiModel('deepseek', 'openai-compatible:https://api.deepseek.com', 'deepseek-chat'),
+      apiModel('openrouter', 'openai-compatible:https://openrouter.ai/api/v1', 'qwen/qwen3-coder'),
+      apiModel('ollama', OLLAMA, 'qwen3'), apiModel('lm-studio', 'openai-compatible:http://127.0.0.1:1234/v1', 'gemma-3'),
+    ])
+    const dialog = await openModelPage()
+
+    expect(listRows().map(([id, , meta]) => [id, meta])).toEqual([
+      ['ollama', 'Ollama 本地'], ['lm-studio', 'LM Studio 本地'], ['deepseek', 'DeepSeek API'], ['openrouter', 'OpenRouter API'],
+    ])
+    const templates = []
+    for (const id of ['deepseek', 'openrouter', 'ollama', 'lm-studio']) {
+      await editModel(id)
+      templates.push(dialog.querySelector('[aria-label="兼容服务模板"]')?.textContent)
+    }
+    expect(templates).toEqual(['DeepSeek · 云端', 'OpenRouter · 云端聚合', 'Ollama · 本地', 'LM Studio · 本地'])
   })
 
   it('模型设置明确区分服务商和协议，并使用共享字段外观', async () => {

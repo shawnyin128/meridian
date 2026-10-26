@@ -144,6 +144,8 @@ export const settings = {
       defaultModel: '默认模型',
       setDefault: '设为默认',
       apiSource: (name: string) => `${name} API`,
+      localSource: (name: string) => `${name} 本地`,
+      localService: (port: string) => `本地服务 · ${port}`,
       confirmDelete: (name: string) => `删除 ${name}？`,
       manage: (name: string) => `管理「${name}」`,
     },
