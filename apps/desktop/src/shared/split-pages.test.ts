@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
-import { readFileSync } from 'node:fs'
+import { readdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { parse } from '@babel/parser'
 import { beforeEach, describe, expect, it } from 'vitest'
 
 /** The parts of the jsdom window this test reads; the tsconfig of shared code carries no DOM types. */
@@ -43,5 +44,49 @@ describe('并排的两栏', () => {
     document.body.innerHTML = SPLITS.ideas
     const panel = getComputedStyle(document.querySelector('.side-panel'))
     expect([panel.alignSelf, panel.maxHeight]).toEqual(['start', '100%'])
+  })
+})
+
+type Node = { type: string; [key: string]: unknown }
+
+/** Every JSX opening element named `name` in `node`. */
+function openings(node: unknown, name: string, found: Node[] = []): Node[] {
+  if (node === null || typeof node !== 'object') return found
+  if (Array.isArray(node)) {
+    for (const item of node) openings(item, name, found)
+    return found
+  }
+  const held = node as Node
+  if (held.type === 'JSXOpeningElement' && (held.name as Node).type === 'JSXIdentifier' && (held.name as Node).name === name) found.push(held)
+  for (const [key, value] of Object.entries(held)) {
+    if (key !== 'loc' && key !== 'start' && key !== 'end') openings(value, name, found)
+  }
+  return found
+}
+
+/** The name of the last element a JSX element or fragment ends with: itself, or a fragment's last child element. */
+function lastElement(node: Node): string | undefined {
+  if (node.type === 'JSXElement') return ((node.openingElement as Node).name as Node).name as string
+  if (node.type !== 'JSXFragment') return undefined
+  const children = (node.children as Node[]).filter((child) => child.type === 'JSXElement')
+  return children.length === 0 ? undefined : lastElement(children.at(-1)!)
+}
+
+describe('对话框右栏的头部', () => {
+  it('每个 SplitMain 的头部要么以小节标题收尾,由标题留出下面的空隙;要么标着 fields,由它在字段和正文之间留出间距', () => {
+    const sources = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
+      .filter((path) => path.endsWith('.tsx') && !path.endsWith('.test.tsx'))
+    const mains = sources.flatMap((path) => openings(
+      parse(readFileSync(join(RENDERER, path), 'utf8'), { sourceType: 'module', plugins: ['typescript', 'jsx'] }).program, 'SplitMain',
+    ).map((opening) => ({ path, opening })))
+    expect(mains.length).toBeGreaterThanOrEqual(2)
+    const unspaced = mains.filter(({ opening }) => {
+      const attributes = (opening.attributes as Node[]).filter((attribute) => attribute.type === 'JSXAttribute')
+      const named = (name: string) => attributes.find((attribute) => (attribute.name as Node).name === name)
+      if (named('fields') !== undefined) return false
+      const value = named('head')?.value as Node | undefined
+      return value?.type !== 'JSXExpressionContainer' || lastElement(value.expression as Node) !== 'SectionHeading'
+    }).map(({ path, opening }) => `${path}:${(opening.loc as { start: { line: number } }).start.line}`)
+    expect(unspaced).toEqual([])
   })
 })
