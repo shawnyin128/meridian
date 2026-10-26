@@ -1288,6 +1288,23 @@ describe('Settings', () => {
       .toEqual(['', null, undefined, []])
   })
 
+  it('保存一个点开改过的模型后，列表滚到它那一行并闪一下，和新加的模型一样；表单回到添加框', async () => {
+    core.seed([officialProfile('openai', '1111'), ollamaProfile], [
+      apiModel('gpt-a', 'openai', 'gpt-a'), apiModel('qwen3', OLLAMA, 'qwen3'), cliModel('opus', 'claude', 'opus'),
+    ])
+    const dialog = await openModelPage()
+    await editModel('qwen3')
+    await fill(dialog, '模型名称', 'qwen3.5')
+    await save(dialog)
+
+    const landed = dialog.querySelector<HTMLElement>('.model-list [data-model="qwen3"]')!
+    expect([api.updateModel.mock.calls.length, landed.querySelector('.item-title')?.textContent]).toEqual([1, 'qwen3.5'])
+    expect([scrolledTo.filter((box) => box.closest('.model-list') !== null).map((box) => box.dataset.model), landed.hasAttribute('data-arrived')])
+      .toEqual([['qwen3'], true])
+    expect([...dialog.querySelectorAll('.model-list [data-arrived]')].map((row) => (row as HTMLElement).dataset.model)).toEqual(['qwen3'])
+    expect([modelName(dialog), selectedRows(), cancelButton(dialog)]).toEqual(['', [], undefined])
+  })
+
   it('点一行的名字或它 … 菜单里的编辑，表单就换成这个模型，这一行显示选中；保存在原处替换它，id 不变，表单回到添加框', async () => {
     core.seed([officialProfile('openai', '1111')], [
       apiModel('gpt-a', 'openai', 'gpt-a'), apiModel('gpt-b', 'openai', 'gpt-b', 'high'), cliModel('opus', 'claude', 'opus'),
