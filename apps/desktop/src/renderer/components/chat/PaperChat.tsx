@@ -173,7 +173,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             >{m.chat.saveIdeaLabel}</Button>
           </div>
           <ChatComposer
-            key={paperId} ref={composer} label={m.chat.askAboutPaper} placeholder={m.chat.composerPlaceholder}
+            key={paperId} ref={composer} chat={sessionId} label={m.chat.askAboutPaper} placeholder={m.chat.composerPlaceholder}
             draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
             running={sending} onSend={submit} onStop={stopSending}
           />

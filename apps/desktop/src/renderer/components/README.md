@@ -57,7 +57,8 @@ Current shared contracts:
   candidates, a `tall` list or a `wide` results panel. `PickOption` is the one candidate row: menu
   item anatomy, lit only as the active row, and the row under the pointer is it.
 - `ActionMenu` and `ActionPopover`: the two shared interactive-surface shells. Menus own action and
-  radio-item semantics, and radio and checkbox items draw the one checked mark themselves, in `--accent-mark`; popovers
+  radio-item semantics, and radio and checkbox items draw the one checked mark themselves, in `--accent-mark`, while an
+  `inset` action item keeps their empty check slot so its label lines up with theirs; popovers
   retain normal focus for calendars, configuration forms and the reader's selection toolbar, which a
   popover places against a box it measures (`anchorBox`). Routes provide triggers, contents, and
   capability flags instead of assembling Radix roots and portals. Every menu and popover keeps
@@ -244,6 +245,12 @@ Current shared contracts:
 - `GenerationControl`: the shared idle and running button contract for model-backed actions: while
   running it is the stop control, the stop square inside the turning ring. Chat composers and Wiki
   Harness generation do not define independent running animations.
+- `ComposerBox`: the one composer box, a rounded field with what is typed on top and, under it, a row
+  of chips ending with the send control, a GenerationControl. The chat screen and the reader's paper
+  chat compose it through `chat/ChatComposer`.
+- `ModelChips`: the composer's three pickers for one chat, each ChoicePicker's `text` look: the source,
+  the model of that source, ending with 模型设置…, and the reasoning effort. A pick changes only that
+  chat's own choice, which Core keeps. While no model is set up it is the shared "AI not connected" tag.
 - `ElapsedTime`: the one time since a moment, `12s` under a minute and `1m 05s` after, counting up each
   second in tabular numerals; a pending chat answer shows it after 思考中….
 - `RunningRing` (in `icons`): the one running indicator, `DownloadRing` without a total, turning once per
@@ -315,7 +322,10 @@ Current shared contracts:
   presentation and callbacks rather than rebuilding popovers and keyboard behavior. A value is picked the same
   way in a new item as in a saved one: a menu for a choice, the one calendar for a date, never a native date
   input or a click that cycles values. `ChoicePicker` is the one
-  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select.
+  single-value picker: `appearance="field"` makes it the boxed field of a form in place of a native select,
+  and `appearance="text"` the composer's picker, text and a small caret that take a fill only under the
+  pointer and while open. `note` marks an option's row at its end, and `after` ends the menu with
+  commands after a divider.
   `DateRangeField` is the one start and end, a task's schedule and a project's dates alike, under one rule:
   the end's calendar starts at the start, and a start picked after the end takes the end along to it. `DotsMenu` is the one
   overflow-menu trigger: `label` names it, `stopRowActivation` keeps a click from activating the row it

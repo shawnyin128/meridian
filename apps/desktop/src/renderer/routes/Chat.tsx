@@ -250,7 +250,7 @@ export function Chat() {
             </Toolbar>
 
             <ChatComposer
-              key={id} ref={composer} id="composer" sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
+              key={id} ref={composer} id="composer" chat={id} sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
               draft={draft} onDraft={(next) => { if (id !== null) drafts.set('message', next) }} unavailable={id === null}
               running={sending} onSend={submit} onStop={stopSending}
               mentions={mentions}

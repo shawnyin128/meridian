@@ -25,7 +25,7 @@ function Shell({ children }: { children: ReactNode }) {
   core.poll = refresh
   return (
     <GenerationsContext.Provider value={useCoreGenerations(status, refresh)}>
-      <ModelStatusContext.Provider value={{ connected: api.connected, source: api.connected ? 'api' : null, track: (send) => send }}>
+      <ModelStatusContext.Provider value={{ connected: api.connected, source: api.connected ? 'api' : null, settings: null, track: (send) => send }}>
         {children}
       </ModelStatusContext.Provider>
     </GenerationsContext.Provider>

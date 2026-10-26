@@ -54,8 +54,15 @@ vi.mock('../ipc.js', () => ({
   chat: {
     send: api.send, cancel: api.cancel, forPaper: api.forPaper, messages: api.messages,
     recordAction: api.recordAction, writing: api.writing,
+    model: () => Promise.resolve({ model: 'model-1' }), setModel: () => Promise.resolve({ model: 'model-1' }),
   },
-  harness: { modelSettings: () => Promise.resolve({ configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } } }) },
+  harness: {
+    modelSettings: () => Promise.resolve({
+      configured: api.configured, subscription: { active: null, models: { claude: '', codex: '' } },
+      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: true }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
+    }),
+    subscriptionStatus: () => Promise.resolve({ state: 'missing' }),
+  },
   idea: { create: api.createIdea },
   feed: { append: api.feedAppend },
   jobs: {

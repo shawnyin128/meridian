@@ -19,7 +19,7 @@ declare global {
 /** `node` in the shell, whose model status says a model is set up while `connected`. */
 const withMessages = (node: ReactNode, connected = true) => (
   <MessagesProvider>
-    <ModelStatusContext.Provider value={{ connected, source: connected ? 'api' : null, track: (send) => send }}>
+    <ModelStatusContext.Provider value={{ connected, source: connected ? 'api' : null, settings: null, track: (send) => send }}>
       {node}
     </ModelStatusContext.Provider>
   </MessagesProvider>

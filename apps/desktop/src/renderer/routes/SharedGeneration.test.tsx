@@ -38,7 +38,10 @@ const core = vi.hoisted(() => {
     })),
     /** Whether the model settings set up a model. */
     configured: true,
-    modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({ configured: core.configured, subscription: { active: null, models: { claude: '', codex: '' } } })),
+    modelSettings: vi.fn((): Promise<Partial<HarnessModelSettings>> => Promise.resolve({
+      configured: core.configured, subscription: { active: null, models: { claude: '', codex: '' } },
+      models: [{ id: 'model-1', source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5', configured: true }], defaultModel: 'model-1', sources: [{ source: { kind: 'api', profile: 'openai' }, provider: 'openai', entries: ['model-1'], defaultEntry: 'model-1' }],
+    })),
   }
 })
 
@@ -46,13 +49,14 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: core.send, cancel: core.cancel, messages: () => Promise.resolve([]), writing: () => Promise.resolve(null),
+    model: () => Promise.resolve({ model: 'model-1' }),
     forPaper: (paperId: string) => Promise.resolve({
       id: `chat-${paperId}`, title: 'Paper One', archived: false, messageCount: 0, paperId,
     }),
   },
   feed: { append: () => Promise.resolve() },
   idea: { create: () => Promise.resolve({ id: 'idea-1' }) },
-  harness: { modelSettings: core.modelSettings },
+  harness: { modelSettings: core.modelSettings, subscriptionStatus: () => Promise.resolve({ state: 'missing' }) },
   jobs: { status: core.status },
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }) },
   project: { list: () => Promise.resolve([]) },

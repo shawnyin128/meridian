@@ -34,6 +34,12 @@ chat.mentionGroup.page label
 chat.mentionGroup.paper label
 chat.mentionGroup.project label
 chat.messagesLabel aria
+chat.modelPicker aria
+chat.sourcePicker aria
+chat.defaultMark state
+chat.modelSettings action
+chat.effortPicker aria
+chat.effortDefault state
 chat.thinking state
 chat.newChat state
 chat.paperChatLabel aria
