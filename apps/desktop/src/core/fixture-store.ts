@@ -711,13 +711,15 @@ export function createFixtureStore(
 
     listPapers(params) {
       if (params.facet) checkGroupKey(params.facet.field, columns)
+      for (const { field } of params.filters ?? []) checkGroupKey(field, columns)
       const { rows, total } = listPapers(linkedRows(), params)
       return { rows: rows.map((r) => structuredClone(r)), total }
     },
 
-    facetPapers(field, filter) {
+    facetPapers(field, filter, filters = []) {
       checkGroupKey(field, columns)
-      return facetPapers(linkedRows(), field, filter)
+      for (const held of filters) checkGroupKey(held.field, columns)
+      return facetPapers(linkedRows(), field, filter, filters)
     },
 
     getPaper(id) {

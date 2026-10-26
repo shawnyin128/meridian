@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { DragEvent as ReactDragEvent } from 'react'
 import type {
-  Facet, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, RecordedChange, SortDirection,
-  SortKey,
+  Facet, FieldValue, ListParams, PaperCell, PaperColumn, PaperColumns, PaperRow, ReadState, RecordedChange,
+  SortDirection, SortKey,
 } from '../../../shared/contract.js'
 import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
 import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
@@ -137,32 +137,27 @@ export function orderedColumns(columns: PaperColumns): ShownCol[] {
   })
 }
 
-/**
- * The picked group value with its paper count; its menu switches to another value of the same group.
- * `name` gives the name each value shows.
- */
-function GroupValuePicker({ current, facets, name, onPick }: {
+/** The picked group value with its paper count; its menu switches to another value of the same group. */
+function GroupValuePicker({ current, facets, onPick }: {
   current: string | null
   facets: Facet[]
-  name: (value: string) => string
   onPick: (value: string) => void
 }) {
   const m = useMessages()
   const count = facets.find((facet) => facet.value === current)?.count
-  const shown = current === null ? null : name(current)
   return (
     <ActionMenu
       align="start"
       trigger={(
         <Button size="compact" aria-label={m.papers.toolbar.groupValueAria}>
-          {shown}{count === undefined ? null : <CountBadge count={count} />}
+          {current}{count === undefined ? null : <CountBadge count={count} />}
         </Button>
       )}
     >
       <MenuRadioGroup value={current ?? ''}>
         {facets.map((facet) => (
           <MenuRadioItem key={facet.value} value={facet.value} onSelect={() => onPick(facet.value)}>
-            {name(facet.value)}
+            {facet.value}
             <span className="mi-key"><CountBadge count={facet.count} /></span>
           </MenuRadioItem>
         ))}
@@ -205,6 +200,8 @@ export function PaperTable() {
   const [q, setQ] = useState('')
   const [group, setGroup] = useState('none')
   const [sel, setSel] = useState<string | null>(null)
+  // The toolbar's filters, at most one value per field; they narrow the rows whatever the grouping.
+  const [filters, setFilters] = useState<FieldValue[]>([])
   const [page, setPage] = useState(1)
   const [size, setSize] = useState(MIN_PAGE_SIZE)
   const [sort, setSort] = useState<SortKey>('addedAt')
@@ -288,16 +285,14 @@ export function PaperTable() {
   // waiting for the refetched count to correct it.
   const shownPage = Math.min(page, pageCount)
 
-  // With an ordinary grouping, the user picks a value first: until then only the group index shows,
-  // no rows are fetched and no pager is drawn. A filter that leaves the picked value without rows also
-  // returns to the index. Reading status is a direct filter: picking a status that has no papers now
-  // draws an empty table instead of the group index.
-  const listed = group === 'none'
-    || (sel !== null && (group === 'readState' || facets.some((f) => f.value === sel)))
-  // The title counts the rows the list shows under the search, the read-state filter and a picked group
-  // value; with none of them active it counts the vault. The group index lists no rows, so a search
+  // With a grouping, the user picks a value first: until then only the group index shows, no rows are
+  // fetched and no pager is drawn. A search or filter that leaves the picked value without rows also
+  // returns to the index.
+  const listed = group === 'none' || (sel !== null && facets.some((f) => f.value === sel))
+  // The title counts the rows the list shows under the search, the filters and a picked group value;
+  // with none of them active it counts the vault. The group index lists no rows, so a search or filter
   // there leaves the title without a count.
-  const filtered = filter !== '' || (view === 'table' && sel !== null)
+  const filtered = filter !== '' || (view === 'table' && (sel !== null || filters.length > 0))
   const titleCount = !filtered ? paperCount
     : view === 'research-map' ? (mapLoading ? null : mapTotal)
       : listed ? total : null
@@ -320,8 +315,8 @@ export function PaperTable() {
       setFacets([])
       return
     }
-    return load('facets', papers.facets(group, filter), setFacets)
-  }, [group, filter, revision, load])
+    return load('facets', papers.facets(group, filter, filters), setFacets)
+  }, [group, filter, filters, revision, load])
 
   useEffect(() => {
     if (view !== 'table' || !listed) return
@@ -329,12 +324,13 @@ export function PaperTable() {
       page: shownPage, size, sort, direction,
       ...(filter ? { filter } : {}),
       ...(sel === null || group === 'none' ? {} : { facet: { field: group, value: sel } }),
+      ...(filters.length === 0 ? {} : { filters }),
     }
     return load('rows', papers.list(params), (r) => {
       setRows(r.rows)
       setTotal(r.total)
     })
-  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, revision, load])
+  }, [view, listed, shownPage, size, sort, direction, filter, group, sel, filters, revision, load])
 
   useEffect(() => {
     if (view !== 'research-map') return
@@ -382,8 +378,11 @@ export function PaperTable() {
   // functions from Object.prototype.
   const labelOf = (key: string) => columns.custom.find((c) => c.key === key)?.label
     ?? (Object.hasOwn(names.groupNames, key) ? names.groupNames[key as keyof typeof names.groupNames] : key)
-  /** The name a value of the current grouping shows. */
-  const valueName = (value: string) => (group === 'readState' ? readStateName(m, value) : value)
+  /** Sets the filter on `field` to `value`, or clears it for null; the other filters and the grouping stay. */
+  const pickFilter = (field: string, value: string | null) => {
+    setFilters((held) => [...held.filter((f) => f.field !== field), ...(value === null ? [] : [{ field, value }])])
+    setPage(1)
+  }
 
   useCrumbTail(useMemo(() => {
     if (view === 'research-map') return []
@@ -393,8 +392,7 @@ export function PaperTable() {
     const { groupNames } = builtinNames(m, columns)
     const label = columns.custom.find((c) => c.key === group)?.label
       ?? (Object.hasOwn(groupNames, group) ? groupNames[group as keyof typeof groupNames] : group)
-    const value = sel === null || group !== 'readState' ? sel : readStateName(m, sel)
-    return value === null ? [{ text: label }] : [{ text: label, onClick: backToValues }, { text: value }]
+    return sel === null ? [{ text: label }] : [{ text: label, onClick: backToValues }, { text: sel }]
   }, [view, group, sel, columns, backToValues, m]), backToUngrouped)
 
   // When the grouped-by column is unchecked, deleted or made a text column, fall back to "None" at once
@@ -405,6 +403,14 @@ export function PaperTable() {
       setPage(1)
     }
   }, [columns, group])
+
+  // A filter whose field is unchecked in the group gear, deleted or made a text column goes with its menu.
+  useEffect(() => {
+    if (filters.some((f) => !columns.groups.includes(f.field))) {
+      setFilters((held) => held.filter((f) => columns.groups.includes(f.field)))
+      setPage(1)
+    }
+  }, [columns, filters])
 
   useEscapeLayer(detail !== null, closeDetail)
 
@@ -461,6 +467,7 @@ export function PaperTable() {
       setPage(1)
       setGroup('none')
       setSel(null)
+      setFilters([])
       setDetail(result.paper)
       if (result.kind !== 'added') notice.success(m.papers.upload.alreadyInLibrary)
     } catch (cause) {
@@ -953,12 +960,8 @@ export function PaperTable() {
                         className="read-state-filter" name={names.columns.st}
                         label={m.papers.readState.filterAria(names.columns.st)} all={m.papers.readState.allStates}
                         options={READ_STATES.map((state) => ({ value: state, label: readStateName(m, state) }))}
-                        current={group === 'readState' ? sel as ReadState | null : null}
-                        onPick={(state) => {
-                          setGroup(state === null ? 'none' : 'readState')
-                          setSel(state)
-                          setPage(1)
-                        }}
+                        current={(filters.find((f) => f.field === 'readState')?.value ?? null) as ReadState | null}
+                        onPick={(state) => pickFilter('readState', state)}
                       />
                     </>
                   )
@@ -990,7 +993,7 @@ export function PaperTable() {
                     return (
                       <Item
                         className="gxrow" key={f.value} onActivate={() => { setSel(f.value); setPage(1) }}
-                        title={<span className="gx-t">{valueName(f.value)}</span>} meta={<FadeText className="gx-m" label={newest}>{newest}</FadeText>}
+                        title={<span className="gx-t">{f.value}</span>} meta={<FadeText className="gx-m" label={newest}>{newest}</FadeText>}
                         trailing={<CountBadge className="n" count={f.count} />}
                       />
                     )
@@ -1003,7 +1006,7 @@ export function PaperTable() {
                     ? (
                       <div className="gnav">
                         <GroupValuePicker
-                          current={sel} facets={facets} name={valueName} onPick={(value) => { setSel(value); setPage(1) }}
+                          current={sel} facets={facets} onPick={(value) => { setSel(value); setPage(1) }}
                         />
                       </div>
                     )

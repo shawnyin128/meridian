@@ -115,4 +115,33 @@ describe('paper query', () => {
     expect(listPapers(rows, { page: 1, size: 10, facet: { field: 'tags', value: '综述' } })
       .rows.map((r) => r.id)).toEqual(['a'])
   })
+
+  it('按阅读状态筛过再按项目分组:只剩含在读论文的组,计数只数在读的,打开一组只列它的在读论文', () => {
+    const rows = [
+      paperWith('a', { readState: '在读', projects: [{ id: 'p1', name: 'Kernel' }] }),
+      paperWith('b', { readState: '未读', projects: [{ id: 'p1', name: 'Kernel' }] }),
+      paperWith('c', { readState: '在读', projects: [{ id: 'p1', name: 'Kernel' }, { id: 'p2', name: 'Wide' }] }),
+      paperWith('d', { readState: '已读', projects: [{ id: 'p3', name: 'Done' }] }),
+    ]
+    const reading = [{ field: 'readState', value: '在读' }]
+    expect(facetPapers(rows, 'projects', undefined, reading).map((f) => [f.value, f.count]))
+      .toEqual([['Kernel', 2], ['Wide', 1]])
+    expect(listPapers(rows, {
+      page: 1, size: 10, sort: 'title', facet: { field: 'projects', value: 'Kernel' }, filters: reading,
+    })).toMatchObject({ rows: [{ id: 'a' }, { id: 'c' }], total: 2 })
+  })
+
+  it('几个筛选同时设着时一篇论文要每个都满足,搜索词也照样收窄', () => {
+    const rows = [
+      paperWith('alpha', { readState: '在读', topics: ['spec', 'kv'] }),
+      paperWith('beta', { readState: '在读', topics: ['spec'] }),
+      paperWith('gamma', { readState: '未读', topics: ['kv'] }),
+    ]
+    const both = [{ field: 'readState', value: '在读' }, { field: 'topics', value: 'kv' }]
+    expect(listPapers(rows, { page: 1, size: 10, filters: both }).rows.map((r) => r.id)).toEqual(['alpha'])
+    expect(facetPapers(rows, 'topics', undefined, both).map((f) => [f.value, f.count]))
+      .toEqual([['kv', 1], ['spec', 1]])
+    expect(listPapers(rows, { page: 1, size: 10, filter: 'beta', filters: both }).total).toBe(0)
+    expect(facetPapers(rows, 'topics', 'beta', both)).toEqual([])
+  })
 })

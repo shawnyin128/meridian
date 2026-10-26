@@ -457,18 +457,27 @@ const SortDirectionSchema = z.enum(['asc', 'desc'])
  */
 const GroupKeySchema = z.string().min(1)
 
+/** One value of a groupable field: a paper matches it when that field carries the value. */
+const FieldValueSchema = z.object({ field: GroupKeySchema, value: z.string() }).strict()
+
+/**
+ * `filter` is the search text, `facet` the picked value of the grouping, and `filters` the field
+ * values the toolbar's filters hold; a listed paper matches all of them.
+ */
 export const ListParamsSchema = z.object({
   page: z.number().int().min(1),
   size: z.number().int().min(1).max(200),
   sort: SortKeySchema.optional(),
   direction: SortDirectionSchema.optional(),
   filter: z.string().optional(),
-  facet: z.object({ field: GroupKeySchema, value: z.string() }).strict().optional(),
+  facet: FieldValueSchema.optional(),
+  filters: z.array(FieldValueSchema).optional(),
 }).strict()
 
 export const PapersFacetsParamsSchema = z.object({
   field: GroupKeySchema,
   filter: z.string().optional(),
+  filters: z.array(FieldValueSchema).optional(),
 }).strict()
 
 /** Custom column kinds: text, single selection, and multiple selection. */
@@ -2814,6 +2823,7 @@ export type ProjectSummary = z.infer<typeof ProjectSummarySchema>
 export type ProjectOverview = z.infer<typeof ProjectOverviewSchema>
 export type ProjectFields = z.infer<typeof ProjectFieldsSchema>
 export type ListParams = z.infer<typeof ListParamsSchema>
+export type FieldValue = z.infer<typeof FieldValueSchema>
 export type ListResult = { rows: PaperRow[]; total: number }
 export type SortKey = z.infer<typeof SortKeySchema>
 export type SortDirection = z.infer<typeof SortDirectionSchema>

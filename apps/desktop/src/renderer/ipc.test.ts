@@ -17,6 +17,15 @@ describe('renderer ipc client', () => {
     expect(window.meridian.call).toHaveBeenCalledWith('papers.list', { page: 2, size: 20 })
   })
 
+  it('facets 把分组字段、搜索词与筛选送到契约方法上,没有的那几项不带', async () => {
+    await papers.facets('projects', 'spec', [{ field: 'readState', value: '在读' }])
+    await papers.facets('projects', '', [])
+    expect(window.meridian.call).toHaveBeenNthCalledWith(
+      1, 'papers.facets', { field: 'projects', filter: 'spec', filters: [{ field: 'readState', value: '在读' }] },
+    )
+    expect(window.meridian.call).toHaveBeenNthCalledWith(2, 'papers.facets', { field: 'projects' })
+  })
+
   it('renameOption 把三项送到契约方法上', async () => {
     await papers.renameOption('du-fa', '精读', '细读')
     expect(window.meridian.call)

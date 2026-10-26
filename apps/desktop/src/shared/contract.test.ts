@@ -876,6 +876,17 @@ describe('contract schemas', () => {
       .toBe('quantization')
   })
 
+  it('papers.list 与 papers.facets 都收一组筛选,每个筛选是一个字段和它的一个取值', () => {
+    const filters = [{ field: 'readState', value: '在读' }, { field: 'du-fa', value: '精读' }]
+    const list = { page: 1, size: 10, facet: { field: 'projects', value: 'Kernel' }, filters }
+    expect(ListParamsSchema.parse(list)).toEqual(list)
+    expect(PapersFacetsParamsSchema.parse({ field: 'projects', filters }).filters).toEqual(filters)
+    for (const bad of [[{ field: '', value: '在读' }], [{ field: 'readState' }], [{ field: 'readState', value: '在读', extra: 1 }]]) {
+      expect(() => ListParamsSchema.parse({ page: 1, size: 10, filters: bad })).toThrow()
+      expect(() => PapersFacetsParamsSchema.parse({ field: 'projects', filters: bad })).toThrow()
+    }
+  })
+
   it('垃圾桶条目只有 id、类型、标题、删除时刻与能否恢复五项,类型只收契约里的那几种', () => {
     const entry = {
       id: 'trash-1', kind: 'paper', title: 'LongSpec', deletedAt: 1787000000000, restorable: true,

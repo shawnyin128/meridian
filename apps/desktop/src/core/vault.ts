@@ -1,6 +1,6 @@
 import type {
   AttachmentFields, ChangeEntry, ChangeSource, ChatMessage, ChatMessageFields, ChatSession, ConclusionState, Facet,
-  DeliverySettings, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields,
+  DeliverySettings, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields, FieldValue,
   InboxDownloadResult, InboxEntry,
   InboxListParams, LaterEntry, ListParams, ListResult,
   GraphNode, MilestoneFields, PageVersion,
@@ -61,13 +61,14 @@ export interface VaultStore {
    * Returns one page of the vault's papers, and how many papers that page was
    * drawn from. `page` counts from 1 and `size` is how many rows a full page
    * holds, so the last page may hold fewer and a page past the last holds
-   * none; `total` counts every paper the filter and the facet leave, not the
-   * rows returned. A filter keeps the papers whose title, one of whose authors,
+   * none; `total` counts every paper the filter, the facet and `filters`
+   * leave, not the rows returned. A filter keeps the papers whose title, one of whose authors,
    * one of whose topics or one of whose project names contains it, compared without case;
    * a facet keeps the papers whose
    * named field carries the given value, the field being a built-in groupable
-   * one or a select or multi column's key; given both, a paper has to satisfy
-   * both. Rows come sorted by `sort`, by title when that is absent, in
+   * one or a select or multi column's key, and each of `filters` keeps papers
+   * by the same rule; a paper has to satisfy every one given. Any other field
+   * throws. Rows come sorted by `sort`, by title when that is absent, in
    * `direction`, ascending when that is absent; sorted by date added, year or
    * first author, the papers carrying none come after every paper that carries
    * one, in both directions.
@@ -80,12 +81,12 @@ export interface VaultStore {
    * newest of those papers — newest by publication year, and among papers
    * sharing that year the first in vault order; a paper carrying no year is
    * never the newest unless no paper under that value carries one, and then
-   * the first in vault order stands. A filter narrows the counted papers by
-   * the same rule listPapers applies to its own filter. `field` is one of the
-   * built-in groupable fields or a select or multi column's key; anything else
-   * throws.
+   * the first in vault order stands. A filter and `filters` narrow the counted
+   * papers by the same rules listPapers applies to its own. `field`, and the
+   * field of each of `filters`, must be one of the built-in groupable fields or
+   * a select or multi column's key; anything else throws.
    */
-  facetPapers(field: string, filter?: string): Facet[]
+  facetPapers(field: string, filter?: string, filters?: readonly FieldValue[]): Facet[]
 
   /** Returns the paper with the given id. Throws if no such paper exists. */
   getPaper(id: string): PaperRow

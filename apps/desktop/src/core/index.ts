@@ -521,8 +521,8 @@ registerHandler('vault.today', (params) => {
 })
 registerHandler('papers.list', (params) => store.listPapers(ListParamsSchema.parse(params)))
 registerHandler('papers.facets', (params) => {
-  const { field, filter } = PapersFacetsParamsSchema.parse(params)
-  return store.facetPapers(field, filter)
+  const { field, filter, filters } = PapersFacetsParamsSchema.parse(params)
+  return store.facetPapers(field, filter, filters)
 })
 registerHandler('papers.get', (params) => store.getPaper(PapersGetParamsSchema.parse(params).id))
 registerHandler('papers.update', (params) => {
