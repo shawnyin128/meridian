@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import argparse
 import json
 import io
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -14,7 +16,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 from meridian import __version__
-from meridian.cli import main
+from meridian.cli import build_parser, main
 from meridian.framework_check import (
     FRAMEWORK_CHECK_CATEGORIES,
     MCP_RUNTIME_CATEGORY,
@@ -331,6 +333,41 @@ class CliTests(unittest.TestCase):
             claude = (CLAUDE_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
             self.assertEqual(agent, codex, skill_name)
             self.assertEqual(claude, codex, skill_name)
+
+    def test_agent_surfaces_name_findings_and_experiment_conclusions_with_the_app_words(self) -> None:
+        def helps(parser: argparse.ArgumentParser) -> list[str]:
+            texts = [parser.description or ""]
+            for action in parser._actions:
+                texts.append(action.help or "")
+                if isinstance(action, argparse._SubParsersAction):
+                    texts.extend(choice.help or "" for choice in action._choices_actions)
+                    for subparser in action.choices.values():
+                        texts.extend(helps(subparser))
+            return texts
+
+        surfaces = {
+            f"{root}/{name}": (root / name / "SKILL.md").read_text(encoding="utf-8")
+            for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT)
+            for name in PRODUCT_SKILL_NAMES
+        }
+        surfaces["cli help"] = "\n".join(helps(build_parser()))
+        surfaces["mcp instructions"] = mcp_server.MeridianMCPServer().handle_message(
+            {"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+        )["result"]["instructions"]
+        surfaces["mcp tools"] = json.dumps(mcp_server.tool_definitions(), ensure_ascii=False)
+        surfaces["mcp capabilities"] = json.dumps(mcp_adapter.capabilities(detail="full"), ensure_ascii=False)
+
+        for name, text in surfaces.items():
+            with self.subTest(surface=name):
+                # A bare "conclusion" is the App's finding; a project's conclusion is an experiment conclusion.
+                prose = re.sub(r"`[^`\n]*`|\w*_conclusion\w*|experiment\s+conclusions?", "", text, flags=re.IGNORECASE)
+                self.assertEqual(re.findall(r"[^\n]*\bconclusions?\b[^\n]*", prose, flags=re.IGNORECASE), [])
+                self.assertNotIn("lint findings", text)
+
+        wiki = (CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md").read_text(encoding="utf-8")
+        lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
+        self.assertIn("The one thing an agent may add is a\n**finding**", wiki)
+        self.assertIn("The App lists it under 实验结论", lab)
 
     def test_meridian_plugin_skill_frontmatter_is_loader_safe(self) -> None:
         for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT):

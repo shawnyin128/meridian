@@ -20,8 +20,8 @@ Meridian has four user-facing skills:
 - `meridian-coding`: incremental App/Lab context before project-connected code work.
 
 If the user asks to retrieve, answer from papers, check wiki health, or propose
-a project's settled finding as a conclusion, hand off to `wiki`; a conclusion is
-a proposal that waits for the user's review in the App. A paper, a note, or a
+a project's settled experiment conclusion as a finding, hand off to `wiki`; the
+finding waits for the user's review in the App. A paper, a note, or a
 body edit is the user's to make in the App. Do not continue the normal work
 inside this setup skill after the setup issue is resolved.
 
@@ -250,7 +250,7 @@ python -c "from pathlib import Path; from meridian.lab import initialize_lab_spa
 
 ## Delegation
 
-- Use `wiki` for retrieval, health checks, insights, synthesis, and conclusion
+- Use `wiki` for retrieval, health checks, insights, synthesis, and finding
   proposals that wait for the user's review in the App.
 - Use `lab` by default for research and research-development requests in repos
   with `.meridian/`; Lab handles preflight, idea placement, approach trees,
@@ -277,7 +277,7 @@ Do not defer this to `lab`.
 
 ```text
 The user asks to add a PDF to the Paper Wiki. Tell them to add it in the
-Meridian App; no agent imports a paper. A project's settled finding goes to
-`wiki`, which submits it as a proposal that waits for the user's review in the
-App.
+Meridian App; no agent imports a paper. A project's settled experiment
+conclusion goes to `wiki`, which submits it as a finding proposal that waits
+for the user's review in the App.
 ```

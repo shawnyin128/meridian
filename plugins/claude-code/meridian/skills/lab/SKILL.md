@@ -119,7 +119,7 @@ found. Three calls feed it; none needs the user's confirmation.
 `python -m meridian workspace event-add` with `--kind`, `--text` as the title, and
 `--detail`) at
 these boundaries, one event each. Pass a structured `kind`, a one-line
-`title` (the conclusion, not a formatted sentence), and an optional `detail`
+`title` (the outcome, not a formatted sentence), and an optional `detail`
 for key numbers or parameters — do not fold the boundary's verb into the
 title text:
 
@@ -239,12 +239,13 @@ concerns a Lab node, including inside a coding task.
   record the link with a `link_task` change (`node_id`, `task_id`) in the same
   packet as Focus. A task belongs to one node; to move it, `unlink_task` it from
   the old node first.
-- **Conclusion.** When a node becomes `supported` or `dead`, record what the
-  project actually found with a `record_conclusion` change: `text` is the
-  finding in one line, `evidence` lists the experiment ids attached to the node
-  that show it. The App lists it under 结论 as unverified until the user
-  verifies it. Never write a conclusion the node's experiments do not show;
-  when the finding changes, record it again and the user verifies it anew.
+- **Experiment conclusion.** When a node becomes `supported` or `dead`, record
+  what the project actually found with a `record_conclusion` change: `text` is
+  the experiment conclusion in one line, `evidence` lists the experiment ids
+  attached to the node that show it. The App lists it under 实验结论 as
+  unverified until the user verifies it. Never write an experiment conclusion
+  the node's experiments do not show; when it changes, record it again and the
+  user verifies it anew.
 - **Leaving.** Before moving to another node or ending the task, check the
   node you are leaving against Completion, then apply Focus to the next one.
 - **Relations.** When work shows that two existing nodes block, support,
@@ -299,7 +300,7 @@ For every slot that affects research interpretation:
 1. Call `meridian.context` with a compact research intent before relying on
    chat intuition or local repo evidence.
 2. Use `meridian.read` for selected page sections when context returns a paper,
-   method, concept, claim, evidence page, synthesis, or user insight that could
+   method, concept, finding, evidence page, synthesis, or user insight that could
    change the plan.
 3. Use `meridian.trace` when a decision depends on provenance, evidence
    quality, trust state, or source support.
@@ -549,12 +550,12 @@ Minimum completion:
 - Start from the active thread/node or newly placed idea.
 - Retrieve compact Paper Wiki context with `meridian.context`.
 - Read selected canonical pages with `meridian.read` when the feasibility
-  judgment depends on a paper, method, concept, claim, or evidence section.
-- Trace provenance with `meridian.trace` when a claim would affect a decision.
+  judgment depends on a paper, method, concept, finding, or evidence section.
+- Trace provenance with `meridian.trace` when a finding would affect a decision.
 - Separate source facts, wiki synthesis, user insight, local experiment
   evidence, and uncertainty.
 - End with a next research move: refine the node, design evidence, propose a
-  settled conclusion via `wiki_propose`, or prepare a Research Grounding
+  finding via `wiki_propose`, or prepare a Research Grounding
   Injection for coding work.
 
 Example:
@@ -667,10 +668,10 @@ Minimum completion:
 - Move a proposal to `ready` only when evidence covers the key scope.
 - Convert a `ready` local proposal into a `meridian.wiki_propose` call: claim
   ops only (`addClaim`/`reviseClaim`/...), with at least one `experiment`
-  evidence item naming this project and a node whose conclusion is recorded;
-  the App rejects a node without one, and the user can apply the proposal only
-  after verifying that conclusion. Never import a paper, restructure
-  an aggregation, or edit a body through this path.
+  evidence item naming this project and a node whose experiment conclusion is
+  recorded; the App rejects a node without one, and the user can apply the
+  proposal only after verifying that experiment conclusion. Never import a
+  paper, restructure an aggregation, or edit a body through this path.
 - The proposal is queued for the user's review in the App; it is not applied
   by submitting it. Report the returned key, and check it with
   `meridian.wiki_proposal_status` if the user asks.
@@ -755,7 +756,7 @@ Common request labels map to these workflows:
 Retrieve wiki context after idea placement before feasibility judgment or
 experiment planning whenever the placed idea has a research-prior slot. These
 slots include paper methods, metric definitions, prerequisite mechanisms,
-implementation hooks, failure modes, prior user insights, claim support, or
+implementation hooks, failure modes, prior user insights, finding support, or
 reproduction details.
 
 For Research Prior triggers, MCP grounding is the default before a final Lab
@@ -813,11 +814,11 @@ treat that as a wiki signal rather than a reason to overfit the Lab answer:
 
 - missing prerequisite concepts: note a `concept_coverage` gap
 - many competing method pages: note a `knowledge_graph` consolidation gap
-- unsupported claims: note a `claim_evidence_traceability` gap
+- unsupported findings: note a `claim_evidence_traceability` gap
 - no synthesis for a recurring design question: note a `growth` gap
 
 Continue the idea-graph task with the best available context, but include the
-gap in the Lab Context Packet. An agent may only propose a conclusion (a
+gap in the Lab Context Packet. An agent may only propose a finding (a
 `wiki_propose` claim op with experiment evidence); it cannot repair or
 restructure the wiki, so surface a structural gap to the user instead of
 attempting a fix.
