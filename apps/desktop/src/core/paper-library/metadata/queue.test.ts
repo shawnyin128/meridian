@@ -56,7 +56,7 @@ describe('上传之后的元数据解析', () => {
     expect(lookups).toEqual([])
     expect(store.getPaper(paper.id).title).toBe('Speculative Serving at Scale')
     expect(queue.uploads()[0]).toMatchObject({ step: 'done', found: 'pdf' })
-    expect(store.listFeed()[0]?.body).toEqual({ kind: 'runs', runs: [
+    expect((await store.listFeed())[0]?.body).toEqual({ kind: 'runs', runs: [
       { kind: 'text', text: '你上传的' },
       { kind: 'strong', text: '《Speculative Serving at Scale》', target: { kind: 'paper', id: paper.id } },
       { kind: 'text', text: '已入库，标题取自 PDF。' },
@@ -69,9 +69,9 @@ describe('上传之后的元数据解析', () => {
     await queue.idle()
     expect(store.getPaper(paper.id).title).toBe('draft-trees')
     expect(queue.uploads()[0]).toMatchObject({ step: 'failed', error: '网络不可用' })
-    expect(JSON.stringify(store.listFeed()[0]?.body)).toContain('元数据暂未补全')
-    expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('网络不可用')
-    expect(JSON.stringify(store.listFeed()[0]?.body)).not.toContain('论文表')
+    expect(JSON.stringify((await store.listFeed())[0]?.body)).toContain('元数据暂未补全')
+    expect(JSON.stringify((await store.listFeed())[0]?.body)).not.toContain('网络不可用')
+    expect(JSON.stringify((await store.listFeed())[0]?.body)).not.toContain('论文表')
   })
 
   it('arXiv 查询失败时,探测出的页数照样写上,其余书目字段留待重试', async () => {

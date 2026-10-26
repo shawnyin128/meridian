@@ -490,9 +490,9 @@ describe('fixture store', () => {
     expect(tasksOf('knee')).toEqual(['t4'])
   })
 
-  it('给不存在的任务或节点设科研节点会抛出', () => {
-    expect(() => store.setTaskNode('draft', 'no-such-task', 'knee')).toThrow(/no-such-task/)
-    expect(() => store.setTaskNode('draft', 't2', 'no-such-node')).toThrow(/no-such-node/)
+  it('给不存在的任务或节点设科研节点会抛出', async () => {
+    await expect(store.setTaskNode('draft', 'no-such-task', 'knee')).rejects.toThrow(/no-such-task/)
+    await expect(store.setTaskNode('draft', 't2', 'no-such-node')).rejects.toThrow(/no-such-node/)
   })
 
   it('按给定顺序重排任务,并且重新读取项目也是这个顺序', async () => {
@@ -1428,15 +1428,15 @@ describe('fixture store', () => {
     expect(store.listChanges()[0]!.diff[0]).not.toBe('篡改后的 diff')
   })
 
-  it('动态最新的在前,日期分段跟着条目走', () => {
-    expect(store.listFeed().map((e) => e.source)).toEqual(['steward', 'inbox', 'steward', 'lab', 'me'])
-    expect(store.listFeed().map((e) => e.day)).toEqual(['今天', '今天', '昨天', '昨天', '昨天'])
-    expect(store.listFeed()[0]!.time).toBe('早报')
+  it('动态最新的在前,日期分段跟着条目走', async () => {
+    expect((await store.listFeed()).map((e) => e.source)).toEqual(['steward', 'inbox', 'steward', 'lab', 'me'])
+    expect((await store.listFeed()).map((e) => e.day)).toEqual(['今天', '今天', '昨天', '昨天', '昨天'])
+    expect((await store.listFeed())[0]!.time).toBe('早报')
   })
 
-  it('取回的动态是副本,连正文分段与简报条目那一层改了也渗不回库里', () => {
-    const before = JSON.stringify(store.listFeed())
-    const rows = store.listFeed()
+  it('取回的动态是副本,连正文分段与简报条目那一层改了也渗不回库里', async () => {
+    const before = JSON.stringify(await store.listFeed())
+    const rows = await store.listFeed()
     rows[4]!.time = '篡改后的时刻'
     const runs = rows[4]!.body
     const brief = rows[0]!.body
@@ -1444,7 +1444,7 @@ describe('fixture store', () => {
     expect(brief.kind).toBe('brief')
     if (runs.kind === 'runs') runs.runs[0]!.text = '篡改后的分段'
     if (brief.kind === 'brief') brief.items[0]!.tag = '篡改后的标'
-    expect(JSON.stringify(store.listFeed())).toBe(before)
+    expect(JSON.stringify(await store.listFeed())).toBe(before)
   })
 
   it('收件按 fixture 的次序返回,同一条关注带进来的排在一起', () => {
@@ -1718,13 +1718,13 @@ describe('fixture store', () => {
     })
   })
 
-  it('聚合页里结论的实验证据按名字写它引的项目结论', () => {
-    const claim = store.wikiAggregation('topics/kv-cache-quantization').claims.find((c) => c.id === 'prefix-schedule')!
+  it('聚合页里结论的实验证据按名字写它引的项目结论', async () => {
+    const claim = (await store.wikiAggregation('topics/kv-cache-quantization')).claims.find((c) => c.id === 'prefix-schedule')!
     expect(claim.evidence.map((e) => e.point)).toEqual([undefined, '迁移后吞吐与基线持平'])
   })
 
-  it('聚合页:子聚合、对照表的行与格子、派生列、追加区与关联', () => {
-    const ptq = store.wikiAggregation('topics/ptq')
+  it('聚合页:子聚合、对照表的行与格子、派生列、追加区与关联', async () => {
+    const ptq = await store.wikiAggregation('topics/ptq')
     expect(ptq.children.map((c) => c.id))
       .toEqual(['topics/kv-cache-quantization', 'topics/ptq-weight-activation', 'topics/ptq-weight-only'])
     // The KV-cache page belongs to both PTQ and long-context inference.
@@ -1733,7 +1733,7 @@ describe('fixture store', () => {
     expect(ptq.splitOn).toBe('量化对象')
     expect(ptq.parents).toEqual([{ id: 'topics/quantization', title: 'Quantization' }])
 
-    const wo = store.wikiAggregation('topics/ptq-weight-only')
+    const wo = await store.wikiAggregation('topics/ptq-weight-only')
     expect(wo.columns.map((c) => c.key)).toEqual(['bits', 'needs_calib', 'backprop', 'claim'])
     expect(wo.rows[0]!.paper.fullTitle).toMatch(/^GPTQ: /)
     expect(wo.rows.map((r) => ({ id: r.paper.id, title: r.paper.title }))).toEqual([
@@ -1765,7 +1765,7 @@ describe('fixture store', () => {
       ],
     }])
 
-    const rotation = store.wikiAggregation('methods/rotation')
+    const rotation = await store.wikiAggregation('methods/rotation')
     expect(rotation.derivedColumns).toEqual([{ key: 'used_for', label: '用于' }])
     expect(rotation.rows.find((r) => r.paper.title === 'QuaRot')!.derived['used_for']).toEqual([
       { id: 'topics/ptq-weight-activation', title: 'Weight-activation PTQ' },
@@ -1785,13 +1785,13 @@ describe('fixture store', () => {
       .toEqual({ label: 'KV 位宽', cell: { value: '4', page: 1, quote: 'KV cache in 4 bits' } })
   })
 
-  it('论文表里的每一篇都有页:没编过的正文是空串', () => {
+  it('论文表里的每一篇都有页:没编过的正文是空串', async () => {
     const legacy = store.listPapers({ page: 1, size: 50 }).rows.find((r) => !/^\d{4}\.\d{5}$/.test(r.id))!
     expect(legacy).toBeDefined()
     expect(store.wikiPaper(`papers/${legacy.id}`))
       .toMatchObject({ id: `papers/${legacy.id}`, title: legacy.title, body: '', memberships: [] })
     expect(() => store.wikiPaper('papers/nope')).toThrow(/nope/)
-    expect(() => store.wikiAggregation('nope')).toThrow(/nope/)
+    await expect(store.wikiAggregation('nope')).rejects.toThrow(/nope/)
   })
 
   it('入库就有页;删掉论文那一页也没了,恢复回来还是原来那一页', () => {
@@ -1811,19 +1811,19 @@ describe('fixture store', () => {
     expect(store.wikiPaper(id).body).toBe('## 读后\n第一笔。')
   })
 
-  it('取回的 wiki 首页与聚合页都是副本,改了渗不回库里', () => {
-    const before = JSON.stringify(store.wikiAggregation('topics/ptq-weight-only'))
-    const agg = store.wikiAggregation('topics/ptq-weight-only')
+  it('取回的 wiki 首页与聚合页都是副本,改了渗不回库里', async () => {
+    const before = JSON.stringify(await store.wikiAggregation('topics/ptq-weight-only'))
+    const agg = await store.wikiAggregation('topics/ptq-weight-only')
     agg.rows[0]!.cells['bits']!.value = '篡改'
     agg.columns[0]!.label = '篡改'
     agg.children.length = 0
-    expect(JSON.stringify(store.wikiAggregation('topics/ptq-weight-only'))).toBe(before)
+    expect(JSON.stringify(await store.wikiAggregation('topics/ptq-weight-only'))).toBe(before)
     const home = store.wikiHome()
     home.roots[0]!.title = '篡改'
     expect(store.wikiHome().roots[0]!.title).toBe('Long-context inference')
   })
 
-  it('应用提案:加一条归属之后对照表多一行,论文表那一行的主题跟着改;两个 store 实例互不影响', () => {
+  it('应用提案:加一条归属之后对照表多一行,论文表那一行的主题跟着改;两个 store 实例互不影响', async () => {
     const other = createFixtureStore(() => EPOCH)
     store.applyProposal({
       source: 'ingest', title: '把 KVQuant 归进 Weight-only PTQ',
@@ -1832,19 +1832,19 @@ describe('fixture store', () => {
         cells: { bits: { value: 'W3', page: 1, quote: '3-bit quantization' } },
       }],
     })
-    const rows = store.wikiAggregation('topics/ptq-weight-only').rows
+    const rows = (await store.wikiAggregation('topics/ptq-weight-only')).rows
     expect(rows.map((r) => r.paper.title)).toContain('KVQuant')
     expect(rows.find((r) => r.paper.title === 'KVQuant')!.cells['bits'])
       .toEqual({ value: 'W3', page: 1, quote: '3-bit quantization' })
     expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization', 'Weight-only PTQ'])
-    expect(other.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.title)).not.toContain('KVQuant')
+    expect((await other.wikiAggregation('topics/ptq-weight-only')).rows.map((r) => r.paper.title)).not.toContain('KVQuant')
     expect(() => store.applyProposal({
       source: 'ingest', title: 'x',
       ops: [{ op: 'setMembership', paper: 'papers/nope', in: 'topics/ptq-weight-only', cells: {} }],
     })).toThrow(/papers\/nope/)
   })
 
-  it('撤销一条改了归属的提案之后,论文表那一行的主题也回去', () => {
+  it('撤销一条改了归属的提案之后,论文表那一行的主题也回去', async () => {
     const before = store.getPaper('2401.18079')
     store.applyProposal({
       source: 'ingest', title: '把 KVQuant 归进 Weight-only PTQ',
@@ -1856,19 +1856,19 @@ describe('fixture store', () => {
     expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization', 'Weight-only PTQ'])
     store.undoChange(store.listChanges()[0]!.id)
     expect(store.getPaper('2401.18079')).toEqual(before)
-    expect(store.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.title)).not.toContain('KVQuant')
+    expect((await store.wikiAggregation('topics/ptq-weight-only')).rows.map((r) => r.paper.title)).not.toContain('KVQuant')
   })
 
-  it('改正文:聚合页与论文页都改得了,updated 推到今天,论文表的行跟着;没有的页拒绝', () => {
+  it('改正文:聚合页与论文页都改得了,updated 推到今天,论文表的行跟着;没有的页拒绝', async () => {
     const store = createFixtureStore(() => '2026-09-10')
     store.updateWikiPage('topics/ptq', '## 问题\n改过的。')
-    expect(store.wikiAggregation('topics/ptq')).toMatchObject({ body: '## 问题\n改过的。', summary: '改过的。', updated: '2026-09-10' })
+    expect(await store.wikiAggregation('topics/ptq')).toMatchObject({ body: '## 问题\n改过的。', summary: '改过的。', updated: '2026-09-10' })
     store.updateWikiPage('papers/2210.17323', '## 这篇说了什么\n改过。')
     expect(store.wikiPaper('papers/2210.17323').body).toBe('## 这篇说了什么\n改过。')
     expect(store.getPaper('2210.17323').updated).toBe('2026-09-10')
     expect(() => store.updateWikiPage('topics/nope', 'x')).toThrow(/topics\/nope/)
     expect(() => store.updateWikiPage('topics/ptq', '## 问题\n<!-- /generated -->')).toThrow(/生成区的标记/)
-    expect(store.wikiAggregation('topics/ptq').body).toBe('## 问题\n改过的。')
+    expect((await store.wikiAggregation('topics/ptq')).body).toBe('## 问题\n改过的。')
     const change = store.listChanges()[0]!
     expect(change).toMatchObject({
       title: `Wiki · 「${store.getPaper('2210.17323').title}」· 改了正文`, diff: ['~ papers/2210.17323'], undoable: true,
@@ -1969,16 +1969,16 @@ describe('fixture store', () => {
     expect((await store.getProject('draft')).events).toEqual(before)
   })
 
-  it('新记的动态排在最前,落在今天这一段', () => {
+  it('新记的动态排在最前,落在今天这一段', async () => {
     store = createFixtureStore(
       () => EPOCH,
       () => new Date('2026-08-25T14:03:02.001Z'),
     )
-    const before = store.listFeed().length
+    const before = (await store.listFeed()).length
     store.appendFeed({
       source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '闪念:「新想法」' }] },
     })
-    const feed = store.listFeed()
+    const feed = await store.listFeed()
     expect(feed).toHaveLength(before + 1)
     expect(feed[0]).toMatchObject({
       source: 'me', day: '今天', time: '刚刚',

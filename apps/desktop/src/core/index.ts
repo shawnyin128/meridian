@@ -153,6 +153,7 @@ import {
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
+import { experimentProjects } from './wiki/index.js'
 
 type Handler = (params: unknown) => unknown
 
@@ -764,7 +765,7 @@ registerHandler('project.deleteConclusion', (params) => {
 })
 registerHandler('project.verifyConclusion', (params) => {
   const { projectId, node, fingerprint } = ProjectVerifyConclusionParamsSchema.parse(params)
-  return store.verifyConclusion(projectId, node, fingerprint)
+  return store.readWorkspaceGraphs([projectId]).then((graphs) => store.verifyConclusion(projectId, node, fingerprint, graphs))
 })
 registerHandler('project.unverifyConclusion', (params) => {
   const { projectId, node } = ProjectUnverifyConclusionParamsSchema.parse(params)
@@ -878,7 +879,8 @@ registerHandler('wiki.cards', (params) => {
 registerHandler('wiki.apply', async (params) => {
   const { proposal } = WikiApplyParamsSchema.parse(params)
   await wikiProposals.checkHumanQuotes(proposal.ops)
-  const { change } = recordChange(store, () => store.applyProposal(proposal))
+  const graphs = await store.readWorkspaceGraphs(experimentProjects(proposal.ops))
+  const { change } = recordChange(store, () => store.applyProposal(proposal, undefined, graphs))
   return { change }
 })
 registerHandler('wiki.propose', (params) =>

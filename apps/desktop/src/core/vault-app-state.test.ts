@@ -583,7 +583,7 @@ describe('vault app state', () => {
   })
 
   describe('运行状态', () => {
-    it('旧动态里写死的刚刚会一次性迁移成可推进的时间', () => {
+    it('旧动态里写死的刚刚会一次性迁移成可推进的时间', async () => {
       const file = join(vault, '.meridian', 'feed.json')
       const legacy = [{
         id: 'legacy-feed', source: 'me', day: '今天', time: '刚刚',
@@ -593,15 +593,15 @@ describe('vault app state', () => {
       const writtenAt = new Date('2026-09-08T14:03:02.001Z')
       utimesSync(file, writtenAt, writtenAt)
 
-      const migrated = reopen().listFeed()
+      const migrated = await reopen().listFeed()
       expect(migrated).toHaveLength(1)
       expect(migrated[0]!.createdAt).toBe('2026-09-08T14:03:02.001Z')
       expect(JSON.parse(read('.meridian/feed.json'))[0].createdAt)
         .toBe('2026-09-08T14:03:02.001Z')
-      expect(reopen().listFeed()[0]!.createdAt).toBe('2026-09-08T14:03:02.001Z')
+      expect((await reopen().listFeed())[0]!.createdAt).toBe('2026-09-08T14:03:02.001Z')
     })
 
-    it('关注、对话与动态都写进 .meridian,重开之后还在', () => {
+    it('关注、对话与动态都写进 .meridian,重开之后还在', async () => {
       store.createWatch({ type: 'topic', name: 'speculative decoding' })
       const watchId = store.listWatches()[0]!.id
       store.setWatchActive(watchId, false)
@@ -615,7 +615,7 @@ describe('vault app state', () => {
         id: watchId, type: 'topic', name: 'speculative sampling', active: false,
       }])
       expect(back.listChats()).toEqual([{ id: chat.id, title: '树宽收益的拐点在哪', archived: false, messageCount: 1 }])
-      expect(back.listFeed()[0]).toMatchObject({ source: 'me', day: '今天', time: '刚刚' })
+      expect((await back.listFeed())[0]).toMatchObject({ source: 'me', day: '今天', time: '刚刚' })
     })
 
     it('论文上下文会话按论文身份复用并跨重启保存', () => {
@@ -673,19 +673,19 @@ describe('vault app state', () => {
   })
 
   describe('git 检查', () => {
-    it('库不在 git 之下时,动态里只说这件事,不附劝告,重开不再重复说', () => {
-      const entries = store.listFeed()
+    it('库不在 git 之下时,动态里只说这件事,不附劝告,重开不再重复说', async () => {
+      const entries = await store.listFeed()
       expect(entries).toHaveLength(1)
       expect(entries[0]).toMatchObject({ source: 'steward' })
       expect(entries[0]!.body).toEqual({ kind: 'runs', runs: [
         { kind: 'text', text: '这个库' }, { kind: 'strong', text: '不在 git 管理之下' }, { kind: 'text', text: '。' },
       ] })
-      expect(reopen().listFeed()).toHaveLength(1)
+      expect(await reopen().listFeed()).toHaveLength(1)
     })
 
-    it('库在 git 之下时说的是另一件事', () => {
+    it('库在 git 之下时说的是另一件事', async () => {
       mkdirSync(join(vault, '.git'))
-      const entries = reopen().listFeed()
+      const entries = await reopen().listFeed()
       expect(entries).toHaveLength(2)
       expect(JSON.stringify(entries[0]!.body)).toContain('在 git 管理之下')
       expect(JSON.stringify(entries[0]!.body)).not.toContain('不在 git')

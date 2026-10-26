@@ -596,20 +596,20 @@ describe('vault store', () => {
     expect(both.getPaper(WITH_SOURCE).title).toContain('STAR')
   })
 
-  it('两页记着同一份原文这件事被当成数据质量信号报出来,不是藏掉一页', () => {
+  it('两页记着同一份原文这件事被当成数据质量信号报出来,不是藏掉一页', async () => {
     const dir = join(vault, 'wiki', 'papers')
     copyFileSync(join(dir, `${WITH_SOURCE}.md`), join(dir, 'STAR-again.md'))
-    const said = JSON.stringify(createVaultStore(vault).listFeed())
+    const said = JSON.stringify(await createVaultStore(vault).listFeed())
     expect(said).toContain(SOURCE_ID)
     expect(said).toContain('STAR-again')
     expect(said).toContain(WITH_SOURCE)
     // Report the condition only once.
-    expect(createVaultStore(vault).listFeed().length)
+    expect((await createVaultStore(vault).listFeed()).length)
       .toBe(JSON.parse(said).length)
   })
 
-  it('每页原文各一份的库不报这件事', () => {
-    expect(JSON.stringify(store.listFeed())).not.toContain('各被不止一页记着')
+  it('每页原文各一份的库不报这件事', async () => {
+    expect(JSON.stringify(await store.listFeed())).not.toContain('各被不止一页记着')
   })
 
   it('库里没有发表年份,论文行就不带 year,也不拿 updated 折算一个出来', () => {
@@ -629,9 +629,9 @@ describe('vault store', () => {
     }).total).toBe(1)
   })
 
-  it('取不存在的页会抛出而不是给一页空的', () => {
+  it('取不存在的页会抛出而不是给一页空的', async () => {
     expect(() => store.wikiPaper('papers/no-such-paper')).toThrow(/no-such-paper/)
-    expect(() => store.wikiAggregation('topics/no-such-topic')).toThrow(/no-such-topic/)
+    await expect(store.wikiAggregation('topics/no-such-topic')).rejects.toThrow(/no-such-topic/)
     expect(() => store.getPaper('no-such-paper')).toThrow(/no-such-paper/)
   })
 
@@ -1435,7 +1435,7 @@ describe('vault store on the aggregation layout', () => {
 
   afterEach(() => rmSync(vault, { recursive: true, force: true }))
 
-  it('读出来的首页、聚合页、论文页与 fixture store 的一模一样;页版本是磁盘上那一页的版本', () => {
+  it('读出来的首页、聚合页、论文页与 fixture store 的一模一样;页版本是磁盘上那一页的版本', async () => {
     const fixture = createFixtureStore(() => '2026-09-10')
     // The fixture has no files; its versions fingerprint the page as Core would write it, not the hand-written example.
     const unversioned = <T extends { version: unknown }>(view: T): Omit<T, 'version'> => {
@@ -1444,10 +1444,10 @@ describe('vault store on the aggregation layout', () => {
       return rest
     }
     expect(store.wikiHome()).toEqual(fixture.wikiHome())
-    expect(unversioned(store.wikiAggregation('topics/ptq-weight-only')))
-      .toEqual(unversioned(fixture.wikiAggregation('topics/ptq-weight-only')))
+    expect(unversioned(await store.wikiAggregation('topics/ptq-weight-only')))
+      .toEqual(unversioned(await fixture.wikiAggregation('topics/ptq-weight-only')))
     expect(unversioned(store.wikiPaper('papers/2404.00456'))).toEqual(unversioned(fixture.wikiPaper('papers/2404.00456')))
-    expect(store.wikiAggregation('topics/ptq').version)
+    expect((await store.wikiAggregation('topics/ptq')).version)
       .toEqual(pageVersion(readFileSync(join(vault, 'wiki', 'topics', 'ptq.md'), 'utf8')))
     expect(store.wikiCards().map((c) => c.id)).toEqual(fixture.wikiCards().map((c) => c.id))
   })
@@ -1570,9 +1570,9 @@ describe('vault store on the aggregation layout', () => {
     expect((await createVaultStore(vault).getProject(id)).projectConclusions![0]).toMatchObject({ state: 'verified', verifiedOn: '2026-09-10' })
     expect(counts()).toEqual({ verified: 1, pending: 0, conflicting: 0 })
     write()
-    expect(store.wikiAggregation('topics/ptq').claims.find((c) => c.id === 'wide-b8')!.evidence[0]!.point).toBe('宽树')
+    expect((await store.wikiAggregation('topics/ptq')).claims.find((c) => c.id === 'wide-b8')!.evidence[0]!.point).toBe('宽树')
     expect((await store.getProject(id)).projectConclusions![0]!.wiki).toEqual([{
-      page: 'topics/ptq', title: store.wikiAggregation('topics/ptq').title, claim: 'wide-b8', version: 1,
+      page: 'topics/ptq', title: (await store.wikiAggregation('topics/ptq')).title, claim: 'wide-b8', version: 1,
     }])
 
     graph('宽树在 B≥16 时才净赚')
@@ -1611,7 +1611,7 @@ describe('vault store on the aggregation layout', () => {
     expect(readFileSync(join(vault, 'wiki', 'projects', `${id}.md`), 'utf8')).not.toContain('task_nodes:')
     expect(planNode()).toBeUndefined()
     expect([tasksOf('t.A'), tasksOf('t.B')]).toEqual([[task], []])
-    expect(() => store.setTaskNode(id, task, 't.missing')).toThrow(/t.missing/)
+    await expect(store.setTaskNode(id, task, 't.missing')).rejects.toThrow(/t.missing/)
   })
 
   it('agent 请求加的任务:进计划、标明 agent 加的、记一条能撤销的变动;每条只收一次,删掉或撤销都不回来', async () => {
@@ -1921,23 +1921,23 @@ describe('vault store on the aggregation layout', () => {
       }),
       'utf8',
     )
-    const labTexts = () => timed.listFeed().filter((entry) => entry.source === 'lab')
+    const labTexts = async () => (await timed.listFeed()).filter((entry) => entry.source === 'lab')
       .map((entry) => (entry.body.kind === 'runs' ? entry.body.runs.map((run) => run.text).join('') : ''))
 
     writeEvents([{ id: 'old', text: '开始推进 延迟探针' }])
-    expect(labTexts()).toEqual([])
+    expect(await labTexts()).toEqual([])
 
     writeEvents([{ id: 'old', text: '开始推进 延迟探针' }, { id: 'new', text: '完成 延迟探针：p95 降到 40ms' }])
     clock = new Date(clock.getTime() + 30_000)
-    expect(labTexts()).toEqual([])
+    expect(await labTexts()).toEqual([])
     clock = new Date(clock.getTime() + 31_000)
-    expect(labTexts()).toEqual(['「动态实验流」完成 延迟探针：p95 降到 40ms'])
-    expect(timed.listFeed()[0]).toMatchObject({
+    expect(await labTexts()).toEqual(['「动态实验流」完成 延迟探针：p95 降到 40ms'])
+    expect((await timed.listFeed())[0]).toMatchObject({
       source: 'lab', body: { runs: [{ kind: 'strong', text: '「动态实验流」', target: { kind: 'project', id } }, { kind: 'text' }] },
     })
 
     clock = new Date(clock.getTime() + 61_000)
-    expect(labTexts()).toHaveLength(1)
+    expect(await labTexts()).toHaveLength(1)
   })
 
   it('项目的结论分档从页上的结论列表数出来,页上不再存计数', async () => {
@@ -2525,7 +2525,7 @@ describe('vault store on the aggregation layout', () => {
     expect(store.search('Rotation')[0]).toMatchObject({ kind: 'aggregation', target: 'methods/rotation' })
   })
 
-  it('应用一条提案:归属写在论文页上,聚合页的对照表回填,别处一个字节不动;撤销逐字节还原', () => {
+  it('应用一条提案:归属写在论文页上,聚合页的对照表回填,别处一个字节不动;撤销逐字节还原', async () => {
     const paper = join(vault, 'wiki', 'papers', '2401.18079.md')
     const agg = join(vault, 'wiki', 'topics', 'ptq-weight-only.md')
     const paperBefore = readFileSync(paper, 'utf8')
@@ -2537,7 +2537,7 @@ describe('vault store on the aggregation layout', () => {
         cells: { bits: { value: 'W3', page: 1, quote: '3-bit quantization' } },
       }],
     })
-    const rows = store.wikiAggregation('topics/ptq-weight-only').rows
+    const rows = (await store.wikiAggregation('topics/ptq-weight-only')).rows
     expect(rows.map((r) => r.paper.title)).toContain('KVQuant')
     expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization', 'Weight-only PTQ'])
     // Paper page: only the new membership and updated line change.
@@ -2550,7 +2550,7 @@ describe('vault store on the aggregation layout', () => {
     const outside = (text: string) => text.replace(/<!-- generated:table -->[\s\S]*?<!-- \/generated -->/, '')
     expect(outside(aggAfter)).toBe(outside(aggBefore))
     // Reopening reads the same result.
-    expect(createVaultStore(vault).wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.title)).toContain('KVQuant')
+    expect((await createVaultStore(vault).wikiAggregation('topics/ptq-weight-only')).rows.map((r) => r.paper.title)).toContain('KVQuant')
 
     const change = store.listChanges()[0]!
     expect(change).toMatchObject({
@@ -2561,15 +2561,15 @@ describe('vault store on the aggregation layout', () => {
     store.undoChange(change.id)
     expect(readFileSync(paper, 'utf8')).toBe(paperBefore)
     expect(readFileSync(agg, 'utf8')).toBe(aggBefore)
-    expect(store.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.title)).not.toContain('KVQuant')
+    expect((await store.wikiAggregation('topics/ptq-weight-only')).rows.map((r) => r.paper.title)).not.toContain('KVQuant')
   })
 
-  it('0.0.14 写的聚合页没有 claims 也没有结论生成区:照原样读出,开库与改别的页都不动它一个字节,写了结论才补上结论区', () => {
+  it('0.0.14 写的聚合页没有 claims 也没有结论生成区:照原样读出,开库与改别的页都不动它一个字节,写了结论才补上结论区', async () => {
     cpSync(resolve(import.meta.dirname, 'fixtures/wiki-0.0.14'), join(vault, 'wiki'), { recursive: true })
     const page = join(vault, 'wiki', 'topics', 'qat.md')
     const old = readFileSync(page, 'utf8')
     store = createVaultStore(vault, () => '2026-09-10', () => new Date('2026-09-10T16:05:04.003Z'))
-    const view = store.wikiAggregation('topics/qat')
+    const view = await store.wikiAggregation('topics/qat')
     expect(view.claims).toEqual([])
     expect(view.body).toBe(old.slice(old.lastIndexOf('<!-- /generated -->\n') + '<!-- /generated -->\n'.length).trim())
     expect(view.rows.map((r) => r.paper.title)).toEqual(['LLM-QAT'])
@@ -2599,7 +2599,7 @@ describe('vault store on the aggregation layout', () => {
     expect(readFileSync(page, 'utf8')).toBe(before)
   })
 
-  it('新建一个聚合再往里挪成员,父聚合的子聚合区跟着回填;撤销把新页删掉', () => {
+  it('新建一个聚合再往里挪成员,父聚合的子聚合区跟着回填;撤销把新页删掉', async () => {
     const parent = join(vault, 'wiki', 'topics', 'ptq.md')
     const parentBefore = readFileSync(parent, 'utf8')
     store.applyProposal({
@@ -2614,14 +2614,14 @@ describe('vault store on the aggregation layout', () => {
     })
     expect(existsSync(join(vault, 'wiki', 'topics', 'ptq-kv.md'))).toBe(true)
     expect(readFileSync(parent, 'utf8')).toContain('- [[topics/ptq-kv|KV-side PTQ]]')
-    expect(store.wikiAggregation('topics/ptq').children.map((c) => c.id)).toContain('topics/ptq-kv')
+    expect((await store.wikiAggregation('topics/ptq')).children.map((c) => c.id)).toContain('topics/ptq-kv')
     store.undoChange(store.listChanges()[0]!.id)
     expect(existsSync(join(vault, 'wiki', 'topics', 'ptq-kv.md'))).toBe(false)
     expect(readFileSync(parent, 'utf8')).toBe(parentBefore)
-    expect(() => store.wikiAggregation('topics/ptq-kv')).toThrow(/topics\/ptq-kv/)
+    await expect(store.wikiAggregation('topics/ptq-kv')).rejects.toThrow(/topics\/ptq-kv/)
   })
 
-  it('挂载:子页的 parents 换了,新旧父页的细分区都回填,撤销逐字节还原', () => {
+  it('挂载:子页的 parents 换了,新旧父页的细分区都回填,撤销逐字节还原', async () => {
     const child = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
     const oldParent = join(vault, 'wiki', 'topics', 'ptq.md')
     const newParent = join(vault, 'wiki', 'topics', 'quantization.md')
@@ -2630,10 +2630,10 @@ describe('vault store on the aggregation layout', () => {
       source: 'user', title: '把 KV cache quantization 挂到 Quantization 下',
       ops: [{ op: 'setParents', page: 'topics/kv-cache-quantization', parents: ['topics/long-context-inference', 'topics/quantization'] }],
     })
-    expect(store.wikiAggregation('topics/kv-cache-quantization').parents.map((p) => p.id))
+    expect((await store.wikiAggregation('topics/kv-cache-quantization')).parents.map((p) => p.id))
       .toEqual(['topics/long-context-inference', 'topics/quantization'])
-    expect(store.wikiAggregation('topics/quantization').children.map((c) => c.id)).toContain('topics/kv-cache-quantization')
-    expect(store.wikiAggregation('topics/ptq').children.map((c) => c.id)).not.toContain('topics/kv-cache-quantization')
+    expect((await store.wikiAggregation('topics/quantization')).children.map((c) => c.id)).toContain('topics/kv-cache-quantization')
+    expect((await store.wikiAggregation('topics/ptq')).children.map((c) => c.id)).not.toContain('topics/kv-cache-quantization')
     // On disk, generated child regions change for both old and new parents.
     expect(readFileSync(oldParent, 'utf8')).not.toContain('[[topics/kv-cache-quantization|')
     expect(readFileSync(newParent, 'utf8')).toContain('[[topics/kv-cache-quantization|KV cache quantization]]')
@@ -2643,7 +2643,7 @@ describe('vault store on the aggregation layout', () => {
     expect([child, oldParent, newParent].map((f) => readFileSync(f, 'utf8'))).toEqual(before)
   })
 
-  it('同一条提案里先建页再挂到别处:回填集合照样算得出,不崩', () => {
+  it('同一条提案里先建页再挂到别处:回填集合照样算得出,不崩', async () => {
     store.applyProposal({
       source: 'user', title: '新建再挂',
       ops: [
@@ -2651,15 +2651,15 @@ describe('vault store on the aggregation layout', () => {
         { op: 'setParents', page: 'topics/new-branch', parents: ['topics/quantization'] },
       ],
     })
-    expect(store.wikiAggregation('topics/new-branch').parents.map((p) => p.id)).toEqual(['topics/quantization'])
-    expect(store.wikiAggregation('topics/quantization').children.map((c) => c.id)).toContain('topics/new-branch')
-    expect(store.wikiAggregation('topics/ptq').children.map((c) => c.id)).not.toContain('topics/new-branch')
+    expect((await store.wikiAggregation('topics/new-branch')).parents.map((p) => p.id)).toEqual(['topics/quantization'])
+    expect((await store.wikiAggregation('topics/quantization')).children.map((c) => c.id)).toContain('topics/new-branch')
+    expect((await store.wikiAggregation('topics/ptq')).children.map((c) => c.id)).not.toContain('topics/new-branch')
     // On disk, the original parent no longer lists the page and the replacement parent does.
     expect(readFileSync(join(vault, 'wiki', 'topics', 'ptq.md'), 'utf8')).not.toContain('topics/new-branch')
     expect(readFileSync(join(vault, 'wiki', 'topics', 'quantization.md'), 'utf8')).toContain('topics/new-branch')
   })
 
-  it('撤销只写回提案碰到的页:别的聚合页在这之间被手改过,手改留着', () => {
+  it('撤销只写回提案碰到的页:别的聚合页在这之间被手改过,手改留着', async () => {
     const other = join(vault, 'wiki', 'topics', 'qat.md')
     store.applyProposal({
       source: 'ingest', title: '把 KVQuant 归进 Weight-only PTQ',
@@ -2673,7 +2673,7 @@ describe('vault store on the aggregation layout', () => {
     writeFileSync(other, edited, 'utf8')
     store.undoChange(store.listChanges()[0]!.id)
     expect(readFileSync(other, 'utf8')).toBe(edited)
-    expect(store.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.title)).not.toContain('KVQuant')
+    expect((await store.wikiAggregation('topics/ptq-weight-only')).rows.map((r) => r.paper.title)).not.toContain('KVQuant')
   })
 
   it('提案会写的页:op 点名的在前,回填生成区的聚合跟在后面', () => {
@@ -2736,39 +2736,39 @@ describe('vault store on the aggregation layout', () => {
     expect(() => store.updatePaper('2404.00456', { topics: ['x'] })).toThrow(/归属/)
   })
 
-  it('撤回一条结论记一条能撤销的变动,撤销它把那条结论逐字节放回页上', () => {
+  it('撤回一条结论记一条能撤销的变动,撤销它把那条结论逐字节放回页上', async () => {
     const file = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
     const before = readFileSync(file, 'utf8')
-    const claims = () => store.wikiAggregation('topics/kv-cache-quantization').claims.map((claim) => claim.id)
+    const claims = async () => (await store.wikiAggregation('topics/kv-cache-quantization')).claims.map((claim) => claim.id)
     const { change } = recordChange(store, () => store.applyProposal({
       source: 'user', title: '撤回「KV cache quantization」的一条结论',
       ops: [{ op: 'retractClaim', page: 'topics/kv-cache-quantization', claim: 'prefix-schedule', reason: '撤回' }],
     }))
-    expect(claims()).toEqual(['per-channel-keys'])
+    expect(await claims()).toEqual(['per-channel-keys'])
     expect(store.listChanges()[0]).toMatchObject({ id: change, source: '我', undoable: true })
     store.undoChange(change)
     expect(readFileSync(file, 'utf8')).toBe(before)
-    expect(claims()).toEqual(['per-channel-keys', 'prefix-schedule'])
+    expect(await claims()).toEqual(['per-channel-keys', 'prefix-schedule'])
   })
 
-  it('加减论文的主题写的是 Wiki 归属:已有的主题归进那一页,没有的照入库的做法新建一页;每笔记一条变动,倒着撤销逐字节还原', () => {
+  it('加减论文的主题写的是 Wiki 归属:已有的主题归进那一页,没有的照入库的做法新建一页;每笔记一条变动,倒着撤销逐字节还原', async () => {
     const paper = join(vault, 'wiki', 'papers', '2401.18079.md')
     const weightOnly = join(vault, 'wiki', 'topics', 'ptq-weight-only.md')
     const kv = join(vault, 'wiki', 'topics', 'kv-cache-quantization.md')
     const outliers = join(vault, 'wiki', 'topics', 'outlier-channels.md')
     const before = [paper, weightOnly, kv].map((file) => readFileSync(file, 'utf8'))
-    const members = (topic: string) => store.wikiAggregation(topic).rows.map((row) => row.paper.id)
+    const members = async (topic: string) => (await store.wikiAggregation(topic)).rows.map((row) => row.paper.id)
 
     const added = recordChange(store, () => store.setPaperTopic('2401.18079', 'Weight-only PTQ', true)).change
     expect(readFileSync(paper, 'utf8')).toContain('  - in: "topics/ptq-weight-only"')
-    expect(members('topics/ptq-weight-only')).toContain('papers/2401.18079')
+    expect(await members('topics/ptq-weight-only')).toContain('papers/2401.18079')
     const created = recordChange(store, () => store.setPaperTopic('2401.18079', 'Outlier channels', true)).change
     expect(readFileSync(outliers, 'utf8')).toMatch(/^kind: "?topic"?$/m)
-    expect(store.wikiAggregation('topics/outlier-channels').title).toBe('Outlier channels')
-    expect(members('topics/outlier-channels')).toEqual(['papers/2401.18079'])
+    expect((await store.wikiAggregation('topics/outlier-channels')).title).toBe('Outlier channels')
+    expect(await members('topics/outlier-channels')).toEqual(['papers/2401.18079'])
     const removed = recordChange(store, () => store.setPaperTopic('2401.18079', 'KV cache quantization', false)).change
     expect(readFileSync(paper, 'utf8')).not.toContain('topics/kv-cache-quantization')
-    expect(members('topics/kv-cache-quantization')).not.toContain('papers/2401.18079')
+    expect(await members('topics/kv-cache-quantization')).not.toContain('papers/2401.18079')
     expect(store.getPaper('2401.18079').topics).toEqual(['Weight-only PTQ', 'Outlier channels'])
     expect(createVaultStore(vault).getPaper('2401.18079').topics).toEqual(['Weight-only PTQ', 'Outlier channels'])
     expect(store.listChanges().slice(0, 3)).toMatchObject([
@@ -2784,7 +2784,7 @@ describe('vault store on the aggregation layout', () => {
     expect([paper, weightOnly, kv].map((file) => readFileSync(file, 'utf8'))).toEqual(before)
     expect(existsSync(outliers)).toBe(false)
     expect(store.getPaper('2401.18079').topics).toEqual(['KV cache quantization'])
-    expect(members('topics/kv-cache-quantization')).toContain('papers/2401.18079')
+    expect(await members('topics/kv-cache-quantization')).toContain('papers/2401.18079')
   })
 
   it('论文已在的主题再加、不在的主题去掉都被拒,库里一个字节不动,也不记一条', () => {
@@ -2815,13 +2815,13 @@ describe('vault store on the aggregation layout', () => {
     expect(createVaultStore(vault).getPaper('2404.00456').custom).toEqual({ note: '读到一半' })
   })
 
-  it('删一篇论文,聚合页的对照表与搜索里立刻没有它;恢复之后又回来', () => {
+  it('删一篇论文,聚合页的对照表与搜索里立刻没有它;恢复之后又回来', async () => {
     store.deletePaper('2401.18079')
-    expect(store.wikiAggregation('topics/kv-cache-quantization').rows.map((r) => r.paper.title)).not.toContain('KVQuant')
+    expect((await store.wikiAggregation('topics/kv-cache-quantization')).rows.map((r) => r.paper.title)).not.toContain('KVQuant')
     expect(store.search('KVQuant').some((h) => h.kind === 'paper')).toBe(false)
     expect(() => store.wikiPaper('papers/2401.18079')).toThrow(/2401\.18079/)
     store.restoreTrash(store.listTrash()[0]!.id)
-    expect(store.wikiAggregation('topics/kv-cache-quantization').rows.map((r) => r.paper.title)).toContain('KVQuant')
+    expect((await store.wikiAggregation('topics/kv-cache-quantization')).rows.map((r) => r.paper.title)).toContain('KVQuant')
   })
 
   it('改阅读状态之后,论文页读到的 updated 与论文表一致', () => {
@@ -2830,23 +2830,23 @@ describe('vault store on the aggregation layout', () => {
     expect(store.getPaper('2404.00456').updated).toBe('2026-09-10')
   })
 
-  it('改正文:只换正文那一段与 updated,记一条可撤销的变动,撤销逐字节还原', () => {
+  it('改正文:只换正文那一段与 updated,记一条可撤销的变动,撤销逐字节还原', async () => {
     const file = join(vault, 'wiki', 'topics', 'ptq.md')
     const before = readFileSync(file, 'utf8')
     store.updateWikiPage('topics/ptq', '## 问题\n改过的。\n\n## 结论\n\n## 实验\n\n## 未解决')
-    expect(store.wikiAggregation('topics/ptq')).toMatchObject({ summary: '改过的。', updated: '2026-09-10' })
+    expect(await store.wikiAggregation('topics/ptq')).toMatchObject({ summary: '改过的。', updated: '2026-09-10' })
     const after = readFileSync(file, 'utf8')
     expect(after).toContain('updated: "2026-09-10"')
     expect(after.slice(after.indexOf('<!-- generated:children -->'), after.lastIndexOf('<!-- /generated -->')))
       .toBe(before.slice(before.indexOf('<!-- generated:children -->'), before.lastIndexOf('<!-- /generated -->')))
     expect(after.endsWith('<!-- /generated -->\n\n## 问题\n改过的。\n\n## 结论\n\n## 实验\n\n## 未解决\n')).toBe(true)
-    expect(createVaultStore(vault).wikiAggregation('topics/ptq').summary).toBe('改过的。')
+    expect((await createVaultStore(vault).wikiAggregation('topics/ptq')).summary).toBe('改过的。')
 
     const change = store.listChanges()[0]!
     expect(change).toMatchObject({ title: 'Wiki · 「PTQ」· 改了正文', diff: ['~ topics/ptq'], undoable: true })
     store.undoChange(change.id)
     expect(readFileSync(file, 'utf8')).toBe(before)
-    expect(store.wikiAggregation('topics/ptq').summary).not.toBe('改过的。')
+    expect((await store.wikiAggregation('topics/ptq')).summary).not.toBe('改过的。')
   })
 
   it('改论文页的正文:论文表上那一行的 updated 跟着变;库里没有的页拒绝', () => {
@@ -2941,7 +2941,7 @@ describe('vault store on the aggregation layout', () => {
     expect(store.listChanges().some((c) => c.title.includes('PTQ'))).toBe(false)
   })
 
-  it('上传出的论文页按新布局写:归属是空列表,没有旧布局的名字列表;归进一页聚合后重开库,论文表的主题照归属', () => {
+  it('上传出的论文页按新布局写:归属是空列表,没有旧布局的名字列表;归进一页聚合后重开库,论文表的主题照归属', async () => {
     const bytes = Uint8Array.from(Buffer.from('%PDF-1.7\n1 0 obj\n<<>>\nendobj\n%%EOF'))
     const added = store.importPaper('Draft Trees.pdf', bytes).paper
     const text = readFileSync(join(vault, 'wiki', 'papers', `${added.id}.md`), 'utf8')
@@ -2954,7 +2954,7 @@ describe('vault store on the aggregation layout', () => {
     })
     const reopened = createVaultStore(vault, () => '2026-09-10')
     expect(reopened.getPaper(added.id).topics).toEqual(['Weight-only PTQ'])
-    expect(reopened.wikiAggregation('topics/ptq-weight-only').rows.map((r) => r.paper.id)).toContain(`papers/${added.id}`)
+    expect((await reopened.wikiAggregation('topics/ptq-weight-only')).rows.map((r) => r.paper.id)).toContain(`papers/${added.id}`)
   })
 
   describe('存下的数据一条一条地读', () => {
@@ -2965,7 +2965,7 @@ describe('vault store on the aggregation layout', () => {
 
     afterEach(() => vi.restoreAllMocks())
 
-    it('列表里有一条读不了:其余照常读出,它连同文件、第几条与原因报到 stderr,存回时原样留着', () => {
+    it('列表里有一条读不了:其余照常读出,它连同文件、第几条与原因报到 stderr,存回时原样留着', async () => {
       const error = vi.spyOn(console, 'error').mockImplementation(() => {})
       const readable = {
         id: 'entry-900', source: 'me', day: '今天', time: '09:00', createdAt: '2026-09-10T09:00:00.000Z',
@@ -2974,7 +2974,7 @@ describe('vault store on the aggregation layout', () => {
       const broken = { id: 'entry-901', source: 'robot', day: '今天', time: '09:01', body: { kind: 'chart', points: [1, 2] } }
       put('feed', [readable, broken])
       const reopened = reopen()
-      expect(reopened.listFeed().map((entry) => entry.id)).toEqual(['entry-900'])
+      expect((await reopened.listFeed()).map((entry) => entry.id)).toEqual(['entry-900'])
       const reported = error.mock.calls.map(([line]) => String(line)).filter((line) => line.includes(stored('feed')))
       expect(reported).toEqual([expect.stringContaining('第 2 条')])
       expect(reported[0]).toContain('"source"')
@@ -2984,7 +2984,7 @@ describe('vault store on the aggregation layout', () => {
       expect(held('feed').find((row) => row['id'] === 'entry-901')).toEqual(broken)
     })
 
-    it('动态里后来的版本写下的点名分段:列出时带着它点名的实体;这个版本再记一条时那些分段原样存回,新记的不点名', () => {
+    it('动态里后来的版本写下的点名分段:列出时带着它点名的实体;这个版本再记一条时那些分段原样存回,新记的不点名', async () => {
       const naming = {
         id: 'entry-902', source: 'lab', day: '今天', time: '09:02', createdAt: '2026-09-10T09:02:00.000Z',
         body: { kind: 'runs', runs: [
@@ -2997,7 +2997,7 @@ describe('vault store on the aggregation layout', () => {
       }
       put('feed', [naming, plain])
       const reopened = reopen()
-      expect(reopened.listFeed().filter((entry) => entry.id.startsWith('entry-90'))).toEqual([plain, naming])
+      expect((await reopened.listFeed()).filter((entry) => entry.id.startsWith('entry-90'))).toEqual([plain, naming])
 
       reopened.appendFeed({ source: 'me', body: { kind: 'runs', runs: [{ kind: 'text', text: '新记的一条' }] } })
       const [first, second, added] = held('feed')

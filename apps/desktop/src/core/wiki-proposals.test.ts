@@ -45,8 +45,8 @@ const verify = async (store: VaultStore, project: string, node: string): Promise
   await store.verifyConclusion(project, node, shown.fingerprint!)
 }
 
-const claimOn = (store: VaultStore, page: string, id: string): WikiClaim | undefined =>
-  store.wikiAggregation(page).claims.find((c) => c.id === id)
+const claimOn = async (store: VaultStore, page: string, id: string): Promise<WikiClaim | undefined> =>
+  (await store.wikiAggregation(page)).claims.find((c) => c.id === id)
 
 describe('review queue on the fixture library', () => {
   let store: VaultStore
@@ -108,10 +108,10 @@ describe('review queue on the fixture library', () => {
   it('应用:按提出者写入并记一条「实验」来源的变动,记录变成 applied 并指向那条变动;撤销还原', async () => {
     await verify(store, 'draft', 'knee')
     const [valid] = await queue.list('queued')
-    const before = store.wikiAggregation('topics/kv-cache-quantization').claims
+    const before = (await store.wikiAggregation('topics/kv-cache-quantization')).claims
     const receipt = await queue.decide(valid!.id, 'apply')
     expect(receipt).toEqual({ id: valid!.id, status: 'applied', reason: null })
-    expect(claimOn(store, 'topics/kv-cache-quantization', 'prefix-schedule')).toMatchObject({
+    expect(await claimOn(store, 'topics/kv-cache-quantization', 'prefix-schedule')).toMatchObject({
       version: 3, by: 'ai:skill.meridian', since: TODAY,
       history: [{ version: 1 }, { version: 2, by: '我' }],
     })
@@ -122,7 +122,7 @@ describe('review queue on the fixture library', () => {
     expect(record).toMatchObject({ status: 'applied', change: change.id, decided: { at: NOW, by: '我' } })
     await expect(queue.decide(valid!.id, 'apply')).rejects.toThrow('这条提案已经处理过了')
     store.undoChange(change.id)
-    expect(store.wikiAggregation('topics/kv-cache-quantization').claims).toEqual(before)
+    expect((await store.wikiAggregation('topics/kv-cache-quantization')).claims).toEqual(before)
   })
 
   it('引用了没验证的项目结论:照样排队,列表标出待验证的结论,应用被拒且留在队列;验证之后能应用', async () => {
@@ -138,11 +138,11 @@ describe('review queue on the fixture library', () => {
 
   it('应用一条过期的提案:拒收为 stale,Wiki 一个字不动;拒绝时记下理由', async () => {
     const [, stale] = await queue.list('queued')
-    const before = store.wikiAggregation('topics/ptq-weight-only')
+    const before = await store.wikiAggregation('topics/ptq-weight-only')
     const receipt = await queue.decide(stale!.id, 'apply')
     expect(receipt.status).toBe('rejected')
     expect(receipt.reason).toMatchObject({ kind: 'stale', message: expect.stringContaining('提案过期：topics/ptq-weight-only') })
-    expect(store.wikiAggregation('topics/ptq-weight-only')).toEqual(before)
+    expect(await store.wikiAggregation('topics/ptq-weight-only')).toEqual(before)
     const [valid] = await queue.list('queued')
     expect(await queue.decide(valid!.id, 'decline', '证据不够')).toEqual({
       id: valid!.id, status: 'rejected', reason: { kind: 'declined', message: '证据不够' },
@@ -155,7 +155,7 @@ describe('review queue on the fixture library', () => {
     const receipt = await queue.propose(proposal)
     expect(receipt).toMatchObject({ status: 'queued', reason: null })
     expect((await queue.list())[0]).toMatchObject({ id: receipt.id, received: NOW, path: 'review', decided: null })
-    expect(claimOn(store, 'topics/qat', 'fresh')).toBeUndefined()
+    expect(await claimOn(store, 'topics/qat', 'fresh')).toBeUndefined()
     const count = (await queue.list()).length
     expect(await queue.propose(structuredClone(proposal))).toEqual(receipt)
     expect(await queue.list()).toHaveLength(count)
@@ -202,7 +202,7 @@ describe('review queue on the fixture library', () => {
     const record = (await queue.list()).find((p) => p.id === receipt.id)!
     expect(record.proposal).toMatchObject({ priority: 'high', ops: [{ confidence: 0.9 }] })
     await queue.decide(receipt.id, 'apply')
-    expect(claimOn(store, 'topics/qat', 'future')).toMatchObject({ text: '结论 future' })
+    expect(await claimOn(store, 'topics/qat', 'future')).toMatchObject({ text: '结论 future' })
   })
 
   it('没有文字层的引句照样排队,记录里标出来;有文字层却找不到的拒收', async () => {
@@ -319,7 +319,7 @@ describe('review queue on a vault', () => {
     const onDisk = JSON.parse(readFileSync(join(meridian(), 'proposals.json'), 'utf8')) as { id: string }[]
     expect(onDisk.map((r) => r.id)).toEqual(records.map((r) => r.id))
     await queue.decide(records[2]!.id, 'apply')
-    expect(createVaultStore(vault).wikiAggregation('topics/speculative-decoding').claims.map((c) => c.id)).toContain('wide')
+    expect((await createVaultStore(vault).wikiAggregation('topics/speculative-decoding')).claims.map((c) => c.id)).toContain('wide')
   })
 
   it('另一个版本写的队列:多出来的字段留着,读不了的那一条原样保留,其余照常', async () => {
@@ -384,10 +384,10 @@ describe('review queue on a vault', () => {
       { op: 'addClaim', page: 'topics/draft-acceptance', claim: { id: 'b8', text: '宽树在 B≥8 时净赚', evidence: [{ kind: 'experiment', project: id, conclusion }] } },
     ] })
     expect((await store.getProject(id)).conclusionClaims).toEqual({ [conclusion]: ['topics/draft-acceptance#b8'] })
-    expect(claimOn(store, 'topics/draft-acceptance', 'b8')!.evidence[0]).toMatchObject({ title: '写回', evidence: { conclusion } })
+    expect((await claimOn(store, 'topics/draft-acceptance', 'b8'))!.evidence[0]).toMatchObject({ title: '写回', evidence: { conclusion } })
   })
 
-  it('旧格式的库照常读写:schema 还有「结论」、页上没有结论块与结论生成区', () => {
+  it('旧格式的库照常读写:schema 还有「结论」、页上没有结论块与结论生成区', async () => {
     const page = join(vault, 'wiki', 'topics', 'speculative-decoding.md')
     const old = [
       '---', 'kind: "topic"', 'title: "Speculative decoding"', 'aliases: []', 'parents: []', 'columns: []', 'updated: "2026-05-20"', '---',
@@ -401,7 +401,7 @@ describe('review queue on a vault', () => {
     writeFileSync(join(vault, 'wiki', 'topics', 'draft-acceptance.md'), readFileSync(join(vault, 'wiki', 'topics', 'draft-acceptance.md'), 'utf8')
       .replace(/ {4}conflicts:\n(?: {6,}.*\n)+/, ''))
     const reopened = createVaultStore(vault, () => TODAY, () => new Date(NOW))
-    const view = reopened.wikiAggregation('topics/speculative-decoding')
+    const view = await reopened.wikiAggregation('topics/speculative-decoding')
     expect(view.claims).toEqual([])
     expect(view.body).toContain('- 2026-05-01 · 旧版写下的一条结论')
     reopened.applyProposal({ source: 'user', title: '旧的追加区', ops: [
@@ -413,7 +413,7 @@ describe('review queue on a vault', () => {
     const text = readFileSync(page, 'utf8')
     expect(text).toContain('## 结论\n- 2026-05-01 · 旧版写下的一条结论\n- 2026-09-22 · 还能追\n')
     expect(text).toContain('<!-- /generated -->\n<!-- generated:claims -->\n## 结论\n- 第一条 · v1 · 2026-09-22 ^first\n  - 个人判断\n<!-- /generated -->')
-    expect(reopened.wikiAggregation('topics/speculative-decoding').claims.map((c) => c.id)).toEqual(['first'])
+    expect((await reopened.wikiAggregation('topics/speculative-decoding')).claims.map((c) => c.id)).toEqual(['first'])
   })
 
   it('引句按真实 PDF 的文字层核对', async () => {

@@ -9,7 +9,7 @@ import { CallError } from './call-error.js'
 import { stableJson } from './changelog.js'
 import { extractPdfPages } from './paper-library/index.js'
 import type { VaultStore } from './vault.js'
-import { HUMAN, isClaimOp, namedPages, normalizeQuote } from './wiki/index.js'
+import { experimentProjects, HUMAN, isClaimOp, namedPages, normalizeQuote } from './wiki/index.js'
 
 /** What one page of a paper's PDF holds: its text, no text layer, no such page (and how many it has), or no PDF at all. */
 export type PdfPage =
@@ -152,6 +152,8 @@ export function createWikiProposals({ store, pdf, now }: {
     const titles: Record<string, string> = {}
     const claimTexts: Record<string, string> = {}
     const aggregations = new Map(store.wikiCards().map((card) => [card.id, card.title]))
+    // Reads of an aggregation or a project wait until every label is named, then run in order.
+    const later: (() => Promise<void>)[] = []
     const page = (id: string): void => {
       if (id in titles) return
       const title = aggregations.get(id)
@@ -162,12 +164,13 @@ export function createWikiProposals({ store, pdf, now }: {
       const [id, claimId] = ref.split('#') as [string, string]
       page(id)
       if (!aggregations.has(id)) return
-      const found = store.wikiAggregation(id).claims.find((c) => c.id === claimId)
-      if (found !== undefined) claimTexts[ref] = found.text
+      later.push(async () => {
+        const found = (await store.wikiAggregation(id)).claims.find((c) => c.id === claimId)
+        if (found !== undefined) claimTexts[ref] = found.text
+      })
     }
-    const named: { id: string; part: { node?: string | undefined; conclusion?: string | undefined } }[] = []
     const project = (id: string, part: { node?: string | undefined; conclusion?: string | undefined }): void => {
-      named.push({ id, part })
+      later.push(() => projectTitles(id, part))
     }
     const projectTitles = async (id: string, part: { node?: string | undefined; conclusion?: string | undefined }): Promise<void> => {
       if (!store.listProjects().some((p) => p.id === id)) return
@@ -190,7 +193,10 @@ export function createWikiProposals({ store, pdf, now }: {
       if (op.op === 'setMembership' || op.op === 'removeMembership') page(op.in)
       if (op.op === 'setParents' || op.op === 'createAggregation') op.parents.forEach(page)
       if (op.op === 'setMembership' && aggregations.has(op.in)) {
-        for (const column of store.wikiAggregation(op.in).columns) titles[`${op.in}#${column.key}`] = column.label
+        const { in: at } = op
+        later.push(async () => {
+          for (const column of (await store.wikiAggregation(at)).columns) titles[`${at}#${column.key}`] = column.label
+        })
       }
       if (op.op === 'createAggregation') {
         const kind = store.wikiHome().kinds.find((k) => k.key === op.kind)
@@ -202,7 +208,7 @@ export function createWikiProposals({ store, pdf, now }: {
           : op.op === 'markConflict' ? [op.conflict.against] : []
       for (const item of items) evidence(item)
     }
-    for (const { id, part } of named) await projectTitles(id, part)
+    for (const run of later) await run()
     return { titles, claimTexts }
   }
 
@@ -237,10 +243,11 @@ export function createWikiProposals({ store, pdf, now }: {
     if (!proposal.ops.every(isClaimOp)) return reject('invalid', 'agent 只能提交结论相关的提案')
     const uncovered = namedPages(proposal.ops).find((id) => !(id in proposal.base))
     if (uncovered !== undefined) return reject('invalid', `提案没有给出它依据的页的版本：${uncovered}`)
+    const graphs = await store.readWorkspaceGraphs(experimentProjects(proposal.ops))
     const stale = staleness(proposal)
     if (stale !== null) return reject('stale', stale)
     try {
-      store.checkProposal(proposal.ops, byOf(proposal))
+      store.checkProposal(proposal.ops, byOf(proposal), graphs)
     } catch (error) {
       // An op the vault refuses is the proposal's outcome, recorded and returned rather than thrown.
       return reject('invalid', error instanceof Error ? error.message : String(error))
@@ -376,9 +383,10 @@ export function createWikiProposals({ store, pdf, now }: {
           const [first] = proposal.ops as [ProposalOp, ...ProposalOp[]]
           const target = cardTarget(first)
           const page = first.op === 'createAggregation' ? first.title : (await labelsOf(proposal, [target])).titles[target] ?? target
+          const graphs = await store.readWorkspaceGraphs(experimentProjects(proposal.ops))
           store.applyProposal({ source: 'user', title: `${page} · ${PROPOSAL_KIND_NAMES[first.op]}`, ops: proposal.ops }, {
             by: byOf(proposal), source: chipOf(proposal),
-          })
+          }, graphs)
           next = { ...record, status: 'applied', decided, change: store.listChanges()[0]?.id ?? null, notice: outcome.notice }
         }
       }

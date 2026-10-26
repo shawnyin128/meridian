@@ -330,8 +330,8 @@ describe('change log', () => {
     }
   })
 
-  it('应用一条提案记一条,标题是提案的话,diff 一条 op 一行,撤销把碰到的页逐页写回', () => {
-    const before = store.wikiAggregation('topics/ptq').body
+  it('应用一条提案记一条,标题是提案的话,diff 一条 op 一行,撤销把碰到的页逐页写回', async () => {
+    const before = (await store.wikiAggregation('topics/ptq')).body
     store.applyProposal({
       source: 'ingest', title: '给 PTQ 记一条',
       ops: [{ op: 'appendEntry', page: 'topics/ptq', section: '未解决', date: '2026-08-25', text: '一条' }],
@@ -340,9 +340,9 @@ describe('change log', () => {
     expect(change).toMatchObject({
       title: 'Wiki · 给 PTQ 记一条', source: '我', diff: ['+ topics/ptq § 未解决:一条'], undoable: true,
     })
-    expect(store.wikiAggregation('topics/ptq').body).toBe(`${before}\n- 2026-08-25 · 一条`)
+    expect((await store.wikiAggregation('topics/ptq')).body).toBe(`${before}\n- 2026-08-25 · 一条`)
     store.undoChange(change.id)
-    expect(store.wikiAggregation('topics/ptq').body).toBe(before)
+    expect((await store.wikiAggregation('topics/ptq')).body).toBe(before)
     expect(() => store.undoChange(change.id)).toThrow(/已经撤销/)
   })
 

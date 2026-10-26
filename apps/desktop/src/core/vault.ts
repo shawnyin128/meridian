@@ -7,7 +7,7 @@ import type {
   PaperCell, PaperColumn, PaperColumns,
   PaperFields, PaperImportResult, PaperReading, PaperRow, Proposal, ProposalOp, ProposalRecord, ProjectDetail,
   ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
-  RelationFields, ResearchIdea, SearchHit,
+  RelationFields, ResearchGraph, ResearchIdea, SearchHit,
   TaskFields, TaskPatch, TrashEntry, Watch, WatchFields, WikiAggregation, WikiAggregationCard, WikiHome,
   WikiBacklink, WikiPaper, WikiSignal,
 } from '../shared/contract.js'
@@ -526,8 +526,10 @@ export interface VaultStore {
    * Records that the user verified the conclusion node `node` holds, whose fingerprint the user saw as
    * `fingerprint`; any later change to it makes it pending again. Throws when the node is not a closed
    * node holding a conclusion, or with CONCLUSION_CHANGED when its fingerprint is no longer `fingerprint`.
+   * The node is looked for in `graphs`, as readWorkspaceGraphs read them, when the project's workspace is
+   * an SSH one; throws when it is and `graphs` does not hold it.
    */
-  verifyConclusion(projectId: string, node: string, fingerprint: string): Promise<ProjectDetail>
+  verifyConclusion(projectId: string, node: string, fingerprint: string, graphs?: WorkspaceGraphs): Promise<ProjectDetail>
 
   /** Withdraws the user's verification of node `node`'s conclusion; nothing changes when there is none. */
   unverifyConclusion(projectId: string, node: string): Promise<ProjectDetail>
@@ -710,7 +712,7 @@ export interface VaultStore {
    * members also belong to, its claims, its body and its page version. Throws
    * if no such aggregation exists.
    */
-  wikiAggregation(id: string): WikiAggregation
+  wikiAggregation(id: string): Promise<WikiAggregation>
 
   /**
    * Returns the paper page with the given id — `papers/` followed by the id of
@@ -739,15 +741,25 @@ export interface VaultStore {
    * recomputed. The proposal is validated again here even when
    * `proposalPages` already validated it: the store does not assume its
    * caller did. `producer.source` is the change-log chip the recorded change
-   * carries. Throws if an op is not valid.
+   * carries. Experiment evidence of a project bound to an SSH workspace is
+   * checked against that workspace's graph in `graphs`, which
+   * readWorkspaceGraphs read for the projects the proposal names. Throws if an
+   * op is not valid, or when `graphs` lacks a project the proposal needs.
    */
-  applyProposal(proposal: Proposal, producer?: ProposalProducer): void
+  applyProposal(proposal: Proposal, producer?: ProposalProducer, graphs?: WorkspaceGraphs): void
 
   /**
    * Throws exactly when applyProposal would refuse `ops` from producer `by`
-   * against the vault as it stands; writes nothing.
+   * against the vault as it stands and `graphs`; writes nothing.
    */
-  checkProposal(ops: ProposalOp[], by: string): void
+  checkProposal(ops: ProposalOp[], by: string, graphs?: WorkspaceGraphs): void
+
+  /**
+   * Reads afresh the workspace of each of `projectIds` bound to an SSH workspace and returns the
+   * research graph each holds, by project id; projects that do not exist or are bound locally or not at
+   * all are left out.
+   */
+  readWorkspaceGraphs(projectIds: readonly string[]): Promise<WorkspaceGraphs>
 
   /** Returns the describeOp line of each op, read against the vault as it stands. */
   describeProposal(ops: ProposalOp[]): string[]
@@ -814,9 +826,10 @@ export interface VaultStore {
    * Returns the id of every page applying `proposal` would write, in the order
    * first written: the pages its ops name, then every aggregation whose
    * generated regions the apply refills. Throws if the proposal is not valid
-   * against the vault as it stands for producer `by` (HUMAN_PRODUCER when absent).
+   * against the vault as it stands and `graphs` for producer `by` (HUMAN_PRODUCER when absent), as
+   * applyProposal does.
    */
-  proposalPages(proposal: Proposal, by?: string): string[]
+  proposalPages(proposal: Proposal, by?: string, graphs?: WorkspaceGraphs): string[]
 
   /**
    * Puts the given page texts back as they are, a null text removing that page.
@@ -949,7 +962,7 @@ export interface VaultStore {
    * Returns the feed entries in the order the vault holds them, oldest first.
    * Entries carrying the same day sit next to each other in that order.
    */
-  listFeed(): FeedEntry[]
+  listFeed(): Promise<FeedEntry[]>
 
   /**
    * Appends a feed entry built from the given fields. It takes an id unused by
@@ -1062,6 +1075,15 @@ export interface VaultStore {
    */
   search(query: string): SearchHit[]
 }
+
+/**
+ * The research graph the SSH workspace of each project read held, by project id; undefined for a
+ * workspace that holds none or could not be read.
+ */
+export type WorkspaceGraphs = ReadonlyMap<string, ResearchGraph | undefined>
+
+/** No SSH workspace read, for a write that cites no project's research graph. */
+export const NO_WORKSPACE_GRAPHS: WorkspaceGraphs = new Map()
 
 /**
  * Everything a store implements on its own. The changelog reads, the undo,

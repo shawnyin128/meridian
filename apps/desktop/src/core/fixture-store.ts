@@ -53,7 +53,7 @@ import {
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
-import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
+import { NO_WORKSPACE_GRAPHS, type MetadataFill, type VaultOps, type VaultStore } from './vault.js'
 import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
 import {
@@ -1144,7 +1144,7 @@ export function createFixtureStore(
       return shownDetail(nextProject)
     },
 
-    setTaskNode(projectId, taskId, nodeId) {
+    async setTaskNode(projectId, taskId, nodeId) {
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
@@ -1784,8 +1784,12 @@ export function createFixtureStore(
       return wikiHome(wiki)
     },
 
-    wikiAggregation(id) {
+    async wikiAggregation(id) {
       return wikiAggregation(wiki, id, versionOf(id)!, projectNames(), pointName)
+    },
+
+    readWorkspaceGraphs() {
+      return Promise.resolve(NO_WORKSPACE_GRAPHS)
     },
 
     wikiPaper(id) {
@@ -2031,7 +2035,7 @@ export function createFixtureStore(
         }
       }
       feedEvents = seen
-      return feedNewestFirst(feed, today())
+      return Promise.resolve(feedNewestFirst(feed, today()))
     },
 
     appendFeed({ source, body }) {

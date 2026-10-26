@@ -20,7 +20,7 @@ import type { ProjectRecord } from './project-management/index.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import { PageTextSchema, PaperSnapshotSchema } from './vault/records.js'
 import { readRecord, withUnknownFields, type StoredList } from './vault/stored-records.js'
-import type { VaultOps, VaultStore } from './vault.js'
+import { NO_WORKSPACE_GRAPHS, type VaultOps, type VaultStore } from './vault.js'
 
 /** Changes made by the user in the UI; a proposal applied from the review queue records its own chip. */
 const BY_ME: ChangeSource = '我'
@@ -863,8 +863,8 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       }
     },
 
-    verifyConclusion(projectId, node, fingerprint) {
-      return onProject(projectId, '验证实验结论', () => ops.verifyConclusion(projectId, node, fingerprint))
+    verifyConclusion(projectId, node, fingerprint, graphs) {
+      return onProject(projectId, '验证实验结论', () => ops.verifyConclusion(projectId, node, fingerprint, graphs))
     },
 
     unverifyConclusion(projectId, node) {
@@ -959,17 +959,17 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
       store.applyProposal(filing)
     },
 
-    applyProposal(proposal, producer = { by: BY_ME, source: BY_ME }) {
-      const paths = ops.proposalPages(proposal, producer.by)
+    applyProposal(proposal, producer = { by: BY_ME, source: BY_ME }, graphs = NO_WORKSPACE_GRAPHS) {
+      const paths = ops.proposalPages(proposal, producer.by, graphs)
       const target: ChangeTarget = { kind: 'pages', id: paths.join('\n'), paths }
       const before = entityOf(target)
       const diff = ops.describeProposal(proposal.ops)
-      const [, change] = drawn(() => ops.applyProposal(proposal, producer))
+      const [, change] = drawn(() => ops.applyProposal(proposal, producer, graphs))
       push(change, target, `Wiki · ${proposal.title}`, 'snapshot', before, diff, producer.source)
     },
 
     updateWikiPage(id, body) {
-      const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiAggregation(id).title
+      const title = id.startsWith(PAPER_PAGE) ? ops.wikiPaper(id).title : ops.wikiCards().find((card) => card.id === id)?.title
       return wrote({ kind: 'pages', id, paths: [id] }, `Wiki · 「${title}」· 改了正文`, 'snapshot', () => ops.updateWikiPage(id, body), [`~ ${id}`])
     },
 

@@ -172,7 +172,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
     }),
     tool('wiki_page', 'Read a Wiki page', 'Read one Wiki page of the vault: an aggregation page such as a topic or a '
       + 'method, or a paper\'s page (papers/<id>).', WikiPageArgs,
-    ({ id }) => {
+    async ({ id }) => {
       if (id.startsWith(PAPER_PAGE)) {
         if (!store.hasPaper(id.slice(PAPER_PAGE.length))) return refuse(`The vault has no Wiki page ${id}.`)
         const page = store.wikiPaper(id)
@@ -182,7 +182,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
         })
       }
       if (!store.wikiCards().some((card) => card.id === id)) return refuse(`The vault has no Wiki page ${id}.`)
-      const page = store.wikiAggregation(id)
+      const page = await store.wikiAggregation(id)
       return answer({
         id, kind: page.kindLabel, title: page.title, summary: clip(page.summary, ITEM_CHARS),
         claims: page.claims.slice(0, 20).map((claim) => clip(claim.text, ITEM_CHARS)), body: clip(page.body, BODY_CHARS),

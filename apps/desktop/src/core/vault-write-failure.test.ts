@@ -296,16 +296,16 @@ describe('a vault write that fails', () => {
       .filter((file) => statSync(file).isFile() && !file.startsWith(join(vault, '.meridian', 'tmp', sep)))
       .map((file) => [file, readFileSync(file, 'utf8')])))
   /** Everything the store answers about what the WHOLE cases write. */
-  const view = (store: VaultStore) => {
+  const view = async (store: VaultStore) => {
     const projects = store.listProjects()
     const papers = store.listPapers({ page: 1, size: 100 }).rows
     return {
-      projects, details: projects.map((project) => store.getProject(project.id)), overview: store.overviewProjects(),
+      projects, details: await Promise.all(projects.map((project) => store.getProject(project.id))), overview: store.overviewProjects(),
       papers, readings: papers.map((paper) => store.paperReading(paper.id)),
-      pages: store.wikiCards().map((card) => store.wikiAggregation(card.id)), signals: store.wikiSignals(),
+      pages: await Promise.all(store.wikiCards().map((card) => store.wikiAggregation(card.id))), signals: store.wikiSignals(),
       inbox: store.listInbox(), later: store.listLater(), trash: store.listTrash(), ideas: store.listIdeas(),
       chats: store.listChats().map((chat) => ({ ...chat, messages: store.chatMessages(chat.id) })),
-      feed: store.listFeed(), changes: store.listChanges(),
+      feed: await store.listFeed(), changes: store.listChanges(),
     }
   }
   /**
@@ -340,7 +340,7 @@ describe('a vault write that fails', () => {
    * writes `write` made once it runs through.
    */
   const everyStep = async (write: () => unknown, read: () => unknown): Promise<number> => {
-    const shown = read()
+    const shown = await read()
     const files = filesOf()
     for (let step = 1; ; step += 1) {
       const reached = failWrite(step)
@@ -354,7 +354,7 @@ describe('a vault write that fails', () => {
         vi.mocked(linkSync).mockImplementation(link)
       }
       expect(filesOf(), `第 ${step} 次写没写成`).toEqual(files)
-      expect(read(), `第 ${step} 次写没写成`).toEqual(shown)
+      expect(await read(), `第 ${step} 次写没写成`).toEqual(shown)
     }
   }
 
@@ -379,7 +379,7 @@ describe('a vault write that fails', () => {
       const changes = store.listChanges().length
       expect(await everyStep(act, () => view(store))).toBeGreaterThan(1)
       expect(store.listChanges()).toHaveLength(changes + (logged ? 1 : 0))
-      expect(view(open())).toEqual(view(store))
+      expect(await view(open())).toEqual(await view(store))
     })
   }
 
@@ -389,7 +389,7 @@ describe('a vault write that fails', () => {
     const store = createVaultStore(vault, () => '2026-09-10', () => new Date(clock += 61_000))
     const world = seed(store)
     await store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
-    store.listFeed()
+    await store.listFeed()
     plant(repo, '.meridian/ideas/ideas.json', {
       schema_version: 'meridian.workspace-agent-ideas.v1',
       ideas: [1, 2].map((n) => ({ id: `agent-idea-${n}`, date: '2026-09-10', title: `agent 的方向 ${n}`, body: '验证这一步' })),
@@ -401,8 +401,8 @@ describe('a vault write that fails', () => {
     expect(await everyStep(() => store.listIdeas(), () => null)).toBeGreaterThan(1)
     expect(await everyStep(() => store.listFeed(), () => null)).toBeGreaterThan(1)
     expect(store.listIdeas().filter((idea) => idea.title.startsWith('agent 的方向'))).toHaveLength(2)
-    expect(store.listFeed().filter((entry) => JSON.stringify(entry).includes('agent 跑完了'))).toHaveLength(2)
-    expect(view(open())).toEqual(view(store))
+    expect((await store.listFeed()).filter((entry) => JSON.stringify(entry).includes('agent 跑完了'))).toHaveLength(2)
+    expect(await view(open())).toEqual(await view(store))
   })
 
   it('想法转成项目时哪一次写没写成，库和内存都回到写之前；重来一次写成了，也只多出一个项目', async () => {
@@ -542,15 +542,15 @@ describe('a vault write that fails', () => {
   })
 
   for (const [file, write, act, read] of REFUSED) {
-    it(`${file} 写不进去时${write}，内存里仍是盘上那一份`, () => {
+    it(`${file} 写不进去时${write}，内存里仍是盘上那一份`, async () => {
       const store = open()
       const world = seed(store)
       const stored = join(vault, '.meridian', file)
       const disk = (): string | null => (existsSync(stored) ? readFileSync(stored, 'utf8') : null)
-      const [before, written] = [read(store, world), disk()]
+      const [before, written] = [await read(store, world), disk()]
       refuse(file)
       expect(() => act(store, world)).toThrow()
-      expect(read(store, world)).toEqual(before)
+      expect(await read(store, world)).toEqual(before)
       expect(disk()).toBe(written)
     })
   }
