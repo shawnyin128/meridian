@@ -1,5 +1,5 @@
 /* A draft's field rows share one label column, as wide as its longest label; every other part spans the draft. */
-.draft-form{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-8);row-gap:var(--sp-8);min-width:0}
+.draft-form{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-8);row-gap:var(--item-gap);min-width:0}
 .draft-form>*{grid-column:1/-1}
 .draft-form>.field-row{grid-template-columns:subgrid}
 .draft-form .form-control{width:100%}

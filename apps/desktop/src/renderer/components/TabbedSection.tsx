@@ -2,6 +2,7 @@ import type { ReactElement, ReactNode, Ref } from 'react'
 import { EmptyState } from './EmptyState.js'
 import { PageError, SectionHeading } from './PageShell.js'
 import { SegmentedControl, type SegmentedControlOption } from './SegmentedControl.js'
+import './TabbedSection.css'
 
 /** One tab: its switch segment and what it shows; while `content` is null the tab shows the section empty state. */
 export type TabbedSectionTab<Value extends string> = SegmentedControlOption<Value> & { content: ReactNode }
@@ -36,7 +37,7 @@ export function TabbedSection<Value extends string>({
   return (
     <>
       <SectionHeading
-        ref={headingRef} level={level}
+        ref={headingRef} level={level} className="tabbed-section-heading"
         actions={(
           <>
             <SegmentedControl size="sm" label={label} value={value} options={tabs} onChange={onChange} onReselect={onReselect} />

@@ -119,7 +119,7 @@
  * column of its own. A row without a label spans the label column too. Text in the field's place
  * reads as a property value.
  */
-.field-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-12);row-gap:var(--sp-12);min-width:0}
+.field-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-12);row-gap:var(--item-gap);min-width:0}
 .field-rows>*{grid-column:1/-1}
 .field-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;column-gap:var(--sp-12);min-width:0}
 .field-rows>.field-row{grid-template-columns:subgrid}
