@@ -493,7 +493,7 @@ export function createVaultStore(
     inbox = save('inbox', next)
     const ids = new Set(removed.map((entry) => entry.id))
     const kept = trash.filter((item) => item.kind !== 'inbox' || !ids.has(item.entryId))
-    if (kept.length !== trash.length) trash = save('trash', kept)
+    if (kept.length !== trash.length) trash = saveTrash(kept)
   }
   // Another App version may have written queue records this one cannot read; keep those as written.
   const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
@@ -1190,7 +1190,7 @@ export function createVaultStore(
     const cutoff = nowMs() - TRASH_RETENTION_DAYS * 86_400_000
     const expired = trash.filter((item) => item.deletedAt <= cutoff)
     if (expired.length === 0) return
-    trash = save('trash', trash.filter((item) => item.deletedAt > cutoff))
+    trash = saveTrash(trash.filter((item) => item.deletedAt > cutoff))
     for (const item of expired) discard(item)
   }
 
@@ -1229,9 +1229,32 @@ export function createVaultStore(
   const putIdeasBack = (item: Extract<TrashRecord, { kind: 'page' }>): void =>
     relateIdeas((item.ideas ?? []).map(({ id, before, after }) => ({ id, from: after, to: before })))
 
+  /**
+   * Whether trash record `item` holds a Wiki page that is back where it was deleted from by some other
+   * way, such as an older App's undo: the page there carries the same version as the one the trash
+   * keeps, generated regions and `updated` aside.
+   */
+  const returned = (item: TrashRecord): boolean => {
+    if (item.kind !== 'page' || !existsSync(join(root, item.page)) || !existsSync(trashPage(item.id))) return false
+    const version = (file: string) => JSON.stringify(pageVersion(readFileSync(file, 'utf8')))
+    return version(join(root, item.page)) === version(trashPage(item.id))
+  }
+
+  /**
+   * Writes `rows` as the trash and returns them, leaving out each Wiki page record whose page is back
+   * (see returned), whose kept page it then removes. Throws, leaving the file as it stood, when it
+   * cannot be written.
+   */
+  const saveTrash = (rows: TrashRecord[]): TrashRecord[] => {
+    const back = rows.filter(returned)
+    const kept = save('trash', rows.filter((item) => !back.includes(item)))
+    for (const item of back) discard(item)
+    return kept
+  }
+
   /** Adds a record to trash with the most recently deleted item first. */
   const toTrash = (item: TrashRecord): void => {
-    trash = save('trash', [item, ...trash])
+    trash = saveTrash([item, ...trash])
   }
 
   const managed = isGitManaged(root)
@@ -2710,7 +2733,7 @@ export function createVaultStore(
           // A page put back where it was deleted from no longer waits in the trash.
           const held = trash.find((item) => item.kind === 'page' && item.page === `wiki/${path}.md`)
           if (held !== undefined) {
-            trash = save('trash', trash.filter((item) => item !== held))
+            trash = saveTrash(trash.filter((item) => item !== held))
             discard(held)
             if (held.kind === 'page') putIdeasBack(held)
           }
@@ -2729,7 +2752,7 @@ export function createVaultStore(
       dropExpired()
       // An attachment cannot return after its project is deleted, nor a paper while another page stands where its page goes back,
       // nor a paper chat while its paper's chat holds messages.
-      return trash.map((item) => ({
+      return trash.filter((item) => !returned(item)).map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
@@ -2811,20 +2834,20 @@ export function createVaultStore(
           ['attachments'],
         )
       }
-      trash = save('trash', trash.filter((entry) => entry !== item))
+      trash = saveTrash(trash.filter((entry) => entry !== item))
     }),
 
     purgeTrash(id) {
       dropExpired()
       const item = trash.find((entry) => entry.id === id)
       if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
-      trash = save('trash', trash.filter((entry) => entry !== item))
+      trash = saveTrash(trash.filter((entry) => entry !== item))
       discard(item)
     },
 
     clearTrash() {
       const cleared = trash
-      trash = save('trash', [])
+      trash = saveTrash([])
       for (const item of cleared) discard(item)
     },
 

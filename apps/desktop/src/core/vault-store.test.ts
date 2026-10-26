@@ -3192,6 +3192,30 @@ describe('vault store on the aggregation layout', () => {
       expect(store.listTrash().filter((entry) => entry.kind === 'page')).toEqual([])
     })
 
+    it('删掉的页被别的途径放回原处（例如 0.0.21.4 撤销）：垃圾桶不再列它，下次写垃圾桶时那一条连同存的页一起去掉，不记变动', () => {
+      store.deleteWikiPage('topics/qat')
+      const entry = store.listTrash()[0]!
+      const held = join(vault, '.meridian', 'trash', `${entry.id}.md`)
+      // What an older App's undo does: the page text comes back, and a later refill may rewrite its generated regions.
+      writeFileSync(file('topics/qat'), readFileSync(held, 'utf8').replace('## 子聚合\n(无)', '## 子聚合\n(改过的生成区)'))
+      const changes = store.listChanges().length
+      const reopened = createVaultStore(vault, () => '2026-09-10')
+      expect(reopened.listTrash().filter((item) => item.kind === 'page')).toEqual([])
+      reopened.deleteWikiPage('topics/ptq-weight-only')
+      const stored = JSON.parse(readFileSync(join(vault, '.meridian', 'trash.json'), 'utf8')) as { id: string }[]
+      expect(stored.map((item) => item.id)).not.toContain(entry.id)
+      expect(existsSync(held)).toBe(false)
+      expect(reopened.listChanges().length).toBe(changes + 1)
+    })
+
+    it('原处是另一页（不是放回来的那一页）时，垃圾桶照样列着它，恢复不了', () => {
+      store.deleteWikiPage('topics/qat')
+      writeFileSync(file('topics/qat'), '---\nkind: topic\ntitle: 别的\n---\n')
+      expect(createVaultStore(vault, () => '2026-09-10').listTrash().filter((item) => item.kind === 'page')).toEqual([
+        expect.objectContaining({ title: 'QAT', restorable: false }),
+      ])
+    })
+
     it('从垃圾桶恢复删掉的页：回到原处，上级页的细分里又有它；原处被另一页占着时恢复不了，那一页一个字节不动', () => {
       const held = readFileSync(file('topics/qat'), 'utf8')
       store.deleteWikiPage('topics/qat')
