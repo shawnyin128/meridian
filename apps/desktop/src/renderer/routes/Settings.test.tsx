@@ -3,8 +3,8 @@ import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
-  CallFailure, ColourTheme, HarnessCli, HarnessModelConnectionCheckResult, HarnessSubscriptionStatus, LibraryBackup,
-  LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
+  CallFailure, ColourTheme, HarnessCli, HarnessModelConnectionCheckResult, HarnessModelEntry, HarnessModelSourceGroup,
+  HarnessSubscriptionStatus, LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { MessagesProvider } from '../messages/useMessages.js'
@@ -24,16 +24,17 @@ const api = vi.hoisted(() => ({
   modelSettings: vi.fn(async () => ({
     provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: '',
     authentication: 'api-key', apiKeyConfigured: false,
-    apiKeyLastFour: undefined as string | undefined, configured: false, ...({} as { effort?: string }),
+    apiKeyLastFour: undefined as string | undefined, configured: false,
     profiles: [{
       provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: '',
       authentication: 'api-key', apiKeyConfigured: false,
       apiKeyLastFour: undefined as string | undefined, configured: false,
     }],
     subscription: {
-      active: null as HarnessCli | null, models: { claude: '', codex: '' }, efforts: {},
+      active: null as HarnessCli | null, models: { claude: '', codex: '' },
       error: undefined as CallFailure | undefined,
     },
+    models: [] as HarnessModelEntry[], defaultModel: null as string | null, sources: [] as HarnessModelSourceGroup[],
   })),
   updateModelSettings: vi.fn(async () => ({
     provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-test',
@@ -42,12 +43,13 @@ const api = vi.hoisted(() => ({
       provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-test',
       authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: 'cret', configured: true,
     }],
-    subscription: { active: null as HarnessCli | null, models: { claude: '', codex: '' }, efforts: {}, error: undefined as CallFailure | undefined },
+    subscription: { active: null as HarnessCli | null, models: { claude: '', codex: '' }, error: undefined as CallFailure | undefined },
+    models: [] as HarnessModelEntry[], defaultModel: null as string | null, sources: [] as HarnessModelSourceGroup[],
   })),
   updateSubscription: vi.fn(async (choice: { cli: HarnessCli; model: string }) => ({
     ...(await api.modelSettings()),
     subscription: {
-      active: choice.cli as HarnessCli | null, models: { claude: '', codex: '', [choice.cli]: choice.model }, efforts: {},
+      active: choice.cli as HarnessCli | null, models: { claude: '', codex: '', [choice.cli]: choice.model },
       error: undefined as CallFailure | undefined,
     },
   })),
@@ -371,15 +373,15 @@ describe('Settings', () => {
   })
 
   it('API 总览在选了订阅时写订阅的名字，订阅指定了模型时再写模型', async () => {
-    const shown = async (subscription: { active: HarnessCli; models: { claude: string; codex: string }; efforts: { claude?: string; codex?: string } }) => {
+    const shown = async (subscription: { active: HarnessCli; models: { claude: string; codex: string } }) => {
       api.modelSettings.mockResolvedValueOnce({ ...(await api.modelSettings()), subscription: { ...subscription, error: undefined } })
       await act(async () => { root.render(<MessagesProvider key={JSON.stringify(subscription)}><Settings /></MessagesProvider>) })
       const dialog = document.querySelector('.setdlg')!
       await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
       return dialog.querySelector('[data-api="model"] .api-state')?.textContent
     }
-    expect(await shown({ active: 'claude', models: { claude: '', codex: 'gpt-5-codex' }, efforts: {} })).toBe('Claude 订阅')
-    expect(await shown({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, efforts: {} })).toBe('ChatGPT 订阅 · gpt-5-codex')
+    expect(await shown({ active: 'claude', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('Claude 订阅')
+    expect(await shown({ active: 'codex', models: { claude: '', codex: 'gpt-5-codex' } })).toBe('ChatGPT 订阅 · gpt-5-codex')
   })
 
   it('API 总览还没读到一项的状态时，那一格是载入占位，不写正在读取', async () => {
@@ -1167,7 +1169,8 @@ describe('Settings', () => {
         model: 'gpt-test', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'c123', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      models: [], defaultModel: null, sources: [],
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1207,7 +1210,8 @@ describe('Settings', () => {
         model: 'gpt-test', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'c123', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      models: [], defaultModel: null, sources: [],
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1243,7 +1247,8 @@ describe('Settings', () => {
         authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: 'd18b', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      models: [], defaultModel: null, sources: [],
     })
     api.checkModelConnection.mockResolvedValueOnce({
       state: 'failed', reason: 'model-or-endpoint',
@@ -1277,7 +1282,8 @@ describe('Settings', () => {
         model: 'claude-saved', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: '2222', configured: true,
       }],
-      subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: undefined },
+      subscription: { active: null, models: { claude: '', codex: '' }, error: undefined },
+      models: [], defaultModel: null, sources: [],
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1556,7 +1562,11 @@ describe('Settings', () => {
   })
 
   it('打开设置时推理强度显示存下的那一档', async () => {
-    api.modelSettings.mockResolvedValueOnce({ ...(await api.modelSettings()), effort: 'high' })
+    const base = await api.modelSettings()
+    api.modelSettings.mockResolvedValueOnce({
+      ...base, model: 'gpt-6.1', profiles: [{ ...base.profiles[0]!, model: 'gpt-6.1' }],
+      models: [{ id: 'gpt', source: { kind: 'api', profile: 'openai' }, model: 'gpt-6.1', effort: 'high', configured: false }],
+    })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
@@ -1648,7 +1658,8 @@ describe('Settings', () => {
         provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-saved',
         authentication: 'api-key', apiKeyConfigured: true, apiKeyLastFour: '1111', configured: true,
       }],
-      subscription: { active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, efforts: {}, error: undefined },
+      subscription: { active: 'codex', models: { claude: '', codex: 'gpt-5-codex' }, error: undefined },
+      models: [], defaultModel: null, sources: [],
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1772,7 +1783,8 @@ describe('Settings', () => {
         model: 'gpt-saved', authentication: 'api-key', apiKeyConfigured: true,
         apiKeyLastFour: '1111', configured: true,
       }],
-      subscription: { active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' }, efforts: {}, error: undefined },
+      subscription: { active: 'codex', models: { claude: 'opus', codex: 'gpt-5-codex' }, error: undefined },
+      models: [], defaultModel: null, sources: [],
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
@@ -1942,7 +1954,7 @@ describe('Settings', () => {
 
   it('存的订阅选择读不出来时只显示原因', async () => {
     api.modelSettings.mockResolvedValueOnce({
-      ...(await api.modelSettings()), subscription: { active: null, models: { claude: '', codex: '' }, efforts: {}, error: 'newer-version' },
+      ...(await api.modelSettings()), subscription: { active: null, models: { claude: '', codex: '' }, error: 'newer-version' },
     })
     api.requestedCategory = 'model'
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })

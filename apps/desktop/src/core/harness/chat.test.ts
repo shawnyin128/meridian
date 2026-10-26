@@ -146,6 +146,23 @@ describe('model connection check', () => {
     runner.close()
   })
 
+  it('checks the configured model it is asked about, or the default without one', async () => {
+    const asked: unknown[] = []
+    const runner = createChatHarnessRunner({
+      store: {} as VaultStore,
+      model: { runtime: async (choice: unknown) => { asked.push(choice); return { source: 'cli', cli: 'codex' } } } as unknown as HarnessModelConfig,
+      checkCli: async () => ({ state: 'connected', modelCalls: 1 }),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+    })
+
+    await runner.checkConnection('sol')
+    await runner.checkConnection()
+
+    expect(asked).toEqual([{ model: 'sol' }, undefined])
+    runner.close()
+  })
+
   it('checks an API model at the provider\'s own default effort, whatever effort its profile sets', async () => {
     const child = new FakeHarness()
     const model = {
@@ -304,7 +321,7 @@ function sessionChat(initial: HarnessRuntimeModel) {
   const state = { model: initial }
   const model = {
     runtime: async () => state.model,
-    planModel: () => ({ provider: 'Claude', name: 'opus', configured: true, billable: false }),
+    configured: () => true,
   } as unknown as HarnessModelConfig
   const child = new FakeHarness()
   const sessions = openCliChatSessions({
@@ -411,6 +428,35 @@ describe('a chat turn on a subscription CLI', () => {
     await expect(answering).resolves.toBe('EAGLE reaches 3.76x [p. 6].')
     expect(logs).toContainEqual('claude: 6.7 s, 24182 input tokens (23327 cached), 88 output tokens')
     close()
+  })
+
+  it('runs a turn on the model its chat chose, at the chat\'s own effort', async () => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const chat = store.createChat('Speculative decoding', true).id
+    const asked: unknown[] = []
+    const runner = createChatHarnessRunner({
+      store,
+      model: {
+        runtime: async (choice: unknown) => {
+          asked.push(choice)
+          return { provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }
+        },
+      } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+      choiceOf: (id) => (id === chat ? { model: 'gpt', effort: 'xhigh' } : null),
+      launch: () => child,
+    })
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Because.' } })
+
+    await expect(answering).resolves.toBe('Because.')
+    expect(asked).toEqual([{ model: 'gpt', effort: 'xhigh' }])
+    runner.close()
   })
 
   it('makes the turn\'s CLI call at the reasoning effort the model sets', async () => {

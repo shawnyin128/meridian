@@ -14,7 +14,7 @@ import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { CliUsage } from './cli/runner.js'
 import { apiRunLimits } from './cost-gate.js'
-import type { HarnessModelConfig } from './model-config.js'
+import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 import { citablePages } from './paper-wiki.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
@@ -224,14 +224,17 @@ export function chatHarnessError(cause: unknown): Error {
 }
 
 /**
- * A single-purpose chat client with a least-privilege callback surface. A turn on a subscription CLI
- * also gets its one model call from Core, which `cli` runs in the chat's CLI session that `sessions`
- * keeps, with the internal MCP server's vault lookups, scoped to the chat's paper in a paper chat; a
- * turn whose CLI call fails fails for the CLI problem it met.
+ * A single-purpose chat client with a least-privilege callback surface. A turn runs on the model its
+ * chat chose, as `choiceOf` gives it, or on the default. A turn on a subscription CLI also gets its
+ * one model call from Core, which `cli` runs in the chat's CLI session that `sessions` keeps, with the
+ * internal MCP server's vault lookups, scoped to the chat's paper in a paper chat; a turn whose CLI
+ * call fails fails for the CLI problem it met.
  */
 export function createChatHarnessRunner(options: {
   store: VaultStore
   model: HarnessModelConfig
+  /** The model chat `chatId` chose, or null when it chose none; every chat runs the default without it. */
+  choiceOf?: (chatId: string) => ModelChoice | null
   /** The connection check of a subscription CLI's model, which makes one model call once the CLI is ready. */
   checkCli: (model: HarnessCliModel) => Promise<HarnessModelConnectionCheckResult>
   cli: CliChatRunner
@@ -377,10 +380,11 @@ export function createChatHarnessRunner(options: {
   }
 
   return {
-    async checkConnection() {
+    /** Checks configured model `id`, or the default model without one, at its provider's or CLI's own default effort. */
+    async checkConnection(id?: string) {
       let model
       try {
-        model = await options.model.runtime()
+        model = await options.model.runtime(id === undefined ? undefined : { model: id })
       } catch (cause) {
         return failedConnectionCheck(cause, [], 0)
       }
@@ -411,7 +415,7 @@ export function createChatHarnessRunner(options: {
       const ended = new AbortController()
       let failure: CliRunError | undefined
       try {
-        const model = await options.model.runtime()
+        const model = await options.model.runtime(options.choiceOf?.(id))
         progress?.onModel('source' in model
           ? { route: 'subscription', cli: model.cli, ...(model.model === undefined ? {} : { id: model.model }) }
           : { route: 'api', id: model.model })

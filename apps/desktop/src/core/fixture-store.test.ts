@@ -2454,6 +2454,7 @@ describe('fixture store', () => {
       'harness.start', 'harness.cancel', 'harness.dismissFailure',
       'harness.modelSettings', 'harness.updateModelSettings', 'harness.checkModelConnection',
       'harness.updateSubscription', 'harness.subscriptionStatus',
+      'harness.addModel', 'harness.updateModel', 'harness.removeModel', 'harness.setDefaultModel', 'chat.model', 'chat.setModel',
       'harness.applyPaperWiki',
       'harness.rejectPaperWiki', 'chat.send', 'chat.retry', 'chat.cancel', 'chat.writing',
       'idea.placeOnGraph', 'wiki.propose', 'wiki.proposals', 'wiki.decide',

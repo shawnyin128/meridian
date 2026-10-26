@@ -136,6 +136,18 @@ const profileFor = (
 
 type ConnectionCheckState = { state: 'idle' | 'testing' } | HarnessModelConnectionCheckResult
 
+/** The key Core keeps `profile` under: its provider, or the base URL of a compatible service. */
+const keyOf = (profile: HarnessModelProfile) => (profile.provider === 'openai-compatible'
+  ? `openai-compatible:${normalizeBaseUrl(profile.baseUrl)}` : profile.provider)
+/** The effort of the configured model that runs `profile`'s model, or '' for none. */
+const profileEffort = (settings: HarnessModelSettings | null, profile: HarnessModelProfile) => settings?.models.find((entry) => (
+  entry.source.kind === 'api' && entry.source.profile === keyOf(profile) && entry.model === profile.model
+))?.effort ?? ''
+/** The effort of the configured model that runs CLI `cli`'s model, or '' for none. */
+const cliEffortOf = (settings: HarnessModelSettings | null, cli: HarnessCli) => settings?.models.find((entry) => (
+  entry.source.kind === 'cli' && entry.source.cli === cli && entry.model === settings.subscription.models[cli]
+))?.effort ?? ''
+
 /**
  * The reasoning effort picker of a model: each level `efforts` lists, by its own name, where `''`
  * stands for the provider's or CLI's own default. That is the default level `efforts` names, which
@@ -194,12 +206,12 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     setClearApiKey(false)
   }
 
-  const showProfile = (profile: HarnessModelProfile) => {
+  const showProfile = (profile: HarnessModelProfile, from: HarnessModelSettings | null = settings) => {
     setProvider(profile.provider)
     setProtocol(profile.protocol)
     setBaseUrl(profile.baseUrl)
     setModel(profile.model)
-    setEffort(profile.effort ?? '')
+    setEffort(profileEffort(from, profile))
     setAuthentication(profile.authentication)
     setCompatibleTemplate(profile.provider === 'openai-compatible'
       ? compatibleTemplateFor(profile.baseUrl, profile.protocol, profile.authentication)
@@ -213,7 +225,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     setProtocol(next.protocol)
     setBaseUrl(next.baseUrl)
     setModel(next.model)
-    setEffort(next.effort ?? '')
+    setEffort(profileEffort(next, next))
     setAuthentication(next.authentication)
     setCompatibleTemplate(next.provider === 'openai-compatible'
       ? compatibleTemplateFor(next.baseUrl, next.protocol, next.authentication)
@@ -222,7 +234,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     setTab(active === null ? 'api' : 'subscription')
     setCli(active ?? 'claude')
     setCliModel(next.subscription.models[active ?? 'claude'])
-    setCliEffort(next.subscription.efforts[active ?? 'claude'] ?? '')
+    setCliEffort(cliEffortOf(next, active ?? 'claude'))
   }), [load])
 
   useEffect(() => {
@@ -238,7 +250,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     if (next !== cli) setCliStatus(null)
     setCli(next)
     setCliModel(settings?.subscription.models[next] ?? '')
-    setCliEffort(settings?.subscription.efforts[next] ?? '')
+    setCliEffort(cliEffortOf(settings, next))
   }
 
   /** The reasoning efforts CLI model `name` takes, as the CLI's status lists them. */
@@ -316,10 +328,10 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
       setSaved(true)
       setSettings(next)
       if (tab === 'api') {
-        showProfile(next)
+        showProfile(next, next)
       } else {
         setCliModel(next.subscription.models[cli])
-        setCliEffort(next.subscription.efforts[cli] ?? '')
+        setCliEffort(cliEffortOf(next, cli))
       }
       setConnectionCheck({ state: 'idle' })
     } catch (caught) {
@@ -349,7 +361,7 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
 
   const selected = { ...PROVIDERS[provider], ...m.settings.model.providers[provider] }
   const subscriptionSaved = settings.subscription.active === cli && cliModel.trim() === settings.subscription.models[cli]
-    && cliEffort === (settings.subscription.efforts[cli] ?? '')
+    && cliEffort === cliEffortOf(settings, cli)
   const apiEfforts = HARNESS_API_EFFORTS[provider]
   const selectedCompatibleTemplate = compatibleTemplate !== 'choose' && compatibleTemplate !== 'custom'
     ? { ...COMPATIBLE_TEMPLATES[compatibleTemplate], ...m.settings.model.templates[compatibleTemplate] }
@@ -361,13 +373,13 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
     && protocol === savedProfile.protocol
     && authentication === savedProfile.authentication
     && model === savedProfile.model
-    && effort === (savedProfile.effort ?? '')
+    && effort === profileEffort(settings, savedProfile)
   const showingSavedApiKey = savedKeyAvailable && !editingApiKey && !clearApiKey
   const activeSelection = provider === settings.provider
     && protocol === settings.protocol
     && normalizeBaseUrl(baseUrl) === normalizeBaseUrl(settings.baseUrl)
     && model === settings.model
-    && effort === (settings.effort ?? '')
+    && effort === profileEffort(settings, settings)
     && authentication === settings.authentication
   const canTestConnection = tab === 'subscription'
     ? subscriptionSaved
@@ -589,8 +601,8 @@ export function ModelSettings({ onCopy }: { onCopy: (text: string) => Promise<bo
       {settings.subscription.error === undefined ? null : (
         <ServiceError>{reasonLabel(m, settings.subscription.error)}</ServiceError>
       )}
-      {settings.effortError === undefined ? null : (
-        <ServiceError>{reasonLabel(m, settings.effortError)}</ServiceError>
+      {settings.modelsError === undefined ? null : (
+        <ServiceError>{reasonLabel(m, settings.modelsError)}</ServiceError>
       )}
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
     </ServiceCard>
