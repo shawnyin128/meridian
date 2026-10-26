@@ -53,6 +53,12 @@ describe('the Core log file', () => {
     expect(readFileSync(join(dir, 'core.log'), 'utf8')).toBe('2026-10-26T08:00:00.000Z error api_key=[redacted]\n')
   })
 
+  it('writes English only, each run of Chinese text replaced by a marker', () => {
+    const dir = folder()
+    openCoreLog({ dir, redact: same, now: at }).write('error', '[core] chat.send failed: 项目不存在：p1')
+    expect(readFileSync(join(dir, 'core.log'), 'utf8')).toBe('2026-10-26T08:00:00.000Z error [core] chat.send failed: [non-English]p1\n')
+  })
+
   it('keeps every entry on lines of its own, a continued line indented', () => {
     const dir = folder()
     openCoreLog({ dir, redact: same, now: at }).write('error', 'first\r\nsecond')
@@ -72,13 +78,13 @@ describe('teeConsole', () => {
     }
     teeConsole(openCoreLog({ dir, redact: same, now: at }), target)
     target.error('[harness] %s failed', 'codex')
-    target.warn('同步失败')
+    target.warn('sync failed')
     target.info('vault', 3)
     target.log('plain')
-    expect(printed).toEqual([['[harness] %s failed', 'codex'], ['同步失败'], ['vault', 3], ['plain']])
+    expect(printed).toEqual([['[harness] %s failed', 'codex'], ['sync failed'], ['vault', 3], ['plain']])
     expect(readFileSync(join(dir, 'core.log'), 'utf8').split('\n')).toEqual([
       '2026-10-26T08:00:00.000Z error [harness] codex failed',
-      '2026-10-26T08:00:00.000Z warn 同步失败',
+      '2026-10-26T08:00:00.000Z warn sync failed',
       '2026-10-26T08:00:00.000Z info vault 3',
       '2026-10-26T08:00:00.000Z info plain',
       '',

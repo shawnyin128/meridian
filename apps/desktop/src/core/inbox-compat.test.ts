@@ -166,8 +166,8 @@ describe('论文推送重做后要写的存储形状', () => {
     const reported = vi.spyOn(console, 'error')
 
     const reopened = createVaultStore(vault)
-    expect(reported.mock.calls.map(([line]) => String(line).match(/项目 (project-\d+) 的 (\w+) /)?.slice(1)))
-      .toEqual([[project, 'coreIntentId'], [project, 'disabledIntentIds'], [other, 'coreIntentId']])
+    expect(reported.mock.calls.map(([line]) => String(line).match(/: (\w+) of project (project-\d+) /)?.slice(1)))
+      .toEqual([['coreIntentId', project], ['disabledIntentIds', project], ['coreIntentId', other]])
     expect(intentOf(reopened, project)).toMatchObject({ core: true, enabled: true })
     expect(intentOf(reopened, other)).toMatchObject({ id: intent, enabled: false })
     reopened.setDiscoveryIntent(project, intentOf(reopened, project).id, 'disable')

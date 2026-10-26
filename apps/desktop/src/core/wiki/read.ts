@@ -53,7 +53,7 @@ export function readWikiData(wikiDir: string): WikiData {
       try {
         pages[id] = readWikiPage(join(full, name), kind)
       } catch (err) {
-        console.error(`[wiki] ${id} 这个版本读不了，没有读进来（可能要更新 App）：${err instanceof Error ? err.message : String(err)}`)
+        console.error(`[wiki] ${id} cannot be read by this version and is skipped (the App may need an update): ${err instanceof Error ? err.message : String(err)}`)
       }
     }
   }

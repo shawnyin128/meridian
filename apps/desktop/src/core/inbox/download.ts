@@ -47,7 +47,7 @@ export function createInboxDownloads(deps: {
       }
       // A PDF the probe cannot read is still stored, as an upload's is; it only goes without a page count.
       const pageCount = await deps.probe(body).then((facts) => facts.pageCount, (error: unknown) => {
-        console.error(`[inbox] 下载的 PDF 读不出页数：${error instanceof Error ? error.message : String(error)}`)
+        console.error(`[inbox] the page count of a downloaded PDF cannot be read: ${error instanceof Error ? error.message : String(error)}`)
         return undefined
       })
       let result: InboxDownloadResult

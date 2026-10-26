@@ -86,7 +86,7 @@ export function readStoredList<T>(file: string, raw: unknown, schema: z.ZodType<
     const read = readRecord(schema, row)
     if ('error' in read) {
       unreadable.push(row)
-      console.error(`[vault] ${file} 第 ${index + 1} 条这个版本读不了，原样保留（可能要更新 App）：${read.error}`)
+      console.error(`[vault] ${file}: record ${index + 1} cannot be read by this version and is kept as it is (the App may need an update): ${read.error}`)
       return
     }
     rows.push(read.value)

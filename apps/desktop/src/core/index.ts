@@ -206,7 +206,7 @@ const appliedProposalBodies = (() => {
   try {
     return proposalAudit.appliedBodies()
   } catch (error) {
-    console.error(`[harness] 已落地提案读取失败：${error instanceof Error ? error.message : String(error)}`)
+    console.error(`[harness] applied proposals cannot be read: ${error instanceof Error ? error.message : String(error)}`)
     return new Map<string, string>()
   }
 })()
@@ -295,7 +295,7 @@ const pruneChatSessions = (): void => {
   if (openError !== null) return
   chatModels.prune(new Set(store.chatIds()))
   void chatSessions.prune(new Set(store.chatIds())).catch((cause: unknown) => {
-    console.error(`[harness] 对话的 CLI 会话没能删掉：${cause instanceof Error ? cause.message : String(cause)}`)
+    console.error(`[harness] chats' CLI sessions were not deleted: ${cause instanceof Error ? cause.message : String(cause)}`)
   })
 }
 pruneChatSessions()
@@ -317,7 +317,7 @@ const pendingHarnessProposals = (() => {
   try {
     return proposalAudit.pending()
   } catch (error) {
-    console.error(`[harness] 待审核提案无法恢复：${error instanceof Error ? error.message : String(error)}`)
+    console.error(`[harness] pending proposals cannot be restored: ${error instanceof Error ? error.message : String(error)}`)
     return []
   }
 })()
@@ -326,7 +326,7 @@ const appliedHarnessProposals = (() => {
   try {
     return proposalAudit.applied()
   } catch (error) {
-    console.error(`[harness] 已写入的提案无法恢复，撤销后不会回到待审核：${error instanceof Error ? error.message : String(error)}`)
+    console.error(`[harness] applied proposals cannot be restored, so an undo does not return them to review: ${error instanceof Error ? error.message : String(error)}`)
     return []
   }
 })()
@@ -358,7 +358,7 @@ const INBOX_SCAN_MS = 5_000
 if (vaultRoot !== undefined) {
   const scan = (): void => {
     wikiProposals.scanInbox().catch((error: unknown) => {
-      console.error(`[wiki] 提案收件箱处理失败：${error instanceof Error ? error.message : String(error)}`)
+      console.error(`[wiki] proposal inbox scan failed: ${error instanceof Error ? error.message : String(error)}`)
     })
   }
   scan()
@@ -393,7 +393,7 @@ function openStore(
     return { store, openError: null }
   } catch (err) {
     const reason = err instanceof Error ? err.message : String(err)
-    console.error(`[core] 论文库打不开：${reason}`)
+    console.error(`[core] the vault cannot open: ${reason}`)
     const failure = callFailure(err)
     return { store: unopenedStore(reason, failure), openError: failure }
   }

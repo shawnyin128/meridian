@@ -2,11 +2,14 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
-import { callFailure } from '../call-error.js'
+import { CallError, callFailure } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
 import { openCoreLog, teeConsole } from '../core-log.js'
 import { ChatFailure, chatHarnessError, redactSecrets, sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
+import { CliRunError } from './cli/child.js'
 import { HarnessRpcError } from './rpc.js'
+
+const CJK = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]/
 import { createChatService } from './chat-service.js'
 import type { CredentialVault } from './credential-vault.js'
 import { createHarnessModelConfig } from './model-config.js'
@@ -352,9 +355,33 @@ describe('Core chat service', () => {
       quiet.mockRestore()
     }
     const log = readFileSync(join(dir, 'core.log'), 'utf8')
-    expect(log).toContain('error [chat] chat amortize failed at request (bad_request): Core returned an invalid chat context (Authorization: [redacted]\n')
+    expect(log).toContain('error [chat] chat amortize failed at request (bad_request): Core returned an invalid chat context: Authorization: [redacted]\n')
     expect(log).not.toContain('sk-live-1234567890abcdef')
+    expect(log).not.toMatch(CJK)
     expect(log).not.toContain('不该进日志的问题')
+  })
+
+  it('logs a failed turn in English: the kind and the English detail, not the Chinese words the chat shows', async () => {
+    const lines: string[] = []
+    const quiet = vi.spyOn(console, 'error').mockImplementation((line: string) => { lines.push(line) })
+    try {
+      const failures = [
+        chatHarnessError(new HarnessRpcError({ kind: 'model_error', message: '模型服务请求超时', detail: 'timeout' })),
+        chatHarnessError(new HarnessRpcError({ kind: 'no_model', message: '还没有配置模型' })),
+        new CallError('model', 'claude 运行失败', { cause: new CliRunError('failed', 'claude 运行失败', { exitCode: 1, stderr: 'Error: boom' }) }),
+        new CallError('not-found', '论文不存在：p1'),
+      ]
+      const service = createChatService({ store: createFixtureStore(), model: await configuredModel(), runner: runnerOf(...failures) })
+      for (let n = 0; n < failures.length; n += 1) await service.send('amortize', written('问'))
+    } finally {
+      quiet.mockRestore()
+    }
+    expect(lines).toEqual([
+      '[chat] chat amortize failed at request (model_error): timeout',
+      '[chat] chat amortize failed at request (no_model): no_model',
+      '[chat] chat amortize failed at cli (failed): exit 1: Error: boom',
+      '[chat] chat amortize failed at core (not-found): not-found',
+    ])
   })
 
   it('重试一轮没回答的问题:再问模型一次同一个问题,问题不再写一遍,回答接在状态行后面', async () => {

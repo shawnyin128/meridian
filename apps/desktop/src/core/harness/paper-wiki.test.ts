@@ -418,7 +418,7 @@ describe('Paper Wiki run on a subscription CLI', () => {
       child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'claude 运行失败' } })
       await expect(running).rejects.toMatchObject({ reason: 'model' })
       expect(logs).toHaveLength(3)
-      expect(logs[2]).toMatch(/^Paper Wiki run of .+ failed at cli \(failed\): .+ \(exit 1\)$/)
+      expect(logs[2]).toMatch(/^Paper Wiki run of .+ failed at cli \(failed\): exit 1: starting .* Error: usage limit reached$/)
       for (const line of logs) expect(line).not.toMatch(/sk-ant|supersecret|researcher@/)
       runner.close()
     } finally {

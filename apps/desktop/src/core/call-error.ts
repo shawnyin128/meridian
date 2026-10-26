@@ -34,7 +34,7 @@ export function answerCall(
   return outcome.then(
     (data) => { port.postMessage({ id, ok: true, data }) },
     (error: unknown) => {
-      console.error(`[core] ${method} 失败：${error instanceof Error ? error.message : String(error)}`)
+      console.error(`[core] ${method} failed (${callFailure(error)}): ${error instanceof Error ? error.message : String(error)}`)
       const rejection: CallRejection = { reason: callFailure(error) }
       port.postMessage({ id, ok: false, error: rejection })
     },

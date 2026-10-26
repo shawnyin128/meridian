@@ -291,7 +291,7 @@ export function createHarnessCostGate(deps: Dependencies) {
             ...(result.proposalQuality === undefined ? {} : { quality: result.proposalQuality }),
           })
         } catch (error) {
-          console.error(`[harness] 提案已生成，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+          console.error(`[harness] the proposal was made, but its audit record was not written: ${error instanceof Error ? error.message : String(error)}`)
           receipt.warning = callFailure(error)
         }
       }
@@ -345,7 +345,7 @@ export function createHarnessCostGate(deps: Dependencies) {
           scopeDigest: proposal.scopeDigest, at: result.appliedAt, body: params.body, change,
         })
       } catch (error) {
-        console.error(`[harness] Wiki 已写入，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+        console.error(`[harness] the Wiki was written, but its audit record was not: ${error instanceof Error ? error.message : String(error)}`)
         result.warning = callFailure(error)
       }
       return result
@@ -370,7 +370,7 @@ export function createHarnessCostGate(deps: Dependencies) {
           ...(proposal.quality === undefined ? {} : { quality: proposal.quality }),
         })
       } catch (error) {
-        console.error(`[harness] 提案已回到待审核，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+        console.error(`[harness] the proposal is back in review, but its audit record was not written: ${error instanceof Error ? error.message : String(error)}`)
       }
     },
 
@@ -387,7 +387,7 @@ export function createHarnessCostGate(deps: Dependencies) {
           ...(params.feedback === undefined ? {} : { feedback: structuredClone(params.feedback) }),
         })
       } catch (error) {
-        console.error(`[harness] 提案已丢弃，但审计记录写入失败：${error instanceof Error ? error.message : String(error)}`)
+        console.error(`[harness] the proposal was discarded, but its audit record was not written: ${error instanceof Error ? error.message : String(error)}`)
         result.warning = callFailure(error)
       }
       proposal.used = true

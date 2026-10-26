@@ -7,11 +7,17 @@ export type CoreLogLevel = 'error' | 'warn' | 'info'
 
 /** How many characters of one entry the log keeps. */
 const MAX_ENTRY_CHARS = 8_000
+/** A run of Chinese, Japanese or Korean text, with its full-width punctuation. */
+const CJK_RUN = /[\u3000-\u303f\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\uf900-\ufaff\uff00-\uffef]+/g
+
+/** Whether `text` holds Chinese, Japanese or Korean text. */
+export const hasCjk = (text: string): boolean => new RegExp(CJK_RUN.source).test(text)
 
 /**
  * The log file Core writes in `dir`: `core.log`, then `core.1.log` up to `core.<files - 1>.log`, the
  * oldest dropped once each holds `maxBytes`. Each entry is one line, its time from `now`, its level,
- * and its text as `redact` leaves it; a text of several lines continues on indented lines. Creates
+ * and its text as `redact` leaves it, in English only: each run of Chinese, Japanese or Korean text
+ * becomes `[non-English]`. A text of several lines continues on indented lines. Creates
  * `dir`; throws when it cannot be created or written.
  */
 export function openCoreLog({ dir, redact, maxBytes = 1_000_000, files = 3, now = () => new Date() }: {
@@ -32,7 +38,7 @@ export function openCoreLog({ dir, redact, maxBytes = 1_000_000, files = 3, now 
   }
   return {
     write(level: CoreLogLevel, text: string): void {
-      const kept = redact(text.length > MAX_ENTRY_CHARS ? `${text.slice(0, MAX_ENTRY_CHARS - 1)}…` : text)
+      const kept = redact(text.length > MAX_ENTRY_CHARS ? `${text.slice(0, MAX_ENTRY_CHARS - 1)}…` : text).replace(CJK_RUN, '[non-English]')
       const entry = `${now().toISOString()} ${level} ${kept.split(/\r?\n/).join('\n  ')}\n`
       const bytes = Buffer.byteLength(entry)
       if (size > 0 && size + bytes > maxBytes) rotate()
