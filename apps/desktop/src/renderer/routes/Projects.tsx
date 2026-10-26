@@ -24,7 +24,7 @@ import { InlineDraftInput } from '../components/InlineDraftInput.js'
 import { InlineField } from '../components/InlineField.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { ProjectBlockerView, ProjectNextActionView } from '../components/project/ProjectControl.js'
-import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
+import { useTopicFilter } from '../components/project/ProjectTopicFilter.js'
 import { ProjectIdentity } from '../components/project/ProjectIdentity.js'
 import { EventText } from '../components/project/ProjectSignals.js'
 import { DraftSlot, useDraftSlot } from '../components/DraftSlot.js'
@@ -289,7 +289,7 @@ function ProjectList({ onOpen, newRow, onNewRow, onReturn }: {
   const createDraft = useDraftSlot(creating, () => setCreating(true))
   const projNew = useRef<HTMLButtonElement>(null)
   const newTriggers = useMemo(() => [projNew], [])
-  const { filter, shown } = useAreaFilter(projects ?? [])
+  const { filter, shown } = useTopicFilter(projects ?? [])
   const statusOf = useMemo(
     () => new Map((projects ?? []).map((p) => [p.id, p.status])), [projects],
   )

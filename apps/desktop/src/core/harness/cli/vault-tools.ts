@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { projectAreas, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
+import { projectTopics, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { callFailure } from '../../call-error.js'
 import { extractPdfPages } from '../../paper-library/index.js'
@@ -194,7 +194,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
       if (!store.hasProject(id)) return refuse(`The vault has no project ${id}.`)
       const project = store.getProject(id)
       return answer({
-        id, name: project.name, status: project.status, priority: project.priority, areas: projectAreas(project),
+        id, name: project.name, status: project.status, priority: project.priority, topics: projectTopics(project),
         focus: clip(project.focus, ITEM_CHARS), ...(project.block === undefined ? {} : { block: clip(project.block, ITEM_CHARS) }),
         start: project.start, due: project.due, ...(project.lastProgress === undefined ? {} : { lastProgress: project.lastProgress }),
         milestones: project.milestones.slice(0, 20).map(({ title, date, done }) => ({ title: clip(title, ITEM_CHARS), date, done })),

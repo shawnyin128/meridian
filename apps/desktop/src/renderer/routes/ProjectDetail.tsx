@@ -8,7 +8,7 @@ import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
 import { withTaskNodes } from '../../shared/task-nodes.js'
 import {
-  FOCUS_KEY, projectAreas, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
+  FOCUS_KEY, projectTopics, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
@@ -41,7 +41,7 @@ import { ProjectIdentityFields, ProjectPriorityTag } from '../components/project
 import { Property, PropertyList } from '../components/PropertyList.js'
 import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
-  ProjectAreasField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
+  ProjectTopicsField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
 import { NodeAssignment } from '../components/project/NodeAssignment.js'
 import { EntityLink } from '../components/EntityLink.js'
@@ -1069,8 +1069,8 @@ export function ProjectDetail({
                         ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                       ),
                       topic: (
-                        <ProjectAreasField
-                          projectId={projectId} areas={projectAreas(project)} onError={report}
+                        <ProjectTopicsField
+                          projectId={projectId} topics={projectTopics(project)} onError={report}
                           onSave={(topics) => writeProject(updateProject({ topics }))}
                           onRemove={(topics) => writeRemoval(
                             projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,

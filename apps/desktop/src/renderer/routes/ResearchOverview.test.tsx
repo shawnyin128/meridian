@@ -172,7 +172,7 @@ describe('研究总览的项目推进', () => {
   })
 })
 
-describe('研究总览按领域筛', () => {
+describe('研究总览按主题筛', () => {
   let host: HTMLDivElement
   let root: Root
 
@@ -190,10 +190,10 @@ describe('研究总览按领域筛', () => {
     host.remove()
   })
 
-  it('页面工具栏里的领域筛选让每一块都只算那个领域的项目,再选全部领域就全回来', async () => {
+  it('页面工具栏里的主题筛选让每一块都只算那个主题的项目,再选全部主题就全回来', async () => {
     api.rows = [
       { ...row([{ date: '2026-10-15', text: '推测解码的记录' }]), milestones: [{ id: 'm1', date: '2026-10-20', title: '推测解码的里程碑', done: false }] },
-      { ...row([{ date: '2026-10-14', text: 'KV 的记录' }]), id: 'kv', name: 'KV cache 量化', topic: 'KV cache', topics: ['KV cache', '量化'],
+      { ...row([{ date: '2026-10-14', text: 'KV 的记录' }]), id: 'kv', name: 'KV cache 量化', topic: 'KV cache', topics: ['KV cache', '量化'], topicPages: ['topics/kv', 'topics/quant'], topicScope: ['topics/kv', 'topics/quant'],
         milestones: [{ id: 'm2', date: '2026-10-21', title: 'KV 的里程碑', done: false }] },
       { ...row([]), id: 'shelf', name: '搁置的项目', status: '搁置', topic: '未分主题' },
     ]
@@ -213,9 +213,9 @@ describe('研究总览按领域筛', () => {
     expect(host.querySelector('.ovcols')!.textContent).not.toContain('推测解码')
     expect([...host.querySelectorAll('.ovpulse [data-proj]')].map((item) => item.getAttribute('data-proj'))).toEqual(['kv'])
 
-    await pick('未分领域')
+    await pick('未分主题')
     expect(stats()).toEqual(['0', '1', '0', '0'])
-    await pick('全部领域')
+    await pick('全部主题')
     expect(stats()).toEqual(['2', '1', '2', '2'])
   })
 })

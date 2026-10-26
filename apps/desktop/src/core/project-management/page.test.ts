@@ -90,6 +90,21 @@ const readAs0015003 = (file: string) => {
   return PageSchema0015003.safeParse(readFrontmatter(rows.slice(1, rows.indexOf('---', 1))))
 }
 
+/**
+ * The project-page frontmatter schema of 0.0.21.4 (v0.0.21004), copied the same way on top of
+ * 0.0.15.3's: it reads every area in `topics` and the research node a task was given by hand.
+ */
+const PageSchema0021004 = PageSchema0015003.extend({
+  topics: z.array(z.string()).optional(),
+  task_nodes: z.record(z.string(), z.string()).optional(),
+})
+
+/** The frontmatter of the page at `file`, as App 0.0.21.4 would read it. */
+const readAs0021004 = (file: string) => {
+  const rows = readFileSync(file, 'utf8').split('\n')
+  return PageSchema0021004.safeParse(readFrontmatter(rows.slice(1, rows.indexOf('---', 1))))
+}
+
 /** Project exercising every page shape: sequences, nesting, and optional values. */
 const PROJECT: ProjectRecord = {
   id: 'project-1',
@@ -458,7 +473,7 @@ describe('project page', () => {
     expect(readProjectPage(file, 'project-1').graph.nodes[0]).toEqual(PROJECT.graph.nodes[0])
   })
 
-  it('几个领域:第一个照旧写在 topic,全部按次序写在顶层 topics;读回来一样', () => {
+  it('几个主题:第一个照旧写在 topic,全部按次序写在顶层 topics;读回来一样', () => {
     const project = { ...PROJECT, topics: ['speculative decoding', 'KV cache', '推理加速'] }
     writePage(file, projectPageText(project), staging)
     const text = readFileSync(file, 'utf8')
@@ -467,7 +482,7 @@ describe('project page', () => {
     expect(readProjectPage(file, 'project-1')).toEqual(project)
   })
 
-  it('领域加到两个只在 frontmatter 末尾多出 topics 一块,减回一个时这一块去掉,别的字节不动', () => {
+  it('主题加到两个只在 frontmatter 末尾多出 topics 一块,减回一个时这一块去掉,别的字节不动', () => {
     const before = readFileSync(file, 'utf8')
     writeProjectFields(file, { ...PROJECT, topics: ['speculative decoding', 'KV cache'] }, ['topic', 'topics'], staging)
     const block = 'topics:\n  - "speculative decoding"\n  - "KV cache"\n'
@@ -493,7 +508,7 @@ describe('project page', () => {
     expect(readProjectPage(file, 'project-1')).toMatchObject({ topic: '推理加速', topics: ['推理加速', 'KV cache'] })
   })
 
-  it('旧版 App 把 topic 改回新项目的默认值:剩下的领域里第一个顶上,只剩一个时不再有 topics', () => {
+  it('旧版 App 把 topic 改回新项目的默认值:剩下的主题里第一个顶上,只剩一个时不再有 topics', () => {
     writePage(file, projectPageText({ ...PROJECT, topics: ['speculative decoding', 'KV cache'] }), staging)
     writeProjectFields(file, { ...PROJECT, topic: DEFAULT_PROJECT_TOPIC }, ['topic'], staging)
     const read = readProjectPage(file, 'project-1')
@@ -501,7 +516,7 @@ describe('project page', () => {
     expect('topics' in read).toBe(false)
   })
 
-  it('领域里带换行、引号、冒号、--- 和 - evidence: 也只是一项的字,写出再读回一字不差,页的结构不变', () => {
+  it('主题里带换行、引号、冒号、--- 和 - evidence: 也只是一项的字,写出再读回一字不差,页的结构不变', () => {
     const topics = ['多行\n### Node x', '- evidence: "引号" C:\\temp', 'a: b', '---']
     const project = { ...PROJECT, topic: topics[0]!, topics }
     writePage(file, projectPageText(project), staging)
@@ -509,6 +524,52 @@ describe('project page', () => {
     const at = rows.indexOf('topics:')
     expect(rows.slice(at + 1, at + 1 + topics.length).every((row) => /^ {2}- ".*"$/.test(row))).toBe(true)
     expect(readProjectPage(file, 'project-1')).toEqual(project)
+  })
+
+  it('主题的页按次序写在 frontmatter 末尾的 topic_pages,每项带写下时的标题;读回来一样', () => {
+    const project: ProjectRecord = {
+      ...PROJECT, topics: ['speculative decoding', 'KV cache'],
+      topicPins: [{ page: 'topics/speculative-decoding', title: 'speculative decoding' }, { page: 'topics/kv-cache', title: 'KV cache' }],
+    }
+    writePage(file, projectPageText(project), staging)
+    const text = readFileSync(file, 'utf8')
+    expect(text).toContain([
+      'topic_pages:', '  - page: "topics/speculative-decoding"', '    title: "speculative decoding"',
+      '  - page: "topics/kv-cache"', '    title: "KV cache"', '---',
+    ].join('\n'))
+    expect(readProjectPage(file, 'project-1')).toEqual(project)
+  })
+
+  it('有 topic_pages 的页,0.0.21.4 的 App 照样读得出,读到的领域是 topic 与 topics 里的标题', () => {
+    writePage(file, projectPageText({
+      ...PROJECT, topics: ['speculative decoding', 'KV cache'],
+      topicPins: [{ page: 'topics/speculative-decoding', title: 'speculative decoding' }, { page: 'topics/kv-cache', title: 'KV cache' }],
+    }), staging)
+    const read = readAs0021004(file)
+    expect(read.error).toBeUndefined()
+    expect(read.data).toMatchObject({ topic: 'speculative decoding', topics: ['speculative decoding', 'KV cache'] })
+  })
+
+  it('旧版 App 只改 topic 与 topics:topic_pages 一字不动,读回来的主题跟着旧版写的标题', () => {
+    const pins = [{ page: 'topics/speculative-decoding', title: 'speculative decoding' }]
+    writePage(file, projectPageText({ ...PROJECT, topicPins: pins }), staging)
+    const block = 'topic_pages:\n  - page: "topics/speculative-decoding"\n    title: "speculative decoding"\n'
+    // An older App writes from a record without `topicPins`, naming only the fields it knows.
+    writeProjectFields(file, { ...PROJECT, topic: '量化', topics: ['量化', 'speculative decoding'] }, ['topic', 'topics'], staging)
+    expect(readFileSync(file, 'utf8')).toContain(block)
+    expect(readProjectPage(file, 'project-1')).toMatchObject({ topic: '量化', topics: ['量化', 'speculative decoding'], topicPins: pins })
+  })
+
+  it('topic_pages 里读不了的一项跳过,多出来的键不管,项目照常读出', () => {
+    writePage(file, projectPageText(PROJECT), staging)
+    const rows = readFileSync(file, 'utf8').split('\n')
+    const close = rows.indexOf('---', 1)
+    writePage(file, [
+      ...rows.slice(0, close),
+      'topic_pages:', '  - title: "没有页"', '  - page: "topics/speculative-decoding"', '    title: "speculative decoding"', '    since: "2027-01-01"',
+      ...rows.slice(close),
+    ].join('\n'), staging)
+    expect(readProjectPage(file, 'project-1').topicPins).toEqual([{ page: 'topics/speculative-decoding', title: 'speculative decoding' }])
   })
 
   it('不是项目页的一页读出来会抛,而不是给一个空项目', () => {

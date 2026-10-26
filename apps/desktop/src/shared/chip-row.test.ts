@@ -47,7 +47,7 @@ describe('chip 行', () => {
 
   it('散排的 chip 后面的 ＋ 和 chip 顶对顶排在一行:它没有字,不拿加号的底边去对 chip 里字的基线', () => {
     document.body.innerHTML = '<span class="metadata-field"><span class="tag tag--chip tag--neutral tagchip">KV 量化</span>'
-      + '<button type="button" class="add-action add-action-icon add-action-chip tagchip tagadd" aria-label="添加领域"><svg></svg></button></span>'
+      + '<button type="button" class="add-action add-action-icon add-action-chip tagchip tagadd" aria-label="添加主题"><svg></svg></button></span>'
     expect(getComputedStyle(document.querySelector('.tagadd')).verticalAlign).toBe('top')
   })
 

@@ -18,8 +18,8 @@ import type {
 } from '../shared/contract.js'
 import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
-import { projectAreas, sortRecordsNewestFirst } from '../shared/project-signals.js'
-import { topicDir, topicProposal } from '../shared/topic-proposal.js'
+import { projectTopics, sortRecordsNewestFirst } from '../shared/project-signals.js'
+import { newTopicPages, topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR,
   TRASH_RETENTION_DAYS,
@@ -36,7 +36,8 @@ import {
 } from './paper-library/index.js'
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE,
-  overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, verifiedNodes, withProjectLinks,
+  overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, servedTopics, storedTopics, titledTopics,
+  topicScopeOf, verifiedNodes, withProjectLinks, type TopicPin,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
@@ -58,7 +59,7 @@ import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
 import {
-  applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, touchedPages,
+  applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, topicPages, touchedPages,
   wikiAggregation, wikiBacklinks, wikiCards, wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
@@ -88,8 +89,8 @@ type PaperRecord = Omit<PaperRow, 'readState' | 'projects'> & { sourceId: string
 
 /** Fixture projects retain only fields that a project page can persist. */
 type FixtureProject = Omit<
-  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions'
->
+  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions' | 'topicPages'
+> & { topicPins?: TopicPin[] | undefined }
 
 /**
  * Stored inbox recommendation: cross-boundary fields plus topics written to the paper page on import.
@@ -281,8 +282,12 @@ export function createFixtureStore(
     }))
     const claims = conclusionClaims(wiki, project.id)
     const conclusions = conclusionsOf(project)
+    const stored = structuredClone(project)
+    delete stored.topics
+    delete stored.topicPins
     return {
-      ...structuredClone(project),
+      ...stored,
+      ...served(project),
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(conclusions),
@@ -290,6 +295,16 @@ export function createFixtureStore(
       projectConclusions: conclusions,
       ...lastProgressOf(changelog, project.id, [...project.events, ...project.workspace?.events ?? []]),
     }
+  }
+
+  /** The topic fields served for `project`, as the fixture Wiki's topic pages stand now. */
+  const served = (project: FixtureProject) => servedTopics(project, topicPages(wiki))
+
+  /** The topic fields of `project` that list views add: the served ones and the topic scope. */
+  const listedTopics = (project: FixtureProject) => {
+    const fields = served(project)
+    const scope = topicScopeOf((fields.topicPages ?? []).flatMap((page) => (page === null ? [] : [page])), topicPages(wiki))
+    return { ...fields, ...(scope.length === 0 ? {} : { topicScope: scope }) }
   }
 
   /** Current paper-table rows overlaid with project-side relations and legacy conclusions. */
@@ -538,7 +553,7 @@ export function createFixtureStore(
       projectId: project.id,
       projectName: project.name,
       anchorText: [
-        project.name, ...projectAreas(project), project.focus,
+        project.name, ...projectTopics(served(project)), project.focus,
         ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
@@ -821,11 +836,21 @@ export function createFixtureStore(
       else stated.add(id)
     },
 
+    pinProjectTopics() {
+      // The fixture's projects are built in, and resolve their topics by title as they are served.
+      return { pages: [], projects: [] }
+    },
+
     putProject(project) {
       const held = projectById.get(project.id)
       if (!held) throw new CallError('not-found', `项目不存在：${project.id}`)
+      const titles = projectTopics(project)
+      const index = topicPages(wiki)
+      const chosen = project.topicPages === undefined
+        ? titledTopics(titles, index)
+        : titles.map((title, at) => ({ title, page: project.topicPages![at] ?? null }))
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, structuredClone(project[key])]))
-      projectById.set(project.id, { ...held, ...fields })
+      projectById.set(project.id, { ...held, ...fields, ...storedTopics(chosen, held, index) })
       if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
     },
 
@@ -948,8 +973,7 @@ export function createFixtureStore(
         name: p.name,
         status: p.status,
         priority: p.priority,
-        topic: p.topic,
-        ...(p.topics === undefined ? {} : { topics: p.topics }),
+        ...listedTopics(p),
         focus: p.focus,
         ...(p.block === undefined ? {} : { block: p.block }),
         ...(p.conflictPage === undefined ? {} : { conflictPage: p.conflictPage }),
@@ -979,8 +1003,7 @@ export function createFixtureStore(
         name: p.name,
         status: p.status,
         priority: p.priority,
-        topic: p.topic,
-        ...(p.topics === undefined ? {} : { topics: p.topics }),
+        ...listedTopics(p),
         focus: p.focus,
         ...(p.block === undefined ? {} : { block: p.block }),
         start: p.start,
@@ -1072,13 +1095,13 @@ export function createFixtureStore(
       const next: FixtureProject = { ...project, ...fields }
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
-      if (topics !== undefined) {
-        next.topic = topics[0] ?? DEFAULT_PROJECT_TOPIC
-        if (topics.length > 1) next.topics = topics
-        else delete next.topics
-      }
       // The contract guarantees fixed-width ISO dates, so lexical order equals chronological order.
       if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
+      if (topics !== undefined) {
+        const filing = newTopicPages(topics, wikiCards(wiki), () => topicDir(wikiHome(wiki)))
+        if (filing !== null) ops.applyProposal(filing)
+        Object.assign(next, storedTopics(titledTopics(topics, topicPages(wiki)), next, topicPages(wiki)))
+      }
       projectById.set(id, next)
       if (next.status === FINISHED_PROJECT) archiveIdeasForProject(id)
       return detailOf(next)

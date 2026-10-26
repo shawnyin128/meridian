@@ -336,6 +336,14 @@ export interface VaultStore {
   updateProject(id: string, patch: Partial<ProjectFields>): ProjectDetail
 
   /**
+   * Gives every project whose topics the vault does not yet hold by page a topic page for each of
+   * its topic titles: the topic page of that title, or a new top-level one. A title that cannot
+   * become a page is reported and keeps no page. Returns the pages it created and the projects it
+   * wrote, both empty when every project was already pinned.
+   */
+  pinProjectTopics(): { pages: string[]; projects: string[] }
+
+  /**
    * Moves the project with the given id into the trash; it can no longer be
    * read or listed, and restoring its trash entry brings it back. Throws if no
    * such project exists.

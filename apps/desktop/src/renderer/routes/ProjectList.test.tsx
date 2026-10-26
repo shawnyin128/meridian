@@ -304,13 +304,19 @@ describe('项目改名', () => {
   })
 })
 
-describe('项目列表按领域筛', () => {
+describe('项目列表按主题筛', () => {
   const listed = [
-    summary({ id: 'spec', name: '推测解码加速', status: '进行中', topic: '推理加速' }),
-    summary({ id: 'kv', name: 'KV cache 量化', status: '进行中', topic: 'KV cache' }),
-    summary({ id: 'moe', name: 'MoE 路由分析', status: '进行中', topic: '混合专家', topics: ['混合专家', '推理加速'] }),
+    summary({ id: 'spec', name: '推测解码加速', status: '进行中', topic: '推理加速', topicPages: ['topics/speed'], topicScope: ['topics/speed'] }),
+    summary({ id: 'kv', name: 'KV cache 量化', status: '进行中', topic: 'KV cache', topicPages: ['topics/kv'], topicScope: ['topics/kv'] }),
+    summary({
+      id: 'moe', name: 'MoE 路由分析', status: '进行中', topic: '混合专家', topics: ['混合专家', '推理加速'],
+      topicPages: ['topics/moe', 'topics/speed'], topicScope: ['topics/moe', 'topics/speed'],
+    }),
     summary({ id: 'fresh', name: '新项目', status: '进行中', topic: '未分主题' }),
-    summary({ id: 'flash', name: 'FlashAttention 复现', status: '搁置', topic: '推理加速', focus: '等 H100' }),
+    summary({
+      id: 'flash', name: 'FlashAttention 复现', status: '搁置', topic: '注意力算子', focus: '等 H100',
+      topicPages: ['topics/attention'], topicScope: ['topics/attention', 'topics/speed'],
+    }),
   ]
   const mount = async () => {
     api.projects = listed
@@ -327,26 +333,32 @@ describe('项目列表按领域筛', () => {
   }
   const shown = () => [...host.querySelectorAll('[data-proj]')].map((item) => item.getAttribute('data-proj'))
 
-  it('页面工具栏里是和论文表同一个筛选:筛选二字加一个按钮,选项是全部领域、用到的每个领域,最后是未分领域', async () => {
+  it('页面工具栏里是和论文表同一个筛选:筛选二字加一个按钮,选项是全部主题、用到的每个主题,最后是未分主题', async () => {
     await mount()
-    expect(host.querySelector('.desk-body .page-toolbar')!.textContent).toBe('筛选领域')
+    expect(host.querySelector('.desk-body .page-toolbar')!.textContent).toBe('筛选主题')
     expect(filter().classList.contains('on')).toBe(false)
-    expect((await options()).map((option) => option.textContent)).toEqual(['全部领域', '推理加速', 'KV cache', '混合专家', '未分领域'])
+    expect((await options()).map((option) => option.textContent)).toEqual(['全部主题', '推理加速', 'KV cache', '混合专家', '注意力算子', '未分主题'])
   })
 
-  it('选一个领域只剩带着它的项目,有几个领域的也在,屏头的数跟着变;再选全部领域就全回来', async () => {
+  it('选一个主题只剩带着它或它下面的主题的项目,有几个主题的也在,屏头的数跟着变;再选全部主题就全回来', async () => {
     await mount()
     await pick('推理加速')
     expect(shown()).toEqual(['spec', 'moe', 'flash'])
     expect([filter().textContent, filter().classList.contains('on')]).toEqual(['推理加速', true])
     expect(host.querySelector('.desk-head .t')!.textContent).toBe('项目 · 2')
-    await pick('全部领域')
+    await pick('全部主题')
     expect(shown()).toEqual(['spec', 'kv', 'moe', 'fresh', 'flash'])
   })
 
-  it('选未分领域只剩还没有领域的项目', async () => {
+  it('选下一层的主题只剩带着它的项目,不带它上面那一层的', async () => {
     await mount()
-    await pick('未分领域')
+    await pick('注意力算子')
+    expect(shown()).toEqual(['flash'])
+  })
+
+  it('选未分主题只剩还没有主题的项目', async () => {
+    await mount()
+    await pick('未分主题')
     expect(shown()).toEqual(['fresh'])
   })
 

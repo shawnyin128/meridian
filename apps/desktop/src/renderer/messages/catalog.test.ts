@@ -161,7 +161,6 @@ describe('一个对象一个词', () => {
     finding: { zh: '结论', en: /finding/i },
     experimentConclusion: { zh: '实验结论', en: /experiment conclusion/i },
     keyword: { zh: '关键词', en: /keyword/i },
-    area: { zh: '领域', en: /\bareas?\b/i },
     toRead: { zh: '待读', en: /to read/i },
     readLater: { zh: '稍后阅读', en: /later/i },
     topic: { zh: '主题', en: /topic/i },
@@ -185,11 +184,6 @@ describe('一个对象一个词', () => {
     keyword: [
       'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.topicSuggestions', 'watches.addAllTopics',
     ],
-    area: [
-      'project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea', 'project.identity.addArea',
-      'project.identity.existingAreas', 'project.identity.removeArea', 'project.identity.allAreas',
-      'project.identity.filterArea',
-    ],
     toRead: ['papers.readState.later'],
     readLater: [
       'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.removed', 'inbox.actions.readLater',
@@ -197,7 +191,8 @@ describe('一个对象一个词', () => {
     topic: [
       'papers.columns.topics', 'papers.groupNames.topics', 'papers.toolbar.searchPlaceholder', 'papers.tags.add',
       'papers.tags.existingTopics', 'papers.tags.remove', 'papers.notices.topicAdded', 'papers.metadata.fields.topics',
-      'papers.researchMap.reason.topic',
+      'papers.researchMap.reason.topic', 'project.identity.topic', 'project.identity.topicUpdated',
+      'project.identity.noTopic', 'project.identity.allTopics', 'project.identity.filterTopic',
     ],
   }
   /** Texts that name a project's experiment conclusion and the finding it becomes in the Wiki. */
@@ -249,8 +244,13 @@ describe('一个对象一个词', () => {
     }
   })
 
+  it('项目的主题和论文的主题是同一个词,哪里都不再说领域', () => {
+    expect([...catalogs.zh].filter(([, text]) => text.includes('领域'))).toEqual([])
+    expect([...catalogs.en].filter(([, text]) => /\bareas?\b/i.test(text))).toEqual([])
+  })
+
   it('新词只出现在它的对象的键上', () => {
-    for (const item of ['experimentConclusion', 'keyword', 'area', 'toRead'] as const) {
+    for (const item of ['experimentConclusion', 'keyword', 'toRead'] as const) {
       const holding = [...catalogs.zh].filter(([, text]) => text.includes(WORDS[item].zh)).map(([path]) => path)
       expect(holding.filter((path) => !KEYS[item].includes(path) && !BOTH.includes(path)), item).toEqual([])
     }

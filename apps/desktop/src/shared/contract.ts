@@ -348,10 +348,15 @@ export const ProjectDetailSchema = z.object({
   name: z.string(),
   status: ProjectStatusSchema,
   priority: z.enum(['p0', 'p1', 'p2']),
-  /** The project's area, or DEFAULT_PROJECT_TOPIC when it has none; with several areas, the first of `topics`. */
+  /** The title of the project's topic, or DEFAULT_PROJECT_TOPIC when it has none; with several topics, the first of `topics`. */
   topic: z.string(),
-  /** Every area of a project that has several, in order; absent while it has one or none. */
+  /** The titles of every topic of a project that has several, in order; absent while it has one or none. */
   topics: z.array(z.string()).optional(),
+  /**
+   * The Wiki topic page of each of the project's topics, in the order of their titles; null for a
+   * title no topic page holds. Absent while the project has no topic.
+   */
+  topicPages: z.array(z.string().nullable()).optional(),
   focus: z.string(),
   /** Current blocker, omitted when the project is not blocked. */
   block: z.string().optional(),
@@ -402,9 +407,11 @@ export const ProjectDetailSchema = z.object({
  * and notes are omitted.
  */
 export const ProjectSummarySchema = ProjectDetailSchema.pick({
-  id: true, name: true, status: true, priority: true, topic: true, topics: true, focus: true, block: true,
+  id: true, name: true, status: true, priority: true, topic: true, topics: true, topicPages: true, focus: true, block: true,
   conflictPage: true, conclusions: true, paperCount: true, lastProgress: true,
 }).extend({
+  /** The project's topic pages and every topic page above them; derived by Core, absent while it has no topic page. */
+  topicScope: z.array(z.string()).optional(),
   /** List pages consume the shared control projection instead of reinterpreting focus, tasks, or graph state. */
   control: ProjectControlSchema,
   /** One completion value per milestone; the earliest unfinished item is next, with titles kept in details. */
@@ -425,10 +432,11 @@ export const ProjectSummarySchema = ProjectDetailSchema.pick({
  * Areas cross for the overview's filter; paper count, conflict page, and other details do not.
  */
 export const ProjectOverviewSchema = ProjectDetailSchema.pick({
-  id: true, name: true, status: true, priority: true, topic: true, topics: true, focus: true, block: true,
+  id: true, name: true, status: true, priority: true, topic: true, topics: true, topicPages: true, focus: true, block: true,
   start: true, due: true, conclusions: true,
   tasks: true, milestones: true, events: true, lastProgress: true,
 }).extend({
+  topicScope: ProjectSummarySchema.shape.topicScope,
   /**
    * Read-only graph summary for overview surfaces: nodes currently in progress, path health,
    * and branch counts without the full graph or Markdown.
@@ -1241,19 +1249,19 @@ export const ProjectCreateParamsSchema = z.object({ name: z.string() }).strict()
 export const ProjectDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
 /**
- * Writable project fields; `block: null` clears the blocker. `topics` sets every area at once, in
- * order, and an empty list leaves the project with none.
+ * Writable project fields; `block: null` clears the blocker. `topics` sets every topic at once, in
+ * order, by title, and an empty list leaves the project with none.
  */
 const ProjectFieldsSchema = ProjectDetailSchema.omit({
   id: true, tasks: true, taskNodes: true, milestones: true, events: true, relations: true, attachments: true,
   conclusions: true, conclusionList: true, conclusionClaims: true, projectConclusions: true, verifiedConclusions: true,
   paperCount: true, papers: true,
   paperTitles: true, graph: true, agentSessions: true, block: true,
-  conflictPage: true, workspace: true, lastProgress: true, topic: true, topics: true,
+  conflictPage: true, workspace: true, lastProgress: true, topic: true, topics: true, topicPages: true,
 }).extend({
   block: z.string().trim().min(1).max(500).nullable(),
   topics: z.array(z.string().trim().min(1).max(300))
-    .refine((topics) => new Set(topics).size === topics.length, { message: '同一个领域只能有一个' }),
+    .refine((topics) => new Set(topics).size === topics.length, { message: '同一个主题只能有一个' }),
 })
 
 export const ProjectUpdateParamsSchema = z.object({

@@ -12,8 +12,9 @@ import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
-import { projectAreas, sortRecordsNewestFirst } from '../shared/project-signals.js'
-import { topicDir, topicProposal } from '../shared/topic-proposal.js'
+import { projectTopics, sortRecordsNewestFirst } from '../shared/project-signals.js'
+import { slugOf } from '../shared/slug.js'
+import { newTopicPages, topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
@@ -33,7 +34,7 @@ import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
   readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
-  writeProjectWorkspaceState, type ProjectRecord,
+  writeProjectWorkspaceState, servedTopics, storedTopics, titledTopics, topicPinsOf, topicScopeOf, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
@@ -68,7 +69,7 @@ import {
   entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
   isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
   readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
-  setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
+  setClaim, setColumns, setMembership, setParents, setUpdated, topicPages, touchedPages, wikiAggregation, wikiCards,
   wikiBacklinks, wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
@@ -845,6 +846,8 @@ export function createVaultStore(
     delete stored.workspaceRoot
     delete stored.workspaceSsh
     delete stored.agentTasks
+    delete stored.topics
+    delete stored.topicPins
     const paperTitles = Object.fromEntries(stored.papers.flatMap((id) => {
       const paper = papers.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
@@ -854,6 +857,7 @@ export function createVaultStore(
     const conclusions = conclusionsOf(project, workspace?.graph ?? project.graph)
     return {
       ...stored,
+      ...served(project),
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(conclusions),
@@ -866,6 +870,25 @@ export function createVaultStore(
 
   /** Returns projects in canonical order rather than directory scan or trash-restoration order. */
   const projects = (): ProjectRecord[] => [...projectById.values()].sort(byCreated)
+
+  /** The topic fields Core serves for `project`, as the vault's topic pages stand now. */
+  const served = (project: ProjectRecord) => servedTopics(project, topicPages(wikiData))
+
+  /** The topic fields of `project` that list views add: the served ones and the topic scope. */
+  const listedTopics = (project: ProjectRecord) => {
+    const fields = served(project)
+    const scope = topicScopeOf((fields.topicPages ?? []).flatMap((page) => (page === null ? [] : [page])), topicPages(wikiData))
+    return { ...fields, ...(scope.length === 0 ? {} : { topicScope: scope }) }
+  }
+
+  /**
+   * Creates a top-level topic page for each of `titles` that no topic page carries, through the
+   * Wiki's own proposal path. Throws for a title with no letter or digit, or a Wiki without topics.
+   */
+  const fileTopics = (titles: readonly string[]): void => {
+    const filing = newTopicPages(titles, wikiCards(wikiData), () => topicDir(wikiHome(wikiData)))
+    if (filing !== null) ops.applyProposal(filing)
+  }
 
   /** Archives active linked ideas when a project finishes; reopening the project does not reverse this automatically. */
   const archiveIdeasForProject = (projectId: string): void => {
@@ -1233,7 +1256,7 @@ export function createVaultStore(
       projectId: project.id,
       projectName: project.name,
       anchorText: [
-        project.name, ...projectAreas(project), project.focus,
+        project.name, ...projectTopics(served(project)), project.focus,
         ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
@@ -1532,8 +1555,7 @@ export function createVaultStore(
           name: p.name,
           status: p.status,
           priority: p.priority,
-          topic: p.topic,
-          ...(p.topics === undefined ? {} : { topics: p.topics }),
+          ...listedTopics(p),
           focus: p.focus,
           ...(p.block === undefined ? {} : { block: p.block }),
           ...(p.conflictPage === undefined ? {} : { conflictPage: p.conflictPage }),
@@ -1568,8 +1590,7 @@ export function createVaultStore(
           name: p.name,
           status: p.status,
           priority: p.priority,
-          topic: p.topic,
-          ...(p.topics === undefined ? {} : { topics: p.topics }),
+          ...listedTopics(p),
           focus: p.focus,
           ...(p.block === undefined ? {} : { block: p.block }),
           start: p.start,
@@ -1618,9 +1639,46 @@ export function createVaultStore(
       return project.id
     }),
 
+    pinProjectTopics() {
+      const unpinned = (project: ProjectRecord) => {
+        const pins = topicPinsOf(project, topicPages(wikiData))
+        return {
+          pins,
+          changed: pins.some(({ page }) => page === null)
+            || JSON.stringify(pins.map(({ page, title }) => ({ page, title }))) !== JSON.stringify(project.topicPins ?? []),
+        }
+      }
+      const pending = projects().filter((project) => unpinned(project).changed)
+      const titles = pending.flatMap((project) => unpinned(project).pins.filter(({ page }) => page === null).map(({ title }) => title))
+      const nameable = titles.filter((title) => slugOf(title) !== '')
+      for (const title of titles.filter((held) => slugOf(held) === '')) {
+        console.error(`[project] 主题「${title}」没有字母或数字，建不了主题页，留作只有名字的主题`)
+      }
+      const before = new Set(wikiCards(wikiData).map((card) => card.id))
+      try {
+        fileTopics(nameable)
+      } catch (err) {
+        console.error(`[project] 项目的主题建不了主题页，留作只有名字的主题：${err instanceof Error ? err.message : String(err)}`)
+      }
+      const written = pending.flatMap((project) => {
+        const pins = unpinned(project).pins.flatMap(({ page, title }) => (page === null ? [] : [{ page, title }]))
+        if (JSON.stringify(pins) === JSON.stringify(project.topicPins ?? [])) return []
+        // A workspace never holds the pins, so pinning leaves bound workspaces as they are.
+        writeProject({ ...project, topicPins: pins.length === 0 ? undefined : pins }, ['topicPins'], false)
+        return [project.id]
+      })
+      return { pages: wikiCards(wikiData).map((card) => card.id).filter((id) => !before.has(id)), projects: written }
+    },
+
     putProject(project) {
+      const held = projectOf(project.id)
+      const titles = projectTopics(project)
+      const index = topicPages(wikiData)
+      const chosen = project.topicPages === undefined
+        ? titledTopics(titles, index)
+        : titles.map((title, at) => ({ title, page: project.topicPages![at] ?? null }))
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, project[key]]))
-      writeProject({ ...projectOf(project.id), ...fields }, PROJECT_FIELDS)
+      writeProject({ ...held, ...fields, ...storedTopics(chosen, held, index) }, [...PROJECT_FIELDS, 'topicPins'])
     },
 
     getProject(id) {
@@ -1668,14 +1726,13 @@ export function createVaultStore(
       const next: ProjectRecord = { ...projectOf(id), ...fields }
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
-      if (topics !== undefined) {
-        next.topic = topics[0] ?? DEFAULT_PROJECT_TOPIC
-        if (topics.length > 1) next.topics = topics
-        else delete next.topics
-      }
       // The contract guarantees fixed-width ISO dates, so lexical order is chronological order.
       if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
-      return writeProject(next, [...Object.keys(patch), ...(topics === undefined ? [] : ['topic'])] as (keyof ProjectRecord)[])
+      if (topics !== undefined) {
+        fileTopics(topics)
+        Object.assign(next, storedTopics(titledTopics(topics, topicPages(wikiData)), next, topicPages(wikiData)))
+      }
+      return writeProject(next, [...Object.keys(patch), ...(topics === undefined ? [] : ['topic', 'topicPins'])] as (keyof ProjectRecord)[])
     },
 
     deleteProject: atomic((id) => {
@@ -2855,7 +2912,7 @@ export function createVaultStore(
     },
   }
 
-  return withChangelog(ops, {
+  const store = withChangelog(ops, {
     load: (): ChangeRecord[] => {
       const file = join(meridian, 'changelog.json')
       if (!existsSync(file)) return []
@@ -2871,4 +2928,10 @@ export function createVaultStore(
     nextId: () => nextId('change'),
     atomically,
   })
+  try {
+    store.pinProjectTopics()
+  } catch (err) {
+    console.error(`[project] 项目的主题没有对上主题页，照旧按名字显示：${err instanceof Error ? err.message : String(err)}`)
+  }
+  return store
 }

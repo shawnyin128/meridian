@@ -563,7 +563,7 @@ describe('contract schemas', () => {
       .toThrow()
   })
 
-  it('改项目的领域一次给全部:去掉首尾空白,空串、重复的不收,不再单收 topic', () => {
+  it('改项目的主题一次给全部:去掉首尾空白,空串、重复的不收,不再单收 topic', () => {
     expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [' KV cache ', '量化'] } }).patch.topics)
       .toEqual(['KV cache', '量化'])
     expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [] } }).patch.topics).toEqual([])
@@ -597,7 +597,7 @@ describe('contract schemas', () => {
     })).toThrow()
   })
 
-  it('总览的一条项目带领域、计划、科研记录与紧凑科研图投影,其余详情不跨边界', () => {
+  it('总览的一条项目带主题、计划、科研记录与紧凑科研图投影,其余详情不跨边界', () => {
     const row = {
       id: 'draft', name: 'draft 效率', status: '进行中', priority: 'p0', topic: 'speculative decoding', focus: '宽树实验补 B≥8',
       start: '2026-06-02', due: '2026-09-15',

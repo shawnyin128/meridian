@@ -18,11 +18,11 @@ export const PROJECT_STATUSES = [ACTIVE_PROJECT, SHELVED_PROJECT, FINISHED_PROJE
 /** The source an item the user added by hand records: a project conclusion, or an idea that came from no chat. */
 export const MANUAL_SOURCE = '手动添加'
 
-/** The `topic` Core stores on a new project, which the App shows as no area. */
+/** The `topic` Core stores on a new project, which the App shows as no topic. */
 export const DEFAULT_PROJECT_TOPIC = '未分主题'
 
 /** How Core's texts name DEFAULT_PROJECT_TOPIC. */
-export const NO_PROJECT_AREA = '未分领域'
+export const NO_PROJECT_TOPIC = '未分主题'
 
 /** Default state for a paper with no recorded reading relationship. */
 export const UNREAD_PAPER = '未读'

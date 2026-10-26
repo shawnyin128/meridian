@@ -137,7 +137,7 @@ describe('project workspace protocol', () => {
     expect(JSON.parse(output)).toEqual(['ready', ['task-1']])
   })
 
-  it('项目有几个领域时计划面的项目带上全部领域,插件的 Python 读得出;只有一个时计划面与原来一样,不记一条变动', () => {
+  it('项目有几个主题时计划面的项目带上全部主题,插件的 Python 读得出;只有一个时计划面与原来一样,不记一条变动', () => {
     const root = temporary()
     const held = project(root)
     writeProjectWorkspace(held)

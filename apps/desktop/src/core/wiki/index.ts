@@ -11,6 +11,7 @@ export {
   isPaper,
   projectClaims,
   projectDisputes,
+  topicPages,
   wikiAggregation,
   wikiCards,
   wikiHome,

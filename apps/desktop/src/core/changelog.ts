@@ -8,10 +8,10 @@ import {
   ChangeEntrySchema, PaperColumnsSchema, PaperHighlightSchema, PaperNoteSchema, PaperRowSchema,
   ProjectDetailSchema,
 } from '../shared/contract.js'
-import { projectAreas } from '../shared/project-signals.js'
-import { topicDir, topicProposal, topicTitleKey } from '../shared/topic-proposal.js'
+import { projectTopics } from '../shared/project-signals.js'
+import { newTopicPages, topicDir, topicProposal, topicTitleKey } from '../shared/topic-proposal.js'
 import {
-  COLUMN_TYPE_LABEL, LATER_PAPER, NO_PROJECT_AREA, PAPER_PAGE, TRASH_RETENTION_DAYS,
+  COLUMN_TYPE_LABEL, LATER_PAPER, NO_PROJECT_TOPIC, PAPER_PAGE, PROJECTS_DIR, TRASH_RETENTION_DAYS,
 } from '../shared/vocabulary.js'
 import { CallError } from './call-error.js'
 import { dayOf } from './dates.js'
@@ -41,6 +41,8 @@ const FINGERPRINT_CHARS = 16
 const REORDER_TASKS = '调整任务顺序'
 const MOVE_RELATION = '调整关联顺序'
 const DELETE_PROJECT = '删掉'
+/** The title of the record that the first open after the upgrade writes when it gives projects' topics their pages. */
+const PINNED_TOPICS = '项目的领域并入主题'
 const NOT_PROGRESS: ReadonlySet<string> = new Set([REORDER_TASKS, MOVE_RELATION, DELETE_PROJECT])
 
 /**
@@ -463,7 +465,7 @@ function projectLines(a: ProjectDetail, b: ProjectDetail, date: DateReading): st
     ...field('名称', (p) => p.name),
     ...field('状态', (p) => p.status),
     ...field('优先级', (p) => PRIORITY[p.priority]),
-    ...field('领域', (p) => (projectAreas(p).length === 0 ? [NO_PROJECT_AREA] : projectAreas(p))),
+    ...field('主题', (p) => (projectTopics(p).length === 0 ? [NO_PROJECT_TOPIC] : projectTopics(p))),
     ...readingLines(FOCUS[a.status], a.focus, b.focus, FOCUS[b.status]),
     ...field('阻塞', (p) => p.block ?? ''),
     ...field('开始', (p) => date(p.start)),
@@ -857,7 +859,25 @@ export function withChangelog(ops: VaultOps, log: ChangeLogStore): VaultStore {
     },
 
     updateProject(id, patch) {
+      if (patch.topics !== undefined) {
+        const filing = newTopicPages(patch.topics, ops.wikiCards(), () => topicDir(ops.wikiHome()))
+        if (filing !== null) store.applyProposal(filing)
+      }
       return onProject(id, '改了字段', () => ops.updateProject(id, patch))
+    },
+
+    pinProjectTopics() {
+      const pinned = ops.pinProjectTopics()
+      if (pinned.pages.length === 0 && pinned.projects.length === 0) return pinned
+      log.atomically(() => {
+        rows = [{
+          id: log.nextId(), title: PINNED_TOPICS, meta: null, source: 'Meridian',
+          diff: [...pinned.pages.map((page) => `+ ${page}`), ...pinned.projects.map((id) => `~ ${PROJECTS_DIR}/${id}`)],
+          target: null, after: '', at: nowMs(), undone: false, archived: false, restore: null,
+        }, ...rows]
+        log.save(rows)
+      })
+      return pinned
     },
 
     absorbAgentTasks(projectId) {

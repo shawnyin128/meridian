@@ -296,8 +296,10 @@ Current shared contracts:
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
 - `PagedSection`: one section of a stack of card grids, each with its own `Pager`, that `useStackPaging`
   sizes together to fill the area that scrolls them.
-- `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
-  topic editor of a paper, used by both the paper table and the detail panel.
+- `RatingStars`, `ReadStatePicker` (in `PaperMetadata`): the one rating and reading-status editor of a
+  paper, used by both the paper table and the detail panel.
+- `TopicChips`: the one topic editor, offering the Wiki's topic pages, for a paper in the paper table and
+  the detail panel and for a project in its property rail.
 - `ChipList`: the one list of removable chips. Each chip's name opens what it names, and its pencil and
   × sit in the chip's row-actions slot; the `+` after the chips is AddAction's chip-sized circle, in the
   row's actions slot with `reveal="hover"`; with `label` the list is a relation row (`wkrel`). It draws a

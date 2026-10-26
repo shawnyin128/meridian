@@ -4,6 +4,7 @@ import type { ProjectDetail } from '../../shared/contract.js'
 import { ProjectDetailSchema, TaskSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
 import { DEFAULT_PROJECT_TOPIC } from '../../shared/vocabulary.js'
 import { spliceLines } from '../vault/writer.js'
+import type { TopicPin } from './topics.js'
 
 /** Values representable in frontmatter. */
 type Json = string | number | boolean | Json[] | { [key: string]: Json }
@@ -75,6 +76,7 @@ const PAGE_KEYS = {
   verifiedConclusions: 'verified_conclusions',
   agentTasks: 'agent_tasks',
   taskNodes: 'task_nodes',
+  topicPins: 'topic_pages',
 } as const
 
 const detail = ProjectDetailSchema.shape
@@ -86,13 +88,19 @@ const detail = ProjectDetailSchema.shape
 export type ProjectRecord = Omit<
   ProjectDetail,
   'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions' | 'workspace' | 'lastProgress'
+  | 'topicPages'
 > & {
   created: string
+  /** The Wiki topic page of each topic `topic`/`topics` hold that has one, with the title held for it then. */
+  topicPins?: TopicPin[] | undefined
   workspaceRoot?: string
   workspaceSsh?: { host: string; path: string; port?: number | undefined }
   /** Each agent task request taken into the plan, by request id, with the id of the task it became. */
   agentTasks?: Record<string, string>
 }
+
+/** One stored `topic_pages` entry; unknown additive keys are dropped. */
+const TopicPinEntrySchema = z.object({ page: z.string().min(1), title: z.string() })
 
 /** One stored `verified_conclusions` entry; unknown additive keys are dropped. */
 const VerifiedConclusionEntrySchema = z.object(VerifiedConclusionSchema.shape)
@@ -117,8 +125,10 @@ const ProjectPageSchema = z.object({
   status: detail.status,
   priority: detail.priority,
   topic: detail.topic,
-  /** Every area, written only while there are several; an older App reads and writes `topic` alone. */
+  /** Every topic's title, written only while there are several; an older App reads and writes `topic` alone. */
   topics: detail.topics,
+  /** Entries this version cannot read are skipped one by one. */
+  topic_pages: z.array(z.unknown()).optional(),
   focus: detail.focus,
   block: detail.block,
   conflict_page: detail.conflictPage,
@@ -398,6 +408,8 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
       ...(project.graph.activeNodes === undefined ? {} : { active_nodes: project.graph.activeNodes }),
     },
     agent_sessions: project.agentSessions,
+    // Last, so an older App that keeps it byte for byte never has another key written after it.
+    ...(project.topicPins === undefined ? {} : { topic_pages: project.topicPins.map(({ page, title }) => ({ page, title })) }),
     // Optional contract fields are absent rather than explicitly undefined, which does not match the
     // index signature. Unwritten keys are missing at runtime, so emitKey never sees them.
   } as Record<string, Json>
@@ -443,6 +455,12 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     status: page.status,
     priority: page.priority,
     ...areasOf(page.topic, page.topics),
+    ...(page.topic_pages === undefined ? {} : {
+      topicPins: page.topic_pages.flatMap((entry) => {
+        const read = TopicPinEntrySchema.safeParse(entry)
+        return read.success ? [read.data] : []
+      }),
+    }),
     focus: page.focus,
     ...(page.block === undefined ? {} : { block: page.block }),
     ...(page.conflict_page === undefined ? {} : { conflictPage: page.conflict_page }),
@@ -548,7 +566,7 @@ export function writeProjectFields(
     const value = front[key]
     if (value === undefined && (
       field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh' || field === 'verifiedConclusions'
-      || field === 'taskNodes' || field === 'topics'
+      || field === 'taskNodes' || field === 'topics' || field === 'topicPins'
     )) {
       const removable = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
       dropProjectPageKeys(file, [removable], staging)

@@ -3,6 +3,7 @@ import type {
   WikiHome, WikiPaper, WikiRef,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import { TOPIC_KIND } from '../../shared/topic-proposal.js'
 
 /** One entry from schema.yaml `kinds`. */
 export type WikiKindRecord = {
@@ -450,6 +451,14 @@ export function wikiPaper(data: WikiData, id: string, version: PageVersion): Wik
  * Returns a card for every aggregation in `data`, kinds in schema order and
  * aggregations in id order.
  */
+/** The topic pages of `data` by id, in vault order: each one's title and parents. */
+export function topicPages(data: WikiData): Map<string, { title: string; parents: string[] }> {
+  return new Map(ids(data).flatMap((id) => {
+    const page = data.pages[id]!
+    return isPaper(page) || page.kind !== TOPIC_KIND ? [] : [[id, { title: page.fm.title, parents: page.fm.parents ?? [] }]]
+  }))
+}
+
 export function wikiCards(data: WikiData): WikiAggregationCard[] {
   return Object.keys(data.kinds).flatMap((key) => ids(data)
     .filter((id) => data.pages[id]!.kind === key)

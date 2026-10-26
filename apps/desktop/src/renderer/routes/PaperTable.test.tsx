@@ -167,6 +167,7 @@ vi.mock('../ipc.js', () => ({
   },
   delivery: { semanticKey: () => Promise.resolve(semanticKeySaved ? { configured: true, lastFour: 'abcd' } : { configured: false }) },
   changelog: { undo: (id: string) => { undone.push(id); return Promise.resolve() } },
+  wiki: { cards: () => Promise.resolve([]) },
   project: {
     list: () => Promise.resolve([]),
     addPaper: () => Promise.resolve(),

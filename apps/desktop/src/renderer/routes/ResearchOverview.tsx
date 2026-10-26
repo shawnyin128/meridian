@@ -22,7 +22,7 @@ import {
   DECISION_STATE, EventText, ProjectSignalDate, ProjectSignalKind, RECORD_STATE,
 } from '../components/project/ProjectSignals.js'
 import { ProjectNextActionView } from '../components/project/ProjectControl.js'
-import { useAreaFilter } from '../components/project/ProjectAreaFilter.js'
+import { useTopicFilter } from '../components/project/ProjectTopicFilter.js'
 import { ProjectIdentity, ProjectLabel } from '../components/project/ProjectIdentity.js'
 import { useTimelinePeriod } from '../components/timeline/TimelineScale.js'
 import { TimelineBoard } from '../components/timeline/TimelineBoard.js'
@@ -386,7 +386,7 @@ export function ResearchOverview() {
   const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const undo = useUndo()
-  const { filter, shown } = useAreaFilter(rows ?? [])
+  const { filter, shown } = useTopicFilter(rows ?? [])
 
   useEffect(() => load('rows', projectApi.overview(), setRows), [revision, load])
 

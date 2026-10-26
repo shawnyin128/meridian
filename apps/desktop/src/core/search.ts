@@ -1,6 +1,6 @@
 import type { PaperReading, PaperRow, ResearchIdea, SearchAnchor, SearchHit, Task } from '../shared/contract.js'
-import { projectAreas } from '../shared/project-signals.js'
-import { NO_PROJECT_AREA, PAPER_PAGE, SEARCH_LIMIT } from '../shared/vocabulary.js'
+import { projectTopics } from '../shared/project-signals.js'
+import { NO_PROJECT_TOPIC, PAPER_PAGE, SEARCH_LIMIT } from '../shared/vocabulary.js'
 import type { WikiAggregationRecord, WikiData } from './wiki/index.js'
 
 /** The vault entities a search reads, as a store holds them in memory. */
@@ -76,7 +76,7 @@ function entries(data: SearchData): Entry[] {
     ...projects.map((p): Entry => ({
       hit: {
         kind: 'project', target: p.id, title: `项目：${p.name}`,
-        meta: `${p.status} · ${projectAreas(p).join('、') || NO_PROJECT_AREA}`,
+        meta: `${p.status} · ${projectTopics(p).join('、') || NO_PROJECT_TOPIC}`,
       },
       title: p.name, texts: [],
     })),

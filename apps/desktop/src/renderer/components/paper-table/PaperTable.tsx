@@ -20,7 +20,7 @@ import { GroupMenu, groupRows } from './GroupMenu.js'
 import { ParseProgress } from '../ParseProgress.js'
 import { Pager } from '../Pager.js'
 import { PaperMetadata, PaperTitleField, RatingStars, ReadStatePicker, readStateName } from '../PaperMetadata.js'
-import { PaperTopics } from '../PaperTopics.js'
+import { TopicChips } from '../TopicChips.js'
 import { PaperReadingSummary } from './PaperReadingSummary.js'
 import { FieldRow, FormInput } from '../FormControls.js'
 import { InlineField } from '../InlineField.js'
@@ -810,7 +810,7 @@ export function PaperTable() {
     }
     return (
       <TableCell content="chips" key={k}>
-        <PaperTopics
+        <TopicChips
           topics={p.topics} keep={['paper', p.id, 'topics-cell']} onError={report} reveal="hover"
           onAdd={(v) => addTopic(p, v)} onRemove={(v) => removeTopic(p, v)}
         />

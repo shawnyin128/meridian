@@ -1,8 +1,6 @@
-import { useCallback, useRef, useState } from 'react'
+import { useRef, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
-import { projectAreas } from '../../../shared/project-signals.js'
-import { project as projectApi } from '../../ipc.js'
 import { AddAction } from '../AddAction.js'
 import { CardTray } from '../CardTray.js'
 import { FadeText } from '../FadeText.js'
@@ -23,7 +21,7 @@ import { ChipList } from '../ChipList.js'
 import { Item, ItemOpen } from '../Item.js'
 import { List } from '../List.js'
 import { Tag } from '../Tag.js'
-import { TagChips } from '../TagChips.js'
+import { TopicChips } from '../TopicChips.js'
 import './ProjectSections.css'
 
 /** Local-only grouping key for linked papers inside the relations list; never sent to Core. */
@@ -104,30 +102,25 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
 const CLIP_PATH = 'M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'
 
 /**
- * Project `projectId`'s areas in its property rail: a chip per area, which a click edits in place and
- * whose × removes it, then the `+` that adds one where it lands. Every input offers the areas the
- * other projects use that this one lacks, asked of project.list each time it opens. `onSave` receives
- * the whole new list after an add or an edit, `onRemove` the list after a removal; each returns whether
- * the write completed.
+ * Project `projectId`'s topics in its property rail, on the same TopicChips papers use: a chip per
+ * topic, which a click edits in place and whose × removes it, then the `+` that adds one where it
+ * lands. `onSave` receives the whole new list of titles after an add or an edit, `onRemove` the list
+ * after a removal; each returns whether the write completed.
  */
-export function ProjectAreasField({ projectId, areas, onSave, onRemove, onError }: {
+export function ProjectTopicsField({ projectId, topics, onSave, onRemove, onError }: {
   projectId: string
-  areas: string[]
-  onSave: (areas: string[]) => Promise<boolean>
-  onRemove: (areas: string[]) => Promise<boolean>
+  topics: string[]
+  onSave: (topics: string[]) => Promise<boolean>
+  onRemove: (topics: string[]) => Promise<boolean>
   onError: (error: Error) => void
 }) {
-  const m = useMessages()
-  const vocabulary = useCallback(() => projectApi.list().then((projects) => [...new Set(projects
-    .filter((other) => other.id !== projectId).flatMap(projectAreas))]), [projectId])
   return (
-    <span className="metadata-field project-areas">
-      <TagChips
-        values={areas} vocabulary={vocabulary} onError={onError} keep={['project', projectId, 'areas']}
-        labels={{ add: m.project.identity.addArea, remove: m.project.identity.removeArea, existing: m.project.identity.existingAreas }}
-        onAdd={(area) => onSave([...new Set([...areas, area])])}
-        onRemove={(area) => onRemove(areas.filter((held) => held !== area))}
-        onReplace={(from, to) => onSave([...new Set(areas.map((held) => (held === from ? to : held)))])}
+    <span className="metadata-field project-topics">
+      <TopicChips
+        topics={topics} onError={onError} keep={['project', projectId, 'areas']}
+        onAdd={(topic) => onSave([...new Set([...topics, topic])])}
+        onRemove={(topic) => onRemove(topics.filter((held) => held !== topic))}
+        onReplace={(from, to) => onSave([...new Set(topics.map((held) => (held === from ? to : held)))])}
       />
     </span>
   )

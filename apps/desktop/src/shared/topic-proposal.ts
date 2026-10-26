@@ -14,6 +14,39 @@ export function topicDir(home: WikiHome): string {
   return kind.dir
 }
 
+/**
+ * The op that creates a top-level topic page titled `title` under `dir`, with an id no page in
+ * `taken` holds, which it adds to `taken`. Throws for a title with no letter or digit.
+ */
+function newTopicPage(title: string, dir: string, taken: Set<string>): Extract<Proposal['ops'][number], { op: 'createAggregation' }> {
+  const slug = slugOf(title)
+  if (slug === '') throw new Error('名字里得有字母或数字')
+  let id = `${dir}/${slug}`
+  for (let n = 2; taken.has(id); n += 1) id = `${dir}/${slug}-${n}`
+  taken.add(id)
+  return { op: 'createAggregation', kind: TOPIC_KIND, id, title, parents: [], columns: [], describe: '' }
+}
+
+/**
+ * Builds the proposal that creates a top-level topic page for each of `titles` that no topic page in
+ * `cards` carries, titles matching as topicTitleKey has them; null when every title has one. `dir`
+ * is asked for only when a page is to be created. Throws for a title with no letter or digit, and
+ * when `dir` throws.
+ */
+export function newTopicPages(titles: readonly string[], cards: WikiAggregationCard[], dir: () => string): Proposal | null {
+  const held = new Set(cards.filter((card) => card.kind === TOPIC_KIND).map((card) => topicTitleKey(card.title)))
+  const missing = [...new Map(titles.filter((title) => !held.has(topicTitleKey(title)))
+    .map((title) => [topicTitleKey(title), title])).values()]
+  if (missing.length === 0) return null
+  const into = dir()
+  const taken = new Set(cards.map((card) => card.id))
+  return {
+    source: 'user',
+    title: `新建主题「${missing.join('」「')}」`,
+    ops: missing.map((title) => newTopicPage(title, into, taken)),
+  }
+}
+
 /** Builds the proposal that makes a paper belong to exactly the supplied topic titles. */
 export function topicProposal(
   paperId: string, short: string, held: string[], next: string[],
@@ -38,15 +71,9 @@ export function topicProposal(
   for (const title of added) {
     let target = topics.find((card) => topicTitleKey(card.title) === topicTitleKey(title))?.id
     if (target === undefined) {
-      const slug = slugOf(title)
-      if (slug === '') throw new Error('名字里得有字母或数字')
-      target = `${dir}/${slug}`
-      for (let n = 2; taken.has(target); n += 1) target = `${dir}/${slug}-${n}`
-      taken.add(target)
-      ops.push({
-        op: 'createAggregation', kind: TOPIC_KIND, id: target, title,
-        parents: [], columns: [], describe: '',
-      })
+      const created = newTopicPage(title, dir, taken)
+      target = created.id
+      ops.push(created)
     }
     ops.push({ op: 'setMembership', paper, in: target, cells: {} })
   }

@@ -11,7 +11,7 @@ import { ChoicePicker } from './FieldPickers.js'
 import { InlineMetadataField } from './InlineField.js'
 import { PaperAbstract } from './paper/PaperAbstract.js'
 import { PaperText } from './paper/PaperText.js'
-import { PaperTopics } from './PaperTopics.js'
+import { TopicChips } from './TopicChips.js'
 import { Property, PropertyList } from './PropertyList.js'
 import { ProjectChips } from './ProjectChips.js'
 import { tagClass } from './Tag.js'
@@ -244,7 +244,7 @@ export function PaperMetadata({ paper, readStateLabel, onSaved, titled = true }:
             <ReadStatePicker value={paper.readState} onPick={(readState) => { void savePatch('readState', { readState }) }} />
           </Property>
           <Property label={labels.topics} className="paper-meta-topics">
-            <PaperTopics
+            <TopicChips
               topics={paper.topics} keep={['paper', paper.id, 'topics']} onError={(error) => notice.refusal(errorLabel(m, error))}
               onAdd={(topic) => saveTopic(topic, true)}
               onRemove={(topic) => saveTopic(topic, false)}
