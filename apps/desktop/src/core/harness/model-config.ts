@@ -318,7 +318,11 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     return profile !== undefined && entry.model !== '' && (profile.authentication === 'none' || profile.credential !== undefined)
   }
 
-  /** The sources the list's models run on, in the order they are shown, each with its models and the one switching to it picks. */
+  /**
+   * The sources the list's models run on, in the order they are shown, each with its models and the one
+   * switching to it picks: the default when the source holds it and it can run, else the source's first
+   * model that can run, else its first.
+   */
   const groups = (): HarnessModelSourceGroup[] => {
     const sources: HarnessModelSource[] = []
     for (const entry of entries()) if (!sources.some((source) => sameSource(source, entry.source))) sources.push(entry.source)
@@ -327,7 +331,10 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       const [rightRank, rightText] = sourceOrder(right)
       return leftRank - rightRank || leftText.localeCompare(rightText)
     }).map((source) => {
-      const held = entries().filter((entry) => sameSource(entry.source, source)).map((entry) => entry.id)
+      const models = entries().filter((entry) => sameSource(entry.source, source))
+      const held = models.map((entry) => entry.id)
+      const chosen = models.find((entry) => entry.id === list.defaultModel)
+      const picked = chosen !== undefined && runnable(chosen) ? chosen : models.find(runnable) ?? models[0]!
       const provider = source.kind === 'api' ? providerOfKey(source.profile) : undefined
       return {
         source,
@@ -335,7 +342,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         ...(provider === 'openai-compatible' && source.kind === 'api'
           ? { host: new URL(source.profile.slice('openai-compatible:'.length)).host } : {}),
         entries: held,
-        defaultEntry: list.defaultModel !== null && held.includes(list.defaultModel) ? list.defaultModel : held[0]!,
+        defaultEntry: picked.id,
       }
     })
   }

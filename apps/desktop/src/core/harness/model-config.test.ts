@@ -502,6 +502,24 @@ describe('model list', () => {
     ])
   })
 
+  it('makes a switch to a source pick the default when it can run, else the source\'s first model that can, else its first', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.addModel({ source: openai, model: 'gpt-6.1' })
+    await config.addModel({ source: openai, model: 'gpt-5.5' })
+    await config.addModel({ source: claude, model: 'opus' })
+    const added = await config.addModel({ source: claude, model: 'sonnet' })
+    const id = (model: string) => added.models.find((entry) => entry.model === model)!.id
+    const sourceOf = (settings: HarnessModelSettings, kind: 'api' | 'cli') => settings.sources.find((group) => group.source.kind === kind)!
+
+    const unrunnable = config.setDefaultModel(id('gpt-5.5'))
+    expect(sourceOf(unrunnable, 'api').defaultEntry).toBe(id('gpt-6.1'))
+    const runnable = await config.updateModel({ id: id('gpt-5.5'), source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-5.5' })
+    expect(sourceOf(runnable, 'api').defaultEntry).toBe(id('gpt-5.5'))
+    expect(sourceOf(runnable, 'cli').defaultEntry).toBe(id('opus'))
+    expect(sourceOf(config.setDefaultModel(id('sonnet')), 'cli').defaultEntry).toBe(id('sonnet'))
+  })
+
   it('runs a chat\'s chosen model at the chat\'s effort, at the model\'s own once that model does not take it, and on the default once its model is gone', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     const config = await createHarnessModelConfig(root, credentialVault())

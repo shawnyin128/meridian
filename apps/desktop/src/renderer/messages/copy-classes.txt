@@ -793,6 +793,13 @@ settings.model.fields.protocolLabel label
 settings.model.fields.providerLabel label
 settings.model.heading label
 settings.model.keyStored aria
+settings.model.list.add action
+settings.model.list.addLabel aria
+settings.model.list.apiSource label
+settings.model.list.confirmDelete label
+settings.model.list.defaultMark state
+settings.model.list.manage aria
+settings.model.list.setDefault action
 settings.model.notConfigured state
 settings.model.providers.anthropic.label label
 settings.model.providers.google-gemini.label label

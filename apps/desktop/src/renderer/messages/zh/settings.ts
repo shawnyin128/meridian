@@ -139,6 +139,15 @@ export const settings = {
       },
     },
     tabs: { label: '模型来源', api: 'API', subscription: '订阅' },
+    list: {
+      add: '模型',
+      addLabel: '添加模型',
+      defaultMark: '默认',
+      setDefault: '设为默认',
+      apiSource: (name: string) => `${name} API`,
+      confirmDelete: (name: string) => `删除 ${name}？`,
+      manage: (name: string) => `管理「${name}」`,
+    },
     subscriptions: {
       claude: { label: 'Claude 订阅' },
       codex: { label: 'ChatGPT 订阅' },

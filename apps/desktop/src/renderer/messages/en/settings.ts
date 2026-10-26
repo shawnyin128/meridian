@@ -146,6 +146,15 @@ export const settings = {
       },
     },
     tabs: { label: 'Model source', api: 'API', subscription: 'Subscription' },
+    list: {
+      add: 'Model',
+      addLabel: 'Add a model',
+      defaultMark: 'Default',
+      setDefault: 'Set as default',
+      apiSource: (name: string) => `${name} API`,
+      confirmDelete: (name: string) => `Delete ${name}?`,
+      manage: (name: string) => `Manage “${name}”`,
+    },
     subscriptions: {
       claude: { label: 'Claude subscription' },
       codex: { label: 'ChatGPT subscription' },

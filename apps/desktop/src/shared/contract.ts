@@ -989,7 +989,8 @@ export const HarnessModelEntrySchema = z.object({
  * Anthropic, Google Gemini, then each OpenAI-compatible service by host), then the Claude
  * subscription, then the ChatGPT one. An API source names its `provider`, and a compatible one its
  * `host`. `entries` lists the source's models by id, in the list's order, and `defaultEntry` is the
- * one switching to the source picks: the default model when the source holds it, else its first.
+ * one switching to the source picks: the default model when the source holds it and it can run, else
+ * the source's first model that can run, else its first.
  */
 export const HarnessModelSourceGroupSchema = z.object({
   source: HarnessModelSourceSchema,
