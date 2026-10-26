@@ -9,6 +9,7 @@ import {
   ChatModelParamsSchema,
   ChatSetModelParamsSchema,
   ChatWritingParamsSchema,
+  ChatFailureParamsSchema,
   ChatRetryParamsSchema,
   ChatCreateParamsSchema,
   ChatDeleteParamsSchema,
@@ -969,6 +970,7 @@ registerHandler('chat.retry', (params) => chatService.retry(ChatRetryParamsSchem
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
 registerHandler('chat.writing', (params) => chatService.writing(ChatWritingParamsSchema.parse(params).id))
+registerHandler('chat.failure', (params) => chatService.failure(ChatFailureParamsSchema.parse(params).id))
 registerHandler('chat.model', (params) => {
   const { id } = ChatModelParamsSchema.parse(params)
   store.chatSession(id)

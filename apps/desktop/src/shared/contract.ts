@@ -2446,6 +2446,9 @@ export const HarnessFailureDetailSchema = z.object({
   detail: z.string().min(1).max(500),
 }).strict()
 
+/** Reads where a chat's last turn failed; answers a HarnessFailureDetail, or null when Core knows of none. */
+export const ChatFailureParamsSchema = z.object({ id: z.string() }).strict()
+
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
 export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
@@ -3093,6 +3096,7 @@ export const CONTRACT_METHODS = [
   'chat.retry',
   'chat.cancel',
   'chat.writing',
+  'chat.failure',
   'chat.model',
   'chat.setModel',
   'idea.list',

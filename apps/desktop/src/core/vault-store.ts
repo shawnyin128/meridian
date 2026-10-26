@@ -2689,6 +2689,13 @@ export function createVaultStore(
       chats = save('chats', chats.map((c) => (c.id === id ? next : c)))
     },
 
+    replaceChatStatus(id, message) {
+      const chat = chatOf(id)
+      const kept = chat.messages.at(-1)?.role === 'status' ? chat.messages.slice(0, -1) : chat.messages
+      const next: ChatRecord = { ...chat, messages: [...kept, { ...structuredClone(message), id: nextId('msg') }] }
+      chats = save('chats', chats.map((c) => (c.id === id ? next : c)))
+    },
+
     listIdeas() {
       absorbAgentIdeas()
       const sorted = [...ideas]

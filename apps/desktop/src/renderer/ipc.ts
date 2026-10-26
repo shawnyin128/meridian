@@ -9,7 +9,7 @@ import type {
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
   HarnessAddModelParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
-  HarnessSourceModels, HarnessUpdateModelParams,
+  HarnessFailureDetail, HarnessSourceModels, HarnessUpdateModelParams,
   HarnessModelSettings, HarnessModelSettingsUpdate, HarnessSubscriptionStatus, HarnessUpdateSubscriptionParams,
   HarnessPaperWikiRejectionFeedback, HarnessPendingPaperWikiResult, HarnessPlan,
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
@@ -302,6 +302,8 @@ export const chat = {
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   /** The answer being written in the chat, with the model writing it, or null while no turn runs there. */
   writing: (id: string) => call<ChatWriting | null>('chat.writing', { id }),
+  /** Where the chat's last turn failed, or null when Core knows of none. */
+  failure: (id: string) => call<HarnessFailureDetail | null>('chat.failure', { id }),
   /** The configured source the chat runs on, and its own model of it and reasoning effort. */
   model: (id: string) => call<ChatModelChoice>('chat.model', { id }),
   /** Makes the chat run on configured source `source`, on its model `model` and at `effort`, each else the source's own. */

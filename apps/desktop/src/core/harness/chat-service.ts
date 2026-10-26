@@ -1,5 +1,5 @@
 import type {
-  ChatAnswerModel, ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatWriting, TrashedEntry,
+  ChatAnswerModel, ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatWriting, HarnessFailureDetail, TrashedEntry,
 } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
@@ -40,6 +40,7 @@ export function createChatService(options: {
 }) {
   const running = new Map<string, AbortController>()
   const written = new Map<string, ChatWriting>()
+  const failures = new Map<string, HarnessFailureDetail>()
   const stopped = (id: string) => {
     running.delete(id)
     written.delete(id)
@@ -47,11 +48,14 @@ export function createChatService(options: {
 
   /**
    * Asks the model once to answer `text` in chat `id` and keeps the answer with the model that wrote
-   * it, or, when the turn gets none, a status line that says what happened in plain words; the error's
-   * own text goes to the log.
+   * it, or, when the turn gets none, a status line that says what happened in plain words; either
+   * takes the place of the status line a retried turn's chat ends with. Where it failed is kept for
+   * `failure` and goes to the log.
    */
   const answer = async (id: string, text: string): Promise<ChatSendResult> => {
     if (!options.model.configured(options.choiceOf?.(id)) || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
+    failures.delete(id)
+    const keep = (message: ChatMessageFields) => options.store.replaceChatStatus(id, message)
     const controller = new AbortController()
     const since = new Date().toISOString()
     running.set(id, controller)
@@ -67,13 +71,15 @@ export function createChatService(options: {
         },
       })
       if (controller.signal.aborted) return { id, state: 'cancelled' }
-      options.store.appendChatMessages(id, [answerMessage(answered, model)])
+      keep(answerMessage(answered, model))
       return { id, state: 'complete' }
     } catch (cause) {
       if (controller.signal.aborted) return { id, state: 'cancelled' }
-      console.error(`[chat] ${failureLine(`chat ${id}`, failureDetail(cause))}`)
+      const failed = failureDetail(cause)
+      failures.set(id, failed)
+      console.error(`[chat] ${failureLine(`chat ${id}`, failed)}`)
       const plain = cause instanceof ChatFailure || cause instanceof CallError ? cause.message : '模型服务调用失败'
-      options.store.appendChatMessages(id, [statusMessage(`生成失败：${plain}`)])
+      keep(statusMessage(`生成失败：${plain}`))
       const failure = callFailure(cause)
       return { id, state: 'failed', reason: failure === 'unknown' ? 'model' : failure }
     } finally {
@@ -91,7 +97,8 @@ export function createChatService(options: {
     },
     /**
      * Asks the model again to answer chat `id`'s last question, whose turn ended in a status line,
-     * without writing the question twice: one more billable turn, as `send` is. Fails as `busy` while
+     * without writing the question twice, its outcome in place of that line: one more billable turn, as
+     * `send` is. Fails as `busy` while
      * the chat is generating and as `refused` when it does not end in such a line.
      */
     async retry(id: string): Promise<ChatSendResult> {
@@ -105,7 +112,8 @@ export function createChatService(options: {
     },
     /**
      * Stops the reply being generated in `id` and keeps the text it had written so far as its answer,
-     * with the model writing it; a reply that had written no text leaves no answer. From then on the
+     * with the model writing it, in place of the status line a retried turn's chat ends with; a reply
+     * that had written no text leaves no answer. From then on the
      * chat no longer counts as generating.
      */
     cancel(id: string) {
@@ -114,7 +122,7 @@ export function createChatService(options: {
       const so = written.get(id)
       controller.abort()
       stopped(id)
-      if (so !== undefined && so.text.trim() !== '') options.store.appendChatMessages(id, [answerMessage(so.text, so.model)])
+      if (so !== undefined && so.text.trim() !== '') options.store.replaceChatStatus(id, answerMessage(so.text, so.model))
       return { id, cancelled: true }
     },
     /** Stops the reply chat `id` is generating, if any, then moves the chat into the trash; throws when there is no such chat. */
@@ -142,6 +150,10 @@ export function createChatService(options: {
      */
     writing(id: string): ChatWriting | null {
       return written.get(id) ?? null
+    },
+    /** Where chat `id`'s last turn failed, for a turn that failed since Core started; null otherwise. */
+    failure(id: string): HarnessFailureDetail | null {
+      return failures.get(id) ?? null
     },
     /** The ids of the chats whose reply is being generated. */
     generating(): string[] {

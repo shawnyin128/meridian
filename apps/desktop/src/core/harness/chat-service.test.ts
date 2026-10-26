@@ -384,7 +384,7 @@ describe('Core chat service', () => {
     ])
   })
 
-  it('重试一轮没回答的问题:再问模型一次同一个问题,问题不再写一遍,回答接在状态行后面', async () => {
+  it('重试一轮没回答的问题:再问模型一次同一个问题,问题不再写一遍,回答取代状态行', async () => {
     const store = createFixtureStore()
     const runner = runnerOf(new ChatFailure('AI 服务停了'), '重试后的回答')
     const service = createChatService({ store, model: await configuredModel(), runner })
@@ -393,9 +393,43 @@ describe('Core chat service', () => {
 
     await expect(service.retry('amortize')).resolves.toEqual({ id: 'amortize', state: 'complete' })
     expect(runner.answer).toHaveBeenLastCalledWith('amortize', '要重试的问题', expect.any(AbortSignal), expect.any(Object))
-    expect(textsAfter(store, before)).toEqual([
-      ['you', '要重试的问题'], ['status', '生成失败：AI 服务停了'], ['ai', '重试后的回答'],
-    ])
+    expect(textsAfter(store, before)).toEqual([['you', '要重试的问题'], ['ai', '重试后的回答']])
+  })
+
+  it('a retry that fails again leaves one failure line, the newest', async () => {
+    const store = createFixtureStore()
+    const service = createChatService({
+      store, model: await configuredModel(),
+      runner: runnerOf(new ChatFailure('AI 服务停了'), new ChatFailure('AI 服务内部出错'), new ChatFailure('还没有连上模型')),
+    })
+    const before = store.chatMessages('amortize').length
+    await service.send('amortize', written('问'))
+    await service.retry('amortize')
+    await service.retry('amortize')
+    expect(textsAfter(store, before)).toEqual([['you', '问'], ['status', '生成失败：还没有连上模型']])
+  })
+
+  it('keeps where a chat\'s last turn failed until its next turn starts, for that chat only', async () => {
+    const store = createFixtureStore()
+    let reply: (answer: string) => void = () => {}
+    const queue: Array<() => Promise<string>> = [
+      async () => { throw chatHarnessError(new HarnessRpcError({ kind: 'bad_request', message: 'Core returned an invalid chat context' })) },
+      () => new Promise<string>((resolve) => { reply = resolve }),
+    ]
+    const runner: ChatHarnessRunner = { ...runnerOf(), answer: vi.fn(() => queue.shift()!()) }
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    expect(service.failure('amortize')).toBeNull()
+    await service.send('amortize', written('问'))
+    expect(service.failure('amortize')).toEqual({ step: 'request', kind: 'bad_request', detail: 'Core returned an invalid chat context' })
+    expect(service.failure('widthknee')).toBeNull()
+    const retrying = service.retry('amortize')
+    expect(service.failure('amortize')).toBeNull()
+    reply('答')
+    await retrying
+    expect(service.failure('amortize')).toBeNull()
+    vi.mocked(console.error).mockRestore()
   })
 
   it('最后一问已经有回答时不重试,还在生成时报忙', async () => {
