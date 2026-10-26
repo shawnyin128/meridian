@@ -27,6 +27,7 @@ import {
   ChatMessagesParamsSchema,
   ChatSendParamsSchema,
   ChatSessionSchema,
+  ChatRenameParamsSchema,
   ChatSetArchivedParamsSchema,
   DeliverySettingsSchema,
   FeedAppendParamsSchema,
@@ -1315,6 +1316,14 @@ describe('contract schemas', () => {
     expect(() => ChatSetArchivedParamsSchema.parse({ id: 'amortize' })).toThrow()
     expect(ChatDeleteParamsSchema.parse({ id: 'amortize' }).id).toBe('amortize')
     expect(() => ChatDeleteParamsSchema.parse({ id: 'amortize', archived: true })).toThrow()
+  })
+
+  it('改名的入参是去掉首尾空白后非空、最多 160 字的名字', () => {
+    expect(ChatRenameParamsSchema.parse({ id: 'amortize', title: '  共享前缀的摊薄  ' })).toEqual({ id: 'amortize', title: '共享前缀的摊薄' })
+    expect(() => ChatRenameParamsSchema.parse({ id: 'amortize', title: '   ' })).toThrow()
+    expect(ChatRenameParamsSchema.parse({ id: 'amortize', title: '长'.repeat(160) }).title).toHaveLength(160)
+    expect(() => ChatRenameParamsSchema.parse({ id: 'amortize', title: '长'.repeat(161) })).toThrow()
+    expect(() => ChatRenameParamsSchema.parse({ id: 'amortize', title: '名字', named: true })).toThrow()
   })
 
   it('追加消息的入参不收 id,id 由 core 指派', () => {

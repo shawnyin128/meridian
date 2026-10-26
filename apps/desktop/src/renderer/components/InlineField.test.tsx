@@ -141,6 +141,25 @@ describe('InlineMetadataField', () => {
     expect(save).toHaveBeenCalledWith('新任务')
   })
 
+  it('校验不过的名字按回车不保存:编辑器留着那几个字、标成不合法,改了字就不再标', async () => {
+    const save = vi.fn(() => Promise.resolve(true))
+    act(() => root!.render(withMessages(
+      <InlineField
+        label="任务名称" value="旧任务" normalize={(value) => value.trim()} validate={(value) => value !== ''} onSave={save}
+      />,
+    )))
+    act(() => host.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    const input = () => host.querySelector<HTMLInputElement>('[aria-label="编辑任务名称"]')!
+    act(() => setValue(input(), '   '))
+    await act(async () => {
+      input().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }))
+      await Promise.resolve()
+    })
+    expect([save.mock.calls.length, input().value, input().getAttribute('aria-invalid')]).toEqual([0, '   ', 'true'])
+    act(() => setValue(input(), '新任务'))
+    expect(input().hasAttribute('aria-invalid')).toBe(false)
+  })
+
   it('表格格子里的就地编辑:一打开就是同一种就地输入框,点格子里不算离开,回车交给保存后收起;Esc 收起且不保存', async () => {
     window.localStorage.removeItem('meridian.drafts:/vaults/a')
     const save = vi.fn(() => Promise.resolve(true))

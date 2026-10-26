@@ -2442,6 +2442,7 @@ describe('fixture store', () => {
         return store.recordAction(session.id, store.chatMessages(session.id).at(-1)!.id)
       },
       'chat.setArchived': () => store.setChatArchived('amortize', true),
+      'chat.rename': () => store.renameChat('amortize', '改过的名字'),
       'chat.delete': () => store.deleteChat(store.createChat('待删除', true).id),
       'papers.source': () => store.paperSource(WITH_SOURCE),
       'papers.import': () => store.importPaper('uploaded.pdf', Uint8Array.from(Buffer.from('%PDF-1.7\n%%EOF'))),

@@ -2206,6 +2206,14 @@ export function createFixtureStore(
       chats = chats.map((c) => (c === chat ? { ...c, archived } : c))
     },
 
+    renameChat(id, title) {
+      const chat = chatOf(id)
+      if (chat.paperId !== undefined) throw new CallError('refused', '论文的阅读对话以论文命名，不能改名')
+      const renamed = { ...chat, title, named: true }
+      chats = chats.map((c) => (c.id === id ? renamed : c))
+      return chatSession(renamed)
+    },
+
     chatIds() {
       dropExpired()
       return [...chats.map((chat) => chat.id), ...trash.flatMap((item) => (item.kind === 'chat' ? [item.chat.id] : []))]

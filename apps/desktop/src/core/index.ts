@@ -20,6 +20,7 @@ import {
   ChangelogArchiveParamsSchema,
   ChangelogDeleteParamsSchema,
   ChangelogUndoParamsSchema,
+  ChatRenameParamsSchema,
   ChatSetArchivedParamsSchema,
   ColourThemeDeleteParamsSchema,
   ColourThemeSaveParamsSchema,
@@ -1014,6 +1015,10 @@ registerHandler('idea.reorder', (params) =>
 registerHandler('chat.recordAction', (params) => {
   const { id, messageId } = ChatRecordActionParamsSchema.parse(params)
   return store.recordAction(id, messageId)
+})
+registerHandler('chat.rename', (params) => {
+  const { id, title } = ChatRenameParamsSchema.parse(params)
+  return store.renameChat(id, title)
 })
 registerHandler('chat.setArchived', (params) => {
   const { id, archived } = ChatSetArchivedParamsSchema.parse(params)

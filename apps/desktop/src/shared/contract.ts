@@ -2529,6 +2529,12 @@ export const ChatSetArchivedParamsSchema = z.object({
   archived: z.boolean(),
 }).strict()
 
+/** Gives a chat the title the user typed; a message sent to it afterwards no longer names it. A paper's reading chat is refused. */
+export const ChatRenameParamsSchema = z.object({
+  id: z.string(),
+  title: z.string().trim().min(1).max(160),
+}).strict()
+
 /** Moves a chat into the trash; a reply it is generating stops first. */
 export const ChatDeleteParamsSchema = z.object({ id: z.string() }).strict()
 
@@ -3113,6 +3119,7 @@ export const CONTRACT_METHODS = [
   'idea.reorder',
   'chat.recordAction',
   'chat.setArchived',
+  'chat.rename',
   'chat.delete',
   'search.query',
   'jobs.status',

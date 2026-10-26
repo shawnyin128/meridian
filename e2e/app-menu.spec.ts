@@ -87,6 +87,6 @@ test('右键项目卡片和侧栏的对话行打开它们 … 按钮的同一个
 
   const chat = win.locator('#chatList [data-chat]').first()
   await chat.click({ button: 'right' })
-  await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['归档', '删除'])
+  await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['重命名', '归档', '删除'])
   expect(await popupMenus(app)).toEqual([])
 })

@@ -2241,6 +2241,31 @@ describe('vault store on the aggregation layout', () => {
     })
   })
 
+  describe('对话改名', () => {
+    const said = (text: string) => ({ role: 'you' as const, runs: [{ kind: 'text' as const, text }], actions: [] })
+
+    it('改名存下用户起的名字,重开库还在;之后发出的第一句不再给它起名', () => {
+      const fresh = store.createChat('新对话', false)
+      expect(store.renameChat(fresh.id, '摊薄的前提')).toEqual({ id: fresh.id, title: '摊薄的前提', archived: false, messageCount: 0 })
+      store.appendChatMessages(fresh.id, [said('共享前缀能摊薄多少')])
+      expect(store.chatSession(fresh.id).title).toBe('摊薄的前提')
+      expect(createVaultStore(vault).chatSession(fresh.id)).toEqual({ id: fresh.id, title: '摊薄的前提', archived: false, messageCount: 1 })
+    })
+
+    it('没起名的对话不改名时照旧用第一句起名;论文的阅读对话改不了名,名字不变', () => {
+      const fresh = store.createChat('新对话', false)
+      store.appendChatMessages(fresh.id, [said('共享前缀能摊薄多少')])
+      expect(store.chatSession(fresh.id).title).toBe('共享前缀能摊薄多少')
+      const reading = store.chatForPaper('2404.00456')
+      expect(() => store.renameChat(reading.id, '别的名字')).toThrow(expect.objectContaining({ reason: 'refused' }))
+      expect(createVaultStore(vault).chatSession(reading.id).title).toBe(reading.title)
+    })
+
+    it('改不存在的对话报不存在', () => {
+      expect(() => store.renameChat('chat-nope', '名字')).toThrow(expect.objectContaining({ reason: 'not-found' }))
+    })
+  })
+
   describe('删除对话', () => {
     const said = (text: string) => ({ role: 'you' as const, runs: [{ kind: 'text' as const, text }], actions: [] })
     /** A paper of the example vault. */

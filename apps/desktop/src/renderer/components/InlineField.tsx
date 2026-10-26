@@ -15,6 +15,11 @@ export type InlineFieldProps = {
   onSave: (value: string) => boolean | Promise<boolean>
   /** Places the field; its looks at rest and while editing are its own. */
   className?: string
+  /**
+   * `title` is a page title's look: one line as wide as the text, up to the room it has; the field keeps
+   * the title's own font.
+   */
+  variant?: 'title'
   emptyText?: string
   normalize?: (value: string) => string
   validate?: (value: string) => boolean
@@ -46,14 +51,15 @@ const UNKEPT: readonly string[] = []
  * inline field, the text staying where it was. Submitting and cancelling follow
  * `useInlineDraft`, the one convention across the app: Enter, focus leaving the control or a press
  * anywhere else saves, and Esc cancels; the window losing focus (switching to another app) does not
- * count as leaving. An unchanged value closes without calling `onSave`. `onSave` returns whether
+ * count as leaving. An unchanged value closes without calling `onSave`; a value `validate` refuses
+ * keeps the field open and marks it invalid until it is edited. `onSave` returns whether
  * the new value is accepted; when a write fails the editor stays open, so the three pages that use
  * it do not each implement their own async duplicate-submit guard. A click inside the open editor
  * stays there, so it never activates the row or card around the field. See `keep` for keeping
  * the value being typed.
  */
 export function InlineField({
-  label, value, display, type = 'text', inputMode, onSave, className, emptyText, normalize = (next) => next,
+  label, value, display, type = 'text', inputMode, onSave, className, variant, emptyText, normalize = (next) => next,
   validate = () => true, multiline = false, rest, keep, cell,
 }: InlineFieldProps) {
   const m = useMessages()
@@ -64,7 +70,9 @@ export function InlineField({
   const [ownDraft, setOwnDraft] = useState(value)
   const editing = cell !== undefined || (keep === undefined ? ownEditing : keptText !== undefined)
   const draft = keep === undefined ? ownDraft : keptText ?? value
+  const [refused, setRefused] = useState(false)
   const setDraft = (next: string) => {
+    setRefused(false)
     if (keep === undefined) setOwnDraft(next)
     else kept.set(keep.target, next)
   }
@@ -84,7 +92,10 @@ export function InlineField({
     kept: keep === undefined ? undefined : { drafts: kept, target: keep.target },
     onSubmit: () => {
       const next = normalize(draft)
-      if (!validate(next)) return false
+      if (!validate(next)) {
+        setRefused(true)
+        return false
+      }
       return next === value ? true : onSave(next)
     },
   })
@@ -111,7 +122,7 @@ export function InlineField({
         ref={holdControl} appearance="inline" className="metadata-input multiline"
         aria-label={m.common.field.edit(label)} rows={1} value={draft}
         onChange={(event) => setDraft(event.target.value.replace(/\s*[\r\n]+\s*/g, ' '))}
-        {...draftField.inputProps}
+        {...draftField.inputProps} aria-invalid={draftField.inputProps['aria-invalid'] ?? (refused || undefined)}
         onKeyDown={(event) => {
           if (event.key === 'Enter') event.preventDefault()
           draftField.inputProps.onKeyDown(event)
@@ -125,6 +136,7 @@ export function InlineField({
         aria-label={m.common.field.edit(label)}
         type={type} inputMode={inputMode} value={draft}
         onChange={(event) => setDraft(event.target.value)} {...draftField.inputProps}
+        aria-invalid={draftField.inputProps['aria-invalid'] ?? (refused || undefined)}
       />
     )
   }
@@ -133,7 +145,7 @@ export function InlineField({
     // The wrapper keeps the same node in both states, so Grid/Flex always measures the same value
     // cell and a native input's min-content width does not widen the property column on click.
     <span
-      className={className === undefined ? 'metadata-field' : `metadata-field ${className}`}
+      className={['metadata-field', variant === undefined ? '' : `metadata-field--${variant}`, className].filter(Boolean).join(' ')}
       onClick={editing ? (event) => event.stopPropagation() : undefined}
     >
       {field}
@@ -146,7 +158,7 @@ export function InlineField({
  * wrapping field too.
  */
 export function InlineMetadataField(props: Omit<InlineFieldProps,
-  | 'className' | 'emptyText' | 'normalize' | 'validate' | 'multiline' | 'cell'
+  | 'className' | 'variant' | 'emptyText' | 'normalize' | 'validate' | 'multiline' | 'cell'
 >) {
   const freeText = props.type !== 'date' && props.inputMode !== 'numeric'
   return <InlineField {...props} multiline={freeText} />
