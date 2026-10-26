@@ -211,7 +211,7 @@ export function ThemeEditor({ theme, onBack, onDirtyChange }: {
       </SplitNav>
 
       <SplitMain
-        head={(
+        fields head={(
           <div className="theme-editor-head">
             <FormInput
               className="theme-editor-name" value={draft.name} placeholder={t.name} aria-label={t.name} maxLength={80}

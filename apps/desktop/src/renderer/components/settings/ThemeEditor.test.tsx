@@ -125,6 +125,17 @@ describe('外观主题编辑页', () => {
     expect(api.save).toHaveBeenLastCalledWith({ ...saved, name: 'Renamed' })
   })
 
+  it('名称和基于是右栏的字段头部,和正文第一行的浅色/深色开关隔开;shared/heading-space.test 按这个结构量空隙', async () => {
+    await open(null)
+    const head = $('.split-main-head')
+    expect(head.className).toBe('split-main-head split-main-head--fields')
+    expect([...head.children].map((part) => part.className)).toEqual(['theme-editor-head'])
+    expect(head.querySelector('.theme-editor-name')).not.toBeNull()
+    const first = $('.split-main-body').firstElementChild!
+    expect(first.className).toBe('theme-editor-modes')
+    expect(first.querySelector('.segmented-control')?.getAttribute('aria-label')).toBe('编辑的模式')
+  })
+
   it('告诉宿主有没有没保存的修改:改了就有,改回原样或保存后就没有;返回键只交给宿主', async () => {
     await open(celadon, [readable(celadon)])
     expect(onDirtyChange).toHaveBeenLastCalledWith(false)

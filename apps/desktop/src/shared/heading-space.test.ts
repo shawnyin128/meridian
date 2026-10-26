@@ -10,6 +10,7 @@ type Element = {
   parentElement: Element | null
   nextElementSibling: Element | null
   firstElementChild: Element | null
+  lastElementChild: Element | null
   children: Iterable<Element>
   matches(selector: string): boolean
 }
@@ -24,7 +25,7 @@ const SHEETS = [
   'shell/tokens.css', 'routes/shell.css', 'components/PageShell.css', 'components/GroupedList.css', 'components/Card.css',
   'components/CardTray.css', 'components/Item.css', 'components/List.css', 'components/Markdown.css', 'routes/Feed.css',
   'components/settings/ExtensionSettings.css', 'routes/Settings.css', 'components/FormControls.css',
-  'components/settings/ServiceCard.css',
+  'components/settings/ServiceCard.css', 'components/ScrollArea.css', 'components/SplitPage.css', 'components/settings/ThemeEditor.css',
 ]
 
 type Rule = { selectors: string[]; declarations: Map<string, string>; order: number }
@@ -91,7 +92,7 @@ function cascaded(element: Element, property: string): string | undefined {
   return best?.value
 }
 
-/** A length in px, its tokens resolved; calc() of one product is all the stylesheets use here. */
+/** A length in px, its tokens resolved; a calc() of sums and products of lengths and numbers is worked out. */
 function px(value: string | undefined): number {
   if (value === undefined || value === '0' || value === 'auto' || value === 'normal') return 0
   const resolved = value.replace(/var\((--[\w-]+)\)/g, (_, name: string) => {
@@ -100,11 +101,39 @@ function px(value: string | undefined): number {
     return held
   })
   if (resolved !== value) return px(resolved)
-  const product = /^calc\(\s*(-?[\d.]+)\s*\*\s*(-?[\d.]+)px\s*\)$/.exec(resolved)
-  if (product !== null) return Number(product[1]) * Number(product[2])
+  if (resolved.startsWith('calc(')) return arithmetic(resolved)
   const length = /^(-?[\d.]+)px$/.exec(resolved)
   if (length === null) throw new Error(`not a length: ${value}`)
   return Number(length[1])
+}
+
+/** The value of a calc() of px lengths and numbers joined by +, -, * and nested calc(); a binary minus has spaces around it. */
+function arithmetic(expression: string): number {
+  const parts = expression.match(/calc\(|[()+*]|-(?=\s)|-?[\d.]+(?:px)?/g) ?? []
+  let at = 0
+  const factor = (): number => {
+    const part = parts[at++]
+    if (part === 'calc(' || part === '(') {
+      const value = sum()
+      if (parts[at++] !== ')') throw new Error(`not a length: ${expression}`)
+      return value
+    }
+    if (part === undefined || !/^-?[\d.]+(px)?$/.test(part)) throw new Error(`not a length: ${expression}`)
+    return parseFloat(part)
+  }
+  const product = (): number => {
+    let value = factor()
+    while (parts[at] === '*') { at += 1; value *= factor() }
+    return value
+  }
+  const sum = (): number => {
+    let value = product()
+    while (parts[at] === '+' || parts[at] === '-') value += parts[at++] === '+' ? product() : -product()
+    return value
+  }
+  const value = sum()
+  if (at !== parts.length) throw new Error(`not a length: ${expression}`)
+  return value
 }
 
 const display = (element: Element) => cascaded(element, 'display') ?? (element.tagName === 'SPAN' ? 'inline' : 'block')
@@ -148,6 +177,17 @@ function spaceBelow(heading: Element): number {
   const around = display(boxParent(heading))
   if (/flex|grid/.test(around)) return own + px(cascaded(next, 'margin-top')) + px(cascaded(boxParent(heading), 'row-gap'))
   return Math.max(own, topMargin(next))
+}
+
+/**
+ * The space between the last block of a dialog's SplitMain head and the first block of its body. The head
+ * is a flex item and the body a scroll container, so no margin collapses through either.
+ */
+function headSpace(head: Element): number {
+  const body = head.nextElementSibling!
+  return px(cascaded(head.lastElementChild!, 'margin-bottom')) + px(cascaded(head, 'padding-bottom')) + px(cascaded(head, 'margin-bottom'))
+    + px(cascaded(boxParent(head), 'row-gap')) + px(cascaded(body, 'margin-top')) + px(cascaded(body, 'padding-top'))
+    + px(cascaded(body.firstElementChild!, 'margin-top'))
 }
 
 beforeAll(() => {
@@ -217,5 +257,37 @@ describe('标题下面的空隙只归标题', () => {
     const above = px(cascaded(second, 'margin-top'))
       + (/flex|grid/.test(display(boxParent(second))) ? px(cascaded(boxParent(second), 'row-gap')) : 0)
     expect(above).toBe(20)
+  })
+})
+
+const BODY = 'scroll-area scroll-area--y scroll-area--fill split-main-body'
+/** The theme editor's SplitMain as it renders (its test holds it to this shape): the name and base fields, then the light/dark switch. */
+const EDITOR = '<div class="split-main"><div class="split-main-head split-main-head--fields">'
+  + '<div class="theme-editor-head"><input class="form-control form-input form-control-field theme-editor-name"><div class="field-row"></div></div></div>'
+  + `<div class="${BODY}"><div class="theme-editor-modes"><div class="segmented-control segmented-control--md"></div></div><div class="theme-preview"></div></div></div>`
+/** A Settings pane's SplitMain: its title, then its first card. */
+const PANE = '<div class="split-main"><div class="split-main-head"><div class="section-heading">外观</div></div>'
+  + `<div class="${BODY}"><div class="card-surface"></div></div></div>`
+
+describe('对话框右栏里叠放的控件之间有空隙', () => {
+  const head = (html: string): Element => {
+    document.body.innerHTML = html
+    return document.querySelector('.split-main-head')!
+  }
+
+  it('字段做头部时,名称栏和下面的浅色/深色开关之间是设置里叠放字段的行距 12,不贴在一起', () => {
+    document.body.innerHTML = '<div class="field-rows" id="rows"></div>'
+    const stacked = px(cascaded(document.querySelector('#rows')!, 'row-gap'))
+    expect(stacked).toBe(12)
+    expect(headSpace(head(EDITOR))).toBe(stacked)
+  })
+
+  it('标题做头部时,标题和下面的内容之间仍是标题自己的 10', () => {
+    expect(headSpace(head(PANE))).toBe(10)
+  })
+
+  it('正文顶上留着焦点环的位置:贴着顶边的浅色/深色开关,焦点环不被裁掉', () => {
+    const body = head(EDITOR).nextElementSibling!
+    expect(px(cascaded(body, 'padding-top'))).toBeGreaterThanOrEqual(px('var(--ring-width)') + px('var(--ring-offset)'))
   })
 })

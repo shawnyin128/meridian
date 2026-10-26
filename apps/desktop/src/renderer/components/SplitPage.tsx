@@ -56,11 +56,15 @@ export function SplitNav({ head, children }: { head: ReactNode; children: ReactN
   )
 }
 
-/** The main column of a dialog's SplitPage: `head`, which stays at its top, and the content under it, which scrolls. */
-export function SplitMain({ head, children }: { head: ReactNode; children: ReactNode }) {
+/**
+ * The main column of a dialog's SplitPage: `head`, which stays at its top, and the content under it, which
+ * scrolls. A head is a heading, which spaces itself from the content, or, with `fields`, the fields of what
+ * the column edits, which stand the item gap above it.
+ */
+export function SplitMain({ head, fields = false, children }: { head: ReactNode; fields?: boolean; children: ReactNode }) {
   return (
     <div className="split-main">
-      <div className="split-main-head">{head}</div>
+      <div className={fields ? 'split-main-head split-main-head--fields' : 'split-main-head'}>{head}</div>
       <ScrollArea axis="y" fill className="split-main-body">{children}</ScrollArea>
     </div>
   )

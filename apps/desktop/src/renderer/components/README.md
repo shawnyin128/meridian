@@ -205,7 +205,10 @@ Current shared contracts:
   up to the column's height. `columns` is `rail` (a main column and a rail or panel as wide as it is),
   `index` (a narrow index and its detail) or `dialog`, the Settings modal and the theme editor: a
   `SplitNav`, the navigation with its title and back button in a head, and a `SplitMain`, a head that
-  stays above a body that scrolls. Every column scrolls through `ScrollArea`.
+  stays above a body that scrolls. The head is the pane's heading, which spaces itself, or, with `fields`,
+  the fields of what the column edits (the theme editor's name and base), which stand the item gap above
+  the body; the body keeps room for focus rings inside its top and bottom. Every column scrolls through
+  `ScrollArea`.
 - `GroupedList` and `Group`: items grouped by status, kind, day, source, project or archive. Each group opens
   with the group heading, the third heading level, and the first group sits flush with the list's top; a
   group with `fold` folds its items through its heading, and `sticky` pins that heading while they scroll.

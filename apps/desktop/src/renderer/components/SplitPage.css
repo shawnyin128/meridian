@@ -32,8 +32,11 @@
 .split-nav-head{display:flex;align-items:center;gap:var(--sp-4);margin:0 0 var(--sp-10);padding:0 var(--sp-8)}
 /*
  * A dialog's main column matches a screen's main content: its head stays above the body that scrolls,
- * and the body ends clear of the dialog's rounded corner with room for focus rings inside it.
+ * and the body ends clear of the dialog's rounded corner. The body keeps room for focus rings inside its
+ * top and bottom edges and reaches up under the head by as much, so its content stays put.
  */
 .split-main{display:flex;min-width:0;min-height:0;flex-direction:column;padding:var(--sp-20) 0 calc(var(--sp-20) - var(--ring-room))}
 .split-main-head{flex:none;padding:0 var(--sp-24)}
-.split-main-body{padding:0 var(--sp-24) var(--ring-room)}
+/* A heading spaces itself from the body; a head of fields stands the item gap above it. */
+.split-main-head--fields{padding-bottom:var(--item-gap)}
+.split-main-body{margin-top:calc(-1 * var(--ring-room));padding:var(--ring-room) var(--sp-24)}
