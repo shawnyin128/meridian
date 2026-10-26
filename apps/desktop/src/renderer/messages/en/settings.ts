@@ -150,6 +150,7 @@ export const settings = {
       add: 'Model',
       addLabel: 'Add a model',
       defaultMark: 'Default',
+      defaultModel: 'Default model',
       setDefault: 'Set as default',
       apiSource: (name: string) => `${name} API`,
       confirmDelete: (name: string) => `Delete ${name}?`,

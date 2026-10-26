@@ -143,6 +143,7 @@ export const settings = {
       add: '模型',
       addLabel: '添加模型',
       defaultMark: '默认',
+      defaultModel: '默认模型',
       setDefault: '设为默认',
       apiSource: (name: string) => `${name} API`,
       confirmDelete: (name: string) => `删除 ${name}？`,
