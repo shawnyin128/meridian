@@ -98,7 +98,7 @@ describe('chat model choices', () => {
     const choices = open(file, '/vaults/research', { onLog })
     await choices.set('chat-3', 'cli:claude')
 
-    expect(onLog).toHaveBeenCalledWith(expect.stringContaining('1 chat records cannot be read'))
+    expect(onLog).toHaveBeenCalledWith('warn', expect.stringContaining('1 chat records cannot be read'))
     expect(choices.choiceOf('chat-2')).toBeNull()
     expect((JSON.parse(readFileSync(file, 'utf8')) as { chats: unknown[] }).chats).toContainEqual(odd)
   })

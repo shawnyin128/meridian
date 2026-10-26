@@ -5,6 +5,7 @@ import type {
   CallFailure, ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import type { CoreLogLevel } from '../core-log.js'
 import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
 import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
@@ -261,7 +262,7 @@ export function createChatHarnessRunner(options: {
   cli: CliChatRunner
   sessions: CliChatSessions
   launch?: () => HarnessChild
-  onLog?: (line: string) => void
+  onLog?: (level: CoreLogLevel, line: string) => void
 }) {
   const sourceText = new Map<string, Promise<Array<{ number: number; text: string }>>>()
   const paperPages = (paperId: string) => {
@@ -381,7 +382,7 @@ export function createChatHarnessRunner(options: {
       // Codex reports a session's running total, so a resumed turn's own usage is the difference.
       const total = model.cli === 'codex' ? result.usage : undefined
       const usage = total !== undefined && resumed?.total !== undefined ? usageSince(total, resumed.total) : result.usage
-      options.onLog?.(cliUsageLine(model.cli, usage === undefined ? result : { ...result, usage }))
+      options.onLog?.('info', cliUsageLine(model.cli, usage === undefined ? result : { ...result, usage }))
       if (id !== undefined) ran = { id, ...(total === undefined ? {} : { total }) }
       const fromCli = result.model ?? (model.cli === 'codex' && id !== undefined ? options.sessions.codexModel(id) : null)
       if (fromCli !== null) named(fromCli)

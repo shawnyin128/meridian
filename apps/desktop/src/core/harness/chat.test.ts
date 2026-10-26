@@ -392,7 +392,7 @@ function sessionChat(initial: HarnessRuntimeModel) {
   const child = new FakeHarness()
   const sessions = openCliChatSessions({
     root: join(root, 'user-data', 'cli-chats'), vault: '/vaults/research', environment,
-    binary: async (cli) => join(bin, cli), onLog: (line) => logs.push(line),
+    binary: async (cli) => join(bin, cli), onLog: (level, line) => logs.push(`${level} ${line}`),
   })
   const runner = createChatHarnessRunner({
     store, model, checkCli: async () => ({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 }),
@@ -404,7 +404,7 @@ function sessionChat(initial: HarnessRuntimeModel) {
     }),
     sessions,
     launch: () => child,
-    onLog: (line) => logs.push(line),
+    onLog: (level, line) => logs.push(`${level} ${line}`),
   })
   const service = createChatService({ store, model, runner })
   let started = false
@@ -454,7 +454,7 @@ function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
     cli,
     sessions: openCliChatSessions({ root, vault: '/vaults/research', environment: { CLAUDE_CONFIG_DIR: root, CODEX_HOME: root } }),
     launch: () => child,
-    onLog: (line) => logs.push(line),
+    onLog: (level, line) => logs.push(`${level} ${line}`),
   })
   const close = () => {
     runner.close()
@@ -492,7 +492,7 @@ describe('a chat turn on a subscription CLI', () => {
 
     child.send({ type: 'response', id: 1, ok: true, result: { answer: 'EAGLE reaches 3.76x [p. 6].' } })
     await expect(answering).resolves.toBe('EAGLE reaches 3.76x [p. 6].')
-    expect(logs).toContainEqual('claude: 6.7 s, 24182 input tokens (23327 cached), 88 output tokens')
+    expect(logs).toContainEqual('info claude: 6.7 s, 24182 input tokens (23327 cached), 88 output tokens')
     close()
   })
 
@@ -763,9 +763,9 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
     try {
       await chat.send('What is EAGLE?')
       await chat.send('And its speedup?')
-      expect(chat.logs.filter((line) => line.startsWith('codex:'))).toEqual([
-        expect.stringMatching(/^codex: \d+\.\d s, 3000 input tokens \(2000 cached\), 10 output tokens$/),
-        expect.stringMatching(/^codex: \d+\.\d s, 3000 input tokens \(2000 cached\), 10 output tokens$/),
+      expect(chat.logs.filter((line) => line.startsWith('info codex:'))).toEqual([
+        expect.stringMatching(/^info codex: \d+\.\d s, 3000 input tokens \(2000 cached\), 10 output tokens$/),
+        expect.stringMatching(/^info codex: \d+\.\d s, 3000 input tokens \(2000 cached\), 10 output tokens$/),
       ])
     } finally {
       chat.close()
@@ -783,7 +783,7 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
       expect(resumes(second!)).toBe(false)
       expect(sessionOf(second!)).not.toBe(sessionOf(first!))
       expect(second!.stdin).toBe('History, then: And its speedup?')
-      expect(chat.logs).toContain(`chat ${chat.chat}: a new claude session, the chat changed`)
+      expect(chat.logs).toContain(`info chat ${chat.chat}: a new claude session, the chat changed`)
     } finally {
       chat.close()
     }
@@ -799,7 +799,7 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
       const [, second] = chat.seen()
       expect(resumes(second!)).toBe(false)
       expect(second!.argv).toContain('--model=sonnet')
-      expect(chat.logs).toContain(`chat ${chat.chat}: a new claude session, the model changed`)
+      expect(chat.logs).toContain(`info chat ${chat.chat}: a new claude session, the model changed`)
     } finally {
       chat.close()
     }
@@ -815,7 +815,7 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
       const [, second] = chat.seen()
       expect(resumes(second!)).toBe(false)
       expect(second!.stdin).toBe('History, then: And its speedup?')
-      expect(chat.logs).toContain(`chat ${chat.chat}: a new claude session, the session is gone`)
+      expect(chat.logs).toContain(`info chat ${chat.chat}: a new claude session, the session is gone`)
     } finally {
       chat.close()
     }
@@ -833,7 +833,7 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
       expect(resumes(retried!)).toBe(false)
       expect(sessionOf(retried!)).not.toBe(sessionOf(first!))
       expect(retried!.stdin).toBe('History, then: And its speedup?')
-      expect(chat.logs).toContain(`chat ${chat.chat}: a new claude session, no session to resume`)
+      expect(chat.logs).toContain(`info chat ${chat.chat}: a new claude session, no session to resume`)
     } finally {
       chat.close()
     }
@@ -871,7 +871,7 @@ describe('stopping a chat turn on a subscription CLI', () => {
         expect([resumes(held), resumes(next)]).toEqual([true, false])
         expect(sessionOf(next)).not.toBe(sessionOf(held))
         expect(next.stdin).toBe(cli === 'claude' ? 'History, then: Go on' : 'Chat rules and context\n\nHistory, then: Go on')
-        expect(chat.logs).toContain(`chat ${chat.chat}: a new ${cli} session, no session to resume`)
+        expect(chat.logs).toContain(`info chat ${chat.chat}: a new ${cli} session, no session to resume`)
         expect(chat.store.chatMessages(chat.chat).map(({ role, runs, model: by }) => ({ role, text: runs[0]!.text, ...(by === undefined ? {} : { by }) })))
           .toEqual([
             { role: 'you', text: 'What is EAGLE?' },
@@ -908,7 +908,7 @@ describe('deleting a chat on a subscription CLI', () => {
         await chat.prune()
         expect(chat.sessionFiles()).toEqual([])
         expect(existsSync(first!.cwd)).toBe(false)
-        expect(chat.logs).toContain(`chat ${chat.chat}: deleted its 1 CLI sessions`)
+        expect(chat.logs).toContain(`info chat ${chat.chat}: deleted its 1 CLI sessions`)
       } finally {
         chat.close()
       }

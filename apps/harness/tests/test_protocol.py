@@ -1,11 +1,14 @@
 import json
+import logging
+import warnings
 from collections.abc import Iterator
+from contextlib import redirect_stderr
 from io import StringIO
 from threading import Event
 from unittest import TestCase
 
 from meridian_harness.protocol import CAPABILITIES, PROTOCOL_VERSION, ProtocolViolation, callback
-from meridian_harness.server import JsonLineServer, Method, RequestContext
+from meridian_harness.server import JsonLineServer, Method, RequestContext, log_to_stderr
 
 
 def run_server(
@@ -100,6 +103,35 @@ class ProtocolTests(TestCase):
             "message": "Harness dependency is unavailable",
             "detail": "Missing Python package: langchain_core",
         })
+
+    def test_each_stderr_line_starts_with_its_level_name(self) -> None:
+        def failing(_context: RequestContext, _params: object) -> object:
+            warnings.warn("an option is deprecated\nand goes in 1.0", UserWarning, stacklevel=1)
+            raise RuntimeError("boom")
+
+        stderr = StringIO()
+        root = logging.getLogger()
+        before = set(root.handlers)
+        with warnings.catch_warnings():
+            warnings.simplefilter("always")
+            try:
+                with redirect_stderr(stderr):
+                    log_to_stderr()
+                    run_server(
+                        [{"type": "request", "id": 3, "method": "test.fail", "params": {}}],
+                        {"test.fail": failing},
+                    )
+            finally:
+                logging.captureWarnings(False)
+                for handler in set(root.handlers) - before:
+                    root.removeHandler(handler)
+
+        lines = stderr.getvalue().splitlines()
+        self.assertIn("UserWarning: an option is deprecated", lines[0])
+        self.assertTrue(lines[0].startswith("WARNING "))
+        self.assertIn("WARNING and goes in 1.0", lines)
+        self.assertEqual(lines[-1], "ERROR request 3 failed: boom")
+        self.assertEqual({line.split(" ", 1)[0] for line in lines[:-1]}, {"WARNING"})
 
     def test_request_and_cancel_reject_unknown_fields(self) -> None:
         request_messages = run_server([{

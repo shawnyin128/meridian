@@ -1,5 +1,6 @@
 import { createInterface } from 'node:readline'
 import type { Readable, Writable } from 'node:stream'
+import type { CoreLogLevel } from '../core-log.js'
 import {
   type HarnessCapability,
   HARNESS_PROTOCOL_VERSION,
@@ -45,12 +46,15 @@ type Dependencies = {
   launch: () => HarnessChild
   requiredCapabilities?: readonly HarnessCapability[]
   callbacks?: Readonly<Record<string, HarnessCallback>>
-  onLog?: (line: string) => void
+  onLog?: (level: CoreLogLevel, line: string) => void
   readyTimeoutMs?: number
   requestTimeoutMs?: number
 }
 
 const MAX_HARNESS_STDERR_DETAIL = 4_000
+/** The Core log level of each level name the Harness's logging starts a stderr line with. */
+const HARNESS_LEVELS = { DEBUG: 'info', INFO: 'info', WARNING: 'warn', ERROR: 'error', CRITICAL: 'error' } as const
+const HARNESS_LEVEL_LINE = /^(DEBUG|INFO|WARNING|ERROR|CRITICAL) (.*)$/s
 
 /** Where a Harness call failed: while the Harness process started and shook hands, or in the request itself. */
 export type HarnessRpcStep = 'start' | 'request'
@@ -129,7 +133,7 @@ export function createHarnessRpc(deps: Dependencies) {
     }
     const handler = held.callbacks?.[message.method] ?? callbacks[message.method]
     if (handler === undefined) {
-      deps.onLog?.(`refused Harness callback ${message.method}`)
+      deps.onLog?.('error', `refused Harness callback ${message.method}`)
       writeTo(target, {
         type: 'error', id: message.id, callbackId: message.callbackId, ok: false,
         error: { kind: 'bad_request', message: `Harness callback is not allowed: ${message.method}` },
@@ -144,7 +148,7 @@ export function createHarnessRpc(deps: Dependencies) {
         } satisfies HarnessCallbackResultMessage)
       },
       (cause: unknown) => {
-        deps.onLog?.(`Harness callback ${message.method} failed: ${cause instanceof Error ? cause.message : String(cause)}`)
+        deps.onLog?.('error', `Harness callback ${message.method} failed: ${cause instanceof Error ? cause.message : String(cause)}`)
         if (!pending.has(message.id) || child !== target) return
         writeTo(target, {
           type: 'error', id: message.id, callbackId: message.callbackId, ok: false,
@@ -265,7 +269,13 @@ export function createHarnessRpc(deps: Dependencies) {
     launched.stderr.on('data', (chunk: string) => {
       if (child !== launched) return
       stderrTail = `${stderrTail}${chunk}`.slice(-MAX_HARNESS_STDERR_DETAIL)
-      for (const line of chunk.split(/\r?\n/)) if (line !== '') deps.onLog?.(line)
+      for (const line of chunk.split(/\r?\n/)) {
+        if (line === '') continue
+        // A line no Harness logger wrote, such as an uncaught traceback, is a failure.
+        const leveled = HARNESS_LEVEL_LINE.exec(line)
+        if (leveled === null) deps.onLog?.('error', line)
+        else deps.onLog?.(HARNESS_LEVELS[leveled[1] as keyof typeof HARNESS_LEVELS], leveled[2]!)
+      }
     })
     launched.on('error', (cause) => retire(launched, cause))
     launched.on('exit', (code, signal) => {

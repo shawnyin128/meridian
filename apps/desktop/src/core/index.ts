@@ -122,7 +122,7 @@ import {
 import { projectAreas } from '../shared/project-signals.js'
 import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { answerCall, CallError, callFailure } from './call-error.js'
-import { openCoreLog, teeConsole } from './core-log.js'
+import { harnessLog, openCoreLog, teeConsole } from './core-log.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
 import { createBackground } from './background.js'
@@ -256,37 +256,37 @@ const background = createBackground({
 const cliRunnerDeps = {
   // A run's own pre-call check decides at run time; what it finds corrects the status Settings and the pickers keep.
   discover: followCliState(
-    (cli: HarnessCli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+    (cli: HarnessCli) => discoverCli(cli, { onLog: harnessLog }),
     (cli) => (harnessModel.accepts(`cli:${cli}`) ? sourceModels.status(cli) : null),
     (cli) => sourceModels.refresh(`cli:${cli}`),
   ),
   settingsRevision: () => harnessModel.revision(),
-  internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
+  internalMcp: createInternalMcp({ store, onLog: harnessLog }),
 }
 const cliRunner = createCliRunner(cliRunnerDeps)
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
   store,
   model: harnessModel,
   cli: cliRunner,
-  onLog: (line) => console.error(`[harness] ${line}`),
+  onLog: harnessLog,
 })
 const chatSessions = openCliChatSessions({
-  root: join(userData, 'cli-chats'), vault: locationRoot, onLog: (line) => console.error(`[harness] ${line}`),
+  root: join(userData, 'cli-chats'), vault: locationRoot, onLog: harnessLog,
 })
 // The model lists are read once per session, at start and when a source's configuration changes.
 // In fixture and canned mode Core reaches no network, so an API source lists only its default model.
 const sourceModels = createSourceModels({
   sources: () => harnessModel.settings().models,
   readCli: (cli) => subscriptionStatus(cli, {
-    discover: (held) => discoverCli(held, { onLog: (line) => console.error(`[harness] ${line}`) }),
-    listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
+    discover: (held) => discoverCli(held, { onLog: harnessLog }),
+    listModels: listCliModels, onLog: harnessLog,
   }),
   readApi: canned ? async () => [] : (id) => chatHarness.listModels(id),
-  onLog: (line) => console.error(`[harness] ${line}`),
+  onLog: harnessLog,
 })
 const chatModels = openChatModels({
   file: join(userData, 'chat-models', 'choices.json'), vault: locationRoot, models: harnessModel,
-  offers: (source) => sourceModels.models(source), onLog: (line) => console.error(`[harness] ${line}`),
+  offers: (source) => sourceModels.models(source), onLog: harnessLog,
 })
 /**
  * Deletes the CLI sessions and forgets the model choices of the chats the vault no longer keeps; the
@@ -305,11 +305,11 @@ pruneChatSessions()
 const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
-  checkCli: (model) => checkCliConnection(model, { onLog: (line) => console.error(`[harness] ${line}`), run: cliRunner }),
+  checkCli: (model) => checkCliConnection(model, { onLog: harnessLog, run: cliRunner }),
   cli: createCliChatRunner(cliRunnerDeps),
   sessions: chatSessions,
   choiceOf: chatModels.choiceOf,
-  onLog: (line) => console.error(`[harness] ${line}`),
+  onLog: harnessLog,
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness, choiceOf: chatModels.choiceOf })
 sourceModels.start()

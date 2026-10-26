@@ -4,6 +4,7 @@ import type {
 } from '../../shared/contract.js'
 import { HARNESS_API_EFFORTS, HarnessModelProviderSchema } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
+import type { CoreLogLevel } from '../core-log.js'
 
 const MAX_LISTED = 500
 const NO_EFFORTS: HarnessModelEfforts = { levels: [] }
@@ -33,7 +34,7 @@ export function createSourceModels(options: {
   sources: () => HarnessModelEntry[]
   readCli: (cli: HarnessCli) => Promise<HarnessSubscriptionStatus>
   readApi: (source: string) => Promise<string[]>
-  onLog: (line: string) => void
+  onLog: (level: CoreLogLevel, line: string) => void
 }) {
   const statuses = new Map<HarnessCli, Promise<HarnessSubscriptionStatus>>()
   const lists = new Map<string, Promise<Omit<HarnessSourceModels, 'source' | 'models'> & { listed: HarnessSourceModel[] }>>()
@@ -62,7 +63,7 @@ export function createSourceModels(options: {
         const ids = await options.readApi(entry.id)
         return { listed: ids.map((id) => ({ id, efforts })) }
       } catch (cause) {
-        options.onLog(`${entry.id}: its model list cannot be read: ${cause instanceof Error ? cause.message : String(cause)}`)
+        options.onLog('warn', `${entry.id}: its model list cannot be read: ${cause instanceof Error ? cause.message : String(cause)}`)
         return { listed: [], error: callFailure(cause) }
       }
     })()

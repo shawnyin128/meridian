@@ -1,5 +1,6 @@
 import type { HarnessCli, HarnessModelEfforts, HarnessSubscriptionStatus } from '../../shared/contract.js'
 import { HarnessEffortSchema, HarnessSubscriptionModelSchema } from '../../shared/contract.js'
+import type { CoreLogLevel } from '../core-log.js'
 import { cliEnvironment, inTemporaryFolder, runChild } from './cli/child.js'
 import type { CliDiscovery } from './cli/discovery.js'
 
@@ -30,12 +31,12 @@ export type CliModels = { models: string[]; efforts: Record<string, HarnessModel
 export async function subscriptionStatus(cli: HarnessCli, { discover, listModels, onLog }: {
   discover: (cli: HarnessCli) => Promise<CliDiscovery>
   listModels: (cli: HarnessCli, binary: string) => Promise<CliModels>
-  onLog: (line: string) => void
+  onLog: (level: CoreLogLevel, line: string) => void
 }): Promise<HarnessSubscriptionStatus> {
   const found = await discover(cli)
   if (!found.installed) return { state: 'missing' }
   if (found.missingFlags.length > 0) {
-    onLog(`${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
+    onLog('warn', `${cli} ${found.version ?? '(no version)'}: its help lists no ${found.missingFlags.join(', ')}`)
     return { state: 'unsupported', version: found.version }
   }
   return { state: 'found', version: found.version, signIn: found.signIn, ...await listModels(cli, found.binary) }

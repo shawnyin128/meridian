@@ -1,6 +1,7 @@
 """Stateless stdio server for Meridian Harness requests."""
 
 import json
+import logging
 import sys
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor
@@ -26,6 +27,8 @@ from .protocol import (
 )
 
 Method = Callable[["RequestContext", object], object]
+
+_log = logging.getLogger(__name__)
 
 
 class RequestCancelled(RuntimeError):  # noqa: N818
@@ -209,7 +212,7 @@ class JsonLineServer:
                     detail=f"Missing Python package: {package}",
                 ),
             )
-            print(f"[harness] missing dependency: {package}", file=sys.stderr, flush=True)
+            _log.error("missing dependency: %s", package)
         except Exception as cause:  # noqa: BLE001
             self._write(
                 output,
@@ -220,7 +223,7 @@ class JsonLineServer:
                     detail=type(cause).__name__,
                 ),
             )
-            print(f"[harness] request {request_id} failed: {cause}", file=sys.stderr, flush=True)
+            _log.error("request %s failed: %s", request_id, cause)
         finally:
             with self._state_lock:
                 self._cancelled.pop(request_id, None)
@@ -347,11 +350,30 @@ class JsonLineServer:
         self._executor.shutdown(wait=True, cancel_futures=False)
 
 
+class _LevelOnEachLine(logging.Formatter):
+    """Formats a log record with its level name at the start of each of its lines."""
+
+    def format(self, record: logging.LogRecord) -> str:
+        lines = super().format(record).splitlines()
+        return "\n".join(f"{record.levelname} {line}" for line in lines)
+
+
+def log_to_stderr() -> None:
+    """Write log records of level WARNING and above, and Python warnings, to stderr, each line
+    starting with the record's level name."""
+    handler = logging.StreamHandler(sys.stderr)
+    handler.setFormatter(_LevelOnEachLine())
+    logging.getLogger().addHandler(handler)
+    logging.captureWarnings(True)
+
+
 def run_stdio() -> None:
-    """Run the production stdio transport in UTF-8, whatever the system's code page."""
+    """Run the production stdio transport in UTF-8, whatever the system's code page, with its log
+    on stderr."""
     # A frozen sidecar ignores PYTHONIOENCODING, so on Windows its streams would take the ANSI
     # code page.
     streams = ((sys.stdin, "strict"), (sys.stdout, "strict"), (sys.stderr, "backslashreplace"))
     for stream, errors in streams:
         cast(TextIOWrapper, stream).reconfigure(encoding="utf-8", errors=errors)
+    log_to_stderr()
     JsonLineServer().serve(sys.stdin, sys.stdout)
