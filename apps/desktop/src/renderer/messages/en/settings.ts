@@ -147,8 +147,6 @@ export const settings = {
     },
     tabs: { label: 'Model source', api: 'API', subscription: 'Subscription' },
     list: {
-      add: 'Model',
-      addLabel: 'Add a model',
       defaultMark: 'Default',
       defaultModel: 'Default model',
       setDefault: 'Set as default',
@@ -172,7 +170,6 @@ export const settings = {
         subscription: 'Signed in with subscription', other: 'Not signed in with subscription', 'signed-out': 'Signed out',
         unknown: 'Sign-in unreadable',
       },
-      defaultModel: 'Default',
     },
     templates: {
       chooseLabel: 'Connection template',

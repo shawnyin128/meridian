@@ -140,8 +140,6 @@ export const settings = {
     },
     tabs: { label: '模型来源', api: 'API', subscription: '订阅' },
     list: {
-      add: '模型',
-      addLabel: '添加模型',
       defaultMark: '默认',
       defaultModel: '默认模型',
       setDefault: '设为默认',
@@ -162,7 +160,6 @@ export const settings = {
       missing: '没有找到',
       unsupported: '版本不受支持',
       signIn: { subscription: '已用订阅登录', other: '未用订阅登录', 'signed-out': '未登录', unknown: '读不出登录状态' },
-      defaultModel: '默认',
     },
     templates: {
       chooseLabel: '连接模板',

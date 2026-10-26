@@ -461,6 +461,7 @@ export function Settings() {
             </SplitNav>
 
             <SplitMain
+              fill={current === 'model'}
               head={(
                 <>
                   <PageError error={actionErrors[current] ?? readErrors[current]} />

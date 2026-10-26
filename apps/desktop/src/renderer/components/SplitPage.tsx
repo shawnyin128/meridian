@@ -56,12 +56,18 @@ export function SplitNav({ head, children }: { head: ReactNode; children: ReactN
   )
 }
 
-/** The main column of a dialog's SplitPage: `head`, which stays at its top, and the content under it, which scrolls. */
-export function SplitMain({ head, children }: { head: ReactNode; children: ReactNode }) {
+/**
+ * The main column of a dialog's SplitPage: `head`, which stays at its top, and the content under it,
+ * which scrolls; with `fill` the content instead fills the column's height without scrolling, a
+ * column whose own parts, such as a List that fills, scroll inside it.
+ */
+export function SplitMain({ head, fill = false, children }: { head: ReactNode; fill?: boolean; children: ReactNode }) {
   return (
     <div className="split-main">
       <div className="split-main-head">{head}</div>
-      <ScrollArea axis="y" fill className="split-main-body">{children}</ScrollArea>
+      {fill
+        ? <div className="split-main-body split-main-body--fill">{children}</div>
+        : <ScrollArea axis="y" fill className="split-main-body">{children}</ScrollArea>}
     </div>
   )
 }

@@ -793,8 +793,6 @@ settings.model.fields.protocolLabel label
 settings.model.fields.providerLabel label
 settings.model.heading label
 settings.model.keyStored aria
-settings.model.list.add action
-settings.model.list.addLabel aria
 settings.model.list.apiSource label
 settings.model.list.confirmDelete label
 settings.model.list.defaultMark state
@@ -811,7 +809,6 @@ settings.model.save action
 settings.model.saving aria
 settings.model.subscription.cliLabel label
 settings.model.subscription.copySignIn aria
-settings.model.subscription.defaultModel placeholder
 settings.model.subscription.missing state
 settings.model.subscription.otherModel aria
 settings.model.subscription.signIn.other state
