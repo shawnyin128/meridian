@@ -113,6 +113,13 @@ type ModelSlot = { entry: ModelRecord; raw: Record<string, unknown> } | { unread
  */
 type ModelList = { slots: ModelSlot[]; defaultModel: string | null; raw: Record<string, unknown>; stored: boolean }
 
+/**
+ * What the files older Apps read said was in use when the model list was last saved: the active
+ * profile and its model in `harness-model.json`, and the chosen CLI and its model in
+ * `harness-subscription.json`.
+ */
+type Mirrored = { profile: string; profileModel: string; cli: HarnessCli | null; cliModel: string }
+
 /** The model a run asks for: a configured model and its own reasoning effort for it, as a chat chose them. */
 export type ModelChoice = { model: string; effort?: string }
 
@@ -306,6 +313,14 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     listError = callFailure(error)
   }
 
+  /** What `harness-model.json` and `harness-subscription.json` say is in use now. */
+  const mirroredNow = (): Mirrored => ({
+    profile: value.activeProfile,
+    profileModel: value.profiles.find((profile) => profileKey(profile.provider, profile.baseUrl) === value.activeProfile)?.model ?? '',
+    cli: subscription.active,
+    cliModel: subscription.active === null ? '' : subscription.models[subscription.active],
+  })
+
   const entries = () => list.slots.flatMap((slot) => ('entry' in slot ? [slot.entry] : []))
   const entryById = (id: string) => entries().find((entry) => entry.id === id)
   const defaultEntry = () => (list.defaultModel === null ? undefined : entryById(list.defaultModel))
@@ -383,7 +398,10 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     revision += 1
   }
 
-  /** Writes the model list, keeping the records this version cannot read and every key it does not know. */
+  /**
+   * Writes the model list, keeping the records this version cannot read and every key it does not
+   * know, with what the files older Apps read say is in use.
+   */
   const saveList = () => {
     const models = list.slots.map((slot) => {
       if ('failure' in slot) return slot.unreadable
@@ -392,7 +410,9 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       else record['effort'] = slot.entry.effort
       return record
     })
-    persist(configHome, listFile, { ...list.raw, schemaVersion: MODELS_VERSION, default: list.defaultModel, models })
+    persist(configHome, listFile, {
+      ...list.raw, schemaVersion: MODELS_VERSION, default: list.defaultModel, models, mirrored: mirroredNow(),
+    })
     list = { ...list, stored: true }
     listError = undefined
     revision += 1
@@ -424,6 +444,12 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       persist(configHome, file, value)
     }
     if (subscription.active !== null || subscriptionError !== undefined) choose({ ...subscription, active: null })
+  }
+
+  /** Writes the files older Apps read for the default model, then the model list. */
+  const commit = () => {
+    mirrorDefault()
+    saveList()
   }
 
   /**
@@ -507,8 +533,33 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         : list.slots.map((slot) => ('entry' in slot && slot.entry.id === held.id ? { ...slot, entry } : slot)),
       defaultModel: entry.id,
     }
-    saveList()
-    mirrorDefault()
+    commit()
+  }
+
+  /**
+   * Makes the choice an older App made after the list was last saved the default: when the files it
+   * reads no longer say what the list mirrored into them, the chosen CLI's model, or else the active
+   * profile's model, becomes the default, added when the list holds no such model. A profile without a
+   * model is no choice.
+   */
+  const adoptOlderChoice = () => {
+    const held = list.raw['mirrored']
+    if (!list.stored || !isRecord(held) || loadError !== undefined || subscriptionError !== undefined) return
+    const now = mirroredNow()
+    const cliChanged = now.cli !== held['cli'] || now.cliModel !== held['cliModel']
+    const profileChanged = now.profile !== held['profile'] || now.profileModel !== held['profileModel']
+    const chosen: Omit<ModelRecord, 'id'> | undefined = cliChanged && now.cli !== null
+      ? { source: { kind: 'cli', cli: now.cli }, model: now.cliModel }
+      : (cliChanged || profileChanged) && now.profileModel !== '' && providerOfKey(now.profile) !== undefined
+        ? { source: { kind: 'api', profile: now.profile }, model: now.profileModel }
+        : undefined
+    if (chosen === undefined) return
+    const kept = entries().find((entry) => sameSource(entry.source, chosen.source) && entry.model === chosen.model)
+    if (kept === undefined && entries().length >= MAX_MODELS) return
+    const entry: ModelRecord = kept ?? { id: randomUUID(), ...chosen }
+    list = { ...list, slots: kept === undefined ? [...list.slots, { entry, raw: {} }] : list.slots, defaultModel: entry.id }
+    console.error(`[harness] 采用了旧版 App 选的模型 ${entry.model || entry.id}`)
+    commit()
   }
 
   /** The configured model a run on `choice` uses: its chosen model while that is configured, else the default. */
@@ -521,6 +572,8 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
     return { entry, ...(effort === undefined ? {} : { effort }) }
   }
 
+  adoptOlderChoice()
+
   return {
     settings: publicSettings,
     /**
@@ -532,8 +585,8 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       if (next.model === '') {
         await saveProfile(next, true)
         list = { ...list, defaultModel: null }
-        saveList()
         if (subscription.active !== null || subscriptionError !== undefined) choose({ ...subscription, active: null })
+        saveList()
         return publicSettings()
       }
       const { model, effort, ...connection } = next
@@ -560,8 +613,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       const first = defaultEntry() === undefined
       const entry: ModelRecord = { id: randomUUID(), ...await savedModel(params, first) }
       list = { ...list, slots: [...list.slots, { entry, raw: {} }], defaultModel: first ? entry.id : list.defaultModel }
-      saveList()
-      if (first) mirrorDefault()
+      commit()
       return publicSettings()
     },
     /** Saves model `input.id` anew. Throws `not-found` for a model the list does not hold. */
@@ -570,25 +622,28 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
       if (entryById(id) === undefined) throw new CallError('not-found', '这个模型不在列表里')
       const entry: ModelRecord = { id, ...await savedModel(params, list.defaultModel === id) }
       list = { ...list, slots: list.slots.map((slot) => ('entry' in slot && slot.entry.id === id ? { ...slot, entry } : slot)) }
-      saveList()
-      if (list.defaultModel === id) mirrorDefault()
+      commit()
       return publicSettings()
     },
-    /** Removes model `id`; a removed default leaves the first model left, in source order, the default. */
+    /**
+     * Removes model `id`; a removed default leaves the first model left that can run, in source order,
+     * the default, or else the first model left.
+     */
     removeModel(id: string): HarnessModelSettings {
       if (entryById(id) === undefined) throw new CallError('not-found', '这个模型不在列表里')
       list = { ...list, slots: list.slots.filter((slot) => !('entry' in slot && slot.entry.id === id)) }
-      if (list.defaultModel === id) list = { ...list, defaultModel: groups()[0]?.entries[0] ?? null }
-      saveList()
-      mirrorDefault()
+      if (list.defaultModel === id) {
+        const left = groups().flatMap((group) => group.entries).flatMap((held) => entries().filter((entry) => entry.id === held))
+        list = { ...list, defaultModel: (left.find(runnable) ?? left[0])?.id ?? null }
+      }
+      commit()
       return publicSettings()
     },
     /** Makes model `id` the default. Throws `not-found` for a model the list does not hold. */
     setDefaultModel(id: string): HarnessModelSettings {
       if (entryById(id) === undefined) throw new CallError('not-found', '这个模型不在列表里')
       list = { ...list, defaultModel: id }
-      saveList()
-      mirrorDefault()
+      commit()
       return publicSettings()
     },
     /** Whether model `id` is in the list and takes reasoning effort `effort`, when one is given. */

@@ -424,6 +424,7 @@ describe('model list', () => {
     expect(await config.runtime()).toMatchObject({ provider: 'openai', model: 'gpt-6.1', apiKey: 'openai-secret', effort: 'high' })
     expect(listOf(root)).toEqual({
       schemaVersion: 'meridian.harness-models.v1', default: saved.models[0]!.id,
+      mirrored: { profile: 'openai', profileModel: 'gpt-6.1', cli: null, cliModel: '' },
       models: saved.models.map((entry) => ({
         id: entry.id, source: entry.source, model: entry.model, ...(entry.effort === undefined ? {} : { effort: entry.effort }),
       })),
@@ -476,6 +477,100 @@ describe('model list', () => {
     expect(empty).toMatchObject({ models: [], defaultModel: null, sources: [], configured: false })
     expect(config.planModel()).toMatchObject({ configured: false })
     await expect(config.runtime()).rejects.toMatchObject({ reason: 'no-model' })
+  })
+
+  it('makes the first model left that can run, in source order, the default once the default is removed, else the first model left', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const config = await createHarnessModelConfig(root, credentialVault())
+    await config.addModel({ source: codex, model: 'gpt-6.1-sol' })
+    await config.addModel({ source: openai, model: 'gpt-6.1' })
+    const added = await config.addModel({ source: claude, model: 'opus' })
+    const [sol, gpt, opus] = added.models.map((entry) => entry.id) as [string, string, string]
+
+    expect(config.removeModel(sol).defaultModel).toBe(opus)
+    expect(config.removeModel(opus).defaultModel).toBe(gpt)
+  })
+
+  describe('a choice an older App made after the list was saved', () => {
+    /** Writes the subscription choice the way an older App saves it. */
+    const chooseCli = (root: string, active: 'claude' | 'codex' | null, models: { claude: string; codex: string }) => writeFileSync(
+      join(root, HARNESS_SUBSCRIPTION_FILENAME),
+      JSON.stringify({ schemaVersion: 'meridian.harness-subscription.v1', active, clis: { claude: { model: models.claude }, codex: { model: models.codex } } }),
+    )
+    /** Makes profile `key` active, running `model`, the way an older App saves a profile. */
+    const chooseProfile = (root: string, key: string, model: string) => {
+      const file = join(root, HARNESS_MODEL_CONFIG_FILENAME)
+      const held = JSON.parse(readFileSync(file, 'utf8')) as { activeProfile: string; profiles: Array<{ provider: string; model: string }> }
+      writeFileSync(file, JSON.stringify({
+        ...held, activeProfile: key, profiles: held.profiles.map((profile) => (profile.provider === key ? { ...profile, model } : profile)),
+      }))
+    }
+    /** A saved list: OpenAI's gpt-6.1 with a key and Claude's opus at the high effort, the default. */
+    const savedList = async () => {
+      const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+      const config = await createHarnessModelConfig(root, credentialVault())
+      await config.addModel({ source: { ...openai, apiKey: 'openai-secret' }, model: 'gpt-6.1' })
+      const added = await config.addModel({ source: claude, model: 'opus', effort: 'high' })
+      config.setDefaultModel(added.models[1]!.id)
+      return { root, gpt: added.models[0]!.id, opus: added.models[1]!.id }
+    }
+
+    it('adopts a subscription the older App chose, adding its model as the default when the list holds none', async () => {
+      const { root, gpt, opus } = await savedList()
+      chooseCli(root, 'codex', { claude: 'opus', codex: 'gpt-5.5' })
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      const settings = config.settings()
+      const adopted = settings.models.find((entry) => entry.source.kind === 'cli' && entry.source.cli === 'codex')!
+      expect(settings.models.map((entry) => entry.id)).toEqual([gpt, opus, adopted.id])
+      expect(adopted).toMatchObject({ model: 'gpt-5.5', configured: true })
+      expect(settings.defaultModel).toBe(adopted.id)
+      expect(await config.runtime()).toEqual({ source: 'cli', cli: 'codex', model: 'gpt-5.5' })
+      expect((await createHarnessModelConfig(root, credentialVault())).settings().defaultModel).toBe(adopted.id)
+    })
+
+    it('adopts the API model the older App made active, reusing the model the list holds', async () => {
+      const { root, gpt } = await savedList()
+      chooseProfile(root, 'openai', 'gpt-6.1')
+      chooseCli(root, null, { claude: 'opus', codex: '' })
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      expect(config.settings()).toMatchObject({ defaultModel: gpt })
+      expect(config.settings().models).toHaveLength(2)
+      expect(await config.runtime()).toMatchObject({ provider: 'openai', model: 'gpt-6.1', apiKey: 'openai-secret' })
+    })
+
+    it('adopts a model the older App gave the active profile while a subscription stays chosen', async () => {
+      const { root } = await savedList()
+      chooseProfile(root, 'openai', 'gpt-5.5')
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      const chosen = config.settings().models.find((entry) => entry.id === config.settings().defaultModel)
+      expect(chosen).toMatchObject({ source: { kind: 'api', profile: 'openai' }, model: 'gpt-5.5' })
+    })
+
+    it('keeps the default, and writes nothing, while the older Apps\' files say what the list last saved', async () => {
+      const { root, opus } = await savedList()
+      const before = readFileSync(join(root, HARNESS_MODELS_FILENAME))
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      expect(config.settings().defaultModel).toBe(opus)
+      expect(readFileSync(join(root, HARNESS_MODELS_FILENAME)).equals(before)).toBe(true)
+    })
+
+    it('adopts nothing from an API profile the older App left without a model', async () => {
+      const { root, opus } = await savedList()
+      chooseProfile(root, 'openai', '')
+      chooseCli(root, null, { claude: 'opus', codex: '' })
+
+      const config = await createHarnessModelConfig(root, credentialVault())
+
+      expect(config.settings().defaultModel).toBe(opus)
+    })
   })
 
   it('groups the models by source, API providers first, compatible services by host, then Claude, then ChatGPT, each source picking the default when it holds it, else its first model', async () => {
