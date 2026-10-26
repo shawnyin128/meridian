@@ -41,9 +41,24 @@ export const isClaimOp = (op: ProposalOp): op is ClaimOp => (CLAIM_OPS as readon
 /** Page id of a `<page>#<claim>` ref. */
 const pageOfRef = (ref: string): string => ref.split('#')[0]!
 
+/** The body link to page `id` labelled `label`. */
+export const labelledLink = (id: string, label: string): string => `[[${id}|${label}]]`
+
+/**
+ * Returns the id of every other page whose body links to aggregation `id` labelled with its title, in id
+ * order: the pages a rename of `id` to `title` rewrites. None when `title` is the title it has.
+ */
+export function relabelled(data: WikiData, id: string, title: string): string[] {
+  const held = data.pages[id]
+  if (held === undefined || held.fm.title === title) return []
+  const link = labelledLink(id, held.fm.title)
+  return Object.keys(data.pages).sort().filter((other) => other !== id && data.pages[other]!.body.includes(link))
+}
+
 /**
  * Returns the id of every page applying `ops` to `data` writes, in the order the ops first touch each:
- * the paper of a membership op, the id a create op makes, the page of every other op, the page of the
+ * the paper of a membership op, the id a create op makes, the page of every other op, the pages whose
+ * body labels a link to a renamed page with its old title, the page of the
  * claim a markConflict names as its target, and the page holding the other side of a conflict a
  * resolveConflict closes.
  */
@@ -53,6 +68,7 @@ export function touchedPages(proposal: { ops: ProposalOp[] }, data: WikiData): s
   for (const op of proposal.ops) {
     add(op.op === 'setMembership' || op.op === 'removeMembership' ? op.paper
       : op.op === 'createAggregation' ? op.id : op.page)
+    if (op.op === 'setAggregationMetadata') for (const id of relabelled(data, op.page, op.title)) add(id)
     if (op.op === 'markConflict' && op.conflict.against.kind === 'claim') add(pageOfRef(op.conflict.against.ref))
     if (op.op === 'resolveConflict') {
       const against = claimAt(data, `${op.page}#${op.claim}`)?.conflicts?.find((c) => c.id === op.conflict)?.against
@@ -433,6 +449,11 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
     }
     case 'setAggregationMetadata': {
       const page = aggregationOf(data, op.page)
+      const [from, to] = [labelledLink(op.page, page.fm.title), labelledLink(op.page, op.title)]
+      for (const id of relabelled(data, op.page, op.title)) {
+        const other = pages[id]!
+        pages[id] = { ...other, fm: { ...other.fm, updated: today }, body: other.body.replaceAll(from, to) } as typeof other
+      }
       const front = { ...page.fm }
       delete front.split_on
       pages[op.page] = {
@@ -524,7 +545,9 @@ function step(data: WikiData, op: ProposalOp, today: string, ops: ProposalOp[], 
 /**
  * Returns the data a proposal leaves behind when applied to `data`, op by op
  * in order, each op seeing the effect of the ones before it; every page an op
- * writes is stamped updated `today`. `data` is not modified. Throws on the
+ * writes is stamped updated `today`; a rename also relabels every other page's
+ * body link to the page that carries its old title, `[[id|old]]` becoming
+ * `[[id|new]]`. `data` is not modified. Throws on the
  * first op that is not valid against the data as it stands then: an
  * undeclared kind, a page id outside its kind's directory or not a single file
  * name or already taken, a missing or other-kind parent, a duplicate column

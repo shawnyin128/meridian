@@ -1658,7 +1658,7 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat', 'page']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),
@@ -2055,6 +2055,28 @@ export const WikiBacklinksParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Updates wiki body Markdown only; frontmatter and generated regions do not pass through this input. */
 export const WikiUpdateParamsSchema = z.object({ id: z.string(), body: z.string() }).strict()
+
+/** Moves the aggregation page `id` into the trash; its subpages move up under its own parents. */
+export const WikiDeleteParamsSchema = z.object({ id: z.string() }).strict()
+
+/** Names the aggregation `from` to merge into the aggregation `into`. */
+export const WikiMergePreviewParamsSchema = z.object({ from: z.string(), into: z.string() }).strict()
+
+/**
+ * Everything merging one aggregation into another writes, before it is written: for each page it
+ * writes, in the order written, the page's id, its display name and its changed lines, each starting
+ * with `-` (a line as it stands) or `+` (the line that takes its place or joins it); the merged page
+ * itself shows one `-` line, as it goes to the trash. Generated regions, which are refilled from what
+ * is written, are not among the lines. `fingerprint` names exactly what is shown, and `wiki.merge`
+ * takes it back.
+ */
+export const WikiMergePreviewSchema = z.object({
+  pages: z.array(z.object({ id: z.string(), title: z.string(), lines: z.array(z.string()) }).strict()),
+  fingerprint: z.string(),
+}).strict()
+
+/** Merges `from` into `into` as the preview fingerprinted `fingerprint` showed it. */
+export const WikiMergeParamsSchema = WikiMergePreviewParamsSchema.extend({ fingerprint: z.string() }).strict()
 
 /**
  * One proposal operation. All variants are writes: create aggregation, set or
@@ -2868,6 +2890,7 @@ export type ChangeEntry = z.infer<typeof ChangeEntrySchema>
 export type DiffPiece = z.infer<typeof DiffPieceSchema>
 export type RecordedChange = z.infer<typeof RecordedChangeSchema>
 export type TrashedEntry = z.infer<typeof TrashedEntrySchema>
+export type WikiMergePreview = z.infer<typeof WikiMergePreviewSchema>
 export type ProjectRecordedChange = z.infer<typeof ProjectRecordedChangeSchema>
 export type OptionalRecordedChange = z.infer<typeof OptionalRecordedChangeSchema>
 export type ReadingRecordedChange = z.infer<typeof ReadingRecordedChangeSchema>
@@ -3055,6 +3078,9 @@ export const CONTRACT_METHODS = [
   'wiki.cards',
   'wiki.apply',
   'wiki.update',
+  'wiki.delete',
+  'wiki.mergePreview',
+  'wiki.merge',
   'wiki.propose',
   'wiki.proposals',
   'wiki.decide',

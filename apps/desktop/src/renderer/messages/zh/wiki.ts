@@ -5,6 +5,13 @@ export const wiki = {
   paperKind: '论文',
   autoColumn: '自动',
   columnSettings: '列设置',
+  mergeInto: '合并到…',
+  merge: {
+    title: (from: string, into: string) => `把「${from}」合并到「${into}」`,
+    confirm: '合并',
+    merging: '正在合并',
+    done: '已合并',
+  },
   aggregation: {
     parentCount: (n: number) => `${n} 个上级`,
     cardFooter: (children: number | null, members: number, updated: string) =>
@@ -23,6 +30,7 @@ export const wiki = {
     addPaper: (paper: string, parent: string) => `把 ${paper} 加进 ${parent}`,
     moveOutPaper: (paper: string, parent: string) => `把 ${paper} 从 ${parent} 移出`,
     editMetadata: (title: string) => `修改 ${title} 的元数据`,
+    rename: (from: string, to: string) => `把 ${from} 改名为 ${to}`,
   },
   title: 'Wiki',
   subdivisionsHeading: (kind: string) => `细分${kind}`,

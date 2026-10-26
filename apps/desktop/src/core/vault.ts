@@ -9,7 +9,7 @@ import type {
   ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
   RelationFields, ResearchIdea, SearchHit,
   TaskFields, TaskPatch, TrashEntry, Watch, WatchFields, WikiAggregation, WikiAggregationCard, WikiHome,
-  WikiBacklink, WikiPaper, WikiSignal,
+  WikiBacklink, WikiMergePreview, WikiPaper, WikiSignal,
 } from '../shared/contract.js'
 import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
@@ -787,6 +787,42 @@ export interface VaultStore {
    * or `body` carries a generated-region marker line.
    */
   updateWikiPage(id: string, body: string): void
+
+  /**
+   * Moves the Wiki aggregation page with the given id into the trash, moves each of its subpages up
+   * under its own parents (to the top level when it has none), and refills the generated regions of
+   * every aggregation left. Every other reference to the page stays as written, so restoring its
+   * trash entry brings it back. Throws if no such aggregation exists or this version cannot read it
+   * or one of its subpages.
+   */
+  deleteWikiPage(id: string): void
+
+  /**
+   * Returns the id of every page deleteWikiPage(`id`) would write, in this order: the page, its
+   * subpages, then every other aggregation, whose generated regions it refills.
+   */
+  wikiDeletePages(id: string): string[]
+
+  /**
+   * Returns everything merging aggregation `from` into `into` would write (WikiMergePreview), writing
+   * nothing. Throws if either is not an aggregation this version can read, they are one page or of
+   * different kinds, an aggregation lacks its generated regions, or the merge would make a cycle.
+   */
+  previewWikiMerge(from: string, into: string): WikiMergePreview
+
+  /**
+   * Merges aggregation `from` into `into` as previewWikiMerge shows it, `from` going into the trash,
+   * and refills the generated regions of every aggregation. Throws a `changed` CallError, writing
+   * nothing, unless the preview as it stands now carries `fingerprint`, and throws as
+   * previewWikiMerge does.
+   */
+  mergeWikiPages(from: string, into: string, fingerprint: string): void
+
+  /**
+   * Returns the id of every page mergeWikiPages(`from`, `into`) would write: the pages its preview
+   * lists, then every other aggregation, whose generated regions it refills.
+   */
+  wikiMergePages(from: string, into: string): string[]
 
   /**
    * Applies a Harness paper-wiki proposal: replaces the paper page's body the way updateWikiPage does

@@ -1,3 +1,4 @@
+import { createHash } from 'node:crypto'
 import { readdirSync, readFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import { isAbsolute, join } from 'node:path'
@@ -14,7 +15,7 @@ import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
   Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry, InboxStream,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation,
-  ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch,
+  ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch, WikiMergePreview,
 } from '../shared/contract.js'
 import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
@@ -57,9 +58,10 @@ import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
 import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
 import {
-  applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, touchedPages,
+  applyProposal, changedLines, checkBody, conclusionClaims, describeOp, mergedMemberships, mergePlan, projectClaims, projectDisputes, HUMAN, isPaper,
+  pageVersion, recordText, touchedPages,
   wikiAggregation, wikiBacklinks, wikiCards, wikiHome, wikiPaper, wikiSignals,
-  type ClaimWorld, type PointName, type WikiData, type WikiPaperRecord,
+  type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 
 /** Trash entry with all content needed for restoration. `restorable` is derived from destination availability. */
@@ -74,6 +76,7 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
   | { kind: 'later'; later: LaterRecord; position: number }
   | { kind: 'chat'; chat: ChatRecord; position: number }
+  | { kind: 'page'; pageId: string; page: WikiAggregationRecord }
 )
 
 /** Seeded fixture change with cross-boundary fields but no undo/archive fields because it predates them. */
@@ -613,25 +616,86 @@ export function createFixtureStore(
     at: Date.parse(`${relative(date, builtOn)}T00:00:00Z`), restore: null,
   }))
 
+  /** The id of every aggregation, in id order. */
+  const aggregationIds = (): string[] => Object.keys(wiki.pages).sort().filter((id) => !isPaper(wiki.pages[id]!))
+
+  /** The aggregations directly under aggregation `id`, in id order. */
+  const subpagesOf = (id: string): string[] => aggregationIds()
+    .filter((other) => ((wiki.pages[other] as WikiAggregationRecord).fm.parents ?? []).includes(id))
+
   /**
-   * Paper-table topics and methods derive from memberships and update when memberships change.
-   * `updated` always comes from the page's current `fm.updated`; other derived values recalculate only
-   * when membership changes.
+   * The Wiki and the projects as merging aggregation `from` into `into` leaves them (see mergePlan),
+   * and the preview of that merge: each changed page's lines as recordText writes it, a project's as
+   * its JSON, fingerprinted.
+   */
+  const mergeOutcome = (from: string, into: string): {
+    next: WikiData; projects: FixtureProject[]; preview: WikiMergePreview
+  } => {
+    const plan = mergePlan(wiki, from, into)
+    const day = today()
+    const pages = { ...wiki.pages }
+    const target = pages[into] as WikiAggregationRecord
+    const { aliases, parents, columns, claims, body } = plan.intoFields
+    pages[into] = { ...target, fm: { ...target.fm, aliases, parents, columns, claims, updated: day }, body: body ?? target.body }
+    for (const { paper, cells } of plan.members) {
+      const held = pages[paper] as WikiPaperRecord
+      pages[paper] = { ...held, fm: { ...held.fm, memberships: mergedMemberships(held, plan, cells), updated: day } }
+    }
+    for (const { page, parents: next } of plan.children) {
+      const held = pages[page] as WikiAggregationRecord
+      pages[page] = { ...held, fm: { ...held.fm, parents: next, updated: day } }
+    }
+    for (const { page, claim } of plan.claims) {
+      const held = pages[page] as WikiAggregationRecord
+      pages[page] = { ...held, fm: { ...held.fm, claims: (held.fm.claims ?? []).map((c) => (c.id === claim.id ? claim : c)), updated: day } }
+    }
+    for (const id of new Set([into, ...plan.links])) {
+      const held = pages[id]!
+      pages[id] = { ...held, fm: { ...held.fm, updated: day }, body: held.body.split('\n').map(plan.rewriteLink).join('\n') } as typeof held
+    }
+    delete pages[from]
+    const projects = [...projectById.values()].flatMap((project) => {
+      if (!project.relations.some((g) => g.items.some((item) => item.page === from))) return []
+      return [{
+        ...project,
+        relations: project.relations.map((g) => ({ ...g, items: g.items.map((item) => (item.page === from ? { ...item, page: into } : item)) })),
+      }]
+    })
+    const shown = [
+      ...Object.keys(pages).sort().filter((id) => pages[id] !== wiki.pages[id]).map((id) => ({
+        id, title: pages[id]!.fm.title, lines: changedLines(recordText(wiki.pages[id]!), recordText(pages[id]!)),
+      })),
+      ...projects.map((project) => ({
+        id: `${PROJECT_PATH}${project.id}`, title: project.name,
+        lines: changedLines(JSON.stringify(projectById.get(project.id), null, 1), JSON.stringify(project, null, 1)),
+      })),
+      { id: from, title: wiki.pages[from]!.fm.title, lines: [`- ${from} 移入垃圾桶`] },
+    ]
+    const fingerprint = createHash('sha256').update(JSON.stringify(shown), 'utf8').digest('hex').slice(0, 16)
+    return { next: { ...wiki, pages }, projects, preview: { pages: shown, fingerprint } }
+  }
+
+  /**
+   * Paper-table topics and methods derive from memberships and the names of the aggregations they
+   * point at, and update when either changes. `updated` always comes from the page's current
+   * `fm.updated`; other derived values recalculate only when one of those changes.
    */
   const rederiveRows = (from: WikiData, to: WikiData): void => {
     for (const id of new Set([...Object.keys(from.pages), ...Object.keys(to.pages)])) {
       const page = to.pages[id]
-      if (page === undefined || page.kind !== 'paper' || page === from.pages[id]) continue
+      if (page === undefined || page.kind !== 'paper') continue
       const row = byId.get(id.slice(PAPER_PAGE.length))
       if (row === undefined) continue
-      const memberships = (p: WikiData['pages'][string] | undefined) =>
-        JSON.stringify((p as WikiPaperRecord | undefined)?.fm.memberships ?? [])
+      const memberships = (p: WikiData['pages'][string] | undefined, data = to) =>
+        JSON.stringify(((p as WikiPaperRecord | undefined)?.fm.memberships ?? [])
+          .map((m) => [m, data.pages[m.in]?.kind, data.pages[m.in]?.fm.title]))
+      if (page === from.pages[id] && memberships(page, from) === memberships(page)) continue
       const titles = (kind: string) => ((page as WikiPaperRecord).fm.memberships ?? [])
         .filter((m) => to.pages[m.in]?.kind === kind)
         .map((m) => (to.pages[m.in] as { fm: { title: string } }).fm.title)
       byId.set(row.id, {
         ...row,
-        ...(memberships(from.pages[id]) === memberships(page) ? {} : { topics: titles('topic'), methods: titles('method') }),
+        ...(memberships(from.pages[id], from) === memberships(page) ? {} : { topics: titles('topic'), methods: titles('method') }),
         updated: String(page.fm.updated),
       })
     }
@@ -1815,7 +1879,8 @@ export function createFixtureStore(
             ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
           ],
         })),
-        trashed: new Map(trash.flatMap((item) => (item.kind === 'paper' ? [[`${PAPER_PAGE}${item.paper.id}`, item.title] as const] : []))),
+        trashed: new Map(trash.flatMap((item) => (item.kind === 'paper' ? [[`${PAPER_PAGE}${item.paper.id}`, item.title] as const]
+          : item.kind === 'page' ? [[item.pageId, item.title] as const] : []))),
         missingRegions: [],
       })
     },
@@ -1865,6 +1930,46 @@ export function createFixtureStore(
       wiki = next
     },
 
+    deleteWikiPage(id) {
+      const page = wiki.pages[id]
+      if (page === undefined || isPaper(page)) throw new CallError('not-found', `wiki 聚合不存在：${id}`)
+      const pages = { ...wiki.pages }
+      for (const child of subpagesOf(id)) {
+        const held = pages[child] as WikiAggregationRecord
+        const parents = [...new Set((held.fm.parents ?? []).flatMap((p) => (p === id ? page.fm.parents ?? [] : [p])))]
+        pages[child] = { ...held, fm: { ...held.fm, parents: parents.filter((p) => p !== child), updated: today() } }
+      }
+      delete pages[id]
+      const next = { ...wiki, pages }
+      rederiveRows(wiki, next)
+      wiki = next
+      trash = [{ id: nextId('trash'), kind: 'page', title: page.fm.title, deletedAt: nowMs(), pageId: id, page }, ...trash]
+    },
+
+    wikiDeletePages(id) {
+      const children = subpagesOf(id)
+      return [id, ...children, ...aggregationIds().filter((other) => other !== id && !children.includes(other))]
+    },
+
+    previewWikiMerge(from, into) {
+      return mergeOutcome(from, into).preview
+    },
+
+    mergeWikiPages(from, into, fingerprint) {
+      const { next, projects, preview } = mergeOutcome(from, into)
+      if (preview.fingerprint !== fingerprint) throw new CallError('changed', `「${from}」或「${into}」在你看过合并内容之后改过，没有合并`)
+      const page = wiki.pages[from] as WikiAggregationRecord
+      rederiveRows(wiki, next)
+      wiki = next
+      for (const project of projects) projectById.set(project.id, project)
+      trash = [{ id: nextId('trash'), kind: 'page', title: page.fm.title, deletedAt: nowMs(), pageId: from, page }, ...trash]
+    },
+
+    wikiMergePages(from, into) {
+      const written = mergeOutcome(from, into).preview.pages.map((p) => p.id)
+      return [...written, ...aggregationIds().filter((id) => !written.includes(id))]
+    },
+
     applyPaperWikiDraft(id, body) {
       const page = wiki.pages[id]
       if (page === undefined) throw new CallError('not-found', `wiki 页不存在：${id}`)
@@ -1912,7 +2017,10 @@ export function createFixtureStore(
           continue
         }
         if (text === null) delete next[path]
-        else next[path] = JSON.parse(text) as WikiData['pages'][string]
+        else {
+          next[path] = JSON.parse(text) as WikiData['pages'][string]
+          trash = trash.filter((item) => item.kind !== 'page' || item.pageId !== path)
+        }
       }
       const nextWiki = { ...wiki, pages: next }
       rederiveRows(wiki, nextWiki)
@@ -1930,6 +2038,7 @@ export function createFixtureStore(
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
           : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
+          : item.kind === 'page' ? wiki.pages[item.pageId] === undefined
           : item.kind !== 'paper' || !byId.has(item.paper.id),
       }))
     },
@@ -1965,6 +2074,12 @@ export function createFixtureStore(
             return restored
           })
         }
+      }
+      else if (item.kind === 'page') {
+        if (wiki.pages[item.pageId] !== undefined) throw new CallError('refused', `原来的位置已经被另一页占了，恢复会盖掉它：${item.pageId}`)
+        const next = { ...wiki, pages: { ...wiki.pages, [item.pageId]: item.page } }
+        rederiveRows(wiki, next)
+        wiki = next
       }
       else if (item.kind === 'later') later = [...later.slice(0, item.position), item.later, ...later.slice(item.position)]
       else if (item.kind === 'idea') ideas = [structuredClone(item.idea), ...ideas]

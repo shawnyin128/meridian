@@ -3148,4 +3148,110 @@ describe('vault store on the aggregation layout', () => {
       expect(saved.find((row) => row['id'] === 'change-902')).toEqual(garbage)
     })
   })
+
+  describe('Wiki 卡片的更多菜单：改名、合并、删除', () => {
+    /** Every Markdown file under the vault's `wiki/`, by path, with its text. */
+    const pages = (): Record<string, string> => Object.fromEntries(
+      (readdirSync(join(vault, 'wiki'), { recursive: true, encoding: 'utf8' }) as string[])
+        .filter((name) => name.endsWith('.md')).sort()
+        .map((name) => [name, readFileSync(join(vault, 'wiki', name), 'utf8')]),
+    )
+    const file = (id: string) => join(vault, 'wiki', `${id}.md`)
+    const WO = 'topics/ptq-weight-only'
+    const WA = 'topics/ptq-weight-activation'
+
+    it('改名：正文里标签写着旧名的链接跟着改成新名，别的标签不动；论文表里的主题名跟着变；撤销逐字节还原', () => {
+      store.updateWikiPage('papers/2306.00978', `见 [[${WO}|Weight-only PTQ]] 和 [[${WO}|仅权重]]，还有 [[${WO}]]。`)
+      const before = pages()
+      store.applyProposal({
+        source: 'user', title: '改名',
+        ops: [{ op: 'setAggregationMetadata', page: WO, title: 'W-only PTQ', splitOn: null }],
+      })
+      expect(store.wikiPaper('papers/2306.00978').body).toBe(`见 [[${WO}|W-only PTQ]] 和 [[${WO}|仅权重]]，还有 [[${WO}]]。`)
+      expect(store.getPaper('2210.17323').topics).toContain('W-only PTQ')
+      expect(store.getPaper('2210.17323').topics).not.toContain('Weight-only PTQ')
+      store.undoChange(store.listChanges()[0]!.id)
+      expect(pages()).toEqual(before)
+      expect(store.getPaper('2210.17323').topics).toContain('Weight-only PTQ')
+    })
+
+    it('删掉一页：页进垃圾桶，下面的细分挂到它的上级下，成员的归属原样留着；记一条变动，撤销逐字节还原，垃圾桶里那一条也没了', () => {
+      const before = pages()
+      store.deleteWikiPage('topics/ptq')
+      expect(existsSync(file('topics/ptq'))).toBe(false)
+      expect(store.listTrash()[0]).toMatchObject({ kind: 'page', title: 'PTQ', restorable: true })
+      expect(store.wikiAggregation(WO).parents.map((p) => p.id)).toEqual(['topics/quantization'])
+      expect(store.wikiAggregation('topics/kv-cache-quantization').parents.map((p) => p.id))
+        .toEqual(['topics/quantization', 'topics/long-context-inference'])
+      expect(store.wikiAggregation('topics/quantization').children.map((c) => c.id))
+        .toEqual(expect.arrayContaining([WO, WA, 'topics/kv-cache-quantization']))
+      expect(readFileSync(file('topics/quantization'), 'utf8')).not.toContain('[[topics/ptq|')
+      expect(store.listChanges()[0]).toMatchObject({ title: 'Wiki · 「PTQ」· 删掉', undoable: true })
+      store.undoChange(store.listChanges()[0]!.id)
+      expect(pages()).toEqual(before)
+      expect(store.listTrash().filter((entry) => entry.kind === 'page')).toEqual([])
+    })
+
+    it('从垃圾桶恢复删掉的页：回到原处，上级页的细分里又有它；原处被另一页占着时恢复不了，那一页一个字节不动', () => {
+      const held = readFileSync(file('topics/qat'), 'utf8')
+      store.deleteWikiPage('topics/qat')
+      const entry = store.listTrash()[0]!
+      store.restoreTrash(entry.id)
+      expect(readFileSync(file('topics/qat'), 'utf8')).toBe(held)
+      expect(store.wikiAggregation('topics/quantization').children.map((c) => c.id)).toContain('topics/qat')
+      store.deleteWikiPage('topics/qat')
+      writeFileSync(file('topics/qat'), '---\nkind: topic\ntitle: 别的\n---\n')
+      expect(store.listTrash()[0]).toMatchObject({ kind: 'page', restorable: false })
+      expect(() => store.restoreTrash(store.listTrash()[0]!.id)).toThrow(/占/)
+      expect(readFileSync(file('topics/qat'), 'utf8')).toBe('---\nkind: topic\ntitle: 别的\n---\n')
+    })
+
+    it('合并：预览列出每一页要改的行；按预览合并后成员、列、结论、链接和项目关联都到了留下的那一页，被并的页进垃圾桶；撤销是一条，逐字节还原', () => {
+      const project = store.createProject('量化实验')
+      store.createRelation(project, { group: 'Wiki', text: '权重激活', page: WA })
+      store.updateWikiPage('papers/2306.00978', `对照 [[${WA}|W-A]] 与 [[${WA}#^rotation-kv]]。`)
+      const before = pages()
+      const preview = store.previewWikiMerge(WA, WO)
+      expect(pages()).toEqual(before)
+      expect(preview.pages.map((p) => p.id)).toEqual(expect.arrayContaining([
+        WO, WA, 'papers/2308.13137', 'papers/2211.10438', 'topics/kv-cache-quantization', 'papers/2306.00978', `projects/${project}`,
+      ]))
+      const lines = (id: string) => preview.pages.find((p) => p.id === id)!.lines
+      expect(lines(WA)).toEqual([`- ${WA} 移入垃圾桶`])
+      expect(lines('papers/2306.00978')).toContain(`+ 对照 [[${WO}|W-A]] 与 [[${WO}#^rotation-kv]]。`)
+      expect(lines(`projects/${project}`).some((line) => line.startsWith('+') && line.includes(`page: "${WO}"`))).toBe(true)
+
+      store.updateWikiPage(WA, '## 问题\n改过了。')
+      const edited = pages()
+      expect(() => store.mergeWikiPages(WA, WO, preview.fingerprint)).toThrow(expect.objectContaining({ reason: 'changed' }))
+      expect(pages()).toEqual(edited)
+
+      const changes = store.listChanges().length
+      store.mergeWikiPages(WA, WO, store.previewWikiMerge(WA, WO).fingerprint)
+      expect(existsSync(file(WA))).toBe(false)
+      expect(store.listTrash()[0]).toMatchObject({ kind: 'page', title: 'Weight-activation PTQ' })
+      const kept = store.wikiAggregation(WO)
+      expect(kept.rows.map((r) => r.paper.id)).toEqual(expect.arrayContaining(['papers/2211.10438', 'papers/2308.13137', 'papers/2405.16406']))
+      expect(kept.columns.map((c) => c.key)).toEqual(['bits', 'needs_calib', 'backprop', 'claim', 'transform_where', 'learned'])
+      expect(kept.claims.map((c) => c.id)).toContain('rotation-kv')
+      expect(kept.body).toContain('## 并自「Weight-activation PTQ」')
+      expect(store.wikiPaper('papers/2308.13137').memberships.filter((ms) => ms.aggregation.id === WO)).toHaveLength(1)
+      expect(store.wikiAggregation('topics/kv-cache-quantization').claims.find((c) => c.id === 'per-channel-keys')!.conflicts[0]!.against)
+        .toEqual({ kind: 'claim', ref: `${WO}#rotation-kv` })
+      expect(store.wikiPaper('papers/2306.00978').body).toBe(`对照 [[${WO}|W-A]] 与 [[${WO}#^rotation-kv]]。`)
+      expect(store.getProject(project).relations.flatMap((g) => g.items).map((item) => item.page)).toContain(WO)
+      expect(store.listChanges().length).toBe(changes + 1)
+      store.undoChange(store.listChanges()[0]!.id)
+      expect(pages()).toEqual(edited)
+      expect(store.listTrash().filter((entry) => entry.kind === 'page')).toEqual([])
+    })
+
+    it('合并：并进自己或并进另一种页时拒绝，什么都不写；上级并进自己的细分可以', () => {
+      const before = pages()
+      expect(() => store.previewWikiMerge('topics/quantization', 'topics/ptq')).not.toThrow()
+      expect(() => store.previewWikiMerge('topics/ptq', 'topics/ptq')).toThrow(/自己/)
+      expect(() => store.previewWikiMerge('topics/ptq', 'methods/rotation')).toThrow(/同一种/)
+      expect(pages()).toEqual(before)
+    })
+  })
 })

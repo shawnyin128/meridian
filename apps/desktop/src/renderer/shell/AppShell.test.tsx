@@ -1241,7 +1241,7 @@ describe('垃圾桶的分组顺序', () => {
   /** The sidebar row each trash kind's group stands for; null for a kind the sidebar has no row for. */
   const SIDEBAR_ROW: Record<TrashEntry['kind'], string | null> = {
     attachment: null, chat: '[data-sect="chats"]', idea: '[data-desk="ideas"]', inbox: '#rowInboxAll',
-    later: '[data-desk="later"]', paper: '[data-desk="papers"]', project: '[data-desk="resproj"]',
+    later: '[data-desk="later"]', page: '[data-desk="wiki"]', paper: '[data-desk="papers"]', project: '[data-desk="resproj"]',
   }
 
   afterEach(() => { fixture.trash = [] })
