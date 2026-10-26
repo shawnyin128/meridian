@@ -6,7 +6,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 const vault = vi.hoisted(() => ({ root: '/vaults/a' }))
 vi.mock('../ipc.js', () => ({ library: { location: () => Promise.resolve({ root: vault.root }) } }))
 
-const { DraftsProvider, keptDraftsKey, useDrafts, useKeptTargets, usePruneDrafts } = await import('./useDrafts.js')
+const { DraftsProvider, editText, keptDraftsKey, useDrafts, useKeptTargets, usePruneDrafts } = await import('./useDrafts.js')
 
 declare global {
   var IS_REACT_ACT_ENVIRONMENT: boolean
@@ -196,5 +196,24 @@ describe('kept drafts', () => {
     act(() => found[0]!.drop())
     expect(found).toEqual([])
     expect(window.localStorage.getItem(keptDraftsKey('/vaults/a'))).not.toContain('cell:remark')
+  })
+})
+
+describe('editText', () => {
+  /** Drafts held in a plain map, as a store outside React holds them. */
+  const mapDrafts = <D,>() => {
+    const held = new Map<string, D>()
+    return { get: (target: string) => held.get(target), set: (target: string, draft: D) => { held.set(target, draft) }, drop: (target: string) => { held.delete(target) } }
+  }
+
+  it('says the edit changed only once its text differs from the stored text it started from, typing back to it included', () => {
+    const drafts = mapDrafts<{ text: string; base: string }>()
+    expect(editText(drafts, 'memo', '原文').changed).toBe(false)
+    editText(drafts, 'memo', '原文').start()
+    expect(editText(drafts, 'memo', '原文').changed).toBe(false)
+    editText(drafts, 'memo', '原文').change('原文加一句')
+    expect(editText(drafts, 'memo', '原文').changed).toBe(true)
+    editText(drafts, 'memo', '原文').change('原文')
+    expect(editText(drafts, 'memo', '原文').changed).toBe(false)
   })
 })

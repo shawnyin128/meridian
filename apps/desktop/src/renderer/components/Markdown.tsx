@@ -1,7 +1,7 @@
-import { useEffect, useMemo, useRef } from 'react'
-import type { ReactNode, RefObject } from 'react'
+import { useMemo, useRef, useState } from 'react'
+import type { KeyboardEvent, MouseEvent, ReactNode } from 'react'
 import { useScrollFade } from '../hooks/useScrollFade.js'
-import type { Parent, Root } from 'mdast'
+import type { Node, Parent, Root } from 'mdast'
 import ReactMarkdown from 'react-markdown'
 import type { Components } from 'react-markdown'
 import rehypeKatex from 'rehype-katex'
@@ -11,7 +11,12 @@ import 'katex/dist/katex.min.css'
 import type { WikiRef } from '../../shared/contract.js'
 import { commitKeys } from '../lib/keyboard.js'
 import { EntityLink } from './EntityLink.js'
-import { MarkdownEditor } from './MarkdownEditor.js'
+import { MarkdownEditor, type EditorStart } from './MarkdownEditor.js'
+import { CommitActions } from './CommitActions.js'
+import { EmptyState } from './EmptyState.js'
+import { SectionHeading } from './PageShell.js'
+import type { TextEdit } from '../hooks/useDrafts.js'
+import { useOnLeave } from '../hooks/useOnLeave.js'
 import { remarkPaperText } from './paper/paper-text.js'
 import { SourceAnchor } from './SourceAnchor.js'
 import './Markdown.css'
@@ -49,6 +54,19 @@ function remarkHeadingIds() {
     }
   }
   return (tree: Root) => visit(tree)
+}
+
+/**
+ * remark plugin: gives each top-level block, and each item of a top-level list, the attribute
+ * `data-line`, the line it starts on.
+ */
+function remarkBlockLines() {
+  const mark = (node: Node) => {
+    if (node.position === undefined) return
+    const data = node.data as { hProperties?: Record<string, unknown> } | undefined
+    Object.assign(node, { data: { ...data, hProperties: { ...data?.hProperties, 'data-line': node.position.start.line } } })
+  }
+  return (tree: Root) => tree.children.forEach((child) => (child.type === 'list' ? child.children.forEach(mark) : mark(child)))
 }
 
 /**
@@ -130,21 +148,24 @@ function components(
  * absent. When `titles` is given, an id missing from it is not a page in the vault and its mark
  * stays as written; without `titles` (a remark), every mark becomes a link. With `latexText`, the
  * text outside code and formulas renders LaTeX text commands as `PaperText` does, and a single `~`
- * is a no-break space rather than strikethrough.
+ * is a no-break space rather than strikethrough. With `lines`, each top-level block, and each item
+ * of a top-level list, carries `data-line`, the line of `src` it starts on.
  */
-export function Markdown({ src, onOpen, onAnchor, titles, latexText = false }: {
+export function Markdown({ src, onOpen, onAnchor, titles, latexText = false, lines = false }: {
   src: string
   onOpen?: (id: string) => void
   onAnchor?: (page: number) => void
   titles?: Record<string, WikiRef>
   latexText?: boolean
+  lines?: boolean
 }) {
   const parts = useMemo(() => components(onOpen, onAnchor, titles), [onOpen, onAnchor, titles])
+  const marks = lines ? [remarkHeadingIds, remarkBlockLines] : [remarkHeadingIds]
   return (
     <ReactMarkdown
       remarkPlugins={latexText
-        ? [[remarkGfm, { singleTilde: false }], remarkMath, remarkHeadingIds, remarkPaperText, remarkAnchorSeparators]
-        : [remarkGfm, remarkMath, remarkHeadingIds, remarkAnchorSeparators]}
+        ? [[remarkGfm, { singleTilde: false }], remarkMath, ...marks, remarkPaperText, remarkAnchorSeparators]
+        : [remarkGfm, remarkMath, ...marks, remarkAnchorSeparators]}
       rehypePlugins={[rehypeKatex]} components={parts}
     >
       {desugar(src, titles)}
@@ -175,57 +196,114 @@ export function headingsOf(src: string): Heading[] {
 }
 
 /**
- * One container that switches between the rendered result and the Markdown source: with `editing`
- * false it renders `text` as Markdown, or `empty` alone, outside the container, when the string is
- * empty; with it true it is a contentEditable holding the source, focused on entry, where Esc calls
- * `onCancel` and ⌘Enter on macOS, Ctrl+Enter elsewhere, calls `onSave`, unless an input method is composing.
- * The caller places EditActions and reads `box`'s `innerText` on save; `onType` receives that text
- * as it is typed. While editing, the box keeps the source it opened with, as a changed `text` would
- * move the caret. With `live`, the source is
- * edited in a MarkdownEditor inside the container instead, under the same keys, which renders every
- * block the cursor is not on as the rendered result does; the caller saves the source it last
- * received through `live.onChange`. `className` is appended to the container.
+ * A section of Markdown text edited in place: the heading `title` at `level`, then the text, which
+ * renders as Markdown, or as the section's empty state when it is empty. `edit` is the text's kept
+ * edit (see `editText`). A click on the text, except on a link, a control or a selection, opens the
+ * edit with the cursor where the click landed, and so does Enter on the focused text. While it is
+ * open the text is a MarkdownEditor in a box with the class `src`, and the heading holds Cancel and
+ * Save. ⌘Enter on macOS, Ctrl+Enter elsewhere, Save, a press outside the heading and the box, and
+ * focus leaving them, all save, unless the section is inside a hidden element; Esc and Cancel drop
+ * the edit. Saving an unchanged edit drops it, and an edit that is `stale` or `saving` is not saved,
+ * nor, with `required`, one whose text is empty: Save is then held and leaving keeps the edit open.
+ * `onSave` receives the changed text trimmed, and the caller drops the edit once it is saved.
+ * `className` is appended to the text's container.
  */
-export function MarkdownBox({ text, editing, box, onCancel, onSave, onOpen, onAnchor, titles, empty, className, live, onType }: {
-  text: string
-  editing: boolean
-  box: RefObject<HTMLDivElement | null>
-  onCancel: () => void
-  /** Called on ⌘Enter on macOS, Ctrl+Enter elsewhere, while editing. */
-  onSave: () => void
+export function MarkdownSection({
+  title, level = 'section', edit, onSave, saving = false, required = false, className, onOpen, onAnchor, titles,
+}: {
+  title: ReactNode
+  level?: 'section' | 'group'
+  edit: TextEdit
+  onSave: (text: string) => void
+  saving?: boolean
+  required?: boolean
+  className?: string
   onOpen?: (id: string) => void
   onAnchor?: (page: number) => void
   titles?: Record<string, WikiRef>
-  empty: ReactNode
-  className?: string
-  live?: { onChange: (text: string) => void }
-  onType?: (text: string) => void
 }) {
-  const source = useRef(text)
-  if (!editing) source.current = text
-  useEffect(() => { if (editing && live === undefined) box.current?.focus() }, [editing, box, live])
-  const classes = `md${editing ? ' src' : ''}${className === undefined ? '' : ` ${className}`}`
-  const keys = commitKeys({ multiline: true, onSave, onCancel })
+  const head = useRef<HTMLDivElement>(null)
+  const box = useRef<HTMLDivElement>(null)
+  const [inside] = useState(() => [head])
+  const start = useRef<EditorStart | undefined>(undefined)
+  const missing = required && edit.text.trim() === ''
+  const save = () => {
+    if (saving || edit.stale || missing) return
+    if (edit.changed) onSave(edit.text.trim())
+    else edit.drop()
+  }
+  useOnLeave(box, () => { if (box.current?.closest('[hidden]') === null) save() }, inside)
+  const open = (text: HTMLElement, at: EditorStart | undefined) => {
+    // The editor's blocks are drawn only after it mounts; until then the text keeps its height, so
+    // the page around it does not move.
+    text.style.minHeight = `${text.offsetHeight}px`
+    requestAnimationFrame(() => { text.style.minHeight = '' })
+    start.current = at
+    edit.start()
+  }
+  const click = (event: MouseEvent<HTMLDivElement>) => {
+    const target = event.target as Element
+    if (target.closest('a, button') !== null || window.getSelection()?.isCollapsed === false) return
+    const line = Number(target.closest('[data-line]')?.getAttribute('data-line'))
+    open(event.currentTarget, line > 0 ? { line, x: event.clientX, y: event.clientY } : undefined)
+  }
+  const keys = (event: KeyboardEvent<HTMLDivElement>) => {
+    if (event.key === 'Enter' && event.target === event.currentTarget) open(event.currentTarget, undefined)
+  }
+  const classes = `md${edit.editing ? ' src' : ''}${className === undefined ? '' : ` ${className}`}`
   // Under exactOptionalPropertyTypes an absent onOpen cannot be passed as undefined; it must be left out.
   const links = {
     ...(onOpen === undefined ? {} : { onOpen }), ...(onAnchor === undefined ? {} : { onAnchor }),
     ...(titles === undefined ? {} : { titles }),
   }
-  if (editing && live !== undefined) {
-    return (
-      <div className={classes} ref={box} onKeyDown={keys}>
-        <MarkdownEditor text={text} onChange={live.onChange} preview={(source) => <Markdown src={source} {...links} />} />
-      </div>
-    )
-  }
-  return editing
-    ? (
+  return (
+    <>
+      <SectionHeading
+        ref={head} level={level}
+        actions={edit.editing
+          ? <CommitActions place="heading" saving={saving} canSave={!edit.stale && !missing} onCancel={edit.drop} onSave={save} />
+          : undefined}
+      >{title}
+      </SectionHeading>
+      {/* One element in both states: it may hold the focus, and the focus leaving with the element would move the page. */}
       <div
-        className={classes} contentEditable suppressContentEditableWarning ref={box} onKeyDown={keys}
-        onInput={(e) => onType?.(e.currentTarget.innerText)}
-      >{source.current}</div>
-    )
-    : text === ''
-      ? empty
-      : <div className={classes}><Markdown src={text} {...links} /></div>
+        className={classes} ref={edit.editing ? box : undefined} tabIndex={edit.editing ? -1 : 0}
+        onClick={edit.editing ? undefined : click}
+        onKeyDown={edit.editing ? commitKeys({ multiline: true, onSave: save, onCancel: edit.drop }) : keys}
+      >
+        {edit.editing
+          ? (
+            <MarkdownEditor
+              text={edit.text} onChange={edit.change} start={start.current}
+              preview={(source) => <Markdown src={source} {...links} />}
+            />
+          )
+          : edit.text === '' ? <EmptyState variant="section" /> : <Markdown src={edit.text} lines {...links} />}
+      </div>
+    </>
+  )
+}
+
+/**
+ * A long Markdown text as a boxed form field: a MarkdownEditor over `text`, not focused on mount, in
+ * the field look of the shared form controls, which shows focus while the editor holds it and the
+ * refused look while `invalid`. `label` names the text and `placeholder` shows while it is empty;
+ * `onChange` receives the whole source after each edit. `text` is read once, on mount.
+ */
+export function MarkdownField({ text, onChange, label, placeholder, invalid }: {
+  text: string
+  onChange: (text: string) => void
+  label: string
+  placeholder?: string
+  invalid?: true | undefined
+}) {
+  return (
+    <div className="form-control form-control-field md form-markdown" aria-invalid={invalid}>
+      <MarkdownEditor
+        text={text} onChange={onChange} autoFocus={false} label={label}
+        {...(placeholder === undefined ? {} : { placeholder })}
+        preview={(source) => <Markdown src={source} />}
+      />
+    </div>
+  )
 }

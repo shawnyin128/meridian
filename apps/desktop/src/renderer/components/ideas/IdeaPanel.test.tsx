@@ -55,7 +55,7 @@ describe('IdeaPanel', () => {
     expect(headings()).toEqual(['内容', '来源'])
     expect(host.querySelector('.idea-panel-body')!.textContent).toBe('先做一个最小探针。')
     const order = [...host.querySelectorAll('.idea-panel-body, .probe, .idea-panel-source')].map((el) => el.className)
-    expect(order).toEqual(['idea-panel-body', 'probe', 'idea-panel-source'])
+    expect(order).toEqual(['md idea-panel-body', 'probe', 'idea-panel-source'])
     expect(host.querySelector('.idea-panel-source')!.textContent).toBe('EAGLE-2 · 论文讨论')
     act(() => head.querySelector<HTMLButtonElement>('.panel-close')!.click())
     expect(onClose).toHaveBeenCalledOnce()
@@ -84,10 +84,15 @@ describe('IdeaPanel', () => {
     expect(host.textContent).not.toContain('手动添加')
   })
 
-  it('编辑时编辑器换掉内容那一节', () => {
+  it('内容按 Markdown 显示;宿主给了自己的内容一节时换掉它', () => {
+    act(() => root.render(
+      <MessagesProvider><IdeaPanel idea={{ ...IDEA, body: '### 要验证\n\n- **一条**' }} onClose={vi.fn()} /></MessagesProvider>,
+    ))
+    expect(host.querySelector('.idea-panel-body h3')!.textContent).toBe('要验证')
+    expect(host.querySelector('.idea-panel-body li strong')!.textContent).toBe('一条')
     act(() => root.render(
       <MessagesProvider>
-        <IdeaPanel idea={IDEA} onClose={vi.fn()} editor={<section className="editor-probe" />} />
+        <IdeaPanel idea={IDEA} onClose={vi.fn()} body={<section className="editor-probe" />} />
       </MessagesProvider>,
     ))
     expect(host.querySelector('.editor-probe')).not.toBeNull()

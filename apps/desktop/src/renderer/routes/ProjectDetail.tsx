@@ -261,7 +261,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
             {draft === null ? null : (
               <DraftSlot className="project-idea-draft" slot={ideaDraft.slot}>
                 <IdeaDraft
-                  draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
+                  key={projectId} draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
                   onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
                 />
               </DraftSlot>
@@ -973,7 +973,7 @@ export function ProjectDetail({
             />
 
             <ProjectMemo
-              edit={editText(edits, 'memo', project.memo)} onOpen={openWikiPage}
+              key={projectId} edit={editText(edits, 'memo', project.memo)} onOpen={openWikiPage}
               onSave={(memo) => applyWrite(updateProject({ memo }))}
             />
           </div>

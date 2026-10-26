@@ -210,9 +210,13 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
   expect(paper.body).toBe('')
   await expect(shown(win).locator('.paper-understanding')).toBeVisible()
-  await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容编辑'])
-  await expect(shown(win).locator('.wkmain > .empty-state')).toHaveText('—')
-  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
+  await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容'])
+  await expect(shown(win).locator('.wkmain > .md > .empty-state')).toHaveText('—')
+  // An empty body is written by clicking its empty row, which opens the editor in its place.
+  await shown(win).locator('.wkmain > .md > .empty-state').click()
+  await expect(shown(win).locator('.wkmain .md.src .cm-content')).toBeFocused()
+  await win.keyboard.press('Escape')
+  await expect(shown(win).locator('.wkmain .md.src')).toHaveCount(0)
   await expect(shown(win).locator('.split-rail .empty-state')).toHaveText('—')
   // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
   // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
@@ -315,16 +319,17 @@ test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win,
   expect(y).toBeLessThan(top + 60)
 })
 
-test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdown 渲染,目录跟着;撤销后恢复', async ({ win }) => {
+test('点正文就在原处换成实时编辑器,「保存」后按 markdown 渲染,目录跟着;撤销后恢复', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
-  const box = shown(win).locator('.md.src')
-  await expect(box).toBeFocused()
-  await expect(box).toHaveText(before)
-  await box.press('Control+End')
-  await box.pressSequentially('\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。')
+  const body = shown(win).locator('.wkmain > .md').last()
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(0)
+  await body.locator('p').first().click()
+  const editor = shown(win).locator('.md.src .cm-content')
+  await expect(editor).toBeFocused()
+  await win.keyboard.press('ControlOrMeta+End')
+  await win.keyboard.type('\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。')
   await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '保存' }).click()
 
   await expect(shown(win).locator('.wkmain .md h2', { hasText: '端到端加的一节' })).toHaveCount(1)
@@ -332,7 +337,7 @@ test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdo
   await expect(shown(win).locator('.wkmain .md .katex')).toHaveCount(1)
   await expect(shown(win).locator('.wktoc li', { hasText: '端到端加的一节' })).toHaveCount(1)
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
-  expect((await aggFromCore(win, 'topics/quantization')).body).toContain('## 端到端加的一节')
+  expect((await aggFromCore(win, 'topics/quantization')).body).toBe(`${before}\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。`.trim())
 
   const changes = await call<{ id: string; title: string; undoable: boolean }[]>(win, 'changelog.list', {})
   expect(changes[0]).toMatchObject({ title: 'Wiki · 「Quantization」· 改了正文', undoable: true })
@@ -345,15 +350,35 @@ test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdo
   expect((await aggFromCore(win, 'topics/quantization')).body).toBe(before)
 })
 
+test('点到正文外面就存下改动;没改就只收起,什么也不写', async ({ win }) => {
+  await gotoWiki(win)
+  await shown(win).locator('[data-wk="topics/quantization"]').click()
+  const before = (await aggFromCore(win, 'topics/quantization')).body
+  const changes = (await call<unknown[]>(win, 'changelog.list', {})).length
+  const body = shown(win).locator('.wkmain > .md').last()
+  await body.locator('p').first().click()
+  await shown(win).locator('.desk-head .t').click()
+  await expect(shown(win).locator('.md.src')).toHaveCount(0)
+  expect(await call<unknown[]>(win, 'changelog.list', {})).toHaveLength(changes)
+
+  await body.locator('p').first().click()
+  await win.keyboard.press('ControlOrMeta+End')
+  await win.keyboard.type('\n\n点外面存下的一句。')
+  await shown(win).locator('.desk-head .t').click()
+  await expect(shown(win).locator('.md.src')).toHaveCount(0)
+  await expect(body).toContainText('点外面存下的一句。')
+  expect((await aggFromCore(win, 'topics/quantization')).body).toBe(`${before}\n\n点外面存下的一句。`.trim())
+})
+
 test('Esc 放弃这一次编辑,正文照旧', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
-  await shown(win).locator('.md.src').pressSequentially('改了又不要')
+  await shown(win).locator('.wkmain > .md').last().locator('p').first().click()
+  await shown(win).locator('.md.src .cm-content').pressSequentially('改了又不要')
   await win.keyboard.press('Escape')
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
-  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '保存' })).toHaveCount(0)
   expect((await aggFromCore(win, 'topics/quantization')).body).toBe(before)
 })
 

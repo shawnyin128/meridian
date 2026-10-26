@@ -618,10 +618,12 @@ describe('Chat composer', () => {
     await showChat('chat-1')
     act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
     act(() => setValue(ideaDraft()!.querySelector('input')!, '批大小拐点'))
-    act(() => setValue(ideaDraft()!.querySelector('textarea')!, '验证最优批大小是否随推理深度稳定迁移。'))
-    keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter')
+    const body = () => EditorView.findFromDOM(ideaDraft()!.querySelector<HTMLElement>('.form-markdown .cm-editor')!)!
+    act(() => body().dispatch({ changes: { from: 0, insert: '验证最优批大小是否随推理深度稳定迁移。' }, userEvent: 'input.type' }))
+    keyIn(body().contentDOM, 'Enter')
     expect(api.createIdea).not.toHaveBeenCalled()
-    await act(async () => { keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter', { metaKey: true }); await Promise.resolve() })
+    expect(body().state.doc.lines).toBe(2)
+    await act(async () => { keyIn(body().contentDOM, 'Enter', { metaKey: true }); await Promise.resolve() })
     expect(api.createIdea).toHaveBeenCalledWith('chat-1', '批大小拐点', '验证最优批大小是否随推理深度稳定迁移。')
     expect(ideaDraft()).toBeNull()
 

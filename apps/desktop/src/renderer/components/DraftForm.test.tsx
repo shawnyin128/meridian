@@ -79,6 +79,20 @@ describe('DraftForm', () => {
     expect(onSave).toHaveBeenCalledTimes(1)
   })
 
+  it('treats a field whose text is editable as a long text, as a Markdown field is: a plain Enter is a new line, ⌘Enter saves', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <DraftForm canSave onSave={onSave} onCancel={onCancel}>
+          {() => <div aria-label="markdown" contentEditable suppressContentEditableWarning>Wide trees win</div>}
+        </DraftForm>
+      </MessagesProvider>,
+    ))
+    press(field('markdown'), { key: 'Enter' })
+    expect(onSave).not.toHaveBeenCalled()
+    press(field('markdown'), { key: 'Enter', metaKey: true })
+    expect(onSave).toHaveBeenCalledOnce()
+  })
+
   it('sends one save until it settles, holding both buttons meanwhile', async () => {
     show({ body: 'Wide trees win' })
     press(field('title'), { key: 'Enter' })

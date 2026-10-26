@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 import { act, createRef } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
+import { EditorView } from '@codemirror/view'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { Milestone, Task } from '../../../shared/contract.js'
@@ -436,7 +437,7 @@ describe('ProjectTaskPanel', () => {
     expect(empties(output)).toBe(empties(renderTaskPanel({ note: undefined })) - 1)
   })
 
-  it('备注按长文本的同一套约定编辑:编辑的位置换成取消和保存,取消或 Esc 还原不写,保存或 ⌘回车写回', async () => {
+  it('备注和随笔是同一个编辑器:点备注就地编辑,取消或 Esc 还原不写,保存、⌘回车或在外面按下写回编辑器里的原文', async () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     vi.stubGlobal('meridian', { platform: 'darwin' })
@@ -456,31 +457,37 @@ describe('ProjectTaskPanel', () => {
       .find((element) => element.textContent?.startsWith('备注'))!
     const buttons = () => [...heading().querySelectorAll<HTMLButtonElement>('.section-heading-actions > .btn')]
     const press = (text: string) => act(() => buttons().find((button) => button.textContent === text)!.click())
-    const type = (text: string) => {
-      Object.defineProperty(host.querySelector('.md.src')!, 'innerText', { value: text, configurable: true })
-    }
+    const open = () => act(() => { host.querySelector('.task-note p')!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
+    const editor = () => EditorView.findFromDOM(host.querySelector<HTMLElement>('.task-note .cm-editor')!)!
+    const type = (text: string) => act(() => {
+      editor().dispatch({ changes: { from: 0, to: editor().state.doc.length, insert: text }, userEvent: 'input.type' })
+    })
 
-    press('编辑')
+    expect(buttons()).toEqual([])
+    open()
     expect(buttons().map((button) => button.textContent)).toEqual(['取消', '保存'])
+    expect(editor().state.doc.toString()).toBe('原备注')
     type('改过的备注')
     press('取消')
-    expect(buttons().map((button) => button.textContent)).toEqual(['编辑'])
-    press('编辑')
+    expect(buttons()).toEqual([])
+    open()
     type('改过的备注')
-    act(() => {
-      host.querySelector('.md.src')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
-    })
+    act(() => { editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
     expect(onSaveNote).not.toHaveBeenCalled()
-    press('编辑')
+    open()
     type('改过的备注')
     await act(async () => {
-      host.querySelector('.md.src')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
+      editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
     })
     expect(onSaveNote).toHaveBeenCalledWith('改过的备注')
-    press('编辑')
+    open()
     type('再改一次')
     press('保存')
     expect(onSaveNote).toHaveBeenLastCalledWith('再改一次')
+    open()
+    type('### 注意\n- evidence: 只是备注')
+    await act(async () => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })) })
+    expect(onSaveNote).toHaveBeenLastCalledWith('### 注意\n- evidence: 只是备注')
     act(() => root.unmount())
     host.remove()
     vi.unstubAllGlobals()
@@ -528,7 +535,7 @@ describe('ProjectTaskPanel', () => {
       expect(mount({ nodes: [] }).button('关联节点')).toBeUndefined()
     })
 
-    it('科研节点的操作和备注的编辑一样放在小标题右侧', () => {
+    it('科研节点的操作放在小标题右侧;备注看的时候小标题右侧没有按钮,两个小标题一个样', () => {
       /** The section heading that starts with `label`, and the texts of the buttons in its actions slot. */
       const heading = (label: string) => {
         const found = [...document.querySelectorAll<HTMLElement>('.section-heading')]
@@ -540,7 +547,7 @@ describe('ProjectTaskPanel', () => {
       }
       mount({})
       expect(heading('科研节点').buttons).toEqual(['关联节点'])
-      expect(heading('备注').buttons).toEqual(['编辑'])
+      expect(heading('备注').buttons).toEqual([])
       expect(heading('科研节点').className).toBe(heading('备注').className)
       mount({ node: { id: 'kv.n3', label: '前缀共调度', mode: 'supported' }, handSet: true })
       expect(heading('科研节点').buttons).toEqual(['更改', '取消关联'])

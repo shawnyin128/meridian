@@ -35,9 +35,10 @@ Current shared contracts:
 - `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
   primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
   size; in a `heading` and inside an `item` both are secondary at the compact size.
-- `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
-  Save (CommitActions) in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or
-  Escape restores.
+- `MarkdownSection`: the one long Markdown text edited in place (a memo, a task note, a Wiki body, an
+  idea): a click on the text opens the live `MarkdownEditor` where it landed, Cancel and Save sit in its
+  heading while it is open, leaving or ⌘Enter saves, and Escape or Cancel restores. `MarkdownField` is the
+  same editor as a boxed field inside a `DraftForm`.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.

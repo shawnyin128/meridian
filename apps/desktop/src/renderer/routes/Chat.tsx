@@ -212,7 +212,7 @@ export function Chat() {
               : (
                 <div className="mwrap" ref={ideaSlot.slot}>
                   <IdeaDraft
-                    source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
+                    key={id} source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
                     onChange={(next) => ideaDrafts.set('idea', next)} onCancel={() => ideaDrafts.drop('idea')}
                     onSave={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
                       note: m.chat.ideaSavedNote,

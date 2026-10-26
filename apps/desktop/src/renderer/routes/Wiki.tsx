@@ -13,7 +13,6 @@ import type { CrumbSeg } from '../components/Breadcrumb.js'
 import { AddAction } from '../components/AddAction.js'
 import { ActionPopover } from '../components/ActionPopover.js'
 import { BackButton } from '../components/BackButton.js'
-import { EditActions } from '../components/EditActions.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { ENTITY_SCREEN, EntityLink } from '../components/EntityLink.js'
 import { FadeText } from '../components/FadeText.js'
@@ -29,7 +28,7 @@ import { InlineMetadataField } from '../components/InlineField.js'
 import { Property, PropertyList } from '../components/PropertyList.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
 import { NewColumnHead } from '../components/paper-table/ColumnAdd.js'
-import { headingsOf, MarkdownBox } from '../components/Markdown.js'
+import { headingsOf, MarkdownSection } from '../components/Markdown.js'
 import { Pager } from '../components/Pager.js'
 import { PickRow, type PickHit } from '../components/PickRow.js'
 import { nextKey, slugOf } from '../lib/slug.js'
@@ -381,7 +380,6 @@ export function Wiki() {
   const notice = useNotice()
   const write = useVaultWrite()
   const undo = useUndo()
-  const box = useRef<HTMLDivElement>(null)
   const bodies = useDrafts<EditDraft>(['wiki', place ?? ''])
   usePruneDrafts(['wiki'], wikiPageIds)
   const [saving, setSaving] = useState(false)
@@ -691,31 +689,13 @@ export function Wiki() {
     })).finally(() => setPending(false))
   }
 
-  /**
-   * Reads the edited source back and writes it; the vault revision bump after the write makes this
-   * page fetch again.
-   */
-  const saveBody = () => {
-    if (saving || bodyEdit.stale) return
-    const next = box.current?.innerText.trim() ?? ''
+  /** Writes the edited body `next`; the vault revision bump after the write makes this page fetch again. */
+  const saveBody = (next: string) => {
     setSaving(true)
     void write(wiki.update(place!, next).then(() => {
       bodyEdit.drop()
     })).finally(() => setSaving(false))
   }
-
-  /** The body's section heading: the page name on the left, its EditActions on the right, like Project notes. */
-  const bodyHead = (name: string) => (
-    <SectionHeading
-      actions={(
-        <EditActions
-          editing={bodyEdit.editing} saving={saving} canSave={!bodyEdit.stale} onEdit={bodyEdit.start} onCancel={bodyEdit.drop}
-          onSave={saveBody}
-        />
-      )}
-    >{name}
-    </SectionHeading>
-  )
 
   /**
    * A Wiki paper page's bibliographic fields are the same frontmatter the paper list edits; only
@@ -910,11 +890,8 @@ export function Wiki() {
                   onApply={(title, ops, undoNote) => propose(title, ops, undoNote, undoNote !== undefined)}
                   arrival={arrival?.page === shownAgg.id ? arrival.claim : undefined} onArrived={arrived}
                 />
-                {bodyHead(shownAgg.title)}
-                <MarkdownBox
-                  text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
-                  onType={bodyEdit.change} onOpen={go}
-                  titles={shownAgg.titles} empty={<EmptyState variant="section" />}
+                <MarkdownSection
+                  key={shownAgg.id} title={shownAgg.title} edit={bodyEdit} saving={saving} onSave={saveBody} onOpen={go} titles={shownAgg.titles}
                 />
               </SplitColumn>
               <SplitRail>
@@ -970,12 +947,9 @@ export function Wiki() {
                     'reader', shownPaper.id.slice(PAPER_PAGE.length), anchor,
                   )}
                 />
-                {bodyHead(m.wiki.internalizedContent)}
-                <MarkdownBox
-                  text={bodyEdit.text} editing={bodyEdit.editing} box={box} onCancel={bodyEdit.drop} onSave={saveBody}
-                  onType={bodyEdit.change} onOpen={go} onAnchor={(page) => openSource(shownPaper.id, page)}
-                  titles={shownPaper.titles}
-                  empty={<EmptyState variant="section" />}
+                <MarkdownSection
+                  key={shownPaper.id} title={m.wiki.internalizedContent} edit={bodyEdit} saving={saving} onSave={saveBody} onOpen={go}
+                  onAnchor={(page) => openSource(shownPaper.id, page)} titles={shownPaper.titles}
                 />
               </SplitColumn>
               <SplitRail>

@@ -284,7 +284,7 @@ test('把讨论整理成可回看的想法', async ({ win }) => {
   await shown(win, '#qaIdea').click()
   const draft = shown(win, '.msgs .idea-draft')
   await draft.locator('.form-input').fill('批大小拐点')
-  await draft.locator('.form-textarea').fill('验证最优批大小是否随推理深度稳定迁移。')
+  await draft.locator('.form-markdown .cm-content').fill('验证最优批大小是否随推理深度稳定迁移。')
   await draft.getByRole('button', { name: '保存' }).click()
   await expect(draft).toHaveCount(0)
   await win.locator('[data-desk="ideas"]').click()
