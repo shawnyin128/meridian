@@ -9,19 +9,29 @@ This folder owns paper recommendation as one replaceable Core domain.
   rotates non-core directions without allowing bridge papers to average unrelated ideas together.
   It also plans each direction's queries: one seed per query, so an external multi-positive query
   cannot average away the direction's main idea, taken in anchor order through every source.
-- `merge.ts` round-robin merges per-intent results, deduplicates them and attaches structured reasons.
+- `merge.ts` round-robin merges per-intent results, deduplicates them, and words a card's reasons: its
+  direction, the nearest positive example and a Wiki term the paper contains.
 - `pool.ts` spreads one run's delivery cap evenly over its scopes and puts each scope's pooled
   candidates before the ones fetched this run.
-- `signals.ts` re-ranks one source response against the project anchor and read-only canonical Wiki
-  topic/method memberships; it never writes recommendation state back into Wiki pages.
+- `signals.ts` finds the read-only canonical Wiki topic/method terms a paper contains; it never writes
+  recommendation state back into Wiki pages.
+- `examples.ts` turns a scope's stored seeds, actions and ratings into weighted training examples.
+- `model.ts` is the scope model: a weighted, L2-regularised logistic regression on top of the
+  similarity to the nearest seed, Platt scaling, a monotone map, and seeded sampling.
+- `scorer.ts` scores one run's candidates and cards per direction or watch, on SPECTER2 vectors where
+  they exist and TF-IDF vectors elsewhere, both Platt-fitted to the same anchors, and keeps each
+  scope's fallback-to-API map in the App's user-data folder. `onGap` receives both paths' scores of
+  every API run.
+- `selection.ts` cuts a scope to what it shows: nothing below 0.5, half the slots for the core
+  direction, the rest split evenly, maximal marginal relevance within each share.
 - `evaluation.ts` owns the inspectable offline metrics and stage-two quality gate.
 - `providers/` contains external API adapters; the Semantic Scholar adapter normalizes similarity,
   citation, reference and same-author candidates behind one `RecommendationProvider` boundary.
-- `scoring.ts` owns the ranking semantics shared by watch and discovery projections.
+- `scoring.ts` owns the sorts shared by watch and discovery projections; 推荐 is the stored score.
 - `embeddings.ts` fetches SPECTER2 vectors through Semantic Scholar's paper batch endpoint, 100 ids a
   request, and caches them in the App's user-data folder, at most 5,000 papers, least recently used
-  first out. A 429, a 403 quota answer, a timeout, a network error or a 5xx switches the rest of that
-  refresh to the fallback and records why; with no key it never calls.
+  first out. A 429, a 403 quota answer, a refused key, a timeout, a network error or a 5xx switches
+  the rest of that refresh to the fallback and records why; with no key it never calls.
 - `fixtures/` contains deterministic evaluation samples, not user knowledge or generated wiki pages.
 - `EVALUATION.md` records reproducible sample construction and live-provider quality observations.
 
@@ -63,8 +73,7 @@ which answers citations and references with the same search, that is every refer
 direction's rotation step is stored in `.meridian/discovery/progress.json`,
 which versions before 0.0.19.0 never read; a direction without a step continues past the sources
 older versions recorded in `state.json`. The rotation does not add a second scheduler or multiply the
-12/3 call limits. Every accepted candidate freezes factual source provenance and any actually matched
-Wiki term into structured recommendation reasons.
+12/3 call limits.
 
 Candidates a run fetched beyond its cap, or offered but ranked below the project's cut, stay in the
 project's pool in the same file, up to 60, and the next run offers them before anything it fetches,

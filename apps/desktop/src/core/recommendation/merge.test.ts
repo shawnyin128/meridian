@@ -25,27 +25,43 @@ describe('diversity-aware recommendation merge', () => {
     ])
     expect(merged.map((item) => item.semanticId)).toEqual(['shared', 'only-b', 'only-a'])
     expect(merged[0]?.matches?.map((match) => match.intentId)).toEqual(['intent-1', 'intent-2'])
-    expect(discoveryReasons('项目', 9, merged[0]!)).toEqual([
-      { kind: 'project', label: '来自项目「项目」' },
-      { kind: 'intent', label: '匹配核心方向「on-policy · distillation」' },
-      { kind: 'intent', label: '匹配轮换方向「knowledge · distillation」' },
-      { kind: 'seed', label: '基于 2 篇相关论文' },
-    ])
   })
 
-  it('把候选来源与真正命中的 Wiki 词作为结构化解释保存', () => {
+  it('合并时留下候选的来源和命中的 Wiki 词', () => {
     const found = {
       ...paper('graph', '6'),
       origins: [{ source: 'citation' as const, seedPaperIds: ['ARXIV:1'] }],
       wikiTerms: ['speculative decoding'],
     }
-    const merged = mergeIntentResults([{ intent: intent('intent-1', 'draft model', 'ARXIV:1'), papers: [found] }])
-    expect(discoveryReasons('项目', 1, merged[0]!)).toEqual([
-      { kind: 'project', label: '来自项目「项目」' },
-      { kind: 'intent', label: '匹配核心方向「draft model」' },
-      { kind: 'source', label: '由后续引用召回' },
-      { kind: 'wiki', label: '匹配 Wiki 主题/方法「speculative decoding」' },
-      { kind: 'seed', label: '基于 1 篇相关论文' },
+    const [merged] = mergeIntentResults([{ intent: intent('intent-1', 'draft model', 'ARXIV:1'), papers: [found] }])
+    expect(merged).toMatchObject({ origins: found.origins, wikiTerms: ['speculative decoding'] })
+  })
+})
+
+describe('discovery reasons', () => {
+  it('最多三条,由强到弱:方向、最近的正例、论文里真有的 Wiki 词', () => {
+    expect(discoveryReasons({
+      direction: 'Draft-OPD', near: { paperId: 'ARXIV:2605.29343', title: 'Draft-OPD' }, wikiTerm: 'speculative decoding',
+    })).toEqual([
+      { kind: 'intent', label: '方向「Draft-OPD」' },
+      { kind: 'seed', label: '接近《Draft-OPD》', paperId: 'ARXIV:2605.29343' },
+      { kind: 'wiki', label: 'Wiki「speculative decoding」' },
     ])
+    expect(discoveryReasons({ direction: 'KV', near: undefined, wikiTerm: undefined }))
+      .toEqual([{ kind: 'intent', label: '方向「KV」' }])
+  })
+
+  it('最近的正例是从推送里拿走的论文时,说明用户怎么处理过它', () => {
+    const near = (taken: 'library' | 'later' | 'rated') => discoveryReasons({ direction: 'KV', near: { paperId: 's2', title: 'KIVI', taken } })[1]
+    expect([near('library'), near('later'), near('rated')]).toEqual([
+      { kind: 'feedback', label: '接近你入库的《KIVI》', paperId: 's2' },
+      { kind: 'feedback', label: '接近你稍后阅读的《KIVI》', paperId: 's2' },
+      { kind: 'feedback', label: '接近你评 5 星的《KIVI》', paperId: 's2' },
+    ])
+  })
+
+  it('很长的标题截短,理由仍能存下', () => {
+    const [, near] = discoveryReasons({ direction: 'KV', near: { paperId: 'p', title: 'x'.repeat(900) } })
+    expect(near!.label.length).toBeLessThanOrEqual(500)
   })
 })

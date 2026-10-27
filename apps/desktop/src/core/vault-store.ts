@@ -38,15 +38,16 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream,
+  combinedReasons, cutBelow, cutByRanking, listedUnder, orderListing, sortFound, withoutStreams, withStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
 } from './inbox/identity.js'
 import {
   buildRecommendationProfile, clusterRecommendationProfile, directionBasis, directionIntents, directionsAfter,
-  discoveryReasons, migratedDirections, mirroredDisabled, recommendationSeedIds, scannedDirections,
-  type DirectionPaper, type DiscoveryPaper, type DiscoveryPreferences, type ProjectDirections, type RefreshScope,
+  batchIdOf, migratedDirections, mirroredDisabled, recommendationSeedIds, scannedDirections, shortTitleOf,
+  type DirectionPaper, type DiscoveryPaper, type DiscoveryPreferences, type KnownPaper, type ProjectDirections,
+  type RefreshScope, type ScopeRanking,
 } from './recommendation/index.js'
 import type { RemotePaper } from './net/arxiv.js'
 import type { Publication } from './net/semantic-metadata.js'
@@ -1606,32 +1607,48 @@ export function createVaultStore(
     seen: [...inbox.filter((entry) => entry.gone).map(entryIdentity), ...delivered],
   })
 
+  /** Returns `entry` with the score `ranking` gives its paper, or `entry` itself when that score is no news. */
+  const rescored = (entry: InboxRecord, ranking: ScopeRanking): InboxRecord => {
+    const score = ranking.scoreOf(batchIdOf(entry.semanticId, entry.arxiv))
+    if (score === undefined || entry.ranking === undefined
+      || (entry.ranking.relevance === score.relevance && entry.score?.path === score.path)) return entry
+    return { ...entry, ranking: { ...entry.ranking, relevance: score.relevance }, score: { ...entry.score, path: score.path } }
+  }
+
   /**
    * Delivers the papers a stream found that no stream delivered before, at most `limit` and each once,
    * as the records `make` builds, which `place` puts among the entries held; and lists the stream, by
-   * `listed`, on each live card it found again. Remembers what it delivered and returns those records.
-   * Papers the vault holds are skipped. Throws, leaving the inbox as it stood, when it cannot write.
+   * `listed`, on each live card it found again. The scope's cards and these papers are cut by
+   * `ranking` when given, which also rescores the cards it scored, else by recommendation score.
+   * Remembers what it delivered and returns those records. Papers the vault holds are skipped. Throws,
+   * leaving the inbox as it stood, when it cannot write.
    */
-  const deliver = <P extends RemotePaper>(
+  const deliver = <P extends RemotePaper & { semanticId?: string }>(
     scope: Pick<InboxStream, 'kind' | 'id'>, found: P[], limit: number | undefined,
     identityOf: (paper: P) => PaperIdentity, make: (paper: P) => InboxRecord,
     listed: (entry: InboxRecord, paper: P) => InboxRecord,
     place: (fresh: InboxRecord[], held: InboxRecord[]) => InboxRecord[],
+    ranking?: ScopeRanking,
   ): InboxRecord[] => {
     const { fresh, merged } = sortFound(found, identityOf, known())
     let changed = false
+    const shown = inFeed()
     const held = inbox.map((entry) => {
       const paper = merged.get(entry.id)
-      const next = paper === undefined ? entry : listed(entry, paper)
+      const listing = paper === undefined ? entry : listed(entry, paper)
+      const next = ranking !== undefined && shown(listing) && listedUnder(listing, scope.kind, scope.id)
+        ? rescored(listing, ranking) : listing
       if (next !== entry) changed = true
       return next
     })
-    const shown = inFeed()
-    const { kept, folded } = cutBelow(
-      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)),
-      limit === undefined ? fresh : fresh.slice(0, limit),
-      ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, now().getTime(),
-    )
+    const live = held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id))
+    const capped = limit === undefined ? fresh : fresh.slice(0, limit)
+    const { kept, folded } = ranking === undefined
+      ? cutBelow(live, capped, ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope)
+      : cutByRanking(
+        live.map((entry) => ({ id: entry.id, paperId: batchIdOf(entry.semanticId, entry.arxiv), ranking: entry.ranking })),
+        capped, (paper) => batchIdOf(paper.semanticId, paper.id), ranking,
+      )
     const added = kept.map(make)
     if (added.length === 0 && !changed && folded.size === 0) return []
     const fold = (entry: InboxRecord): InboxRecord => (folded.has(entry.id) ? { ...entry, gone: true, left: 'folded' } : entry)
@@ -2520,22 +2537,25 @@ export function createVaultStore(
       saveState(next)
     },
 
-    addInboxEntries: atomic((watchId, found, limit) => {
+    addInboxEntries: atomic((watchId, found, limit, ranking) => {
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
       const added = deliver({ kind: 'watch', id: watch.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, ...doiField(paper), title: paper.title, submitted: paper.submitted,
-      }), (paper) => ({
-        id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', gone: false,
-        semanticId: '', ...doiField(paper),
-        ...inboxFields(watch, paper),
-      }), (entry, paper) => {
+      }), (paper) => {
+        const record: InboxRecord = {
+          id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', gone: false,
+          semanticId: '', ...doiField(paper),
+          ...inboxFields(watch, paper),
+        }
+        return ranking === undefined ? record : rescored(record, ranking)
+      }, (entry, paper) => {
         const fields = inboxFields(watch, paper)
         return withStream(entry, { kind: 'watch', id: watch.id, source: fields.source, reasons: fields.reasons })
       }, (fresh, held) => {
         const at = held.findIndex((entry) => entry.watch === watch.id)
         return at < 0 ? [...held, ...fresh] : [...held.slice(0, at), ...fresh, ...held.slice(at)]
-      })
+      }, ranking)
       return added.map((entry) => entry.arxiv)
     }),
 
@@ -2681,13 +2701,13 @@ export function createVaultStore(
       putDirections(params.projectId, next, params.action === 'add' ? disabled.filter((id) => id !== params.directionId) : disabled)
     }),
 
-    addDiscoveryEntries: atomic((projectId, found: DiscoveryPaper[], limit) => {
+    addDiscoveryEntries: atomic((projectId, found: DiscoveryPaper[], limit, ranking) => {
       const project = projectOf(projectId)
-      const seeds = projectDiscoverySeeds(projectId)
       const source = `项目 · ${project.name}`
+      const reasonsOf = (paper: DiscoveryPaper) => ranking.scoreOf(batchIdOf(paper.semanticId, paper.id))?.reasons ?? []
       return deliver({ kind: 'discovery', id: project.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, ...doiField(paper), semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
-      }), (paper) => ({
+      }), (paper) => rescored({
         id: nextId('inbox'),
         kind: 'discovery',
         watch: '',
@@ -2698,7 +2718,7 @@ export function createVaultStore(
         venue: paper.journalRef ?? `arXiv:${paper.id}`,
         abstract: paper.abstract,
         rec: '',
-        reasons: discoveryReasons(project.name, seeds.positive.length, paper),
+        reasons: reasonsOf(paper),
         downloaded: false,
         paper: '',
         pdf: paper.pdf,
@@ -2709,13 +2729,41 @@ export function createVaultStore(
         semanticId: paper.semanticId,
         ...doiField(paper),
         meta: { authors: paper.authors, submitted: paper.submitted, journalRef: paper.journalRef },
-      }), (entry, paper) => {
-        const listed = withStream(entry, {
-          kind: 'discovery', id: project.id, source, reasons: discoveryReasons(project.name, seeds.positive.length, paper),
-        })
+      }, ranking), (entry, paper) => {
+        const listed = withStream(entry, { kind: 'discovery', id: project.id, source, reasons: reasonsOf(paper) })
         return listed.semanticId === '' && paper.semanticId !== '' ? { ...listed, semanticId: paper.semanticId } : listed
-      }, (fresh, held) => [...fresh, ...held]).length
+      }, (fresh, held) => [...fresh, ...held], ranking).length
     }),
+
+    scopeCards(scope) {
+      scopeOf(scope)
+      const shown = inFeed()
+      return inbox.filter((entry) => shown(entry) && listedUnder(entry, scope.kind === 'project' ? 'discovery' : 'watch', scope.id))
+        .map((entry) => ({
+          id: entry.id, paperId: batchIdOf(entry.semanticId, entry.arxiv), title: entry.title, abstract: entry.abstract,
+        }))
+    },
+
+    knownPapers(paperIds) {
+      const known = new Map<string, KnownPaper>()
+      for (const paperId of paperIds) {
+        const entry = inbox.find((held) => batchIdOf(held.semanticId, held.arxiv) === paperId)
+        if (entry !== undefined) {
+          const page = papers.get(paperOf(entry.paper))
+          const taken = entry.left === 'library' ? (page?.rating === 5 ? 'rated' : 'library') : entry.left === 'later' ? 'later' : undefined
+          known.set(paperId, {
+            title: entry.title, shortTitle: page?.shortTitle ?? shortTitleOf(entry.title), abstract: entry.abstract,
+            ...(taken === undefined ? {} : { taken }),
+          })
+          continue
+        }
+        const page = [...papers.values()].find((paper) => `ARXIV:${libraryArxivId(paper)}` === paperId)
+        if (page !== undefined) {
+          known.set(paperId, { title: page.title, shortTitle: page.shortTitle ?? shortTitleOf(page.title), abstract: page.abstract ?? '' })
+        }
+      }
+      return known
+    },
 
     feedbackDiscovery: atomic((id, feedback) => {
       const entry = liveEntry(id)

@@ -50,6 +50,11 @@ export const InboxRecordSchema = InboxEntrySchema.extend({
     submitted: z.string(),
     journalRef: z.string().nullable(),
   }).strict().default({ authors: [], submitted: '', journalRef: null }),
+  /**
+   * Which vectors scored `ranking.relevance`: `api` for SPECTER2 embeddings, `fallback` for TF-IDF.
+   * Any string reads, so a later version's path never makes the record unreadable.
+   */
+  score: z.object({ path: z.string() }).strict().optional(),
 })
 
 /**

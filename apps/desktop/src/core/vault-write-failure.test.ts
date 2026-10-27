@@ -7,6 +7,7 @@ import { basename, dirname, join, resolve, sep } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
+import { fixedRanking } from './fixtures/ranking.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 
@@ -82,7 +83,7 @@ const REFUSED: [string, string, (store: VaultStore, world: World) => unknown, (s
     ...remote('2609.10001'),
     ranking: { relevance: 0.9, published: false, citationCount: 3, influentialCitationCount: 0, submitted: '2026-09-01' },
   }]), (s) => s.listInbox()],
-  ['inbox.json', '项目发现新论文', (s, w) => s.addDiscoveryEntries(w.project, [{ ...remote('2609.10010'), semanticId: 's-10' }]), (s) => s.listInbox()],
+  ['inbox.json', '项目发现新论文', (s, w) => s.addDiscoveryEntries(w.project, [{ ...remote('2609.10010'), semanticId: 's-10' }], undefined, fixedRanking()), (s) => s.listInbox()],
   ['inbox.json', '从垃圾桶恢复一条推荐', (s, w) => s.restoreTrash(w.trashedEntry), (s) => [s.listInbox(), s.listTrash()]],
   ['inbox.json', '删掉关注', (s, w) => s.deleteWatch(w.watch), (s) => [s.listInbox(), s.listTrash()]],
   ['later.json', '收件里稍后读一条', (s, w) => s.readLater(w.entry), (s) => s.listLater()],
@@ -173,7 +174,7 @@ const WHOLE: [string, (store: VaultStore, world: World, repo: string) => () => u
     return () => s.deletePaper(w.paper)
   }, true],
   ['删掉有论文发现的项目', (s, w) => {
-    s.addDiscoveryEntries(w.project, [{ ...remote('2609.10020'), semanticId: 's-20' }, { ...remote('2609.10021'), semanticId: 's-21' }])
+    s.addDiscoveryEntries(w.project, [{ ...remote('2609.10020'), semanticId: 's-20' }, { ...remote('2609.10021'), semanticId: 's-21' }], undefined, fixedRanking())
     s.dismissInbox(s.listInbox({ kind: 'discovery' })[0]!.id)
     return () => s.deleteProject(w.project)
   }, true],

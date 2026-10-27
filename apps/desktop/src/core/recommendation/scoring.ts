@@ -60,19 +60,13 @@ type RankValues = {
   submitted: string
 }
 
-/** One score shared by every recommendation UI projection. Relevance remains dominant. */
-export function recommendationScore(entry: Pick<InboxEntry, 'ranking'>, now = Date.now()): number {
-  const rank = entry.ranking
-  if (rank === undefined) return 0
-  const submitted = Date.parse(`${rank.submitted}T00:00:00Z`)
-  const ageDays = Number.isNaN(submitted) ? 1095 : Math.max(0, (now - submitted) / 86_400_000)
-  const freshness = Math.max(0, 1 - ageDays / 1095)
-  return rank.relevance * 0.55 + Number(rank.published) * 0.2
-    + impactScore(entry) * 0.15 + freshness * 0.1
+/** The score the recommended sort and a scope's cut rank by: the entry's relevance, 0 without ranking. */
+export function recommendationScore(entry: Pick<InboxEntry, 'ranking'>): number {
+  return entry.ranking?.relevance ?? 0
 }
 
-const valuesOf = (entry: InboxEntry, now: number): RankValues => ({
-  recommended: recommendationScore(entry, now),
+const valuesOf = (entry: InboxEntry): RankValues => ({
+  recommended: recommendationScore(entry),
   impact: impactScore(entry),
   published: Number(entry.ranking?.published ?? false),
   submitted: entry.ranking?.submitted ?? '',
@@ -98,13 +92,13 @@ const compare = (mode: NonNullable<InboxListParams['sort']>) => (
  * `groupOf` names, by default the stream that delivered it first.
  */
 export function orderInbox(
-  entries: InboxEntry[], mode: NonNullable<InboxListParams['sort']> = 'recommended', now = Date.now(),
+  entries: InboxEntry[], mode: NonNullable<InboxListParams['sort']> = 'recommended',
   groupOf: (entry: InboxEntry) => string = (entry) => (entry.kind === 'discovery' ? entry.project : entry.watch),
 ): InboxEntry[] {
   const groups = new Map<string, { entry: InboxEntry; values: RankValues }[]>()
   for (const entry of entries) {
     const key = groupOf(entry)
-    const ranked = { entry, values: valuesOf(entry, now) }
+    const ranked = { entry, values: valuesOf(entry) }
     const group = groups.get(key)
     if (group === undefined) groups.set(key, [ranked])
     else group.push(ranked)

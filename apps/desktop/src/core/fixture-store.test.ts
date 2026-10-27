@@ -4,6 +4,7 @@ import papersFixture from './fixtures/papers.json' with { type: 'json' }
 import { createFixtureStore } from './fixture-store.js'
 import { minimalPdf } from './net/minimal-pdf.js'
 import { emptyColumns } from './paper-library/index.js'
+import { fixedRanking } from './fixtures/ranking.js'
 import {
   CONTRACT_METHODS, PaperRowSchema, ProjectDetailSchema, ProjectOverviewSchema,
   ProjectSummarySchema,
@@ -1489,7 +1490,7 @@ describe('fixture store', () => {
       semanticId: `semantic-${arxiv}`, id: arxiv, title: `Found ${arxiv}`, authors: ['Ada'], abstract: 'A',
       submitted: '2026-09-08', journalRef: null, pdf: `https://arxiv.org/pdf/${arxiv}`,
     })
-    store.addDiscoveryEntries('draft', ['2609.31001', '2609.31002'].map(found))
+    store.addDiscoveryEntries('draft', ['2609.31001', '2609.31002'].map(found), undefined, fixedRanking())
     const [less, known] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
     store.feedbackDiscovery(less!, 'less')
     store.feedbackDiscovery(known!, 'known')
@@ -2357,7 +2358,7 @@ describe('fixture store', () => {
           semanticId: 'semantic-test', id: '2609.99991', title: 'Discovery Contract Test',
           authors: [], abstract: '', submitted: '2026-09-01', journalRef: null,
           pdf: 'https://arxiv.org/pdf/2609.99991',
-        }])
+        }], undefined, fixedRanking())
         const entry = store.listInbox({ kind: 'discovery' })[0]!
         store.feedbackDiscovery(entry.id, 'more')
       },

@@ -71,6 +71,10 @@
     "status": 200,
     "atom": "<feed xmlns=\"http://www.w3.org/2005/Atom\"><entry><id>http://arxiv.org/abs/2609.13001v1</id><published>2026-09-13T08:00:00Z</published><title>Adaptive Verification Paths for Speculative Decoding</title><summary>A project-conditioned study of adaptive verification paths and acceptance-aware branching.</summary><author><name>Mei Lin</name></author><author><name>Arun Patel</name></author></entry><entry><id>http://arxiv.org/abs/2609.10002v1</id><published>2026-09-10T08:00:00Z</published><title>Serving-Aware Draft Trees under Shared Prefixes</title><summary>Draft-tree construction conditioned on batch size and prefix sharing.</summary><author><name>Rui Chen</name></author></entry><entry><id>http://arxiv.org/abs/2609.11003v1</id><published>2026-09-11T08:00:00Z</published><title>Efficient Speculative Decoding for Batched Inference</title><summary>Speculative decoding with draft trees under batched inference, verifying several draft branches per step.</summary><author><name>Mei Lin</name></author><author><name>Rui Chen</name></author></entry></feed>"
   },
+  "https://api.semanticscholar.org/graph/v1/paper/batch?fields=embedding.specter_v2": {
+    "status": 200,
+    "text": "[]"
+  },
   "https://api.semanticscholar.org/graph/v1/author/search?*": {
     "status": 200,
     "kind": "semantic-author-search"

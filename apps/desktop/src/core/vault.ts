@@ -15,7 +15,8 @@ import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
 import type { Publication } from './net/semantic-metadata.js'
 import type {
-  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
+  DiscoveryPaper, DiscoverySchedule, KnownPaper, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
+  ScopeCard, ScopeRanking,
 } from './recommendation/index.js'
 import type { WorkspaceAgentTask } from './project-management/index.js'
 import type { ResearchIdeaMutation } from './research-ideas/index.js'
@@ -655,14 +656,14 @@ export interface VaultStore {
   /**
    * Delivers for one watch at most `limit` of the arXiv results `found` that no stream delivered
    * before and the vault does not hold; a result that is already a live card is listed under this
-   * watch on that card instead. These papers and the watch's cards in the feed are then ranked by
-   * recommendation score down to the delivery settings' `maxShownPerScope`, a card given `more`
-   * feedback always staying and not counted: a card ranked below is folded away as seen, and a paper
-   * ranked below is not delivered at all, neither a card nor remembered, so a later run may still
-   * deliver it, and `undelivered` still names it. Returns the arXiv ids of exactly the papers
-   * delivered. Throws if no such watch exists.
+   * watch on that card instead. These papers and the watch's cards in the feed are then cut down to
+   * the delivery settings' `maxShownPerScope`: by `ranking` when given, which also rescores every
+   * card of the watch it scored; else by recommendation score, a card given `more` feedback always
+   * staying and not counted. A card cut is folded away as seen, and a paper cut is not delivered at
+   * all, neither a card nor remembered, so a later run may still deliver it, and `undelivered` still
+   * names it. Returns the arXiv ids of exactly the papers delivered. Throws if no such watch exists.
    */
-  addInboxEntries(watchId: string, found: RemotePaper[], limit?: number): string[]
+  addInboxEntries(watchId: string, found: RemotePaper[], limit?: number, ranking?: ScopeRanking): string[]
 
   /**
    * Returns the papers of `found`, in order and each once, that adding them for any watch or project
@@ -721,11 +722,23 @@ export interface VaultStore {
   /**
    * Delivers to one project's discovery at most `limit` of the provider results `found` that no
    * stream delivered before and the vault does not hold, cutting the project's cards and these
-   * papers to its limit the way addInboxEntries does for a watch, and returns how many papers it
-   * delivered, exactly; a result that is already a live card is listed under this project on that
-   * card instead. Throws if no such project exists.
+   * papers to its limit by `ranking` the way addInboxEntries does for a watch, and returns how many
+   * papers it delivered, exactly; a result that is already a live card is listed under this project
+   * on that card instead. Each paper delivered takes its score, path and reasons from `ranking`, and
+   * each card of the project `ranking` scored takes the new score and path. Throws if no such
+   * project exists.
    */
-  addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit?: number): number
+  addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit: number | undefined, ranking: ScopeRanking): number
+
+  /** The cards the feed shows for `scope`, in feed order. Throws if it does not exist. */
+  scopeCards(scope: RefreshScope): ScopeCard[]
+
+  /**
+   * What the vault or the feed knows of each of `paperIds`, Semantic Scholar batch ids: a card of the
+   * feed, live or gone, with that id first, else a vault paper whose arXiv id it names. Ids neither
+   * knows are left out.
+   */
+  knownPapers(paperIds: readonly string[]): Map<string, KnownPaper>
 
   /**
    * Persists explicit discovery feedback on the live discovery entry with the

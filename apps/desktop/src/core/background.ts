@@ -1,3 +1,4 @@
+import { join } from 'node:path'
 import type {
   AuthorCandidate, AuthorSearchFailed, DiscoveryFetchResult, InboxDownloadResult, JobsStatus, NetFailed, PaperImportResult,
   SemanticKeyCheckResult, WatchSuggestionResult,
@@ -18,7 +19,7 @@ import { checkSemanticKey, createSemanticSearch } from './net/semantic-search.js
 import { isUnopenedStore } from './unopened-store.js'
 import { createMetadataQueue, fillPublications, type PdfProbe } from './paper-library/index.js'
 import {
-  createArxivRecommendations, createFallbackRecommendations, createRecommendationService,
+  createArxivRecommendations, createEmbeddings, createFallbackRecommendations, createRecommendationService, createScorer,
   createSemanticRecommendations, createSemanticScholar,
 } from './recommendation/index.js'
 import type { VaultStore } from './vault.js'
@@ -64,6 +65,8 @@ export function createBackground(deps: {
   sleep: (ms: number) => Promise<void>; now: () => number
   /** The Semantic Scholar API key to send, read on every request so a newly saved key applies at once. */
   semanticScholarApiKey?: () => string | undefined
+  /** The App's user-data folder, where the derived paper embeddings and score calibration are kept. */
+  userData: string
 }): Background {
   let writes = 0
   const onWrite = (): void => { writes += 1 }
@@ -92,8 +95,14 @@ export function createBackground(deps: {
   const authorSearch = createAuthorSearch({ sources: () => [semanticSearch], now: deps.now })
   const semanticRecommendations = createSemanticRecommendations({ get: semanticGet, sleep: deps.sleep })
   const arxivRecommendations = createArxivRecommendations({ arxiv, now: deps.now })
+  const scorer = createScorer({
+    embeddings: createEmbeddings({
+      get: semanticGet, apiKey: semanticKey, dir: join(deps.userData, 'recommendation', 'embeddings'), sleep: deps.sleep,
+    }),
+    calibrationFile: join(deps.userData, 'recommendation', 'calibration.json'),
+  })
   const recommendation = createRecommendationService({
-    store: deps.store, onWrite, now: deps.now,
+    store: deps.store, onWrite, now: deps.now, scorer,
     provider: createFallbackRecommendations(() => (
       semanticKey() === undefined ? [arxivRecommendations] : [semanticRecommendations, arxivRecommendations]
     )),
@@ -109,7 +118,7 @@ export function createBackground(deps: {
   })
   const downloads = createInboxDownloads({ store: deps.store, get: deps.get, probe: deps.probe, onWrite })
   const fetcher = createWatchFetcher({
-    store: deps.store, arxiv, scholar, now: deps.now, onWrite,
+    store: deps.store, arxiv, scholar, scorer, now: deps.now, onWrite,
     authorPapers: (identity) => authors.papers(identity.id),
   })
   let discoveryTail: Promise<unknown> = Promise.resolve()

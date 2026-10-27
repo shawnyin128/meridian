@@ -16,8 +16,11 @@ const MODEL_FILE = 'model.json'
 /** How Semantic Scholar words a 403 that refuses for quota or rate rather than for the key. */
 const QUOTA_ANSWER = /quota|rate limit|too many requests|limit exceeded/i
 
-/** Why a run left the API: a 429, a 403 quota answer, a timeout, a network error or a 5xx. */
-export type EmbeddingFallbackReason = 'rate-limit' | 'quota' | 'timeout' | 'network' | 'server'
+/**
+ * Why a run left the API: a 429, a 403 quota answer, a 401 or any other 403 refusing the key, a
+ * timeout, a network error or a 5xx.
+ */
+export type EmbeddingFallbackReason = 'rate-limit' | 'quota' | 'auth' | 'timeout' | 'network' | 'server'
 
 /**
  * One refresh's way to embeddings: `api` until a request fails for an EmbeddingFallbackReason, then
@@ -49,8 +52,7 @@ export type Embeddings = {
    * request that still fails after its retry for an EmbeddingFallbackReason sets `run` to `fallback`
    * with that reason and leaves the ids not yet fetched missing. Fetched vectors are cached under the
    * model the API names; a cached vector of another model counts as missing and is fetched again.
-   * Throws on any other failed request (a 400, a 401, a 403 that is not a quota answer) or a response
-   * that is not a list.
+   * Throws on any other failed request, such as a 400, or a response that is not a list.
    */
   vectorsFor(paperIds: readonly string[], run: EmbeddingRun): Promise<EmbeddingLookup>
 }
@@ -82,12 +84,13 @@ function parseEmbeddings(body: Uint8Array): Array<{ model: string; vector: numbe
   })
 }
 
-/** The EmbeddingFallbackReason of a failed request, or undefined when the failure is a bug or a setup error. */
+/** The EmbeddingFallbackReason of a failed request, or undefined when the failure is a bug. */
 function fallbackReason(error: unknown): EmbeddingFallbackReason | undefined {
   if (error instanceof HttpStatusError) {
     if (error.status === 429) return 'rate-limit'
     if (error.status >= 500) return 'server'
     if (error.status === 403 && QUOTA_ANSWER.test(new TextDecoder().decode(error.body ?? new Uint8Array()))) return 'quota'
+    if (error.status === 401 || error.status === 403) return 'auth'
     return undefined
   }
   const failure = netFailure(error)
