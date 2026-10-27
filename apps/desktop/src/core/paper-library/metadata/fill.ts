@@ -46,24 +46,19 @@ export function remoteMetadata(paper: Omit<RemotePaper, 'pdf'>): MetadataFill {
 }
 
 /**
- * Returns the venue and year of `found` that may replace those of `paper`, given `filled`, the values
+ * Returns the venue `found` gives, as its name and the year of that publication (`ICML 2024`, the
+ * name alone without a year), when it may replace the venue of `paper`, given `filled`, the values
  * the App last filled into its fields (undefined for a paper filled before the App recorded them).
  * The venue may be replaced while it is empty, `arXiv`, or the value the App filled; any other value
- * is the user's, and then neither field changes. The year may be replaced with it while it is absent
- * or the value the App filled, or, with no record of it, the year the paper was first submitted.
- * Fields that would not change are left out.
+ * is the user's. The paper's year is never written. Empty when the venue would not change.
  */
 export function publicationFill(
-  paper: Pick<PaperRow, 'venue' | 'year' | 'submitted'>,
+  paper: Pick<PaperRow, 'venue'>,
   filled: Record<string, unknown> | undefined,
   found: Publication,
 ): MetadataFill {
   const venueFilled = paper.venue === '' || paper.venue === ARXIV_VENUE || filled?.['venue'] === paper.venue
   if (!venueFilled) return {}
-  const yearFilled = paper.year === undefined || filled?.['year'] === paper.year
-    || (filled?.['year'] === undefined && paper.year === Number(paper.submitted?.slice(0, 4)))
-  return {
-    ...(found.year !== undefined && yearFilled && found.year !== paper.year ? { year: found.year } : {}),
-    ...(found.venue !== paper.venue ? { venue: found.venue } : {}),
-  }
+  const venue = found.year === undefined ? found.venue : `${found.venue} ${found.year}`
+  return venue === paper.venue ? {} : { venue }
 }

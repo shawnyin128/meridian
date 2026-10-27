@@ -27,7 +27,7 @@ export type Background = {
   /** Parses the metadata of paper `paperId` again (MetadataQueue retry). */
   retryMetadata(paperId: string): void
   /**
-   * Fills the publication venue and year of the vault's papers from Semantic Scholar (fillPublications)
+   * Fills the publication venue, with its year, of the vault's papers from Semantic Scholar (fillPublications)
    * and returns how many changed. Throws a `refused` CallError when no key is saved.
    */
   fillPublications(): Promise<number>

@@ -18,7 +18,7 @@ export function publicationIdOf(identifier: string | undefined): string | null {
 
 /**
  * Looks up, in one pass of `source`, where every paper of `store` whose identifier names an arXiv id or
- * a DOI was published, and refreshes the venue and year of each one that may take them
+ * a DOI was published, and refreshes the venue, with its year, of each one that may take it
  * (refreshPaperPublication). Returns how many papers changed. Throws when the lookup fails, having
  * written nothing.
  */

@@ -182,7 +182,7 @@ export interface VaultStore {
   fillPaperMetadata(id: string, fill: MetadataFill, replaceTitle: string | null): string[]
 
   /**
-   * Writes the venue and year of `publication` onto paper `id` where publicationFill allows, given the
+   * Writes the venue of `publication`, with its year, onto paper `id` where publicationFill allows, given the
    * values the App last filled into its fields, and returns the names of the fields it wrote, in
    * MetadataFill's order. Records what it wrote as filled by the App, and records no change. Throws if
    * no such paper exists.

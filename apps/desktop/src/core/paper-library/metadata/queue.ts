@@ -58,7 +58,7 @@ async function mapConcurrent<T, R>(
  * Builds the bounded metadata queue that probes PDFs concurrently and batches remote lookups. While
  * `publications` gives a source (a Semantic Scholar key is saved), each batch also looks up where its
  * papers were published, by arXiv id or, without one, by the DOI the first page labels, and fills the
- * venue and year once the rest is filled; a failed lookup leaves the papers as the rest filled them.
+ * venue, with the year of that publication, once the rest is filled; a failed lookup leaves the papers as the rest filled them.
  */
 export function createMetadataQueue(deps: {
   store: VaultStore; probe: PdfProbe; provider: MetadataProvider; onWrite: () => void

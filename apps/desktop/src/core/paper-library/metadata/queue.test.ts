@@ -210,11 +210,11 @@ describe('上传之后的元数据解析', () => {
       return { store, queue, asked, paper }
     }
 
-    it('arXiv 补完之后按 ARXIV 编号查一次，会场和年份换成发表的那一个，动态里说两个来源', async () => {
+    it('arXiv 补完之后按 ARXIV 编号查一次，会场换成发表的那一个带年份，年份留着 arXiv 的，动态里说两个来源', async () => {
       const { store, queue, asked, paper } = keyed({ firstPage: 'arXiv:2509.01234v1' })
       await queue.idle()
       expect(asked).toEqual([['ARXIV:2509.01234']])
-      expect(store.getPaper(paper.id)).toMatchObject({ title: REMOTE.title, venue: 'ICLR', year: 2026, submitted: REMOTE.submitted })
+      expect(store.getPaper(paper.id)).toMatchObject({ title: REMOTE.title, venue: 'ICLR 2026', year: 2025, submitted: REMOTE.submitted })
       expect(JSON.stringify((await store.listFeed())[0]?.body)).toContain('元数据取自 arXiv 和 Semantic Scholar')
     })
 
@@ -240,7 +240,8 @@ describe('上传之后的元数据解析', () => {
       )
       await queue.idle()
       expect(asked).toEqual([['DOI:10.1145/3600006.3613165']])
-      expect(store.getPaper(paper.id)).toMatchObject({ title: 'Speculative Serving at Scale', venue: 'SOSP', year: 2023 })
+      expect(store.getPaper(paper.id)).toMatchObject({ title: 'Speculative Serving at Scale', venue: 'SOSP 2023' })
+      expect(store.getPaper(paper.id).year).toBeUndefined()
     })
 
     it('既没有 arXiv 编号也没有标明的 DOI 时不查', async () => {
