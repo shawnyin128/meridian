@@ -223,6 +223,22 @@ function changedProjectFields(prior: JsonObject | undefined, next: JsonObject): 
   ))
 }
 
+/**
+ * Ids of the items in plan list `key` that `next` added or edited, in `next`'s order, then those it
+ * removed, in `prior`'s order. Items are compared by id and content, so a reordering names nothing.
+ */
+function changedPlanIds(prior: JsonObject, next: JsonObject, key: 'tasks' | 'milestones'): string[] {
+  const items = (plan: JsonObject) => new Map(
+    (plan[key] as { id: string }[]).map((item) => [item.id, JSON.stringify(item)]),
+  )
+  const before = items(prior)
+  const after = items(next)
+  return [
+    ...[...after].filter(([id, item]) => before.get(id) !== item).map(([id]) => id),
+    ...[...before.keys()].filter((id) => !after.has(id)),
+  ]
+}
+
 function changeRefs(
   projectId: string,
   ...refs: { kind: 'idea' | 'node'; id?: string | undefined }[]
@@ -256,10 +272,13 @@ function pendingChanges(
       refs: changeRefs(project.id),
     })
   } else if (fields.length > 0) {
+    const taskIds = changedPlanIds(priorPlan, nextPlan, 'tasks')
+    const milestoneIds = changedPlanIds(priorPlan, nextPlan, 'milestones')
     changes.push({
       kind: 'project.updated',
       summary: `Project ${fields.join(', ')} updated: ${project.name}`,
       refs: changeRefs(project.id),
+      ...(taskIds.length === 0 && milestoneIds.length === 0 ? {} : { task_ids: taskIds, milestone_ids: milestoneIds }),
     })
   }
 

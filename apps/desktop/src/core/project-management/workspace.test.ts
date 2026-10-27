@@ -186,6 +186,73 @@ describe('project workspace protocol', () => {
     expect(changes.changes.at(-1)?.refs).toContainEqual({ kind: 'node', id: 'direction.B' })
   })
 
+  it('names in each project.updated change the tasks and milestones the save added, edited or removed, and the plugin expands each one', async () => {
+    const root = temporary()
+    const held = project(root)
+    await writeProjectWorkspace(held)
+    const [probe] = held.tasks
+    const [decision] = held.milestones
+    const sweep = { id: 'task-2', title: 'Sweep', start: '2026-09-16', end: '2026-09-16', state: 'plan', priority: 'p1' } as const
+    const draft = { id: 'ms-2', date: '2026-09-25', title: 'Draft', done: false }
+    const renamed = { ...probe!, title: 'Probe latency' }
+    const saves: [ProjectRecord, string[], string[]][] = [
+      [{ ...held, tasks: [probe!, sweep] }, ['task-2'], []],
+      [{ ...held, tasks: [renamed, sweep] }, ['task-1'], []],
+      [{ ...held, tasks: [renamed] }, ['task-2'], []],
+      [{ ...held, tasks: [renamed], milestones: [decision!, draft] }, [], ['ms-2']],
+      [{ ...held, tasks: [renamed], milestones: [{ ...decision!, done: true }, draft] }, [], ['ms-1']],
+      [{ ...held, tasks: [renamed], milestones: [{ ...decision!, done: true }] }, [], ['ms-2']],
+      [{ ...held, tasks: [renamed], milestones: [{ ...decision!, done: true }], taskNodes: { 'task-1': 'direction.B' } }, ['task-1'], []],
+      [{
+        ...held, focus: 'write the draft', tasks: [{ ...renamed, state: 'done' }, { ...sweep, id: 'task-3' }], milestones: [],
+        taskNodes: { 'task-1': 'direction.B' },
+      }, ['task-1', 'task-3'], ['ms-1']],
+    ]
+    for (const [save] of saves) await writeProjectWorkspace(save)
+
+    const journal = JSON.parse(readFileSync(join(root, '.meridian/control/changes.json'), 'utf8')) as {
+      epoch: string
+      changes: { sequence: number; kind: string; task_ids?: string[]; milestone_ids?: string[] }[]
+    }
+    expect(journal.changes.slice(1).map((change) => [change.kind, change.task_ids, change.milestone_ids])).toEqual(
+      saves.map(([, tasks, milestones]) => ['project.updated', tasks, milestones]),
+    )
+
+    const script = [
+      'import json, sys',
+      'from meridian.mcp.server import MeridianMCPServer, _call_workspace_changes',
+      'page = _call_workspace_changes(MeridianMCPServer(), {"workspace_root": sys.argv[1], "cursor": sys.argv[2]})',
+      'print(json.dumps([[[item["tool"], {key: value for key, value in item["arguments"].items() if key != "workspace_root"}] for item in change["expand"]] for change in page["changes"]]))',
+    ].join('\n')
+    const output = execFileSync('python', ['-c', script, root, `${journal.epoch}:1`], {
+      env: { ...process.env, PYTHONPATH: join(REPO, 'src') }, encoding: 'utf8',
+    })
+    expect(JSON.parse(output)).toEqual(saves.map(([, tasks, milestones]) => [
+      ...tasks.map((id) => ['meridian.workspace_plan', { task_id: id }]),
+      ...milestones.map((id) => ['meridian.workspace_plan', { milestone_id: id }]),
+    ]))
+  })
+
+  it('records no change for a save that changes nothing, and names no task or milestone when no task or milestone changed', async () => {
+    const root = temporary()
+    const held = project(root)
+    const sweep = { id: 'task-2', title: 'Sweep', start: '2026-09-16', end: '2026-09-16', state: 'plan', priority: 'p1' } as const
+    const two = { ...held, tasks: [...held.tasks, sweep] }
+    await writeProjectWorkspace(two)
+    const file = join(root, '.meridian/control/changes.json')
+    const written = readFileSync(file, 'utf8')
+    await writeProjectWorkspace(two)
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual(JSON.parse(written))
+
+    await writeProjectWorkspace({ ...two, focus: 'write the draft' })
+    await writeProjectWorkspace({ ...two, focus: 'write the draft', tasks: [sweep, ...held.tasks] })
+    const journal = JSON.parse(readFileSync(file, 'utf8')) as { changes: Record<string, unknown>[] }
+    expect(journal.changes.map((change) => change['kind'])).toEqual(['project.snapshot', 'project.updated', 'project.updated'])
+    for (const change of journal.changes) {
+      expect(Object.keys(change).sort()).toEqual(['at', 'kind', 'refs', 'sequence', 'summary'])
+    }
+  })
+
   it('records a change into a journal a newer App wrote and keeps every field it does not know where it was', async () => {
     const root = temporary()
     const held = project(root)
