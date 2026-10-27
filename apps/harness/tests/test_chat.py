@@ -439,9 +439,9 @@ class ChatDesignTests(unittest.TestCase):
         self.assertEqual(schema["additionalProperties"], False)
         self.assertEqual(sorted(schema["required"]), ["answer", "design"])
         self.assertEqual(schema["properties"]["answer"]["maxLength"], 2_000)
-        system = str(service.requests[0]["input"][0]["content"])
-        self.assertIn("prediction", system)
-        self.assertIn("an imprecise null is never a kill", system)
+        user = str(service.requests[0]["input"][1]["content"])
+        self.assertIn("prediction", user)
+        self.assertIn("an imprecise null is never a kill", user)
 
     def test_an_ordinary_turn_keeps_the_answer_only_schema_and_prompt(self) -> None:
         service = ProviderStandIn({"answer": "Plain."})
@@ -532,10 +532,67 @@ class ChatDesignTests(unittest.TestCase):
         self.assertEqual(result, {"answer": "Testable.", "design": _design(ledger=vault_anchor)})
         (call,) = calls
         self.assertEqual(set(call), {"system", "prompt", "schema"})
-        self.assertIn("an imprecise null is never a kill", str(call["system"]))
+        self.assertIn("an imprecise null is never a kill", str(call["prompt"]))
         self.assertIn("Earlier question", str(call["prompt"]))
         self.assertTrue(str(call["prompt"]).endswith("Current user message:\nWhat changed?"))
         self.assertEqual(call["schema"]["additionalProperties"], False)  # type: ignore[index]
+
+    def test_a_design_turn_shares_the_chat_turn_stable_prefix_and_adds_its_instructions_last(
+        self,
+    ) -> None:
+        chat_service = ProviderStandIn({"answer": "Plain."})
+        build_chat_method(_answering("unused", chat_service))(
+            RequestContext(47, Event(), _read_with_pages), _params(),
+        )
+        design_service = ProviderStandIn({"answer": "Testable.", "design": None})
+        build_chat_method(_answering("unused", design_service))(
+            RequestContext(48, Event(), _read_with_pages), _design_params(),
+        )
+        chat_system, chat_user = chat_service.requests[0]["input"]
+        design_system, design_user = design_service.requests[0]["input"]
+
+        self.assertEqual(design_system, chat_system)
+        stable = str(chat_user["content"]).split("Current user message:", 1)[0]
+        self.assertIn("Second page.", stable)
+        design_text = str(design_user["content"])
+        self.assertTrue(design_text.startswith(stable))
+        self.assertLess(
+            design_text.index("an imprecise null is never a kill"),
+            design_text.index("Current user message:"),
+        )
+        self.assertTrue(design_text.endswith("Current user message:\nWhat changed?"))
+
+    def test_a_cli_design_turn_keeps_the_chat_system_prompt_and_puts_its_instructions_last(
+        self,
+    ) -> None:
+        def call(params: dict[str, object]) -> dict[str, object]:
+            calls: list[dict[str, object]] = []
+
+            def read(method: str, value: object) -> object:
+                if method == "model.invoke":
+                    if not isinstance(value, dict):
+                        raise AssertionError("model.invoke params must be an object")
+                    calls.append(value)
+                    designed = {"answer": "Testable.", "design": None}
+                    return {"output": designed if "schema" in value else "Plain."}
+                context = _read_with_pages(method, value)
+                if not isinstance(context, dict):
+                    raise AssertionError("chat.context must be an object")
+                return {**context, "history": [{"role": "user", "text": "Earlier question"}]}
+
+            build_chat_method()(RequestContext(49, Event(), read), params)
+            return calls[0]
+
+        chat = call(_cli_params())
+        design = call({**_cli_params(), "design": True})
+
+        self.assertEqual(design["system"], chat["system"])
+        history = str(chat["prompt"]).split("Current user message:", 1)[0]
+        self.assertIn("Earlier question", history)
+        prompt = str(design["prompt"])
+        self.assertTrue(prompt.startswith(history))
+        instructions = prompt.index("an imprecise null is never a kill")
+        self.assertLess(instructions, prompt.index("Current user message:"))
 
     def test_a_cli_design_output_is_validated_like_any_other_design(self) -> None:
         empty = {"answer": "Testable.", "design": _design(predictions=[])}

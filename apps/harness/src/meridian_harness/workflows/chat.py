@@ -345,23 +345,22 @@ CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("human", "{history}Current user message:\n{question}"),
 ])
 
+# A design turn sends exactly what a chat turn sends up to the current message, so it reuses the
+# chat's cached prefix, and its instructions come only after the context and the history.
 DESIGN_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", CHAT_INSTRUCTIONS + "\n\n" + DESIGN_INSTRUCTIONS),
+    ("system", CHAT_INSTRUCTIONS),
     (
         "human",
-        "Conversation context:\n{context_json}\n\nCurrent user message:\n{question}",
+        "Conversation context:\n{context_json}\n\n" + DESIGN_INSTRUCTIONS
+        + "\n\nCurrent user message:\n{question}",
     ),
 ])
 
 # A design turn on a subscription CLI is one structured call outside the chat's session, so it
 # carries the whole turn, split as a chat turn is.
 CLI_DESIGN_PROMPT = ChatPromptTemplate.from_messages([
-    (
-        "system",
-        CHAT_INSTRUCTIONS + "\n\n" + DESIGN_INSTRUCTIONS
-        + "\n\nConversation context:\n{context_json}",
-    ),
-    ("human", "{history}Current user message:\n{question}"),
+    ("system", CHAT_INSTRUCTIONS + "\n\nConversation context:\n{context_json}"),
+    ("human", "{history}" + DESIGN_INSTRUCTIONS + "\n\nCurrent user message:\n{question}"),
 ])
 
 _CITATION_TOKEN = re.compile(r"\[(?:p|pp)\.[^\]]*\]")
@@ -509,7 +508,7 @@ def _generate_design(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[st
     else:
         prompt = DESIGN_PROMPT.invoke({
             "context_json": _compact(_prompt_context(state["context"])),
-            "question": state["text"],
+                "question": state["text"],
         })
         try:
             candidate = model.invoke(prompt)
