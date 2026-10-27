@@ -185,7 +185,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
       const page = await store.wikiAggregation(id)
       return answer({
         id, kind: page.kindLabel, title: page.title, summary: clip(page.summary, ITEM_CHARS),
-        claims: page.claims.slice(0, 20).map((claim) => clip(claim.text, ITEM_CHARS)), body: clip(page.body, BODY_CHARS),
+        claims: page.claims.slice(0, 20).map((claim) => ({ id: claim.id, text: clip(claim.text, ITEM_CHARS) })), body: clip(page.body, BODY_CHARS),
       })
     }),
     tool('project_summary', 'Read a project summary', 'Read the summary of one project in the vault: its state, focus, '

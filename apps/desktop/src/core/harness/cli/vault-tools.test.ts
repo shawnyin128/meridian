@@ -96,6 +96,9 @@ describe('the internal MCP server\'s vault tools', () => {
       id: 'methods/rotation', kind: '方法', title: 'Rotation', summary: expect.stringContaining('正交矩阵'),
     })
     expect(await ask(tools, 'wiki_page', { id: `papers/${MIXTRAL}` })).toMatchObject({ title: 'Mixtral of Experts' })
+    expect((await ask(tools, 'wiki_page', { id: 'topics/kv-cache-quantization' }))['claims']).toEqual([
+      { id: 'per-channel-keys', text: expect.any(String) }, { id: 'prefix-schedule', text: expect.any(String) },
+    ])
     for (const id of ['../../../etc/passwd', 'papers/no-such-paper', 'chats/amortize']) {
       expect(await ask(tools, 'wiki_page', { id })).toEqual({ error: `The vault has no Wiki page ${id}.` })
     }

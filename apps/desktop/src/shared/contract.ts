@@ -2323,11 +2323,55 @@ export const ChatAnswerModelSchema = z.discriminatedUnion('route', [
   z.object({ route: z.literal('api'), id: z.string().min(1).max(200) }).strict(),
 ])
 
+/** A required, trimmed one-line string of at most `max` characters, as model output must be. */
+const DesignLine = (max: number) => z.string().trim().min(1).max(max).regex(/^[^\n]*$/)
+
+/**
+ * The experiment design a design turn's answer carries, as the Harness validated it: the claim, the
+ * explanations it competes with (M1 the proposed mechanism, M2 the strongest alternative, M0 one null
+ * or artifact), what each predicts where (null is an unknown prediction, exactly one row `chosen`),
+ * the smallest experiment, the decision table declared before the run (each outcome once, `invalid`,
+ * `expand`, `kill` and `inconclusive` always among them) and the evidence ledger, where a `source`
+ * statement alone has an anchor: a Wiki claim or page, or a page of a paper.
+ */
+export const ExperimentDesignSchema = z.object({
+  claim: z.object({ text: DesignLine(160), status: z.enum(['hypothesis', 'observed']) }).strict(),
+  explanations: z.object({ m1: DesignLine(160), m2: DesignLine(160), m0: DesignLine(160) }).strict(),
+  predictions: z.array(z.object({
+    regime: DesignLine(80),
+    m1: DesignLine(40).nullable(),
+    m2: DesignLine(40).nullable(),
+    m0: DesignLine(40).nullable(),
+    metric: DesignLine(40),
+    chosen: z.boolean(),
+  }).strict()).min(1).max(4),
+  experiment: z.object({
+    substrate: z.enum(['analytic', 'synthetic', 'component', 'small-system', 'full-system']),
+    keeps: DesignLine(160),
+    untested: DesignLine(160),
+  }).strict(),
+  decisions: z.array(z.object({
+    pattern: DesignLine(120),
+    outcome: z.enum(['invalid', 'alternative', 'expand', 'below-gate', 'kill', 'inconclusive']),
+    interpretation: DesignLine(60),
+    next: DesignLine(60),
+  }).strict()).min(4).max(6),
+  ledger: z.array(z.object({
+    statement: DesignLine(160),
+    status: z.enum(['source', 'inference', 'new-hypothesis']),
+    anchor: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('wiki'), ref: z.string().min(3).max(300) }).strict(),
+      z.object({ kind: z.literal('source'), paper: z.string().min(1).max(200), page: z.number().int().positive() }).strict(),
+    ]).nullable(),
+  }).strict()).min(1).max(6),
+}).strict()
+
 /**
  * Chat message. `role` distinguishes user, AI answer, and Meridian status copy;
  * status messages are not rendered as answer bubbles. Messages without buttons
  * carry an empty actions array. `model`, on an AI answer, is the model that wrote
- * it; answers kept before 0.0.21.0 name none.
+ * it; answers kept before 0.0.21.0 name none. `design`, on an AI answer to a design turn, is the
+ * experiment design it carries.
  */
 export const ChatMessageSchema = z.object({
   id: z.string(),
@@ -2335,6 +2379,7 @@ export const ChatMessageSchema = z.object({
   runs: z.array(ChatRunSchema),
   actions: z.array(ChatActionSchema),
   model: ChatAnswerModelSchema.optional(),
+  design: ExperimentDesignSchema.optional(),
 }).strict()
 
 /**
@@ -2425,10 +2470,12 @@ export const ChatAppendParamsSchema = z.object({
  * One explicit send is one billable model turn; Core owns persistence, context, and cancellation.
  * `runs` is what the user wrote, each mention as a run of its own, `@` and the name on one line,
  * naming the project, paper or Wiki page it mentions; the whole text holds at most 20,000
- * characters and more than whitespace.
+ * characters and more than whitespace. With `design` the turn is a design turn: its answer may carry
+ * an experiment design.
  */
 export const ChatSendParamsSchema = z.object({
   id: z.string(),
+  design: z.boolean().optional(),
   runs: z.array(ChatRunSchema.refine((run) => (run.kind === 'text'
     ? run.target === undefined
     : /^@[^\n]+$/.test(run.text) && ['project', 'paper', 'page'].includes(run.target?.kind ?? '')))).min(1),
@@ -2494,7 +2541,39 @@ export const HarnessFailureDetailSchema = z.object({
 export const ChatFailureParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
-export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
+export const ChatRetryParamsSchema = z.object({ id: z.string(), design: z.boolean().optional() }).strict()
+
+/** Reads what saving the design answer `messageId` of chat `id` carries as an idea would write; answers a ChatDesignPreview. */
+export const ChatDesignPreviewParamsSchema = z.object({ id: z.string(), messageId: z.string() }).strict()
+
+/**
+ * Everything saving a design as an idea writes, and the nodes the coding agent's Lab skill will build
+ * from it when the idea is started: the idea, titled by the claim, with its body and the project it
+ * relates to (the project the chat last mentioned, if any); its one file, the Markdown of the whole
+ * design; a hypothesis node for the claim, under `under`, the related project's active node, or a
+ * root when it is null; and an experiment node under it for the chosen prediction, its declared
+ * decision table as one history line. `fingerprint` names exactly this; `saved` is the idea that
+ * already holds this design, or null.
+ */
+export const ChatDesignPreviewSchema = z.object({
+  idea: z.object({
+    title: z.string(),
+    body: z.string(),
+    project: z.object({ id: z.string(), name: z.string() }).strict().nullable(),
+  }).strict(),
+  file: z.object({ name: z.string(), markdown: z.string() }).strict(),
+  nodes: z.object({
+    hypothesis: z.object({ title: z.string(), under: z.object({ id: z.string(), label: z.string() }).strict().nullable() }).strict(),
+    experiment: z.object({ title: z.string(), history: z.string() }).strict(),
+  }).strict(),
+  fingerprint: z.string().regex(/^[0-9a-f]{16}$/),
+  saved: z.string().nullable(),
+}).strict()
+
+/** Saves the design answer `messageId` of chat `id` as an idea; `fingerprint` is that of the preview the user saw. Answers the idea. */
+export const ChatSaveDesignParamsSchema = z.object({
+  id: z.string(), messageId: z.string(), fingerprint: z.string(),
+}).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
 /**
@@ -3002,6 +3081,8 @@ export type ProposalStatus = ProposalRecord['status']
 export type ChatRun = z.infer<typeof ChatRunSchema>
 export type ChatAction = z.infer<typeof ChatActionSchema>
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
+export type ExperimentDesign = z.infer<typeof ExperimentDesignSchema>
+export type ChatDesignPreview = z.infer<typeof ChatDesignPreviewSchema>
 export type ChatAnswerModel = z.infer<typeof ChatAnswerModelSchema>
 export type ChatWriting = z.infer<typeof ChatWritingSchema>
 export type ChatMessageFields = z.infer<typeof ChatMessageFieldsSchema>
@@ -3176,6 +3257,8 @@ export const CONTRACT_METHODS = [
   'chat.failure',
   'chat.model',
   'chat.setModel',
+  'chat.designPreview',
+  'chat.saveDesign',
   'idea.list',
   'idea.create',
   'idea.update',

@@ -5,7 +5,8 @@ import { join, resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import type { ChatMessage, PaperReading } from '../../shared/contract.js'
+import type { ChatMessage, ExperimentDesign, PaperReading } from '../../shared/contract.js'
+import experimentDesign from '../fixtures/experiment-design.json' with { type: 'json' }
 import { CallError } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
 import type { VaultStore } from '../vault.js'
@@ -17,9 +18,12 @@ import { createChatService } from './chat-service.js'
 import { type CliChatSessions, openCliChatSessions } from './cli/chat-sessions.js'
 import { CliRunError } from './cli/child.js'
 import { type CliChatCall, type CliChatRunner, createCliChatRunner } from './cli/chat-turn.js'
+import type { CliRunner } from './cli/runner.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
 import { HARNESS_CAPABILITIES, HARNESS_PROTOCOL_VERSION } from './protocol.js'
 import { type HarnessChild, HarnessRpcError } from './rpc.js'
+
+const DESIGN = experimentDesign as ExperimentDesign
 
 function message(id: string, role: ChatMessage['role'], text: string): ChatMessage {
   return { id, role, runs: [{ kind: 'text', text }], actions: [] }
@@ -138,6 +142,7 @@ describe('model connection check', () => {
         return { state: 'connected', modelCalls: 1 }
       },
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
     })
 
@@ -153,6 +158,7 @@ describe('model connection check', () => {
       model: { runtime: async (choice: unknown) => { asked.push(choice); return { source: 'cli', cli: 'codex' } } } as unknown as HarnessModelConfig,
       checkCli: async () => ({ state: 'connected', modelCalls: 1 }),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
     })
 
@@ -170,6 +176,7 @@ describe('model connection check', () => {
       model: { runtime: async () => ({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }) } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       launch: () => child,
     })
@@ -196,6 +203,7 @@ describe('model connection check', () => {
       model: { runtime: async () => model } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       launch: () => child,
     })
@@ -222,6 +230,7 @@ describe('model connection check', () => {
       model: { runtime: async (choice: unknown) => { asked.push(choice); return model } } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       launch: () => child,
     })
@@ -402,6 +411,7 @@ function sessionChat(initial: HarnessRuntimeModel) {
       internalMcp: async () => ({ claudeArgs: [], codexArgs: [], env: {}, close: async () => {} }),
       environment,
     }),
+    structured: vi.fn<CliRunner>(),
     sessions,
     launch: () => child,
     onLog: (level, line) => logs.push(`${level} ${line}`),
@@ -441,7 +451,7 @@ const sessionOf = (turn: SeenTurn) => (turn.argv.includes('--resume') ? turn.arg
 const resumes = (turn: SeenTurn) => turn.argv.includes('--resume') || turn.argv[1] === 'resume'
 
 /** A runner whose chat turns on a subscription CLI `cli` answers, with a session store in a folder of its own. */
-function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
+function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner, structured: CliRunner = vi.fn<CliRunner>()) {
   const child = new FakeHarness()
   const logs: string[] = []
   const store = createFixtureStore()
@@ -452,6 +462,7 @@ function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
     model: { runtime: async () => model } as unknown as HarnessModelConfig,
     checkCli: async () => ({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 }),
     cli,
+    structured,
     sessions: openCliChatSessions({ root, vault: '/vaults/research', environment: { CLAUDE_CONFIG_DIR: root, CODEX_HOME: root } }),
     launch: () => child,
     onLog: (level, line) => logs.push(`${level} ${line}`),
@@ -511,6 +522,7 @@ describe('a chat turn on a subscription CLI', () => {
       } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       choiceOf: (id) => (id === chat ? { source: 'api:openai', model: 'gpt-6.1', effort: 'xhigh' } : null),
       launch: () => child,
@@ -914,4 +926,113 @@ describe('deleting a chat on a subscription CLI', () => {
       }
     })
   }
+})
+
+const API_MODEL = { provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }
+
+describe('a design turn', () => {
+  /** A chat whose question mentions the fixture vault's KV cache quantization page. */
+  const mentioningChat = (store: VaultStore) => {
+    const chat = store.createChat('KV cache quantization', true).id
+    store.appendChatMessages(chat, [{
+      role: 'you', actions: [],
+      runs: [{ kind: 'mention', text: '@KV cache quantization', target: { kind: 'page', id: 'topics/kv-cache-quantization' } }],
+    }])
+    return chat
+  }
+  const apiRunner = (store: VaultStore, child: FakeHarness) => createChatHarnessRunner({
+    store,
+    model: { runtime: async () => API_MODEL } as unknown as HarnessModelConfig,
+    checkCli: vi.fn(),
+    cli: vi.fn<CliChatRunner>(),
+    structured: vi.fn<CliRunner>(),
+    sessions: {} as CliChatSessions,
+    launch: () => child,
+  })
+
+  it('asks for a design with the mentioned page\'s claims in its context and a 4,000-token cap, and returns it', async () => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const chat = mentioningChat(store)
+    const runner = apiRunner(store, child)
+    const designing = runner.design(chat, 'Design it', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request).toMatchObject({ method: 'chat.answer', params: { chatId: chat, design: true, limits: { maxOutputTokens: 4_000 } } })
+
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: 'Design it' } })
+    const { wiki } = (await context)['result'] as { wiki: Array<{ ref: string; page: string; text: string }> }
+    expect(wiki.map((claim) => claim.ref)).toEqual([
+      'topics/kv-cache-quantization#per-channel-keys', 'topics/kv-cache-quantization#prefix-schedule',
+    ])
+
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design: DESIGN } })
+    await expect(designing).resolves.toEqual({ answer: '可以测。', design: DESIGN })
+    runner.close()
+  })
+
+  it('leaves Wiki claims out of an ordinary turn\'s context', async () => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const chat = mentioningChat(store)
+    const runner = apiRunner(store, child)
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request['params']).not.toHaveProperty('design')
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: 'Why?' } })
+    expect((await context)['result']).not.toHaveProperty('wiki')
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Because.' } })
+    await expect(answering).resolves.toBe('Because.')
+    runner.close()
+  })
+
+  it('fails as malformed output when the design anchors a claim the vault does not hold', async () => {
+    for (const ref of ['topics/kv-cache-quantization#made-up', 'topics/no-such-page']) {
+      const child = new FakeHarness()
+      const store = createFixtureStore()
+      const chat = mentioningChat(store)
+      const runner = apiRunner(store, child)
+      const designing = runner.design(chat, 'Design it', new AbortController().signal)
+      child.ready()
+      const request = await child.frame()
+      const design = { ...DESIGN, ledger: [{ statement: '一句', status: 'source', anchor: { kind: 'wiki', ref } }] }
+      child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design } })
+      await expect(designing).rejects.toMatchObject({ name: 'CallError', reason: 'malformed-output' })
+      runner.close()
+    }
+  })
+
+  it('runs on a subscription CLI as one structured call outside the chat\'s session', async () => {
+    const structured = vi.fn<CliRunner>(async () => ({
+      output: { answer: '可以测。', design: DESIGN }, durationMs: 9_000,
+      usage: { inputTokens: 9_000, cachedInputTokens: 0, outputTokens: 1_500 },
+    }))
+    const session = vi.fn<CliChatRunner>()
+    const { child, runner, logs, close, store } = chatRunner(CLI_MODEL, session, structured)
+    const chat = mentioningChat(store)
+    const designing = runner.design(chat, 'Design it', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request).toMatchObject({ method: 'chat.answer', params: { design: true, model: CLI_MODEL } })
+    const replied = child.frame()
+    child.callModel('design', request['id'] as number, { system: 'Rules and context', prompt: 'History, then: Design it', schema: { type: 'object' } })
+    expect(await replied).toMatchObject({ type: 'response', callbackId: 'design', result: { output: { answer: '可以测。', design: DESIGN } } })
+    expect(structured).toHaveBeenCalledWith(expect.objectContaining({
+      cli: 'claude', model: 'opus', system: 'Rules and context', prompt: 'History, then: Design it', schema: { type: 'object' }, lookup: {},
+    }))
+    expect(session).not.toHaveBeenCalled()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design: DESIGN } })
+    await expect(designing).resolves.toEqual({ answer: '可以测。', design: DESIGN })
+    expect(logs).toContainEqual('info claude: 9.0 s, 9000 input tokens (0 cached), 1500 output tokens')
+    close()
+  })
+
+  it('reads a stored design back into the history as its sections after the answer', () => {
+    const [turn] = packChatHistory([{ ...message('a', 'ai', '可以测。'), design: DESIGN }])
+    expect(turn!.text.startsWith('可以测。\n\n## Explanations')).toBe(true)
+    expect(turn!.text).toContain('| 输出分布偏离目标模型，或两组平均宽度相差超过 5% | 检验无效 | 修正对齐后重跑 | repairable |')
+  })
 })
