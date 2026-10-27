@@ -90,6 +90,10 @@ export const ChatRecordSchema = ChatSessionSchema.omit({ messageCount: true }).e
 
 const TrashBase = TrashEntrySchema.omit({ kind: true, restorable: true })
 
+/** One `.meridian/idea-files.json` entry: a file idea `idea` holds, kept where it is on disk at `path`. */
+export const IdeaFileRecordSchema = AttachmentSchema.extend({ idea: z.string(), path: z.string() })
+export type IdeaFileRecord = z.infer<typeof IdeaFileRecordSchema>
+
 /**
  * One `.meridian/metadata-fills.json` entry: the bibliographic fields of paper `paper` the App last
  * filled from a metadata source, each with the value it wrote, so a later fill may replace those
@@ -115,7 +119,8 @@ export type PaperReadingRecord = z.infer<typeof PaperReadingRecordSchema>
  * feedback from the entry. A read-later entry holds the removed item and its index in the queue, where
  * restoring puts it back; a chat entry holds the whole chat and its index in the chat list the same way,
  * and an attachment entry its index in the project's attachments. An attachment entry an older version
- * wrote has no index and goes back at the end.
+ * wrote has no index and goes back at the end. An idea file entry holds the file and its index among
+ * idea `ideaId`'s files, and lists as an attachment.
  */
 export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({
@@ -130,6 +135,9 @@ export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({
     kind: z.literal('attachment'), projectId: z.string(), attachment: AttachmentSchema,
     position: z.number().int().min(0).optional(),
+  }),
+  TrashBase.extend({
+    kind: z.literal('ideaFile'), ideaId: z.string(), attachment: IdeaFileRecordSchema.omit({ idea: true }), position: z.number().int().min(0),
   }),
   TrashBase.extend({
     kind: z.literal('inbox'), entryId: z.string(), feedback: z.enum(['less', 'known']).optional(),
@@ -231,6 +239,10 @@ export const VaultStateSchema = z.object({
   projectOrder: z.array(z.string()).optional(),
   ideaOrder: z.array(z.string()).optional(),
   agentIdeas: z.array(z.string()).optional(),
+  /** The vault idea each workspace agent idea became, by its `<project id>:<idea id>`. */
+  agentIdeaIds: z.record(z.string(), z.string()).optional(),
+  /** `<project id>:<file id>` for each workspace agent idea file already taken in, so a removed one does not come back. */
+  agentIdeaFiles: z.array(z.string()).optional(),
   /** Research-record events already copied into the feed, as `project:date:text` keys. */
   feedEvents: z.array(z.string()).optional(),
   deliverySettings: DeliverySettingsSchema.optional(),

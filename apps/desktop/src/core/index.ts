@@ -94,6 +94,8 @@ import {
   ProjectUnverifyConclusionParamsSchema,
   ProjectVerifyConclusionParamsSchema,
   ResearchIdeaCreateParamsSchema,
+  ResearchIdeaAddFileParamsSchema,
+  ResearchIdeaDeleteFileParamsSchema,
   ResearchIdeaDeleteParamsSchema,
   ResearchIdeaPlaceOnGraphParamsSchema,
   ResearchIdeaPromoteParamsSchema,
@@ -1027,6 +1029,18 @@ registerHandler('idea.delete', (params) => {
 })
 registerHandler('idea.reorder', (params) =>
   store.reorderIdeas(ResearchIdeaReorderParamsSchema.parse(params).order))
+registerHandler('idea.files', (params) => {
+  EmptyParamsSchema.parse(params)
+  return store.listIdeaFiles()
+})
+registerHandler('idea.addFile', (params) => {
+  const { id, attachment } = ResearchIdeaAddFileParamsSchema.parse(params)
+  return store.addIdeaFile(id, attachment)
+})
+registerHandler('idea.deleteFile', (params) => {
+  const { id, fileId } = ResearchIdeaDeleteFileParamsSchema.parse(params)
+  return trashedEntry(store, () => store.deleteIdeaFile(id, fileId))
+})
 registerHandler('chat.recordAction', (params) => {
   const { id, messageId } = ChatRecordActionParamsSchema.parse(params)
   return store.recordAction(id, messageId)
