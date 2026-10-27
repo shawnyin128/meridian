@@ -36,7 +36,7 @@ export { createRecommendationService } from './service.js'
 export {
   createEmbeddings, EMBEDDING_BATCH_LIMIT, EMBEDDING_CACHE_LIMIT, semanticEmbeddingUrl,
 } from './embeddings.js'
-export type { EmbeddingLookup, EmbeddingRun, Embeddings } from './embeddings.js'
+export type { EmbeddingFallbackReason, EmbeddingLookup, EmbeddingRun, Embeddings } from './embeddings.js'
 export type { RecommendationService } from './service.js'
 export type {
   DiscoveryPaper,

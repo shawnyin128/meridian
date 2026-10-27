@@ -11,7 +11,7 @@ const ids = (count: number, prefix = 'ARXIV:2601.'): string[] => (
   Array.from({ length: count }, (_, at) => `${prefix}${String(at).padStart(5, '0')}`)
 )
 
-type Answer = (asked: string[]) => { status: number; rows?: unknown[] }
+type Answer = (asked: string[]) => { status: number; rows?: unknown; body?: string }
 
 /** A stub batch endpoint that records each request's ids and answers with `answer`, SPECTER2 rows by default. */
 function stubApi(answer: Answer = (asked) => ({
@@ -21,8 +21,8 @@ function stubApi(answer: Answer = (asked) => ({
   const get: HttpGet = async (url, options) => {
     const asked = (JSON.parse(options.body!) as { ids: string[] }).ids
     requests.push({ url, ids: asked, options })
-    const { status, rows } = answer(asked)
-    return { status, body: bytes(rows ?? { message: 'Too Many Requests' }) }
+    const { status, rows, body } = answer(asked)
+    return { status, body: body === undefined ? bytes(rows ?? { message: 'Too Many Requests' }) : new TextEncoder().encode(body) }
   }
   return { get, requests }
 }
@@ -94,7 +94,8 @@ describe('paper embeddings', () => {
     const asked = ids(250)
     const result = await embeddings.vectorsFor(asked, run)
     expect(result.path).toBe('fallback')
-    expect(run.path).toBe('fallback')
+    expect(result.reason).toBe('rate-limit')
+    expect(run).toEqual({ path: 'fallback', reason: 'rate-limit' })
     expect(result.vectors.size).toBe(100)
     expect(result.missing).toEqual(asked.slice(100))
     const requestsAfterSwitch = api.requests.length
@@ -103,11 +104,58 @@ describe('paper embeddings', () => {
     const later = await embeddings.vectorsFor([asked[0]!, 'ARXIV:new'], run)
     expect(api.requests).toHaveLength(requestsAfterSwitch)
     expect(later.path).toBe('fallback')
+    expect(later.reason).toBe('rate-limit')
     expect(later.vectors.get(asked[0]!)).toEqual(vectorOf(asked[0]!))
     expect(later.missing).toEqual(['ARXIV:new'])
 
     await embeddings.vectorsFor(['ARXIV:new'], embeddings.startRun())
     expect(api.requests.at(-1)!.ids).toEqual(['ARXIV:new'])
+  })
+
+  const timeout = (): never => { throw Object.assign(new Error('The operation was aborted due to timeout'), { name: 'TimeoutError' }) }
+  const offline = (): never => { throw new TypeError('fetch failed') }
+  it.each([
+    ['quota', () => ({ status: 403, body: '{"message":"API key quota exceeded"}' })],
+    ['timeout', timeout],
+    ['network', offline],
+    ['server', () => ({ status: 503, body: '{"message":"Service Unavailable"}' })],
+  ] as const)('switches the rest of a run to the fallback on a %s answer, recording why', async (reason, refuse: Answer) => {
+    let calls = 0
+    const api = stubApi((asked) => {
+      calls += 1
+      return calls === 1
+        ? { status: 200, rows: asked.map((id) => ({ embedding: { model: 'specter_v2', vector: vectorOf(id) } })) }
+        : refuse(asked)
+    })
+    const embeddings = open(api.get)
+    const run = embeddings.startRun()
+    const asked = ids(150)
+    const result = await embeddings.vectorsFor(asked, run)
+    expect(result).toMatchObject({ path: 'fallback', reason, missing: asked.slice(100) })
+    expect(result.vectors.size).toBe(100)
+    expect(run).toEqual({ path: 'fallback', reason })
+    const sent = api.requests.length
+    expect((await embeddings.vectorsFor(['ARXIV:new'], run)).reason).toBe(reason)
+    expect(api.requests).toHaveLength(sent)
+  })
+
+  it.each([
+    ['a bad request', () => ({ status: 400, body: '{"error":"Unrecognized or unsupported fields"}' })],
+    ['an invalid key', () => ({ status: 401, body: '{"message":"Unauthorized"}' })],
+    ['a forbidden key', () => ({ status: 403, body: '{"message":"Forbidden"}' })],
+    ['a response that is not a list', () => ({ status: 200, body: '{"data":[]}' })],
+  ] as const)('throws on %s instead of falling back', async (_name, refuse: Answer) => {
+    const embeddings = open(stubApi(refuse).get)
+    const run = embeddings.startRun()
+    await expect(embeddings.vectorsFor(['ARXIV:1'], run)).rejects.toThrow()
+    expect(run.path).toBe('api')
+  })
+
+  it('reports no fallback reason while the API answers', async () => {
+    const embeddings = open(stubApi().get)
+    const result = await embeddings.vectorsFor(['ARXIV:1'], embeddings.startRun())
+    expect(result.path).toBe('api')
+    expect('reason' in result).toBe(false)
   })
 
   it('reports the API unavailable and never calls it while no key is saved, still answering from the cache', async () => {

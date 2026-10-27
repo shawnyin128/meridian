@@ -1,7 +1,7 @@
 import { createHash } from 'node:crypto'
 import { mkdirSync, readdirSync, readFileSync, rmSync, statSync, utimesSync, writeFileSync } from 'node:fs'
 import { join } from 'node:path'
-import { HttpStatusError, requestWithRetry, type HttpGet } from '../net/http.js'
+import { HttpStatusError, netFailure, requestWithRetry, type HttpGet } from '../net/http.js'
 
 export const semanticEmbeddingUrl = `https://api.semanticscholar.org/graph/v1/paper/batch?${new URLSearchParams({
   fields: 'embedding.specter_v2',
@@ -13,23 +13,30 @@ export const EMBEDDING_CACHE_LIMIT = 5_000
 const BODY_LIMIT = 10 * 1024 * 1024
 const TIMEOUT_MS = 10_000
 const MODEL_FILE = 'model.json'
+/** How Semantic Scholar words a 403 that refuses for quota or rate rather than for the key. */
+const QUOTA_ANSWER = /quota|rate limit|too many requests|limit exceeded/i
+
+/** Why a run left the API: a 429, a 403 quota answer, a timeout, a network error or a 5xx. */
+export type EmbeddingFallbackReason = 'rate-limit' | 'quota' | 'timeout' | 'network' | 'server'
 
 /**
- * One refresh's way to embeddings: `api` until Semantic Scholar answers 429, then `fallback` for the
- * rest of that refresh. A new refresh starts again at `api`.
+ * One refresh's way to embeddings: `api` until a request fails for an EmbeddingFallbackReason, then
+ * `fallback`, with that `reason`, for the rest of that refresh. A new refresh starts again at `api`.
  */
-export type EmbeddingRun = { path: 'api' | 'fallback' }
+export type EmbeddingRun = { path: 'api' | 'fallback'; reason?: EmbeddingFallbackReason }
 
 /**
  * The vectors of one lookup, keyed by the paper id asked, all from `model` (null when there are
  * none); `missing` lists the ids asked that have no vector, in the order asked. `path` is `api` while
- * the API answers, `fallback` once this run met a 429, `unavailable` while no key is saved.
+ * the API answers, `fallback` once this run left the API, with the run's `reason`, and `unavailable`
+ * while no key is saved.
  */
 export type EmbeddingLookup = {
   model: string | null
   vectors: Map<string, number[]>
   missing: string[]
   path: 'api' | 'fallback' | 'unavailable'
+  reason?: EmbeddingFallbackReason
 }
 
 export type Embeddings = {
@@ -39,9 +46,11 @@ export type Embeddings = {
    * Returns the SPECTER2 vectors of `paperIds`, Semantic Scholar batch ids such as `ARXIV:2401.01234`
    * or a Semantic Scholar paper id, from the cache and else from the API, which it calls only with a
    * key and only while `run` is on the `api` path, at most EMBEDDING_BATCH_LIMIT ids a request. A
-   * 429 sets `run.path` to `fallback` and leaves the ids not yet fetched missing. Fetched vectors are
-   * cached under the model the API names; a cached vector of another model counts as missing and is
-   * fetched again. Throws on any other failed request or a response that is not a list.
+   * request that still fails after its retry for an EmbeddingFallbackReason sets `run` to `fallback`
+   * with that reason and leaves the ids not yet fetched missing. Fetched vectors are cached under the
+   * model the API names; a cached vector of another model counts as missing and is fetched again.
+   * Throws on any other failed request (a 400, a 401, a 403 that is not a quota answer) or a response
+   * that is not a list.
    */
   vectorsFor(paperIds: readonly string[], run: EmbeddingRun): Promise<EmbeddingLookup>
 }
@@ -71,6 +80,18 @@ function parseEmbeddings(body: Uint8Array): Array<{ model: string; vector: numbe
     const { model, vector } = embedding as { model?: unknown; vector?: unknown }
     return typeof model === 'string' && model !== '' && isVector(vector) ? { model, vector } : null
   })
+}
+
+/** The EmbeddingFallbackReason of a failed request, or undefined when the failure is a bug or a setup error. */
+function fallbackReason(error: unknown): EmbeddingFallbackReason | undefined {
+  if (error instanceof HttpStatusError) {
+    if (error.status === 429) return 'rate-limit'
+    if (error.status >= 500) return 'server'
+    if (error.status === 403 && QUOTA_ANSWER.test(new TextDecoder().decode(error.body ?? new Uint8Array()))) return 'quota'
+    return undefined
+  }
+  const failure = netFailure(error)
+  return failure === 'timeout' ? 'timeout' : failure === 'unavailable' ? 'network' : undefined
 }
 
 /**
@@ -147,6 +168,7 @@ export function createEmbeddings(deps: {
         vectors,
         missing: asked.filter((id) => !vectors.has(id)),
         path,
+        ...(path === 'fallback' && run.reason !== undefined ? { reason: run.reason } : {}),
       })
       if (deps.apiKey() === undefined) return lookup('unavailable')
       const toFetch = asked.filter((id) => !vectors.has(id))
@@ -158,8 +180,10 @@ export function createEmbeddings(deps: {
             method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: batch }),
           }, policy)
         } catch (error) {
-          if (!(error instanceof HttpStatusError && error.status === 429)) throw error
+          const reason = fallbackReason(error)
+          if (reason === undefined) throw error
           run.path = 'fallback'
+          run.reason = reason
           break
         }
         const rows = parseEmbeddings(body)
