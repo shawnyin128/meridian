@@ -8,6 +8,3 @@
 /* A web address relation's draft: its two fields on a line of their own below the group switch. */
 .wkrel .reladd .urldraft{display:flex;flex-direction:column;gap:var(--sp-6);flex:1 1 100%;min-width:0}
 .wkrel .reladd .urldraft .inedit{flex:none}
-
-.attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
-.attachments.drag{background:var(--selected);outline-color:var(--ink)}

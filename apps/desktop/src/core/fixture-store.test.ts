@@ -2440,6 +2440,15 @@ describe('fixture store', () => {
         return store.deleteIdea(created.id)
       },
       'idea.reorder': () => store.reorderIdeas(store.listIdeas().map((idea) => idea.id)),
+      'idea.files': () => store.listIdeaFiles(),
+      'idea.addFile': () => store.addIdeaFile(
+        store.createIdea('amortize', '带文件', '正文').id, { name: 'proposal.md', size: '1 KB', path: '/tmp/proposal.md' },
+      ),
+      'idea.deleteFile': () => {
+        const created = store.createIdea('amortize', '删文件', '正文')
+        const file = store.addIdeaFile(created.id, { name: 'proposal.md', size: '1 KB', path: '/tmp/proposal.md' })
+        store.deleteIdeaFile(created.id, file.attachment.id)
+      },
       'chat.recordAction': () => {
         const session = store.createChat('记录会话', true)
         store.appendChatMessages(session.id, [{

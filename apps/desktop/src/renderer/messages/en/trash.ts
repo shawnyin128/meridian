@@ -11,6 +11,7 @@ export const trash = {
   autoClear: (days: number) => `Deletes automatically in ${days} ${pluralEn(days, { one: 'day', other: 'days' })}`,
   daysLeft: (days: number) => `${days} ${pluralEn(days, { one: 'day', other: 'days' })}`,
   projectGone: 'Project deleted',
+  ideaGone: 'Idea deleted',
   paperTaken: 'Same name in library',
   chatTaken: 'Paper has a new chat',
   clear: 'Empty trash',

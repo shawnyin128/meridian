@@ -12,7 +12,6 @@ export const project = {
     links: 'Links',
     papers: 'Papers',
     urls: 'URLs',
-    attachments: 'Attachments',
     timeline: 'Project timeline',
     plan: 'Research plan',
     records: 'Research log',
@@ -163,13 +162,6 @@ export const project = {
     editTitle: 'Edit link',
     paperRemoved: (title: string) => `Removed link to “${title}”`,
     removed: (text: string) => `Removed link to “${text}”`,
-  },
-  attachments: {
-    addTitle: 'Add attachment',
-    delete: 'Delete attachment',
-    localOnly: 'You can only add files stored on this computer.',
-    noPath: 'No file location',
-    missing: 'The file is no longer in its original location.',
   },
   agentSessions: {
     heading: 'Completed agent runs',

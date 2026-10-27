@@ -34,6 +34,15 @@ export const common = {
   overdue: '已逾期',
   archived: '已归档',
   priority: { p0: '紧急', p1: '常规', p2: '较低' },
+  /** The files a project or an idea holds, kept where they are on disk. */
+  attachments: {
+    heading: '附件',
+    addTitle: '添加附件',
+    delete: '删除附件',
+    localOnly: '只能添加本机上的文件',
+    noPath: '无文件位置',
+    missing: '文件已经不在原来的位置',
+  },
   /** The label of an agent's work, with where it came from when known. */
   attribution: {
     agent: 'agent', withSource: (who: string, source: string) => `${who} · ${source}`,

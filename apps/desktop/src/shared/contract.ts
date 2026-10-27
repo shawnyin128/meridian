@@ -1684,12 +1684,12 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  * `kind` preserves the former type and `title` its display name. `deletedAt` is
  * UTC midnight for the vault date and starts retention. `restorable` is false
  * when the original destination is missing, such as an attachment whose project
- * remains deleted, or taken, such as a paper whose page's place another page
- * holds, or a paper chat whose paper has started another chat.
+ * remains deleted or an idea file whose idea does, or taken, such as a paper whose page's place another page
+ * holds, or a paper chat whose paper has started another chat. `ideaFile` is a file an idea held.
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat', 'page']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'ideaFile', 'project', 'idea', 'chat', 'page']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),
@@ -2520,6 +2520,25 @@ export const ResearchIdeaUpdateParamsSchema = z.object({
 }).strict()
 
 export const ResearchIdeaPromoteParamsSchema = z.object({ id: z.string() }).strict()
+
+/**
+ * A file an idea holds, kept where it is on disk: `idea` names the idea, `attachment` the file the
+ * same way a project's attachment does. A project lists the files of the ideas carried out in it
+ * beside its own attachments.
+ */
+export const IdeaFileSchema = z.object({ idea: z.string(), attachment: AttachmentSchema }).strict()
+
+/** Adds the local file `attachment` describes to idea `id`; answers the IdeaFile written. */
+export const ResearchIdeaAddFileParamsSchema = z.object({
+  id: z.string(),
+  attachment: AttachmentFieldsSchema,
+}).strict()
+
+/** Moves file `fileId` of idea `id` to the trash; answers a TrashedEntry. */
+export const ResearchIdeaDeleteFileParamsSchema = z.object({
+  id: z.string(),
+  fileId: z.string(),
+}).strict()
 export const ResearchIdeaDeleteParamsSchema = z.object({ id: z.string() }).strict()
 /** Sets the manual display order for the idea list, the same way project.reorder does for projects. */
 export const ResearchIdeaReorderParamsSchema = z.object({
@@ -2994,6 +3013,7 @@ export type ResearchIdea = z.infer<typeof ResearchIdeaSchema>
 export type IdeaRelations = z.infer<typeof IdeaRelationsSchema>
 export type ResearchIdeaPatch = z.infer<typeof ResearchIdeaUpdateParamsSchema>['patch']
 export type ResearchIdeaPromoteResult = z.infer<typeof ResearchIdeaPromoteResultSchema>
+export type IdeaFile = z.infer<typeof IdeaFileSchema>
 export type ResearchIdeaGraphPlacement = z.infer<typeof ResearchIdeaGraphPlacementSchema>
 export type ResearchIdeaPlaceOnGraphResult = z.infer<typeof ResearchIdeaPlaceOnGraphResultSchema>
 export type SearchHit = z.infer<typeof SearchHitSchema>
@@ -3163,6 +3183,9 @@ export const CONTRACT_METHODS = [
   'idea.placeOnGraph',
   'idea.delete',
   'idea.reorder',
+  'idea.files',
+  'idea.addFile',
+  'idea.deleteFile',
   'chat.recordAction',
   'chat.setArchived',
   'chat.rename',

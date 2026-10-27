@@ -21,6 +21,7 @@ from meridian.workspace_protocol import (
     IDEA_CONTEXT_MAX_LEN,
     IDEA_TITLE_MAX_LEN,
     add_workspace_agent_idea,
+    add_workspace_agent_idea_file,
     add_workspace_agent_task,
     add_workspace_event,
     inspect_project_workspace,
@@ -170,6 +171,11 @@ class MeridianMCPServer:
         if workspace is not None:
             return workspace.wiki_root
         raise FileNotFoundError(adapter.NEEDS_INIT_MESSAGE)
+
+    def vault_root(self) -> Path | None:
+        """The Meridian library of the configured Paper Wiki, or None when none is configured."""
+        workspace = resolve_workspace(wiki_root=self.default_wiki_root) if self.default_wiki_root else resolve_workspace()
+        return None if workspace is None else workspace.library_root
 
     def workspace_root(self, arguments: JsonDict) -> Path:
         explicit = arguments.get("workspace_root")
@@ -328,7 +334,10 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.workspace_idea",
-            "description": "Coding context: expand one current App-owned idea referenced by the change list.",
+            "description": (
+                "Coding context: expand one current App-owned idea referenced by the change list, with the "
+                "files it holds (name, size and absolute path) when the Paper Wiki library is configured."
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {
@@ -403,6 +412,30 @@ def tool_definitions() -> list[JsonDict]:
                     "node": {"type": "string", "description": "Optional Meridian Lab graph node id it relates to."},
                 },
                 required=["idea_id", "title", "body"],
+            ),
+        },
+        {
+            "name": "meridian.workspace_idea_file_add",
+            "description": (
+                "Project Workspace: attach one file in the repository that belongs to an idea, such as a "
+                "proposal written for it, so the Meridian App shows it with the idea and with the project "
+                "the idea is carried out in. The App keeps the file where it is."
+            ),
+            "inputSchema": _schema(
+                {
+                    "workspace_root": {
+                        "type": "string",
+                        "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
+                    },
+                    "file_id": {"type": "string", "description": "Stable idempotency key for the file."},
+                    "idea_id": {
+                        "type": "string",
+                        "description": "The idea_id given to meridian.workspace_idea_add, or an App idea id from meridian.workspace_changes.",
+                    },
+                    "path": {"type": "string", "description": "Existing file relative to the repository."},
+                    "date": {"type": "string", "description": "YYYY-MM-DD; defaults to the local current date."},
+                },
+                required=["file_id", "idea_id", "path"],
             ),
         },
         {
@@ -738,6 +771,7 @@ def _call_workspace_idea(server: MeridianMCPServer, arguments: JsonDict) -> Json
     return read_workspace_idea(
         server.workspace_root(arguments),
         _required(arguments, "idea_id"),
+        vault=server.vault_root(),
     )
 
 
@@ -767,6 +801,20 @@ def _call_workspace_idea_add(server: MeridianMCPServer, arguments: JsonDict) -> 
         context=str(arguments["context"]) if arguments.get("context") not in (None, "") else None,
         idea_date=str(arguments["date"]) if arguments.get("date") not in (None, "") else None,
         node=str(arguments["node"]) if arguments.get("node") not in (None, "") else None,
+    )
+
+
+def _call_workspace_idea_file_add(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    schema = next(tool["inputSchema"] for tool in tool_definitions() if tool["name"] == "meridian.workspace_idea_file_add")
+    unknown = sorted(set(arguments) - set(schema["properties"]))
+    if unknown:
+        raise ValueError(f"meridian.workspace_idea_file_add does not take {', '.join(unknown)}")
+    return add_workspace_agent_idea_file(
+        server.workspace_root(arguments),
+        file_id=_required(arguments, "file_id"),
+        idea_id=_required(arguments, "idea_id"),
+        path=_required(arguments, "path"),
+        file_date=str(arguments["date"]) if arguments.get("date") not in (None, "") else None,
     )
 
 
@@ -869,6 +917,7 @@ TOOL_CALLS: dict[str, Callable[[MeridianMCPServer, JsonDict], JsonDict]] = {
     "meridian.workspace_idea": _call_workspace_idea,
     "meridian.workspace_event_add": _call_workspace_event_add,
     "meridian.workspace_idea_add": _call_workspace_idea_add,
+    "meridian.workspace_idea_file_add": _call_workspace_idea_file_add,
     "meridian.workspace_task_add": _call_workspace_task_add,
     "meridian.lab_graph": _call_lab_graph,
     "meridian.lab_node": _call_lab_node,

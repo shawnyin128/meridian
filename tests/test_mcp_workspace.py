@@ -11,6 +11,14 @@ from meridian.mcp.server import MeridianMCPServer
 
 
 class MCPWorkspaceTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # No case reads the user's own Meridian config while resolving the vault.
+        config_home = TemporaryDirectory()
+        self.addCleanup(config_home.cleanup)
+        environment = patch.dict("os.environ", {"MERIDIAN_CONFIG_HOME": config_home.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def _workspace(self, root: Path) -> Path:
         meridian_root = root / ".meridian"
         (meridian_root / "control").mkdir(parents=True)
@@ -207,6 +215,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                 "meridian.workspace_plan",
                 "meridian.workspace_event_add",
                 "meridian.workspace_idea_add",
+                "meridian.workspace_idea_file_add",
                 "meridian.workspace_task_add",
             },
         )
@@ -364,6 +373,55 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertFalse((root / ".meridian/ideas/ideas.json").exists())
             properties = definition["inputSchema"]["properties"]
             self.assertEqual((properties["title"]["maxLength"], properties["context"]["maxLength"]), (80, 60))
+
+    def test_idea_file_add_records_a_workspace_file_for_an_idea_and_rejects_unknown_arguments(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            (root / "docs").mkdir()
+            (root / "docs/proposal.md").write_text("# Proposal\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+            arguments = {"file_id": "proposal", "idea_id": "reuse-distance", "path": "docs/proposal.md", "date": "2026-10-21"}
+
+            _, created = self._call(server, "meridian.workspace_idea_file_add", arguments)
+            _, repeated = self._call(server, "meridian.workspace_idea_file_add", arguments)
+            unknown, _ = self._call(server, "meridian.workspace_idea_file_add", {**arguments, "name": "Proposal"})
+            missing, _ = self._call(server, "meridian.workspace_idea_file_add", {**arguments, "file_id": "x", "path": "nope.md"})
+
+            self.assertEqual((created["status"], repeated["status"]), ("created", "unchanged"))
+            self.assertTrue(unknown["isError"])
+            self.assertTrue(missing["isError"])
+            stored = json.loads((root / ".meridian/ideas/files.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored, {
+                "schema_version": "meridian.workspace-agent-idea-files.v1",
+                "files": [{"id": "proposal", "idea_id": "reuse-distance", "path": "docs/proposal.md", "date": "2026-10-21"}],
+            })
+
+    def test_workspace_idea_lists_the_idea_files_the_vault_holds_at_absolute_paths(self) -> None:
+        with TemporaryDirectory() as tmp, TemporaryDirectory() as vault_tmp:
+            root = Path(tmp)
+            vault = Path(vault_tmp)
+            self._workspace(root)
+            (vault / "wiki").mkdir()
+            (vault / ".meridian").mkdir()
+            (vault / ".meridian/idea-files.json").write_text(json.dumps([
+                {"id": "att-2", "name": "d1.md", "size": "1 KB", "path": ".meridian/designs/d1.md", "idea": "idea-1"},
+                {"id": "att-1", "name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md", "idea": "idea-1"},
+                {"id": "att-3", "name": "other.md", "size": "1 KB", "path": "/research/other.md", "idea": "idea-2"},
+            ]), encoding="utf-8")
+
+            _, unconfigured = self._call(MeridianMCPServer(default_workspace_root=root), "meridian.workspace_idea", {"idea_id": "idea-1"})
+            _, idea = self._call(
+                MeridianMCPServer(default_wiki_root=vault / "wiki", default_workspace_root=root),
+                "meridian.workspace_idea", {"idea_id": "idea-1"},
+            )
+
+            self.assertNotIn("files", unconfigured)
+            self.assertEqual(idea["idea"], unconfigured["idea"])
+            self.assertEqual(idea["files"], [
+                {"name": "d1.md", "size": "1 KB", "path": str(vault.resolve() / ".meridian/designs/d1.md")},
+                {"name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md"},
+            ])
 
     def test_task_add_records_agent_tasks_idempotently_and_leaves_the_plan_alone(self) -> None:
         with TemporaryDirectory() as tmp:

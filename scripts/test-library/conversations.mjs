@@ -1,3 +1,5 @@
+import { mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { onDay } from './app.mjs'
 
 const text = (value) => ({ kind: 'text', text: value })
@@ -15,7 +17,8 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * One chat an idea was saved from is then deleted into Trash, so that idea, carried out in the
  * speculative decoding project on a node of its graph, has a deleted chat as its source.
  * Two ideas relate to projects and a Wiki page other than where they came from, and one is written
- * down on the KV cache project's page.
+ * down on the KV cache project's page. The idea promoted to a project holds two files, written under
+ * `<out>/files`, which its project lists too, and a third that went to Trash.
  */
 export async function seedConversations(seed, call) {
   const append = (id, messages) => call('chat.append', { id, messages })
@@ -78,6 +81,16 @@ export async function seedConversations(seed, call) {
   await idea(width, '草稿头和目标模型共享浅层 KV', '草稿头直接读目标模型浅层的 KV，省掉草稿自己的 KV cache。', { project: spec })
   await idea(width, '按 token 难度跳过验证', '对置信度很高的 token 直接接受，不进验证。', { project: spec, archived: true })
   const promoted = await idea(h2o, '推测解码和 KV 量化联合优化', '草稿阶段用低位宽 KV，验证阶段用全精度 KV，两边的显存和速度一起算。')
+  const ideaFile = async (name, text) => {
+    mkdirSync(join(seed.out, 'files'), { recursive: true })
+    const path = join(seed.out, 'files', name)
+    writeFileSync(path, text, 'utf8')
+    const size = `${Math.max(1, Math.round(statSync(path).size / 1024))} KB`
+    return (await call('idea.addFile', { id: promoted, attachment: { name, size, path } })).attachment.id
+  }
+  await ideaFile('联合优化-proposal.md', '# 推测解码和 KV 量化联合优化\n\n草稿阶段用低位宽 KV，验证阶段用全精度 KV。\n')
+  await ideaFile('显存与速度估算.csv', 'bits,draft_mem_gb,verify_mem_gb,tokens_per_s\n4,3.1,12.4,41\n8,5.8,12.4,37\n')
+  await call('idea.deleteFile', { id: promoted, fileId: await ideaFile('旧草稿.md', '# 旧草稿\n') })
   await onDay(seed, -5, async () => {
     const { project } = await call('idea.promote', { id: promoted })
     seed.projects.promoted = { id: project.id, days: -5 }

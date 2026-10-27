@@ -79,6 +79,12 @@ common.anchor.label state
 common.anchor.name aria
 common.archive action
 common.archived label
+common.attachments.addTitle aria
+common.attachments.delete action
+common.attachments.heading label
+common.attachments.localOnly failure
+common.attachments.missing failure
+common.attachments.noPath state
 common.attribution.agent state
 common.attribution.withSource state
 common.attribution.routes.subscription state
@@ -389,11 +395,6 @@ papers.views.researchMap label
 papers.views.table label
 project.agentSessions.done state
 project.agentSessions.heading label
-project.attachments.addTitle aria
-project.attachments.delete action
-project.attachments.localOnly failure
-project.attachments.missing failure
-project.attachments.noPath state
 project.conclusions.experiments label
 project.conclusions.heading label
 project.conclusions.node label
@@ -508,7 +509,6 @@ project.records.kind.project state
 project.records.kind.reopen state
 project.records.kind.result state
 project.records.kind.start state
-project.sections.attachments label
 project.sections.content label
 project.sections.graph label
 project.sections.links label
@@ -975,6 +975,7 @@ trash.confirmClearLoss consequence
 trash.confirmPurge label
 trash.confirmPurgeLabel action
 trash.daysLeft state
+trash.ideaGone tooltip
 trash.kinds.attachment label
 trash.kinds.chat label
 trash.kinds.idea label

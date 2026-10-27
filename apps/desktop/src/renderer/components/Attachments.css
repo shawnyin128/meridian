@@ -1,0 +1,3 @@
+/* The attachments section: its drop target lights up while files are dragged over it. */
+.attachments{min-width:0;border-radius:var(--r-md);transition:background-color var(--t) var(--e-out),outline-color var(--t) var(--e-out);outline:1px solid transparent}
+.attachments.drag{background:var(--selected);outline-color:var(--ink)}

@@ -182,6 +182,25 @@ describe('Trash', () => {
     }
   })
 
+  it('想法的文件和附件同在附件一组；它的想法在垃圾桶里时恢复按不了，原因想法已删除写在恢复的提示里', async () => {
+    const held = api.entries
+    api.entries = [
+      { id: 'trash-6', kind: 'attachment', title: 'run.log', deletedAt: Date.parse('2026-08-25T00:00:00Z'), restorable: true },
+      { id: 'trash-7', kind: 'ideaFile', title: 'proposal.md', deletedAt: Date.parse('2026-08-25T00:00:00Z'), restorable: false },
+    ]
+    try {
+      act(() => root!.unmount())
+      root = createRoot(host)
+      await act(async () => { root!.render(<MessagesProvider><Trash /></MessagesProvider>) })
+      expect([...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)).toEqual(['附件 · 2'])
+      expect([...host.querySelectorAll('.trow')].map(restoreState)).toEqual([
+        [false, null, ['恢复', null]], [true, null, ['恢复', '想法已删除']],
+      ])
+    } finally {
+      api.entries = held
+    }
+  })
+
   it('每一类条目是页面上的嵌入列表，不套卡片外框', () => {
     expect([...host.querySelectorAll('.tgroup')].map((list) => list.className))
       .toEqual(['list list--embedded tgroup', 'list list--embedded tgroup'])

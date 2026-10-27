@@ -37,6 +37,14 @@ export const common = {
   overdue: 'Overdue',
   archived: 'Archived',
   priority: { p0: 'Urgent', p1: 'Normal', p2: 'Low' },
+  attachments: {
+    heading: 'Attachments',
+    addTitle: 'Add attachment',
+    delete: 'Delete attachment',
+    localOnly: 'You can only add files stored on this computer.',
+    noPath: 'No file location',
+    missing: 'The file is no longer in its original location.',
+  },
   attribution: {
     agent: 'Agent', withSource: (who: string, source: string) => `${who} · ${source}`,
     routes: { subscription: 'Subscription', api: 'API' },
