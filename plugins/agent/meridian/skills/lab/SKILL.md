@@ -181,8 +181,11 @@ and strict update packets, then refresh the generated graph view.
 
 Change graph state via strict update packet and Meridian core.
 
-When the Meridian MCP server is available, use `meridian.lab_graph` to read the
-current materialized graph and health, use `meridian.lab_update` to submit a
+When the Meridian MCP server is available, use `meridian.lab_graph` to orient:
+it returns each node's id, title, state, parent and active flag, the edges, and
+graph health. Read the nodes you work on with `meridian.lab_node`; pass
+`detail: full` to `lab_graph` only when a task needs every node's content at
+once. Use `meridian.lab_update` to submit a
 strict `meridian.lab.update.v1` packet. Boundary-changing operations such as
 creating a node or switching the active thread still require accepted user
 confirmation inside the packet; `activate_node`, `deactivate_node`, and

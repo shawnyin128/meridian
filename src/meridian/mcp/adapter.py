@@ -152,8 +152,8 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         {
             "name": "meridian.lab_graph",
             "workflow": "Lab",
-            "summary": "Read the current Markdown-backed research graph and its health without changing App planning state.",
-            "inputs": ["workspace_root"],
+            "summary": "Read each research node's id, title, state, parent and active flag, the edges and health; detail full adds node content.",
+            "inputs": ["workspace_root", "detail"],
             "outputs": ["graph", "health"],
         },
         {

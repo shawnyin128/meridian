@@ -651,7 +651,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                     "next_action": "Run the second probe.",
                 },
             )
-            _, graph = self._call(server, "meridian.lab_graph", {})
+            _, graph = self._call(server, "meridian.lab_graph", {"detail": "full"})
 
             self.assertEqual(result["status"], "applied")
             self.assertEqual(duplicate["status"], "unchanged")
@@ -865,7 +865,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                     "experiment": self.NEW_EXPERIMENT,
                 },
             )
-            _, graph = self._call(server, "meridian.lab_graph", {})
+            _, graph = self._call(server, "meridian.lab_graph", {"detail": "full"})
 
             self.assertEqual(result["status"], "applied")
             self.assertIn(".meridian/experiments/second.md", result["written_paths"])

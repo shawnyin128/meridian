@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any, BinaryIO, Callable
 
 from meridian import __version__
-from meridian.lab import apply_lab_update, materialize_lab_graph, record_lab_result
+from meridian.lab import (
+    apply_lab_update,
+    compact_lab_graph,
+    materialize_lab_graph,
+    record_lab_result,
+)
 from meridian.mcp import adapter
 from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import (
@@ -423,13 +428,18 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.lab_graph",
-            "description": "Lab: read the current Markdown-backed research graph and detailed health without changing it.",
+            "description": (
+                "Lab: read the research graph and its health without changing it: each node's id, title, state, "
+                "parent and active flag, and the edges. Read a node's content with meridian.lab_node; "
+                "detail full returns every node's Markdown, details and artifacts."
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "detail": {"type": "string", "enum": ["compact", "full"], "default": "compact"},
                 }
             ),
         },
@@ -771,10 +781,19 @@ def _call_workspace_task_add(server: MeridianMCPServer, arguments: JsonDict) -> 
 
 
 def _call_lab_graph(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    detail = str(arguments.get("detail") or "compact")
+    if detail not in {"compact", "full"}:
+        raise ValueError(f"detail must be compact or full, not {detail}")
     result = materialize_lab_graph(server.workspace_root(arguments))
+    if detail == "full":
+        return {
+            "schema_version": "meridian.mcp_lab_graph.v1",
+            "graph": result.graph,
+            "health": result.health,
+        }
     return {
-        "schema_version": "meridian.mcp_lab_graph.v1",
-        "graph": result.graph,
+        "schema_version": "meridian.mcp_lab_graph_compact.v1",
+        "graph": compact_lab_graph(result.graph),
         "health": result.health,
     }
 
