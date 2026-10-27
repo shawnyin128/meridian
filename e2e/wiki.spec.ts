@@ -159,9 +159,9 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(1)
   // The fixed sections come first (subpages, Paper comparison, Findings), each with its own action,
-  // and the body's header is the page name plus "Edit".
+  // and the body's header is the page name alone: the body opens for editing where it is clicked.
   expect(await shown(win).locator('.wkmain .section-heading').allTextContents())
-    .toEqual([`细分${agg.kindLabel}${agg.kindLabel}`, '论文对比论文', '结论结论', `${agg.title}编辑`])
+    .toEqual([`细分${agg.kindLabel}${agg.kindLabel}`, '论文对比论文', '结论结论', agg.title])
   // Section headers use the main-area style, 15px: the first one, subpages, has no top rule, and a later
   // one such as Paper comparison draws one.
   const mainHeads = shown(win).locator('.wkmain .section-heading')
