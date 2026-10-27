@@ -507,6 +507,7 @@ project.identity.noTopic state
 project.identity.paperCount state
 project.identity.priorityLabel label
 project.identity.refreshWorkspace action
+project.identity.sharedWorkspace label
 project.identity.startLabel label
 project.identity.statusLabel label
 project.identity.topic label
@@ -602,6 +603,7 @@ project.workspace.kindLabel aria
 project.workspace.local label
 project.workspace.localPlaceholder placeholder
 project.workspace.pathLabel label
+project.workspace.projectsHere label
 project.workspace.portLabel label
 project.workspace.remotePlaceholder placeholder
 project.workspace.state.invalid state

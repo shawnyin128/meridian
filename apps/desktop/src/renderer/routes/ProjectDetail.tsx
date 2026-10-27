@@ -49,6 +49,7 @@ import { EntityLink } from '../components/EntityLink.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
+import { demoBind, demoProject, demoProjectsAt, demoSiblings } from '../components/project/demo-shared-workspace.js'
 import { Attachments } from '../components/Attachments.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
@@ -321,7 +322,9 @@ export function ProjectDetail({
 }) {
   const m = useMessages()
   const railFade = useScrollFade('y')
-  const [project, setProject] = useState<Project | null>(null)
+  const [heldProject, setProject] = useState<Project | null>(null)
+  const [demoBinds, setDemoBinds] = useState(0)
+  const project = useMemo(() => demoProject(heldProject), [heldProject, demoBinds])
   const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[] | null>(null)
   const [ownRelAdding, setRelAdding] = useState(false)
   const [ownRelGroup, setOwnRelGroup] = useState<string>(PROJECT_RELATION_GROUPS[0])
@@ -582,6 +585,11 @@ export function ProjectDetail({
   }
 
   const connectLocalWorkspace = async () => {
+    if (project !== null && demoBind(project.name, localPath)) {
+      setDemoBinds((count) => count + 1)
+      setWorkspaceOpen(false)
+      return
+    }
     setBinding('local')
     const connected = await writeProject(
       projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
@@ -831,6 +839,11 @@ export function ProjectDetail({
                         onChange={(event) => setLocalPath(event.target.value)}
                       />
                     </FieldRow>
+                    {demoProjectsAt(localPath, project.name).length > 0 && (
+                      <FieldRow label={m.project.workspace.projectsHere}>
+                        {demoProjectsAt(localPath, project.name).map((name) => <EntityLink key={name} kind="project" label={name} />)}
+                      </FieldRow>
+                    )}
                   </FieldRows>
                 </form>
               )
@@ -1186,6 +1199,19 @@ export function ProjectDetail({
                         </div>
                       )}
                   </Property>
+                  {demoSiblings(project.name).length > 0 && (
+                    <Property label={m.project.identity.sharedWorkspace}>
+                      {demoSiblings(project.name).map((name) => (
+                        <EntityLink
+                          key={name} kind="project" label={name}
+                          onOpen={() => void projectApi.list().then((list) => {
+                            const sibling = list.find((held) => held.name === name)
+                            if (sibling !== undefined) jumpTo('project', sibling.id)
+                          })}
+                        />
+                      ))}
+                    </Property>
+                  )}
                 </PropertyList>
 
                 <SectionHeading
