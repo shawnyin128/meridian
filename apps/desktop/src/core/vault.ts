@@ -1171,6 +1171,12 @@ export interface VaultStore {
   deleteIdeaFile(ideaId: string, fileId: string): void
 
   /**
+   * Records that the idea draft of message `messageId` of chat `id` was saved as idea `ideaId`.
+   * Throws `not-found` when the message holds no idea draft.
+   */
+  markIdeaDraftSaved(id: string, messageId: string, ideaId: string): void
+
+  /**
    * Appends the writeBack action on the given message to its project as a
    * CHAT_EVENT_PREFIX event, marks that action done, and returns the project.
    * An action can only be recorded once.

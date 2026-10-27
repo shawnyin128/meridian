@@ -2510,7 +2510,7 @@ describe('fixture store', () => {
       'harness.addModel', 'harness.updateModel', 'harness.removeModel', 'harness.setDefaultModel', 'chat.model', 'chat.setModel',
       'harness.applyPaperWiki',
       'harness.rejectPaperWiki', 'chat.send', 'chat.retry', 'chat.cancel', 'chat.writing', 'chat.failure',
-      'idea.placeOnGraph', 'chat.designPreview', 'chat.saveDesign', 'wiki.propose', 'wiki.proposals', 'wiki.decide',
+      'idea.placeOnGraph', 'chat.designPreview', 'chat.saveDesign', 'chat.ideaPreview', 'chat.saveIdea', 'wiki.propose', 'wiki.proposals', 'wiki.decide',
     ])
     for (const method of CONTRACT_METHODS.filter((candidate) => !coreMethods.has(candidate))) {
       expect(covered[method], `契约方法 ${method} 没有实现`).toBeDefined()

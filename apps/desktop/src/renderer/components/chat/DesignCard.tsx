@@ -1,11 +1,9 @@
-import { useEffect, useId, useState } from 'react'
+import { useEffect, useState } from 'react'
 import type { ChatDesignPreview, ExperimentDesign, WikiAggregationCard } from '../../../shared/contract.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { chat as chatApi, wiki } from '../../ipc.js'
 import { useLocale, useMessages } from '../../messages/useMessages.js'
 import { useJump, useVaultRevision } from '../../shell/AppShell.js'
-import { Card } from '../Card.js'
-import { CommitActions } from '../CommitActions.js'
 import { EntityLink, NODE_MODE_LOOK } from '../EntityLink.js'
 import { Markdown } from '../Markdown.js'
 import { SectionHeading } from '../PageShell.js'
@@ -14,6 +12,7 @@ import { SourceAnchor } from '../SourceAnchor.js'
 import { StatusDot } from '../StatusDot.js'
 import { Table, TableCell, TableRow } from '../Table.js'
 import { Tag } from '../Tag.js'
+import { WritesSection } from './WritesSection.js'
 import './DesignCard.css'
 
 type Outcome = ExperimentDesign['decisions'][number]['outcome']
@@ -64,7 +63,6 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
   const { open } = useJump()
   const { revision } = useVaultRevision()
   const write = useVaultWrite()
-  const writesId = useId()
   const [unfolded, setUnfolded] = useState(false)
   const [preview, setPreview] = useState<ChatDesignPreview | null>(null)
   const [saving, setSaving] = useState(false)
@@ -189,44 +187,35 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
         ))}
       </Table>
 
-      <SectionHeading
-        level="group" meta={preview?.saved == null ? undefined : d.savedAs}
-        fold={{ open: unfolded, onToggle: () => setUnfolded((held) => !held), controls: writesId }}
-      >{d.writes}</SectionHeading>
-      {!unfolded || preview === null ? null : (
-        <Card id={writesId}>
-          <div className="design-writes">
-            <PropertyList>
-              <Property label={d.idea}>
-                <span className="design-claim">
-                  <Tag>{d.claimStatus[design.claim.status]}</Tag>
-                  {preview.saved === null ? preview.idea.title : (
-                    <EntityLink kind="idea" label={preview.idea.title} href={`#ideas:${preview.saved}`} onOpen={() => open('ideas', preview.saved!)} />
-                  )}
-                </span>
-              </Property>
-              <Property label={d.body}>{preview.idea.body.split('\n').map((line) => <div key={line}>{line}</div>)}</Property>
-              {preview.idea.project === null ? null : <Property label={d.project}>{preview.idea.project.name}</Property>}
-              <Property label={d.file}>{preview.file.name}</Property>
-            </PropertyList>
-            <div className="md"><Markdown src={fileBody(preview.file.markdown)} /></div>
-            <PropertyList>
-              <Property label={d.hypothesisNode}>
-                <EntityLink kind="node" mode="unresolved" fill label={preview.nodes.hypothesis.title} />
-                <div>{placement(preview)}</div>
-              </Property>
-              <Property label={d.experimentNode}>
-                <EntityLink kind="node" mode="unresolved" fill label={preview.nodes.experiment.title} />
-              </Property>
-              <Property label={d.history}>{preview.nodes.experiment.history}</Property>
-            </PropertyList>
-            {preview.saved !== null ? null : (
-              <div className="design-commit">
-                <CommitActions place="item" onCancel={() => setUnfolded(false)} onSave={confirm} saving={saving} saveLabel={d.confirm} />
-              </div>
-            )}
-          </div>
-        </Card>
+      {preview === null ? null : (
+        <WritesSection
+          open={unfolded} onOpenChange={setUnfolded} saved={preview.saved !== null} saving={saving} onConfirm={confirm}
+        >
+          <PropertyList>
+            <Property label={d.idea}>
+              <span className="design-claim">
+                <Tag>{d.claimStatus[design.claim.status]}</Tag>
+                {preview.saved === null ? preview.idea.title : (
+                  <EntityLink kind="idea" label={preview.idea.title} href={`#ideas:${preview.saved}`} onOpen={() => open('ideas', preview.saved!)} />
+                )}
+              </span>
+            </Property>
+            <Property label={d.body}>{preview.idea.body.split('\n').map((line) => <div key={line}>{line}</div>)}</Property>
+            {preview.idea.project === null ? null : <Property label={d.project}>{preview.idea.project.name}</Property>}
+            <Property label={d.file}>{preview.file.name}</Property>
+          </PropertyList>
+          <div className="md"><Markdown src={fileBody(preview.file.markdown)} /></div>
+          <PropertyList>
+            <Property label={d.hypothesisNode}>
+              <EntityLink kind="node" mode="unresolved" fill label={preview.nodes.hypothesis.title} />
+              <div>{placement(preview)}</div>
+            </Property>
+            <Property label={d.experimentNode}>
+              <EntityLink kind="node" mode="unresolved" fill label={preview.nodes.experiment.title} />
+            </Property>
+            <Property label={d.history}>{preview.nodes.experiment.history}</Property>
+          </PropertyList>
+        </WritesSection>
       )}
     </div>
   )

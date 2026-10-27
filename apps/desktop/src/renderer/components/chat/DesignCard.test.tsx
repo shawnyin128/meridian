@@ -200,10 +200,10 @@ describe('the design card under an answer', () => {
     await show(answer)
     const toggle = writesToggle()
     expect(toggle.getAttribute('aria-expanded')).toBe('false')
-    expect(host.querySelector('.design-writes')).toBeNull()
+    expect(host.querySelector('.writes')).toBeNull()
 
     await act(async () => toggle.click())
-    const writes = host.querySelector('.design-writes')!
+    const writes = host.querySelector('.writes')!
     expect(api.preview).toHaveBeenCalledWith('chat-3', 'msg-9', 'zh')
     for (const text of [
       DESIGN.claim.text, 'M1：一', 'M0：三', '推测解码加速', '实验设计-msg-9.md', '无效', 'repairable',
@@ -232,7 +232,7 @@ describe('the design card under an answer', () => {
 
     await act(async () => writesToggle().click())
     expect(button('确认写入')).toBeUndefined()
-    const idea = [...host.querySelectorAll<HTMLElement>('.design-writes a')].find((link) => link.textContent === DESIGN.claim.text)!
+    const idea = [...host.querySelectorAll<HTMLElement>('.writes a')].find((link) => link.textContent === DESIGN.claim.text)!
     await act(async () => idea.click())
     expect(api.opened).toHaveBeenCalledWith('ideas', 'idea-7')
   })

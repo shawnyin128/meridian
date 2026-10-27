@@ -11,8 +11,8 @@ from pydantic import BaseModel
 
 def released_schema(name: str) -> dict[str, object]:
     """The JSON schema output class `name` had when it was first sent, in v0.0.23.0 or, for
-    ChatDesignAnswer, in v0.0.24.0, its titles and class docstrings removed and every other key
-    kept."""
+    ChatDesignAnswer and ChatIdeaAnswer, in v0.0.24.0, its titles and class docstrings removed and
+    every other key kept."""
 
     fixture = files("fixtures").joinpath("model_output_schemas.json")
     schemas = json.loads(fixture.read_text(encoding="utf-8"))

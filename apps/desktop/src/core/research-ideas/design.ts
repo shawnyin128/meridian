@@ -118,6 +118,12 @@ function mentionedProject(store: VaultStore, chatId: string): string | null {
   return mentions.at(-1) ?? null
 }
 
+/** The project chat `chatId` mentioned last that the vault still holds, by id and name, or null. */
+export function chatProject(store: VaultStore, chatId: string): { id: string; name: string } | null {
+  const id = mentionedProject(store, chatId)
+  return id === null ? null : { id, name: store.heldProject(id).name }
+}
+
 /**
  * What saving design answer `messageId` of chat `chatId` as an idea writes, its file in `language`, with its fingerprint and
  * the idea that already holds it, if any. Throws `not-found` when the answer carries no design.

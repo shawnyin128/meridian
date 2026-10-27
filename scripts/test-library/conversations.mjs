@@ -17,8 +17,10 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * One chat an idea was saved from is then deleted into Trash, so that idea, carried out in the
  * speculative decoding project on a node of its graph, has a deleted chat as its source.
  * Two ideas relate to projects and a Wiki page other than where they came from, and one is written
- * down on the KV cache project's page. One answer to a design turn carries its experiment design. The idea promoted to a project holds two files, written under
- * `<out>/files`, which its project lists too, and a third that went to Trash.
+ * down on the KV cache project's page. One answer to a design turn carries its experiment design;
+ * one answer to an idea turn carries the idea draft it merged from a long chat, and another drafts
+ * none. The idea promoted to a project holds two files, written under `<out>/files`, which its
+ * project lists too, and a third that went to Trash.
  */
 export async function seedConversations(seed, call) {
   const append = (id, messages) => call('chat.append', { id, messages })
@@ -224,6 +226,43 @@ export async function seedConversations(seed, call) {
       }
     ]
   },
+      },
+    ])
+  })
+
+  // An idea turn's answer drafts one idea from the rounds of a long chat that build it, leaving out an
+  // unrelated thread; another idea turn finds only findings and drafts none.
+  await onDay(seed, -1, async () => {
+    const organized = await call('chat.create', { title: '树宽、接受率和一个 MoE 的岔题', named: true })
+    await append(organized.id, [
+      say('you', { kind: 'mention', text: '@推测解码加速', target: { kind: 'project', id: spec } }, ' 里固定树宽在大 batch 下浪费验证算力，你怎么看？'),
+      say('ai', '大 batch 下验证成了主要成本，宽树里被拒的分支都白算了。'),
+      say('you', '顺便问一句，MoE 的容量因子一般取多少？'),
+      say('ai', '训练时 1.25 比较稳，推理时可以降到 1.0。'),
+      say('you', '回到树宽：能不能让宽度跟着每一步的接受率变？'),
+      say('ai', '可以：接受率高的位置多展开分支，低的位置收窄，把验证预算投到更可能被接受的地方。'),
+      say('you', '这和已有的动态树方法有什么不同？'),
+      say('ai', '已有工作按全局接受率选一棵树；按每一步的接受率在一次验证里调整宽度，目标是大 batch 下的吞吐。'),
+      say('you', '帮我把这段整理成想法。'),
+    ])
+    const ids = (await call('chat.messages', { id: organized.id })).map((message) => message.id)
+    await append(organized.id, [{
+      ...say('ai', '整理成了一个想法：把第 1、3、4 轮关于树宽的讨论合在一起；第 2 轮 MoE 容量因子的岔题和这个想法无关，没有放进去。'),
+      model: { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
+      idea: {
+        title: '按每步接受率调整草稿树宽，提高大 batch 吞吐',
+        body: '在推测解码中，按每一步的接受率在一次验证里调整草稿树的宽度：接受率高的位置多展开分支，低的位置收窄，把验证预算投到更可能被接受的地方。\n\n建立在已有的动态树方法上，它们按全局接受率选一棵树。\n\n还没定：大 batch（B ≥ 32）下的吞吐收益有多大，以及和等平均宽度的固定树相比是否仍然更好。',
+        sources: [ids[0], ids[1], ids[4], ids[5], ids[6], ids[7]],
+      },
+    }])
+    const findings = await call('chat.create', { title: 'KV 量化的两个结论', named: true })
+    await append(findings.id, [
+      say('you', 'K 按通道量化、V 按 token 量化，2bit 时精度掉了不到 1 个点。'),
+      say('ai', '这说明 K 的离群通道是主要误差来源。'),
+      say('you', '整理成想法吧。'),
+      {
+        ...say('ai', '这段对话里只有两条实验结论（K 按通道、V 按 token 时 2bit 精度几乎不掉），还没有一个能单独成立的研究贡献，所以没有整理出想法。可以把它们记成科研记录。'),
+        model: { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
       },
     ])
   })
