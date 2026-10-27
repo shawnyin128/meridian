@@ -132,11 +132,45 @@ describe('发现方向的存储', () => {
       .toThrow(expect.objectContaining({ reason: 'not-found' }))
   })
 
+  it('撤销添加：已确认的方向回到候选，id、标签和种子不变，不再拉取，重新写进 disabledIntentIds', async () => {
+    const id = await project('撤销添加', [STAR])
+    const [found] = store.scanDiscoveryDirections(id)
+    const candidate = profileOf(id).candidates[0]
+    store.setDiscoveryDirection({ projectId: id, directionId: found!.id, action: 'add' })
+    store.setDiscoveryDirection({ projectId: id, directionId: found!.id, action: 'reopen' })
+    expect(store.discoveryIntents(id)).toEqual([])
+    expect(profileOf(id).candidates).toEqual([candidate])
+    expect((readJson('state.json') as { discoveryPreferences: Record<string, { disabledIntentIds: string[] }> })
+      .discoveryPreferences[id]!.disabledIntentIds).toEqual([found!.id])
+  })
+
+  it('撤销忽略：忽略的方向回到候选，之后照样能添加', async () => {
+    const id = await project('撤销忽略', [STAR])
+    const [found] = store.scanDiscoveryDirections(id)
+    const candidate = profileOf(id).candidates[0]
+    store.setDiscoveryDirection({ projectId: id, directionId: found!.id, action: 'decline' })
+    store.setDiscoveryDirection({ projectId: id, directionId: found!.id, action: 'reopen' })
+    expect(createVaultStore(vault).listDiscoveryProfiles().find((profile) => profile.id === id)!.candidates).toEqual([candidate])
+    store.setDiscoveryDirection({ projectId: id, directionId: found!.id, action: 'add' })
+    expect(store.discoveryIntents(id)).toMatchObject([{ id: found!.id }])
+  })
+
+  it('已经是候选的方向不能再撤回成候选，不存在的方向报找不到', async () => {
+    const id = await project('撤回候选', [STAR])
+    const [found] = store.scanDiscoveryDirections(id)
+    expect(() => store.setDiscoveryDirection({ projectId: id, directionId: found!.id, action: 'reopen' }))
+      .toThrow(expect.objectContaining({ reason: 'refused' }))
+    expect(() => store.setDiscoveryDirection({ projectId: id, directionId: 'intent-none', action: 'reopen' }))
+      .toThrow(expect.objectContaining({ reason: 'not-found' }))
+    expect(profileOf(id).candidates.map((candidate) => candidate.id)).toEqual([found!.id])
+  })
+
   it('合同只收非空、去掉首尾空白的新名字', () => {
     const rename = { projectId: 'p', directionId: 'd', action: 'rename' }
     expect(DiscoveryDirectionParamsSchema.safeParse({ ...rename, label: '   ' }).success).toBe(false)
     expect(DiscoveryDirectionParamsSchema.parse({ ...rename, label: ' 草稿 ' })).toEqual({ ...rename, label: '草稿' })
     expect(DiscoveryDirectionParamsSchema.safeParse({ projectId: 'p', directionId: 'd', action: 'add', label: 'x' }).success).toBe(false)
+    expect(DiscoveryDirectionParamsSchema.parse({ projectId: 'p', directionId: 'd', action: 'reopen' })).toEqual({ projectId: 'p', directionId: 'd', action: 'reopen' })
   })
 
   it('升级：第一次打开时，旧版一直在推导的方向原样确认，id、种子、核心和关掉的都不变，标签换成主题名或短标题', async () => {

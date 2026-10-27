@@ -1571,12 +1571,14 @@ export const DiscoveryIntentUpdateParamsSchema = z.object({
   action: z.enum(['set-core', 'enable', 'disable']),
 }).strict()
 /**
- * One decision on a project's direction: `add` confirms a candidate, `decline` declines it for good, and
- * `rename` gives a confirmed direction `label`.
+ * One decision on a project's direction: `add` confirms a candidate, `decline` declines it for good,
+ * `reopen` turns a confirmed or declined direction back into a candidate, and `rename` gives a
+ * confirmed direction `label`.
  */
 export const DiscoveryDirectionParamsSchema = z.discriminatedUnion('action', [
   z.object({ projectId: z.string(), directionId: z.string(), action: z.literal('add') }).strict(),
   z.object({ projectId: z.string(), directionId: z.string(), action: z.literal('decline') }).strict(),
+  z.object({ projectId: z.string(), directionId: z.string(), action: z.literal('reopen') }).strict(),
   z.object({
     projectId: z.string(), directionId: z.string(), action: z.literal('rename'), label: z.string().trim().min(1).max(200),
   }).strict(),

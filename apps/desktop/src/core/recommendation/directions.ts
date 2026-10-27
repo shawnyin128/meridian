@@ -142,12 +142,24 @@ export function directionIntents(
 }
 
 /**
- * The directions `held` after `action`: `add` confirms a candidate, `decline` declines it, and `rename`
- * gives a confirmed direction the user's label. Throws `not-found` when the direction the action needs
- * is not there.
+ * The directions `held` after `action`: `add` confirms a candidate, `decline` declines it, `reopen`
+ * turns a confirmed or declined direction back into a candidate as it was, and `rename` gives a
+ * confirmed direction the user's label. Throws `refused` when `reopen` names a candidate, and
+ * `not-found` when the direction the action needs is not there.
  */
 export function directionsAfter(held: ProjectDirections | undefined, action: DiscoveryDirectionParams): ProjectDirections {
   const candidate = held?.candidates.find((direction) => direction.id === action.directionId)
+  if (action.action === 'reopen') {
+    if (candidate !== undefined) throw new CallError('refused', `这个方向已经是候选：${action.directionId}`)
+    const reopened = [...held?.directions ?? [], ...held?.declined ?? []].find((direction) => direction.id === action.directionId)
+    if (held === undefined || reopened === undefined) throw new CallError('not-found', `推荐方向不存在：${action.directionId}`)
+    return {
+      ...held,
+      directions: held.directions.filter((direction) => direction !== reopened),
+      declined: held.declined.filter((direction) => direction !== reopened),
+      candidates: [...held.candidates, reopened],
+    }
+  }
   if (action.action === 'rename') {
     if (held === undefined || !held.directions.some((direction) => direction.id === action.directionId)) {
       throw new CallError('not-found', `推荐方向不存在：${action.directionId}`)
