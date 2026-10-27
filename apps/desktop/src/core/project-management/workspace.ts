@@ -9,7 +9,7 @@ import type {
   ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea, SshFolders,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
-import { readStoredList } from '../vault/stored-records.js'
+import { readRecord, readStoredList, withUnknownFields, type UnknownField } from '../vault/stored-records.js'
 import type { ProjectRecord } from './page.js'
 
 export const WORKSPACE_SCHEMA = 'meridian.workspace.v1'
@@ -80,6 +80,8 @@ const WorkspaceChangeSchema = z.object({
   kind: WorkspaceChangeKindSchema,
   summary: z.string(),
   refs: z.array(ChangeRefSchema),
+  task_ids: z.array(z.string().min(1)).optional(),
+  milestone_ids: z.array(z.string().min(1)).optional(),
 }).strict()
 
 const WorkspaceChangesSchema = z.object({
@@ -315,11 +317,11 @@ function changesOf(
   project: ProjectRecord,
   priorPlan: JsonObject | undefined,
   nextPlan: JsonObject,
-  prior: WorkspaceChanges | undefined,
+  prior: { value: WorkspaceChanges; unknown: UnknownField[] } | undefined,
   ideas: readonly ResearchIdea[],
 ): WorkspaceChanges {
   const projected = ideaProjections(project, ideas)
-  const base: WorkspaceChanges = prior ?? {
+  const base: WorkspaceChanges = prior?.value ?? {
     schema_version: WORKSPACE_CHANGES_SCHEMA,
     project_id: project.id,
     epoch: randomUUID(),
@@ -335,12 +337,14 @@ function changesOf(
       at,
       ...change,
     }))
-  return {
+  // Unknown fields go back before the oldest changes are dropped: a change is located by its position.
+  const next = withUnknownFields({
     ...base,
     next_sequence: base.next_sequence + additions.length,
     ideas: projected,
-    changes: [...base.changes, ...additions].slice(-MAX_RETAINED_CHANGES),
-  }
+    changes: [...base.changes, ...additions],
+  }, prior?.unknown ?? []) as WorkspaceChanges
+  return { ...next, changes: next.changes.slice(-MAX_RETAINED_CHANGES) }
 }
 
 function planOf(project: ProjectRecord): { revision: string; value: JsonObject } {
@@ -643,9 +647,12 @@ function parsedObject(text: string | undefined): JsonObject | undefined {
   return obj(value)
 }
 
-function parsedChanges(text: string | undefined): WorkspaceChanges | undefined {
+/** The change journal in `text` with the fields this version does not know, or nothing. Throws when it cannot be read. */
+function parsedChanges(text: string | undefined): { value: WorkspaceChanges; unknown: UnknownField[] } | undefined {
   if (text === undefined) return undefined
-  return WorkspaceChangesSchema.parse(JSON.parse(text))
+  const read = readRecord(WorkspaceChangesSchema, JSON.parse(text))
+  if ('error' in read) throw new Error(read.error)
+  return read
 }
 
 /**
