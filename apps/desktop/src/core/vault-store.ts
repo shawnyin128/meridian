@@ -503,19 +503,7 @@ export function createVaultStore(
     const kept = trash.filter((item) => item.kind !== 'inbox' || !ids.has(item.entryId))
     if (kept.length !== trash.length) trash = saveTrash(kept)
   }
-  // Another App version may have written queue records this one cannot read; keep those as written.
-  const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
-    ? JSON.parse(readFileSync(join(meridian, 'proposals.json'), 'utf8')) as unknown[] : []
-  let proposals: ProposalRecord[] = []
-  const unreadProposals: unknown[] = []
-  for (const [at, held] of heldProposals.entries()) {
-    const parsed = ProposalRecordSchema.safeParse(held)
-    if (parsed.success) proposals.push(parsed.data)
-    else {
-      unreadProposals.push(held)
-      console.error(`[wiki] proposal queue record ${at + 1} cannot be read by this version and is kept as it is (the App may need an update): ${parsed.error.message}`)
-    }
-  }
+  let proposals: ProposalRecord[] = load('proposals', ProposalRecordSchema)
   const inboxDir = join(meridian, 'proposal-inbox')
 
   // Older versions left watch-derived recommendations in inbox.json after a watch was removed.
@@ -2960,7 +2948,7 @@ export function createVaultStore(
 
     saveProposalRecords(rows) {
       const next = structuredClone(rows)
-      save('proposals', [...next, ...unreadProposals])
+      save('proposals', next)
       proposals = next
     },
 
