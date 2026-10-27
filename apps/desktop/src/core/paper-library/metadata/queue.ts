@@ -1,11 +1,13 @@
 import type { FeedRun, MetadataJob } from '../../../shared/contract.js'
 import { CallError } from '../../call-error.js'
 import type { MetadataProvider, RemotePaper } from '../../net/arxiv.js'
+import type { DblpSource } from '../../net/dblp.js'
 import { netReason } from '../../net/http.js'
 import type { Publication, PublicationSource } from '../../net/semantic-metadata.js'
 import type { MetadataFill, VaultStore } from '../../vault.js'
 import { arxivIdOf, usableTitle } from './detect.js'
 import { remoteMetadata } from './fill.js'
+import { dblpRun } from './publications.js'
 import type { PdfFacts, PdfProbe } from './pdf-probe.js'
 
 const KEPT_UPLOADS = 20
@@ -58,11 +60,14 @@ async function mapConcurrent<T, R>(
  * Builds the bounded metadata queue that probes PDFs concurrently and batches remote lookups. While
  * `publications` gives a source (a Semantic Scholar key is saved), each batch also looks up where its
  * papers were published, by arXiv id or, without one, by the DOI the first page labels, and fills the
- * venue and year once the rest is filled; a failed lookup leaves the papers as the rest filled them.
+ * venue, with the year of that publication, once the rest is filled; a failed lookup leaves the papers as the rest filled them.
+ * A paper arXiv found whose venue year that lookup does not give is looked up in the source `dblp`
+ * gives by its arXiv title and authors, one at a time (dblpRun), with or without a key.
  */
 export function createMetadataQueue(deps: {
   store: VaultStore; probe: PdfProbe; provider: MetadataProvider; onWrite: () => void
   publications?: () => PublicationSource | undefined
+  dblp?: () => DblpSource | undefined
 }): MetadataQueue {
   const pending: Pending[] = []
   let uploads: MetadataJob[] = []
@@ -97,11 +102,12 @@ export function createMetadataQueue(deps: {
     }
   }
 
-  const finishUpload = (job: MetadataJob, published = false): void => {
+  /** Notes in the feed what upload `job` found, `published` naming the service its publication info came from. */
+  const finishUpload = (job: MetadataJob, published?: 'Semantic Scholar' | 'DBLP'): void => {
     const said = job.step === 'failed' ? '已入库，元数据暂未补全。'
-      : job.found === 'arxiv' && published ? '已入库，元数据取自 arXiv 和 Semantic Scholar。'
-      : job.found === 'pdf' && published ? '已入库，标题取自 PDF，发表信息取自 Semantic Scholar。'
-      : published ? '已入库，发表信息取自 Semantic Scholar。'
+      : job.found === 'arxiv' && published ? `已入库，元数据取自 arXiv 和 ${published}。`
+      : job.found === 'pdf' && published ? `已入库，标题取自 PDF，发表信息取自 ${published}。`
+      : published ? `已入库，发表信息取自 ${published}。`
       : job.found === 'arxiv' ? '已入库，元数据取自 arXiv。'
         : job.found === 'pdf' ? '已入库，标题取自 PDF。'
           : '已入库，没能识别出元数据。'
@@ -202,7 +208,7 @@ export function createMetadataQueue(deps: {
       item.job.title = deps.store.getPaper(item.job.paperId).title
       item.job.found = found
       item.job.step = 'done'
-      finishUpload(item.job, publishedHere)
+      finishUpload(item.job, !publishedHere ? undefined : publication.source === 'dblp' ? 'DBLP' : 'Semantic Scholar')
     } catch (error) {
       fail(item, error)
     }
@@ -226,11 +232,17 @@ export function createMetadataQueue(deps: {
     for (const item of prepared) if (item.arxivId !== null) item.job.step = 'lookup'
     const remote = await lookup(ids)
     const publications = await published(prepared.filter((item) => item.arxivId === null || !remote.errors.has(item.arxivId)))
+    const withDblp = dblpRun(deps.dblp?.())
     for (const item of prepared) {
       const error = item.arxivId === null ? undefined : remote.errors.get(item.arxivId)
       const key = publicationKey(item)
-      if (error !== undefined) keepPageCount(item, error)
-      else write(item, item.arxivId === null ? null : remote.papers.get(item.arxivId) ?? null, key === null ? undefined : publications.get(key))
+      if (error !== undefined) {
+        keepPageCount(item, error)
+        continue
+      }
+      const found = item.arxivId === null ? null : remote.papers.get(item.arxivId) ?? null
+      const publication = key === null ? undefined : publications.get(key)
+      write(item, found, found === null ? publication : await withDblp({ title: found.title, authors: found.authors }, publication))
     }
   }
 

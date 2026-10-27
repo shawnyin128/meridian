@@ -1,16 +1,21 @@
 import { requestWithRetry, type HttpGet } from './http.js'
 
 const BATCH_URL = `https://api.semanticscholar.org/graph/v1/paper/batch?${new URLSearchParams({
-  fields: 'venue,publicationVenue,year',
+  fields: 'venue,publicationVenue,externalIds',
 }).toString()}`
 const TIMEOUT_MS = 10_000
 /** The most paper ids one batch request may carry. */
 const BATCH_LIMIT = 500
 /** A venue name that only says the paper is on arXiv, which is no publication. */
 const PREPRINT = /^arxiv(\.org)?$/i
+/** A DBLP key of a conference or journal paper, ending in the two digits of its year; CoRR keys are arXiv's. */
+const DBLP_VENUE_KEY = /^(?:conf|journals)\/(?!corr\/)[^/]+\/.*\D(\d{2})$/
 
-/** Where a paper was published: the venue's short name (its full name when it has none) and the year. */
-export type Publication = { venue: string; year?: number }
+/**
+ * Where a paper was published: the venue's short name (its full name when it has none), the year of
+ * that publication, and `source` 'dblp' when DBLP gave them rather than Semantic Scholar.
+ */
+export type Publication = { venue: string; year?: number; source?: 'dblp' }
 
 /** Looks up where papers were published by Semantic Scholar id (`ARXIV:<id>`, `DOI:<doi>`), keyed by the id asked. */
 export type PublicationSource = {
@@ -34,8 +39,20 @@ function venueOf(row: Record<string, unknown>): string {
 }
 
 /**
+ * Returns the year a DBLP venue key ends in (`conf/icml/LeviathanKM23` is 2023), 70 to 99 read as
+ * 19xx and the rest as 20xx; undefined for a CoRR key, any other key or none.
+ */
+function dblpYear(row: Record<string, unknown>): number | undefined {
+  const ids = row['externalIds'] !== null && typeof row['externalIds'] === 'object' ? row['externalIds'] as Record<string, unknown> : {}
+  const digits = DBLP_VENUE_KEY.exec(text(ids['DBLP']))?.[1]
+  if (digits === undefined) return undefined
+  const year = Number(digits)
+  return year >= 70 ? 1900 + year : 2000 + year
+}
+
+/**
  * Reads a `/paper/batch` response for the ids `ids` asked, in their order: the publication of each
- * paper found that names a venue other than arXiv, with its year when it gives one. Throws when the
+ * paper found that names a venue other than arXiv, with the year its DBLP venue key gives. Throws when the
  * response is not a list.
  */
 export function parseSemanticPublications(body: Uint8Array, ids: readonly string[]): Map<string, Publication> {
@@ -47,8 +64,8 @@ export function parseSemanticPublications(body: Uint8Array, ids: readonly string
     const held = row as Record<string, unknown>
     const venue = venueOf(held)
     if (venue === '') return
-    const year = held['year']
-    out.set(ids[at], { venue, ...(typeof year === 'number' && Number.isInteger(year) && year > 0 ? { year } : {}) })
+    const year = dblpYear(held)
+    out.set(ids[at], { venue, ...(year === undefined ? {} : { year }) })
   })
   return out
 }

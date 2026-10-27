@@ -7,6 +7,7 @@ import { createInboxDownloads } from './inbox/download.js'
 import { createWatchFetcher } from './inbox/fetch.js'
 import { armDiscoverySchedule, armFetchSchedule } from './inbox/schedule.js'
 import { createArxiv } from './net/arxiv.js'
+import { createDblp } from './net/dblp.js'
 import type { HttpGet } from './net/http.js'
 import { createRateLimitedGet, netFailure } from './net/http.js'
 import { createSemanticAuthors } from './net/semantic-authors.js'
@@ -27,7 +28,7 @@ export type Background = {
   /** Parses the metadata of paper `paperId` again (MetadataQueue retry). */
   retryMetadata(paperId: string): void
   /**
-   * Fills the publication venue and year of the vault's papers from Semantic Scholar (fillPublications)
+   * Fills the publication venue, with its year, of the vault's papers from Semantic Scholar and DBLP (fillPublications)
    * and returns how many changed. Throws a `refused` CallError when no key is saved.
    */
   fillPublications(): Promise<number>
@@ -98,9 +99,13 @@ export function createBackground(deps: {
     )),
   })
   const publications = createSemanticPublications({ get: semanticGet, sleep: deps.sleep })
+  const dblp = createDblp({
+    get: createRateLimitedGet(deps.get, { minIntervalMs: 1_000, sleep: deps.sleep, now: deps.now }), sleep: deps.sleep,
+  })
   const metadata = createMetadataQueue({
     store: deps.store, probe: deps.probe, provider: arxiv, onWrite,
     publications: () => (semanticKey() === undefined ? undefined : publications),
+    dblp: () => dblp,
   })
   const downloads = createInboxDownloads({ store: deps.store, get: deps.get, probe: deps.probe, onWrite })
   const fetcher = createWatchFetcher({
@@ -141,7 +146,7 @@ export function createBackground(deps: {
     retryMetadata: (paperId) => metadata.retry(paperId),
     async fillPublications() {
       if (semanticKey() === undefined) throw new CallError('refused', '还没有保存 Semantic Scholar key')
-      const updated = await fillPublications(deps.store, publications)
+      const updated = await fillPublications(deps.store, publications, dblp)
       if (updated > 0) onWrite()
       return updated
     },

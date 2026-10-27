@@ -69,7 +69,7 @@ export function SemanticKeySettings() {
   }
 
   /**
-   * Fills the papers' publication venue and year from Semantic Scholar and says how many changed; each
+   * Fills the papers' publication venue, with its year, from Semantic Scholar and says how many changed; each
    * changed paper is one entry of Recent changes, which the notice opens.
    */
   const fillPublication = async () => {
