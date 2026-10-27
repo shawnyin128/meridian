@@ -55,7 +55,7 @@ export const common = {
     edit: (label: string) => `编辑${label}`,
     chooseDirectory: '选择目录…',
   },
-  sshFolders: { up: '上层文件夹', path: '文件夹路径' },
+  sshFolders: { up: '上层文件夹', path: '文件夹路径', choose: '选择' },
   pager: {
     total: (n: number) => `共 ${n} 条`,
     page: (n: number) => `第 ${n} 页`,

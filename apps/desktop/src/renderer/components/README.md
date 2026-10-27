@@ -250,8 +250,10 @@ Current shared contracts:
   `useSshFolders` connects through Core and lists one folder at a time, dropping answers that arrive late.
   `SshFolderBrowser` shows the folder: the enclosing-folder control and its path as a field, where Enter goes
   to a typed path (absolute or under `~`, hidden folders too), then its subfolders in a list five rows high,
-  the loading state while the next folder lists, and a failure under the list. The
-  project's workspace dialog uses all three, and any other choice of a remote folder reuses them.
+  the loading state while the next folder lists, and a failure under the list. `SshFolderPicker` is the
+  folder picker of a host: a dialog stacked on the one that opened it, holding a `SshFolderBrowser`, with
+  Cancel and Choose. The project's workspace dialog puts the host field, then a `DirectoryField` whose folder
+  button opens the picker, and any other choice of a remote folder reuses them.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. `SearchField` is
   the one search, a `ClearableInput` with the search glyph at its start: the sidebar search, the command
   palette and the library search configure the same focus restoration, icon geometry, and accessible naming.

@@ -50,6 +50,7 @@ const NOT_CREATING: Record<string, string> = {
   'shell/CommandPalette.tsx <ModalDialog>': 'runs a command',
   'routes/Settings.tsx <ModalDialog>': 'holds Settings',
   'routes/ProjectDetail.tsx <ModalDialog> m.project.workspace.dialogTitle': 'connects the project to a workspace',
+  'components/SshFolderPicker.tsx <ModalDialog>': 'chooses a folder of an SSH host',
 }
 
 describe('新建就地起草', () => {

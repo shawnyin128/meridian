@@ -166,6 +166,7 @@ common.retry action
 common.save action
 common.saved state
 common.saving aria
+common.sshFolders.choose action
 common.sshFolders.path aria
 common.sshFolders.up action
 common.table.resize action
@@ -546,7 +547,6 @@ project.workspace.choose action
 project.workspace.chooseLocal action
 project.workspace.choosing aria
 project.workspace.connect action
-project.workspace.connecting aria
 project.workspace.dialogTitle label
 project.workspace.hostLabel label
 project.workspace.hostPlaceholder placeholder
@@ -555,6 +555,7 @@ project.workspace.local label
 project.workspace.localPlaceholder placeholder
 project.workspace.pathLabel label
 project.workspace.portLabel label
+project.workspace.remotePlaceholder placeholder
 project.workspace.state.invalid state
 project.workspace.state.missing state
 project.workspace.state.ready state

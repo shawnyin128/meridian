@@ -1874,7 +1874,7 @@ test('节点面板开着时 Esc 先关全局搜索结果,再按一次才收面�
   await expect(head).toHaveText('属性')
 })
 
-test('SSH 工作区分两步:先连上测试主机,再从远端主目录点进文件夹,选择后项目连到这台主机的这个文件夹', async ({ win }) => {
+test('SSH 工作区的文件夹按钮叠开测试主机的文件夹选择框,从远端主目录点进文件夹,选择填进项目路径,再选择后项目连到这台主机的这个文件夹', async ({ win }) => {
   await gotoProject(win)
   await win.locator('.screenslot:not([hidden]) button.pv.metadata-editable', { hasText: '连接' }).click()
   const dialog = win.locator('.workspace-dialog')
@@ -1883,10 +1883,14 @@ test('SSH 工作区分两步:先连上测试主机,再从远端主目录点进�
   await host.fill('gpu')
   await win.locator('.pickhits .rrow', { hasText: 'gpu-lab' }).click()
   await expect(host).toHaveValue('gpu-lab')
-  await dialog.locator('.modal-actions button[type="submit"]', { hasText: '连接' }).click()
-  await expect(dialog.locator('input.ssh-folders-path')).toHaveValue('/home/researcher')
-  await dialog.locator('.ssh-folder-row', { hasText: 'projects' }).click()
-  await expect(dialog.locator('input.ssh-folders-path')).toHaveValue('/home/researcher/projects')
+  await dialog.locator('#workspaceSsh .directory-field-action').click()
+  const picker = win.locator('.ssh-folder-picker')
+  await expect(picker.locator('input.ssh-folders-path')).toHaveValue('/home/researcher')
+  await picker.locator('.ssh-folder-row', { hasText: 'projects' }).click()
+  await expect(picker.locator('input.ssh-folders-path')).toHaveValue('/home/researcher/projects')
+  await picker.locator('.modal-actions button', { hasText: '选择' }).click()
+  await expect(picker).toHaveCount(0)
+  await expect(dialog.locator('#workspaceSsh .directory-field input')).toHaveValue('/home/researcher/projects')
   await dialog.locator('.modal-actions button[type="submit"]', { hasText: '选择' }).click()
   await expect(dialog).toHaveCount(0)
   const project = await call<{ workspace?: { kind: string; host?: string; root: string } }>(win, 'project.get', { id: 'draft' })
