@@ -22,7 +22,7 @@ export function TitleField({ label, value, children, onSave, keep }: {
   return (
     <InlineField
       label={label} value={value} display={<FadeText label={value}>{children ?? value}</FadeText>}
-      variant="title" keep={keep} normalize={(next) => next.trim()} validate={(next) => next !== ''}
+      variant="title" keep={keep} selectAll normalize={(next) => next.trim()} validate={(next) => next !== ''}
       onSave={onSave}
     />
   )

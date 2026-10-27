@@ -64,6 +64,19 @@ describe('改名只有一个入口:共用「更多」菜单里的重命名', () 
     expect(opening).toEqual([])
   })
 
+  it('每个改名的入口打开时都选中整个名字:从菜单打开的名字和点着改名的标题都带 selectAll', () => {
+    const missing = SOURCES.flatMap((path) => {
+      const ast = parse(readFileSync(join(RENDERER, path), 'utf8'), { sourceType: 'module', plugins: ['typescript', 'jsx'] })
+      return elements(ast.program).flatMap((element) => {
+        if ((element.name as Node).name !== 'InlineField') return []
+        const renames = path === join('components', 'TitleField.tsx') || attribute(element, 'rest') !== undefined
+        return renames && attribute(element, 'selectAll') === undefined
+          ? [`${path}:${(element.loc as { start: { line: number } }).start.line}`] : []
+      })
+    })
+    expect(missing).toEqual([])
+  })
+
   it('点名字就改名的只有对话页的标题:TitleField 只经 PageTitle 的 rename 用,带 rename 的 PageTitle 只在对话页', () => {
     const uses = (component: string, prop?: string) => SOURCES.flatMap((path) => {
       const ast = parse(readFileSync(join(RENDERER, path), 'utf8'), { sourceType: 'module', plugins: ['typescript', 'jsx'] })

@@ -160,6 +160,27 @@ describe('InlineMetadataField', () => {
     expect(input().hasAttribute('aria-invalid')).toBe(false)
   })
 
+  it('改名的字段一打开就选中整个名字、从名字开头显示,打字替换它;别的就地编辑照旧不选', async () => {
+    const name = '一个放不下整行的很长很长很长的对话名字'
+    act(() => root!.render(withMessages(
+      <>
+        <InlineField label="对话名称" value={name} selectAll onSave={() => true} />
+        <InlineField label="当前目标" value="统计负载分布" onSave={() => true} />
+      </>,
+    )))
+    const [rename, goal] = [...host.querySelectorAll<HTMLButtonElement>('.metadata-editable')]
+    act(() => rename!.click())
+    const input = host.querySelector<HTMLInputElement>('[aria-label="编辑对话名称"]')!
+    expect([document.activeElement === input, input.selectionStart, input.selectionEnd, input.selectionDirection, input.scrollLeft])
+      .toEqual([true, 0, name.length, 'backward', 0])
+    act(() => setValue(input, '新'))
+    expect(input.value).toBe('新')
+
+    act(() => goal!.click())
+    const other = host.querySelector<HTMLInputElement>('[aria-label="编辑当前目标"]')!
+    expect(other.selectionStart === 0 && other.selectionEnd === other.value.length).toBe(false)
+  })
+
   it('表格格子里的就地编辑:一打开就是同一种就地输入框,点格子里不算离开,回车交给保存后收起;Esc 收起且不保存', async () => {
     window.localStorage.removeItem('meridian.drafts:/vaults/a')
     const save = vi.fn(() => Promise.resolve(true))
