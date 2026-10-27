@@ -53,6 +53,48 @@ describe('FormControls', () => {
     expect(select).toContain('form-control-inline')
   })
 
+  it('an open in-place field fades only at an end that hides text, as the user scrolls or types; a boxed field never fades', async () => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const size = { width: 120, scroll: 300, left: 0 }
+    /** Gives `input` the measures of a field `size.width` wide holding text `size.scroll` wide, scrolled by `size.left`. */
+    const measure = (input: HTMLInputElement) => {
+      Object.defineProperty(input, 'clientWidth', { configurable: true, get: () => size.width })
+      Object.defineProperty(input, 'scrollWidth', { configurable: true, get: () => size.scroll })
+      Object.defineProperty(input, 'scrollLeft', { configurable: true, get: () => size.left, set: (left: number) => { size.left = left } })
+    }
+    function Field({ value }: { value: string }) {
+      return (
+        <>
+          <FormInput appearance="inline" aria-label="名字" value={value} readOnly ref={(input) => { if (input !== null) measure(input) }} />
+          <FormInput aria-label="框" value={value} readOnly ref={(input) => { if (input !== null) measure(input) }} />
+        </>
+      )
+    }
+    const inline = () => host.querySelector<HTMLInputElement>('[aria-label="名字"]')!
+    const boxed = () => host.querySelector<HTMLInputElement>('[aria-label="框"]')!
+    const scrollTo = (left: number) => act(() => {
+      size.left = left
+      inline().dispatchEvent(new Event('scroll'))
+    })
+    act(() => root.render(<Field value="一个放不下的长名字" />))
+    expect([inline().dataset['fade'], boxed().dataset['fade']]).toEqual(['right', undefined])
+    scrollTo(90)
+    expect(inline().dataset['fade']).toBe('left right')
+    scrollTo(180)
+    expect(inline().dataset['fade']).toBe('left')
+    size.scroll = 120
+    size.left = 0
+    act(() => root.render(<Field value="短名字" />))
+    expect(inline().dataset['fade']).toBeUndefined()
+    act(() => root.unmount())
+    host.remove()
+    vi.unstubAllGlobals()
+  })
+
   it('gives a chip being edited its own appearance, beside the feature class it keeps', () => {
     const input = renderToStaticMarkup(<FormInput appearance="chip" className="tagin" value="KV cache" readOnly />)
     expect(input).toContain('class="form-control form-input form-control-chip tagin"')

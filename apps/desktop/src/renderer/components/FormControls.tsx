@@ -6,12 +6,14 @@ import {
   type ReactNode,
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
+  useCallback,
   useContext,
   useEffect,
   useId,
   useRef,
   useState,
 } from 'react'
+import { useScrollFade } from '../hooks/useScrollFade.js'
 import { useMessages } from '../messages/useMessages.js'
 import { IconFolder } from './icons.js'
 import { Tooltip } from './Tooltip.js'
@@ -42,7 +44,8 @@ const FieldRowId = createContext<string | undefined>(undefined)
  * The one single-line field, boxed by default. Components keep their own layout classes; the
  * appearance sets the box, font and focus, so entering edit mode never makes the field taller,
  * shifts it down, or shows the browser's own blue frame. Inside a FieldRow it takes the id the
- * row's label names, unless it has an id of its own.
+ * row's label names, unless it has an id of its own. An `inline` field whose text does not fit fades
+ * at the end that hides text, as a scroll area does (useScrollFade).
  */
 export const FormInput = forwardRef<
   HTMLInputElement,
@@ -50,7 +53,13 @@ export const FormInput = forwardRef<
 >(
   function FormInput({ appearance = 'field', className, id, ...props }, ref) {
     const rowId = useContext(FieldRowId)
-    return <input ref={ref} id={id ?? rowId} className={classes('form-input', className, appearance)} {...props} />
+    const fade = useScrollFade<HTMLInputElement>('x')
+    const attach = useCallback((input: HTMLInputElement | null) => {
+      if (appearance === 'inline') fade(input)
+      if (typeof ref === 'function') ref(input)
+      else if (ref !== null) ref.current = input
+    }, [appearance, fade, ref])
+    return <input ref={attach} id={id ?? rowId} className={classes('form-input', className, appearance)} {...props} />
   },
 )
 

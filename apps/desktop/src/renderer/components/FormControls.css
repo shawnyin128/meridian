@@ -65,6 +65,8 @@
   padding:var(--sp-2) var(--sp-6);
   line-height:inherit;
 }
+/* An in-place field that hides text past an end fades there as a scroll area does; it has no scrollbar strip to keep. */
+.form-input.form-control-inline[data-fade]{--fade-bar-x:0px;--fade-bar-y:0px}
 /* A native select insets its text and a date input pads its fields; either would move the text. */
 .form-select.form-control-inline{appearance:none}
 .form-input.form-control-inline::-webkit-datetime-edit,

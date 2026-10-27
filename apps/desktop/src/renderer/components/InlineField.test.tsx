@@ -28,6 +28,10 @@ describe('InlineMetadataField', () => {
   let host: HTMLDivElement
 
   beforeEach(() => {
+
+    // An open in-place field watches its size to fade an end that hides text; jsdom has no ResizeObserver.
+
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
