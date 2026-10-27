@@ -1,7 +1,7 @@
 import { mkdtempSync, readFileSync, rmSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
 import type { ProjectRecord } from './page.js'
 import {
@@ -167,6 +167,7 @@ describe('project page', () => {
   })
 
   afterEach(() => {
+    vi.restoreAllMocks()
     rmSync(dir, { recursive: true, force: true })
   })
 
@@ -570,6 +571,61 @@ describe('project page', () => {
       ...rows.slice(close),
     ].join('\n'), staging)
     expect(readProjectPage(file, 'project-1').topicPins).toEqual([{ page: 'topics/speculative-decoding', title: 'speculative decoding' }])
+  })
+
+  it('新版本在嵌套对象里加的键读的时候不管,重写那几项时原样留在原处,别的字节不动', () => {
+    const held: ProjectRecord = {
+      ...PROJECT,
+      workspaceSsh: { host: 'gpu-lab', path: '/srv/research' },
+      verifiedConclusions: [{ node: 'n1', fingerprint: '0123456789abcdef', date: '2026-09-21' }],
+      topicPins: [{ page: 'topics/speculative-decoding', title: 'speculative decoding' }],
+    }
+    const newer = projectPageText(held)
+      .replace('  path: "/srv/research"\n', '  path: "/srv/research"\n  user: "lab"\n')
+      .replace('    date: "2026-09-21"\n', '    date: "2026-09-21"\n    by: "我"\n')
+      .replace('    source: "手动添加"\n', '    source: "手动添加"\n    weight: 2\n')
+      .replace('      end: "18:00"\n', '      end: "18:00"\n      tz: "UTC"\n')
+      .replace('    done: false\n', '    done: false\n    color: "red"\n')
+      .replace('        text: "没有页的那一条"\n', '        text: "没有页的那一条"\n        note: "待补"\n')
+      .replace('    size: "412 KB"\n', '    size: "412 KB"\n    kind: "csv"\n')
+      .replace('      writebacks: []\n', '      writebacks: []\n      icon: "flag"\n')
+      .replace('      to: "n2"\n', '      to: "n2"\n      label: "next"\n  layout: "dag"\n')
+      .replace('        text: "写回结论"\n', '        text: "写回结论"\n        tool: "edit"\n')
+      .replace('    title: "speculative decoding"\n', '    title: "speculative decoding"\n    since: "2027-01-01"\n')
+    writePage(file, newer, staging)
+
+    expect(readProjectPage(file, 'project-1')).toEqual(held)
+    writeProjectFields(file, held, [
+      'workspaceSsh', 'verifiedConclusions', 'conclusionList', 'tasks', 'milestones', 'relations', 'attachments',
+      'graph', 'agentSessions', 'topicPins',
+    ], staging)
+    expect(readFileSync(file, 'utf8')).toBe(newer)
+
+    const renamed = { ...held, milestones: [{ ...held.milestones[0]!, title: '宽树实验收尾' }] }
+    writeProjectFields(file, renamed, ['milestones'], staging)
+    expect(readFileSync(file, 'utf8')).toBe(newer.replace('    title: "宽树实验"\n', '    title: "宽树实验收尾"\n'))
+  })
+
+  it('读不了的一条任务或一个节点单独报出来,项目其余部分照常读出;重写时那一条原样留着', () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const task = ['  - id: "task-9"', '    title: "新版本的状态"', '    start: "2026-08-18"', '    end: "2026-08-18"', '    state: "blocked"', '    priority: "p1"']
+    const node = ['    - id: "n9"', '      label: "新版本的节点"', '      state: "paused"', '      x: 0', '      y: 0', '      width: 120', '      writebacks: []']
+    const text = readFileSync(file, 'utf8')
+      .replace('\nmilestones:\n', `\n${task.join('\n')}\nmilestones:\n`)
+      .replace('\n  edges:\n', `\n${node.join('\n')}\n  edges:\n`)
+    writePage(file, text, staging)
+
+    expect(readProjectPage(file, 'project-1')).toEqual(PROJECT)
+    const reasons = reported.mock.calls.map((call) => String(call[0]))
+    expect(reasons.some((reason) => reason.includes('tasks') && reason.includes('record 2'))).toBe(true)
+    expect(reasons.some((reason) => reason.includes('graph.nodes') && reason.includes('record 3'))).toBe(true)
+
+    const added = { id: 'task-2', title: '再加一条', start: '2026-08-20', end: '2026-08-21', state: 'plan', priority: 'p2' } as const
+    writeProjectFields(file, { ...PROJECT, tasks: [added, ...PROJECT.tasks] }, ['tasks', 'graph'], staging)
+    const after = readFileSync(file, 'utf8')
+    expect(after).toContain(`\n${task.join('\n')}\nmilestones:\n`)
+    expect(after).toContain(`\n${node.join('\n')}\n  edges:\n`)
+    expect(readProjectPage(file, 'project-1').tasks).toEqual([added, ...PROJECT.tasks])
   })
 
   it('不是项目页的一页读出来会抛,而不是给一个空项目', () => {

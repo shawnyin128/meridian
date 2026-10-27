@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { ProjectDetail } from '../../shared/contract.js'
 import { ProjectDetailSchema, TaskSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
 import { DEFAULT_PROJECT_TOPIC } from '../../shared/vocabulary.js'
+import { readRecord, readStoredList, withUnknownFields, type StoredList } from '../vault/stored-records.js'
 import { spliceLines } from '../vault/writer.js'
 import type { TopicPin } from './topics.js'
 
@@ -99,11 +100,8 @@ export type ProjectRecord = Omit<
   agentTasks?: Record<string, string>
 }
 
-/** One stored `topic_pages` entry; unknown additive keys are dropped. */
-const TopicPinEntrySchema = z.object({ page: z.string().min(1), title: z.string() })
-
-/** One stored `verified_conclusions` entry; unknown additive keys are dropped. */
-const VerifiedConclusionEntrySchema = z.object(VerifiedConclusionSchema.shape)
+/** One stored `topic_pages` entry. */
+const TopicPinEntrySchema = z.object({ page: z.string().min(1), title: z.string() }).strict()
 
 /**
  * A task as a page stores it: without `note`, which lives in the page's separate `task_notes` map
@@ -127,8 +125,7 @@ const ProjectPageSchema = z.object({
   topic: detail.topic,
   /** Every topic's title, written only while there are several; an older App reads and writes `topic` alone. */
   topics: detail.topics,
-  /** Entries this version cannot read are skipped one by one. */
-  topic_pages: z.array(z.unknown()).optional(),
+  topic_pages: z.array(TopicPinEntrySchema).optional(),
   focus: detail.focus,
   block: detail.block,
   conflict_page: detail.conflictPage,
@@ -142,7 +139,7 @@ const ProjectPageSchema = z.object({
   due: detail.due,
   papers: detail.papers.default([]),
   conclusion_list: detail.conclusionList.default([]),
-  verified_conclusions: z.array(z.unknown()).optional(),
+  verified_conclusions: z.array(VerifiedConclusionSchema).optional(),
   tasks: z.array(PageTaskSchema),
   /** Task notes keyed by task id, a task carrying one only when it has a note. */
   task_notes: z.record(z.string(), z.string()).optional(),
@@ -162,6 +159,29 @@ const ProjectPageSchema = z.object({
   }).strict(),
   agent_sessions: detail.agentSessions,
 })
+
+/**
+ * The lists of a project page read entry by entry, by where each sits in the frontmatter, with the
+ * schema of one entry and the field that tells its entries apart.
+ */
+const PAGE_LISTS: [path: [string, ...string[]], entry: z.ZodType, key: string][] = [
+  [['verified_conclusions'], VerifiedConclusionSchema, 'node'],
+  [['conclusion_list'], detail.conclusionList.element, 'id'],
+  [['tasks'], PageTaskSchema, 'id'],
+  [['milestones'], detail.milestones.element, 'id'],
+  [['relations'], detail.relations.element, 'group'],
+  [['attachments'], detail.attachments.element, 'id'],
+  [['graph', 'nodes'], detail.graph.shape.nodes.element, 'id'],
+  [['agent_sessions'], detail.agentSessions.element, 'id'],
+  [['topic_pages'], TopicPinEntrySchema, 'page'],
+]
+
+/** A project page's frontmatter as this version reads it, and how to store a frontmatter in its place. */
+type PageFront = {
+  page: z.infer<typeof ProjectPageSchema>
+  /** `next` with every key this version does not know, and every list entry it cannot read, put back. */
+  stored: (next: Record<string, Json>) => Record<string, Json>
+}
 
 /**
  * Reads a project page's active nodes, falling back to a legacy `active_path`'s last id when
@@ -431,13 +451,19 @@ export function projectPageText(project: ProjectRecord): string {
   ].join('\n')
 }
 
+/** The object in `front` that holds the last key of `path`, or undefined when there is none. */
+const parentAt = (front: Record<string, unknown>, path: readonly string[]): Record<string, unknown> | undefined =>
+  path.slice(0, -1).reduce<Record<string, unknown> | undefined>(
+    (node, step) => node?.[step] as Record<string, unknown> | undefined, front,
+  )
+
 /**
- * Reads the project the page at `file` holds, taking `id` as the project's id.
- * Throws if the page is not a project page, or its frontmatter is not the shape
- * a project page carries.
+ * Reads the frontmatter lines `front` of the page at `file`. Ignores keys this version does not know,
+ * at any depth, and reads each list in PAGE_LISTS entry by entry, reporting on stderr every entry it
+ * cannot read and leaving it out. Throws if the page is not a project page, or the rest of its
+ * frontmatter is not the shape a project page carries.
  */
-export function readProjectPage(file: string, id: string): ProjectRecord {
-  const { front, body } = splitRows(file)
+function readFront(file: string, front: string[]): PageFront {
   const flattened = normalize(front)
   const mapping = readMapping(flattened.rows, flattened.items, 0, 0)[0]
   // Older pages stored `page` on nodes and omitted writebacks. Drop the obsolete field and supply the current default.
@@ -445,7 +471,42 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     delete node['page']
     node['writebacks'] ??= []
   }
-  const page = ProjectPageSchema.parse(mapping)
+  const lists: { path: string[]; list: StoredList<unknown> }[] = []
+  for (const [path, entry, key] of PAGE_LISTS) {
+    const parent = parentAt(mapping, path)
+    const at = path.at(-1)!
+    if (parent?.[at] === undefined) continue
+    const list = readStoredList(`${file} ${path.join('.')}`, parent[at], entry, key)
+    parent[at] = list.rows
+    lists.push({ path, list })
+  }
+  const read = readRecord(ProjectPageSchema, mapping)
+  if ('error' in read) throw new Error(read.error)
+  return {
+    page: read.value,
+    stored: (next) => {
+      const out = withUnknownFields(next, read.unknown) as Record<string, Json>
+      for (const { path, list } of lists) {
+        const parent = parentAt(out, path) as Record<string, Json> | undefined
+        const at = path.at(-1)!
+        const rows = list.stored((parent?.[at] as Json[] | undefined) ?? []) as Json[]
+        if (parent !== undefined && (parent[at] !== undefined || rows.length > 0)) parent[at] = rows
+      }
+      return out
+    },
+  }
+}
+
+/**
+ * Reads the project the page at `file` holds, taking `id` as the project's id.
+ * Keys this version does not know are ignored at any depth, and a list entry
+ * it cannot read is reported on stderr and left out. Throws if the page is not
+ * a project page, or the rest of its frontmatter is not the shape a project
+ * page carries.
+ */
+export function readProjectPage(file: string, id: string): ProjectRecord {
+  const { front, body } = splitRows(file)
+  const { page } = readFront(file, front)
   const [eventsFrom, eventsTo] = sectionRange(body, EVENTS)
   const [memoFrom, memoTo] = sectionRange(body, MEMO)
   return {
@@ -455,24 +516,13 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     status: page.status,
     priority: page.priority,
     ...areasOf(page.topic, page.topics),
-    ...(page.topic_pages === undefined ? {} : {
-      topicPins: page.topic_pages.flatMap((entry) => {
-        const read = TopicPinEntrySchema.safeParse(entry)
-        return read.success ? [read.data] : []
-      }),
-    }),
+    ...(page.topic_pages === undefined ? {} : { topicPins: page.topic_pages }),
     focus: page.focus,
     ...(page.block === undefined ? {} : { block: page.block }),
     ...(page.conflict_page === undefined ? {} : { conflictPage: page.conflict_page }),
     ...(page.workspace_root === undefined ? {} : { workspaceRoot: page.workspace_root }),
     ...(page.workspace_ssh === undefined ? {} : { workspaceSsh: page.workspace_ssh }),
-    ...(page.verified_conclusions === undefined ? {} : {
-      // An entry this version cannot read is skipped, so it never keeps the project from opening.
-      verifiedConclusions: page.verified_conclusions.flatMap((entry) => {
-        const read = VerifiedConclusionEntrySchema.safeParse(entry)
-        return read.success ? [read.data] : []
-      }),
-    }),
+    ...(page.verified_conclusions === undefined ? {} : { verifiedConclusions: page.verified_conclusions }),
     start: page.start,
     due: page.due,
     memo: body.slice(memoFrom, memoTo).join('\n').trim(),
@@ -521,15 +571,17 @@ export function dropProjectPageKeys(
 /**
  * Writes the named fields of the given project onto the page at `file`,
  * replacing only the lines each of those fields occupies and leaving every
- * other byte of the page untouched. A field the page does not yet carry is
- * added just before the frontmatter closes. Each write is staged under
- * `staging` and renamed over the page, the way spliceLines has it. Throws if
- * the page is not a project page, or a named field has no place on it.
+ * other byte of the page untouched. Within those lines, the keys this version
+ * does not know and the list entries it cannot read stay as the page had them.
+ * A field the page does not yet carry is added just before the frontmatter
+ * closes. Each write is staged under `staging` and renamed over the page, the
+ * way spliceLines has it. Throws if the page is not a project page, or a named
+ * field has no place on it.
  */
 export function writeProjectFields(
   file: string, project: ProjectRecord, fields: (keyof ProjectRecord)[], staging: string,
 ): void {
-  const front = frontOf(project)
+  const front = readFront(file, splitRows(file).front).stored(frontOf(project))
   /** Replaces, inserts, or (when `value` is undefined) removes one top-level key's lines. */
   const syncKey = (key: string, value: Json | undefined): void => {
     if (value === undefined) {
