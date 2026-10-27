@@ -250,7 +250,9 @@ test('点甘特行内空白在那一天新建里程碑,写落进 core', async ({
   const row = shown(win).locator('.gantt .grow[data-row="repro"]')
   // The default week scale only draws diamonds that fall inside the current week window, so how many of
   // repro's fixture milestones are visible depends on which day this runs; read the live count instead of
-  // assuming both fixture milestones show, and check the click adds exactly one more.
+  // assuming both fixture milestones show, and check the click adds exactly one more. The row draws its
+  // diamonds in the same commit, so its count is final once the row shows.
+  await expect(row).toBeVisible()
   const before = await row.locator('.gddl').count()
 
   const firstDay = weekStart(await vaultToday(win))

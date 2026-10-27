@@ -418,8 +418,9 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
 test('在一条关注那一档里检查新论文只抓这一条;再抓没有新的,屏头写没有新论文和这一次的时刻', async ({ win }) => {
   const before = await inboxFromCore(win)
   const elsewhere = before.filter((e) => !listedUnder(e, 'watch').includes('spec')).map((e) => e.id)
+  const shownBefore = before.filter((e) => listedUnder(e, 'watch').includes('spec')).length
   await openInbox(win, 'spec')
-  const shownBefore = await shown(win, '.pcard').count()
+  await expect(shown(win, '.pcard')).toHaveCount(shownBefore)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
   await expect(shown(win, '.pcard')).toHaveCount(shownBefore + 1)
   expect((await cardTitles(win))).toContain('Tree Width in Batched Serving')
@@ -439,8 +440,9 @@ test('在一个项目那一档里刷新发现只刷这个项目;没有新的时�
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
   const project = listedUnder((await discoveryFromCore(win))[0]!, 'discovery')[0]!
+  const count = (await discoveryFromCore(win)).filter((e) => listedUnder(e, 'discovery').includes(project)).length
   await win.locator(`[data-discovery-project="${project}"]`).click()
-  const count = await shown(win, '.pcard').count()
+  await expect(shown(win, '.pcard')).toHaveCount(count)
 
   const refresh = shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' })
   await refresh.click()
