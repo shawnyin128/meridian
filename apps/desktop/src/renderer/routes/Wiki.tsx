@@ -711,6 +711,19 @@ export function Wiki() {
     })
   }
 
+  /** Renames aggregation `id`, now titled `from`, to `title`, keeping how it is split: the one rename its card and its page title share. */
+  const renameAggregation = (id: string, from: string, title: string): Promise<boolean> =>
+    wiki.aggregation(id).then((held) => propose(
+      m.wiki.proposals.rename(from, title),
+      [{ op: 'setAggregationMetadata', page: id, title, splitOn: held.splitOn ?? null }],
+    ), (e: Error) => {
+      report(e)
+      return false
+    })
+
+  /** Retitles paper `paperId`: the one rename its card and its Wiki page title share. */
+  const renamePaper = (paperId: string, title: string): Promise<boolean> => write(papers.update(paperId, { title }))
+
   /** The cards Merge into last offered, by page id, so a pick hands Core the card it showed. */
   const offered = useRef(new Map<string, WikiAggregationCard>())
 
@@ -721,13 +734,7 @@ export function Wiki() {
    * moves the page to the trash. Merge and Delete offer Undo on their notice.
    */
   const cardActions = (card: WikiAggregationCard): CardActions => ({
-    onRename: (title) => wiki.aggregation(card.id).then((held) => propose(
-      m.wiki.proposals.rename(card.title, title),
-      [{ op: 'setAggregationMetadata', page: card.id, title, splitOn: held.splitOn ?? null }],
-    ), (e: Error) => {
-      report(e)
-      return false
-    }),
+    onRename: (title) => renameAggregation(card.id, card.title, title),
     suggestMerge: async (query) => {
       const q = query.toLowerCase()
       const found = (await wiki.cards())
@@ -850,7 +857,20 @@ export function Wiki() {
             : undefined}
       >
         {place === null ? null : <BackButton onClick={back} />}
-        <PageTitle label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))} count={titleCount}>{title}</PageTitle>
+        <PageTitle
+          label={shownAgg?.title ?? (shownPaper === null ? undefined : plainTitle(shownPaper.title))} count={titleCount}
+          rename={shownAgg !== null
+            ? {
+              label: m.wiki.nameFieldLabel, value: shownAgg.title, keep: { scope: ['wiki', shownAgg.id], target: RENAME },
+              onSave: (next) => renameAggregation(shownAgg.id, shownAgg.title, next),
+            }
+            : shownPaper !== null
+              ? {
+                label: m.wiki.titleLabel, value: shownPaper.title, keep: { scope: ['wiki', shownPaper.id], target: RENAME },
+                onSave: (next) => renamePaper(shownPaper.id.slice(PAPER_PAGE.length), next),
+              }
+              : undefined}
+        >{title}</PageTitle>
       </PageHeader>
 
       <PageError error={error} />
@@ -1010,19 +1030,6 @@ export function Wiki() {
                 <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <PropertyList>
                   <Property label={m.project.identity.typeLabel}>{shownAgg.kindLabel}</Property>
-                  <Property label={m.project.identity.nameLabel}>
-                    <InlineMetadataField
-                      label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
-                      onSave={(title) => {
-                        const next = title.trim()
-                        if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
-                        return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
-                          op: 'setAggregationMetadata', page: shownAgg.id, title: next,
-                          splitOn: shownAgg.splitOn ?? null,
-                        }])
-                      }}
-                    />
-                  </Property>
                   <Property label={m.wiki.scaleLabel}>{m.wiki.scaleSummary(shownAgg.memberCount, shownAgg.childCount)}</Property>
                   <Property label={m.wiki.splitOnLabel}>
                     <InlineMetadataField
@@ -1068,16 +1075,6 @@ export function Wiki() {
                 <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <PropertyList>
                   <Property label={m.project.identity.typeLabel}>{m.wiki.paperKind}</Property>
-                  <Property label={m.wiki.titleLabel}>
-                    <InlineMetadataField
-                      label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
-                      onSave={(title) => {
-                        const next = title.trim()
-                        if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
-                        return updateWikiPaper({ title: next })
-                      }}
-                    />
-                  </Property>
                   <Property label={m.wiki.shortTitleLabel}>
                     <InlineMetadataField
                       label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
@@ -1180,7 +1177,7 @@ export function Wiki() {
                 {rows.map((p) => (
                   <PaperCard
                     key={p.id} paper={p} onOpen={() => go(`${PAPER_PAGE}${p.id}`)}
-                    onRename={(title) => write(papers.update(p.id, { title }))}
+                    onRename={(title) => renamePaper(p.id, title)}
                     onDelete={() => { void write(papers.delete(p.id), { note: m.common.trashed, action: undo.change }) }}
                   />
                 ))}

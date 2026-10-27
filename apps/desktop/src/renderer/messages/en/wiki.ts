@@ -40,7 +40,6 @@ export const wiki = {
   addPaperTitle: 'Add paper',
   kindNamePlaceholder: (kind: string) => `${kind} name`,
   nameFieldLabel: 'Wiki name',
-  nameRequired: "Wiki name can't be empty.",
   scaleLabel: 'Scale',
   scaleSummary: (members: number, children: number) =>
     `${members} ${pluralEn(members, { one: 'paper', other: 'papers' })}`
@@ -50,7 +49,6 @@ export const wiki = {
   belongsTo: 'Belongs to',
   internalizedContent: 'Page content',
   titleLabel: 'Title',
-  titleRequired: "Title can't be empty.",
   shortTitleLabel: 'Short title',
   authorsLabel: 'Authors',
   yearLabel: 'Year',
