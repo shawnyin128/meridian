@@ -853,6 +853,9 @@ export interface VaultStore {
   /** Replaces the review-queue records with `rows`, newest first. */
   saveProposalRecords(rows: ProposalRecord[]): void
 
+  /** The keys this version does not know on the ops of review-queue record `id`, as stored. */
+  proposalUnknownOpKeys(id: string): string[]
+
   /** Returns an unused review-queue record id, `proposal-<n>`. */
   nextProposalId(): string
 

@@ -2952,6 +2952,13 @@ export function createVaultStore(
       proposals = next
     },
 
+    proposalUnknownOpKeys(id) {
+      const record = proposals.find((held) => held.id === id)
+      const read = record === undefined ? undefined : readRecord(ProposalRecordSchema, storedRecord('proposals', record))
+      return read === undefined || 'error' in read ? []
+        : read.unknown.filter((field) => field.at[0] === 'proposal' && field.at[1] === 'ops').map((field) => field.key)
+    },
+
     nextProposalId() {
       return nextId('proposal')
     },
