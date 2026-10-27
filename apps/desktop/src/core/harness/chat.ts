@@ -1,19 +1,20 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
-import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
+import { ExperimentDesignSchema, HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type {
-  CallFailure, ChatAnswerModel, ChatRun, HarnessCliModel, HarnessModelConnectionCheckResult,
+  CallFailure, ChatAnswerModel, ChatRun, ExperimentDesign, HarnessCliModel, HarnessModelConnectionCheckResult,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { CoreLogLevel } from '../core-log.js'
 import { extractPdfPages } from '../paper-library/index.js'
+import { designSections } from '../research-ideas/index.js'
 import type { VaultStore } from '../vault.js'
 import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
 import type { CliChatSessions } from './cli/chat-sessions.js'
 import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
 import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
-import type { CliUsage } from './cli/runner.js'
+import type { CliResult, CliRunner, CliUsage } from './cli/runner.js'
 import { answerTokens, apiRunLimits, cliRunLimits } from './cost-gate.js'
 import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 import { citablePages } from './paper-wiki.js'
@@ -27,6 +28,17 @@ const MAX_ANSWER_CHARACTERS = 20_000
 const MIN_ANSWER_TOKENS = 2_000
 /** What leads the parts of a chat's context a resumed Codex session has not been given. */
 const CONTEXT_CHANGES = 'These parts of the conversation context changed since your last answer and now read:\n'
+/** The longest answer a design turn gives beside its design, in characters. */
+const DESIGN_ANSWER_CHARACTERS = 2_000
+/**
+ * The longest output a design turn gives, in characters: its answer and every string of the longest
+ * design ExperimentDesignSchema takes (the claim, three explanations, four predictions, the
+ * experiment, six decisions and six ledger statements with the longer anchor).
+ */
+const MAX_DESIGN_CHARACTERS = DESIGN_ANSWER_CHARACTERS + 160 + 3 * 160 + 4 * (80 + 4 * 40) + 2 * 160
+  + 6 * (120 + 2 * 60) + 6 * (160 + 300)
+/** The output cap of a design turn before it held its longest output, which every model takes and Harness never clamps below. */
+const MIN_DESIGN_TOKENS = 4_000
 const MODEL_CONNECTION_REDACTIONS = [
   /(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
   /(\b(?:api[-_ ]?key|x-api-key|access[-_ ]?token|secret)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
@@ -45,6 +57,9 @@ const ChatContextParamsSchema = z.object({
   currentText: z.string().min(1).max(MODEL_TEXT_CHARACTERS),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(MAX_ANSWER_CHARACTERS) }).strict()
+const ChatDesignAnswerSchema = z.object({
+  answer: z.string().trim().min(1).max(DESIGN_ANSWER_CHARACTERS), design: ExperimentDesignSchema.nullable(),
+}).strict()
 /** How many mentioned Wiki pages, and claims of them, a turn's context holds. */
 const MENTIONED_WIKI_PAGES = 5
 const MENTIONED_WIKI_CLAIMS = 40
@@ -77,6 +92,12 @@ const ChatModelInvokeParamsSchema = z.object({
   message: z.string().min(1).max(MODEL_TEXT_CHARACTERS),
   context: z.record(z.string(), z.unknown()),
 }).strict()
+/** A design turn's model call: the whole turn as `system` and `prompt`, and the JSON Schema of its output. */
+const DesignModelInvokeParamsSchema = z.object({
+  system: z.string().min(1).max(500_000),
+  prompt: z.string().min(1).max(200_000),
+  schema: z.record(z.string(), z.unknown()),
+}).strict()
 export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   sourceCharacters: 80_000,
   historyCharacters: 12_000,
@@ -107,7 +128,11 @@ export const modelText = (runs: readonly ChatRun[]) => runs.map((run) => {
   return named === undefined ? run.text : `${run.text} (${named})`
 }).join('')
 
-const messageText = (message: StoredChatMessage) => modelText(message.runs).trim()
+/** The text of a message as the model reads it again: its runs, then the sections of the design an answer carries. */
+const messageText = (message: StoredChatMessage) => {
+  const text = modelText(message.runs).trim()
+  return message.design === undefined ? text : `${text}\n\n${designSections(message.design)}`
+}
 
 type Turn = { role: 'you' | 'ai'; text: string }
 /** What a CLI session of a chat holds of `messages`: what was said and answered, without the status lines. */
@@ -333,6 +358,8 @@ export function createChatHarnessRunner(options: {
   /** The connection check of a subscription CLI's model, which makes one model call once the CLI is ready. */
   checkCli: (model: HarnessCliModel) => Promise<HarnessModelConnectionCheckResult>
   cli: CliChatRunner
+  /** The one-call structured runner a design turn on a subscription CLI runs on, outside the chat's session. */
+  structured: CliRunner
   sessions: CliChatSessions
   launch?: () => HarnessChild
   onLog?: (level: CoreLogLevel, line: string) => void
@@ -413,6 +440,25 @@ export function createChatHarnessRunner(options: {
       pages,
       pageCount,
       reading: packPaperReading(reading),
+    }
+  }
+
+  /**
+   * Throws a malformed-output CallError unless every anchor of `design` names what chat `chatId`'s
+   * vault holds: a Wiki page or a paper's page, and a claim on that page, or a page of the chat's paper.
+   */
+  const checkAnchors = async (chatId: string, design: ExperimentDesign) => {
+    const cards = new Set(options.store.wikiCards().map((card) => card.id))
+    const paperId = options.store.chatSession(chatId).paperId
+    for (const { anchor } of design.ledger) {
+      if (anchor === null) continue
+      const held = anchor.kind === 'source' ? anchor.paper === paperId : await (async () => {
+        const [page, claim] = anchor.ref.split('#') as [string, string | undefined]
+        if (page.startsWith('papers/')) return claim === undefined && options.store.hasPaper(page.slice('papers/'.length))
+        if (!cards.has(page)) return false
+        return claim === undefined || (await options.store.wikiAggregation(page)).claims.some((held) => held.id === claim)
+      })()
+      if (!held) throw new CallError('malformed-output', '模型的实验设计引用了库里没有的锚点')
     }
   }
 
@@ -521,6 +567,40 @@ export function createChatHarnessRunner(options: {
     return { call, keep }
   }
 
+  /**
+   * The one structured model call of a design turn of chat `chatId` on `model`, ending when `signal`
+   * aborts, with the vault lookups a turn of that chat has, outside the chat's CLI session; a CLI
+   * failure goes to `onFailure`.
+   */
+  const cliDesign = (
+    chatId: string, model: HarnessCliModel, signal: AbortSignal, onFailure: (failure: CliRunError) => void,
+  ): HarnessCallback => {
+    let called = false
+    return async (params) => {
+      if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
+      called = true
+      const call = DesignModelInvokeParamsSchema.parse(params)
+      const paperId = options.store.chatSession(chatId).paperId
+      let result: CliResult
+      try {
+        result = await options.structured({
+          cli: model.cli,
+          ...(model.model === undefined ? {} : { model: model.model }),
+          ...(model.effort === undefined ? {} : { effort: model.effort }),
+          ...call,
+          lookup: paperId === undefined ? {} : { paperId },
+          timeoutMs: CLI_CALL_TIMEOUT_MS,
+          signal,
+        })
+      } catch (cause) {
+        if (cause instanceof CliRunError) onFailure(cause)
+        throw cliCallError(model.cli, cause, options.onLog)
+      }
+      options.onLog?.('info', cliUsageLine(model.cli, result))
+      return { output: result.output }
+    }
+  }
+
   return {
     /** Checks configured source `id` at its own model, or the default source without one, at its provider's or CLI's own default effort. */
     async checkConnection(id?: string) {
@@ -595,6 +675,49 @@ export function createChatHarnessRunner(options: {
         }))
         turn?.keep(result.answer)
         return result.answer
+      } catch (cause) {
+        throw failure === undefined
+          ? chatHarnessError(cause)
+          : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })
+      } finally {
+        ended.abort()
+      }
+    },
+    /**
+     * Asks Harness to answer design turn `text` in chat `id` until `signal` aborts, with the claims of
+     * the Wiki pages the chat mentioned in its context and, on an API model, an output cap of
+     * MAX_DESIGN_CHARACTERS tokens raised by the effort's reasoning allowance and never clamped below
+     * MIN_DESIGN_TOKENS; on a subscription CLI the turn is one structured call outside the chat's session.
+     * `progress` hears the model writing it. Returns the answer and its design, null when the model
+     * found nothing to test; rejects with a malformed-output CallError when the design anchors what the
+     * vault does not hold, and otherwise as `answer` does.
+     */
+    async design(id: string, text: string, signal: AbortSignal, progress?: ChatProgress): Promise<{ answer: string; design: ExperimentDesign | null }> {
+      const ended = new AbortController()
+      let failure: CliRunError | undefined
+      try {
+        const model = await options.model.runtime(options.choiceOf?.(id))
+        progress?.onModel('source' in model
+          ? { route: 'subscription', cli: model.cli, ...(model.model === undefined ? {} : { id: model.model }) }
+          : { route: 'api', id: model.model })
+        const { maxOutputTokens, minOutputTokens, timeoutSeconds, requestTimeoutMs } = 'source' in model
+          ? cliRunLimits(MIN_DESIGN_TOKENS)
+          : apiRunLimits(model.effort, answerTokens(MAX_DESIGN_CHARACTERS), MIN_DESIGN_TOKENS)
+        const result = ChatDesignAnswerSchema.parse(await rpc.request('chat.answer', {
+          chatId: id,
+          text,
+          design: true,
+          model,
+          limits: { maxOutputTokens, minOutputTokens, maxModelCalls: 1, timeoutSeconds },
+        }, {
+          signal,
+          ...('source' in model ? {
+            timeoutMs: CLI_REQUEST_TIMEOUT_MS,
+            callbacks: { 'model.invoke': cliDesign(id, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }) },
+          } : { timeoutMs: requestTimeoutMs }),
+        }))
+        if (result.design !== null) await checkAnchors(id, result.design)
+        return result
       } catch (cause) {
         throw failure === undefined
           ? chatHarnessError(cause)

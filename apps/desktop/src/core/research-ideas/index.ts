@@ -1,5 +1,6 @@
 import type { ResearchIdea, ResearchIdeaPatch } from '../../shared/contract.js'
 
+export { designPreview, designSections, saveDesignAsIdea } from './design.js'
 export { placeResearchIdeaOnGraph } from './graph-placement.js'
 export { promoteResearchIdea } from './promote.js'
 

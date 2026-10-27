@@ -97,6 +97,9 @@ export function Chat() {
   // The message being typed and an idea being drafted belong to their chat.
   const drafts = useDrafts<ChatRun[]>(['chat', id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['chat', id ?? ''])
+  // Whether the chat's next turns are design turns stays with the chat, as its draft does.
+  const designs = useDrafts<boolean>(['chat', id ?? ''])
+  const designing = id !== null && designs.get('design') === true
   const { running, stop } = useGenerations()
   const { track } = useModelStatus()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -132,9 +135,9 @@ export function Chat() {
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
 
   const turn = useChatTurn(track)
-  const send = useCallback((session: string, runs: ChatRun[]) => {
+  const send = useCallback((session: string, runs: ChatRun[], design: boolean) => {
     follow()
-    return turn.send(session, runs)
+    return turn.send(session, runs, design)
   }, [follow, turn])
 
   const stopSending = () => {
@@ -152,14 +155,14 @@ export function Chat() {
     }
     void chat.create(m.chat.conflictTitle, true).then(async (session) => {
       select(session.id)
-      await send(session.id, [{ kind: 'text', text: m.chat.conflictQuestion }])
+      await send(session.id, [{ kind: 'text', text: m.chat.conflictQuestion }], false)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }, [jump, select, send, notice, m])
 
   const submit = () => {
     if (draftText(draft).trim() === '' || id === null || sending) return
     drafts.set('message', [])
-    void send(id, draft)
+    void send(id, draft, designing)
   }
 
   const act = (message: ChatMessage) => {
@@ -206,10 +209,10 @@ export function Chat() {
                 ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
                 : shownMessages(messages, sending || writing !== null).map((msg, at, shown) => (
                   <ChatMessageView
-                    key={msg.id} message={msg} onAct={() => act(msg)}
+                    key={msg.id} chat={id} message={msg} onAct={() => act(msg)}
                     failure={at === shown.length - 1 ? failure : undefined}
                     onRetry={id !== null && !sending && at === shown.length - 1 && endsUnanswered(shown)
-                      ? () => { follow(); void turn.retry(id) }
+                      ? () => { follow(); void turn.retry(id, designing) }
                       : undefined}
                   />
                 ))}
@@ -262,6 +265,7 @@ export function Chat() {
               key={id} ref={composer} id="composer" chat={id} sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
               draft={draft} onDraft={(next) => { if (id !== null) drafts.set('message', next) }} unavailable={id === null}
               running={sending} onSend={submit} onStop={stopSending}
+              design={{ on: designing, onToggle: () => { if (id !== null) designs.set('design', !designing) } }}
               mentions={mentions}
             />
           </div>

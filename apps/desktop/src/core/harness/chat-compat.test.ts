@@ -77,6 +77,7 @@ describe('一轮停下时留下的回答存下的样子', () => {
       })),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
     }
     const config = await createHarnessModelConfig(join(root, 'config'), vault)
     await config.update({

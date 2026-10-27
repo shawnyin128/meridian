@@ -230,7 +230,7 @@ describe('Chat composer', () => {
       await Promise.resolve()
     })
     expect(api.create).toHaveBeenCalledWith('结论冲突', true)
-    expect(api.send).toHaveBeenCalledWith('chat-9', [{ kind: 'text', text: '为什么说这两条结论冲突？' }])
+    expect(api.send).toHaveBeenCalledWith('chat-9', [{ kind: 'text', text: '为什么说这两条结论冲突？' }], false)
   })
 
   /** The chat page's title as a rename field, null when the title does not rename. */
@@ -285,7 +285,24 @@ describe('Chat composer', () => {
     type('为什么')
     expect(press('Enter').defaultPrevented).toBe(true)
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenCalledWith('chat-1', [{ kind: 'text', text: '为什么' }])
+    expect(api.send).toHaveBeenCalledWith('chat-1', [{ kind: 'text', text: '为什么' }], false)
+  })
+
+  it('按下输入框里的「实验设计」后，这一问和之后的每一问都按设计轮次发出；再按一下就回到普通的问', async () => {
+    const capsule = () => [...document.querySelectorAll<HTMLButtonElement>('.choice-capsule')].find((held) => held.textContent === '实验设计')!
+    expect(capsule().getAttribute('aria-pressed')).toBe('false')
+    act(() => capsule().click())
+    expect(capsule().getAttribute('aria-pressed')).toBe('true')
+    type('帮我设计实验')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-1', [{ kind: 'text', text: '帮我设计实验' }], true)
+
+    act(() => capsule().click())
+    type('为什么')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-1', [{ kind: 'text', text: '为什么' }], false)
   })
 
   it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态，点它打开设置的模型一栏；配好后再发一次成功，状态就消失', async () => {
@@ -368,7 +385,7 @@ describe('Chat composer', () => {
     expect(api.send).toHaveBeenCalledWith('chat-1', [
       { kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@草稿树项目', target: { kind: 'project', id: 'draft' } },
       { kind: 'text', text: ' 这条线还剩什么' },
-    ])
+    ], false)
     expect([typed(), pills()]).toEqual(['', []])
   })
 
@@ -460,7 +477,7 @@ describe('Chat composer', () => {
     expect(retry()?.textContent).toBe('重试')
     act(() => retry()!.click())
     await settle()
-    expect(api.retry).toHaveBeenCalledExactlyOnceWith('chat-1')
+    expect(api.retry).toHaveBeenCalledExactlyOnceWith('chat-1', false)
     expect(api.send).not.toHaveBeenCalled()
   })
 
@@ -627,7 +644,7 @@ describe('Chat composer', () => {
     type('第二条的问题')
     press('Enter')
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenLastCalledWith('chat-2', [{ kind: 'text', text: '第二条的问题' }])
+    expect(api.send).toHaveBeenLastCalledWith('chat-2', [{ kind: 'text', text: '第二条的问题' }], false)
     await finish()
   })
 

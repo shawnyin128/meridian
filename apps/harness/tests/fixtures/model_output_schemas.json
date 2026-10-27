@@ -339,5 +339,355 @@
    "implementation_hooks"
   ],
   "type": "object"
+ },
+ "ChatDesignAnswer": {
+  "$defs": {
+   "DesignClaim": {
+    "additionalProperties": false,
+    "properties": {
+     "text": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "hypothesis",
+       "observed"
+      ],
+      "type": "string"
+     }
+    },
+    "required": [
+     "text",
+     "status"
+    ],
+    "type": "object"
+   },
+   "DesignDecision": {
+    "additionalProperties": false,
+    "properties": {
+     "pattern": {
+      "maxLength": 120,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "outcome": {
+      "enum": [
+       "invalid",
+       "alternative",
+       "expand",
+       "below-gate",
+       "kill",
+       "inconclusive"
+      ],
+      "type": "string"
+     },
+     "interpretation": {
+      "maxLength": 60,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "next": {
+      "maxLength": 60,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     }
+    },
+    "required": [
+     "pattern",
+     "outcome",
+     "interpretation",
+     "next"
+    ],
+    "type": "object"
+   },
+   "DesignExperiment": {
+    "additionalProperties": false,
+    "properties": {
+     "substrate": {
+      "enum": [
+       "analytic",
+       "synthetic",
+       "component",
+       "small-system",
+       "full-system"
+      ],
+      "type": "string"
+     },
+     "keeps": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "untested": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     }
+    },
+    "required": [
+     "substrate",
+     "keeps",
+     "untested"
+    ],
+    "type": "object"
+   },
+   "DesignExplanations": {
+    "additionalProperties": false,
+    "properties": {
+     "m1": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "m2": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "m0": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     }
+    },
+    "required": [
+     "m1",
+     "m2",
+     "m0"
+    ],
+    "type": "object"
+   },
+   "DesignPrediction": {
+    "additionalProperties": false,
+    "properties": {
+     "regime": {
+      "maxLength": 80,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "m1": {
+      "anyOf": [
+       {
+        "maxLength": 40,
+        "minLength": 1,
+        "pattern": "^[^\\n]*$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "m2": {
+      "anyOf": [
+       {
+        "maxLength": 40,
+        "minLength": 1,
+        "pattern": "^[^\\n]*$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "m0": {
+      "anyOf": [
+       {
+        "maxLength": 40,
+        "minLength": 1,
+        "pattern": "^[^\\n]*$",
+        "type": "string"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     },
+     "metric": {
+      "maxLength": 40,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "chosen": {
+      "type": "boolean"
+     }
+    },
+    "required": [
+     "regime",
+     "m1",
+     "m2",
+     "m0",
+     "metric",
+     "chosen"
+    ],
+    "type": "object"
+   },
+   "ExperimentDesign": {
+    "additionalProperties": false,
+    "properties": {
+     "claim": {
+      "$ref": "#/$defs/DesignClaim"
+     },
+     "explanations": {
+      "$ref": "#/$defs/DesignExplanations"
+     },
+     "predictions": {
+      "items": {
+       "$ref": "#/$defs/DesignPrediction"
+      },
+      "maxItems": 4,
+      "minItems": 1,
+      "type": "array"
+     },
+     "experiment": {
+      "$ref": "#/$defs/DesignExperiment"
+     },
+     "decisions": {
+      "items": {
+       "$ref": "#/$defs/DesignDecision"
+      },
+      "maxItems": 6,
+      "minItems": 4,
+      "type": "array"
+     },
+     "ledger": {
+      "items": {
+       "$ref": "#/$defs/LedgerEntry"
+      },
+      "maxItems": 6,
+      "minItems": 1,
+      "type": "array"
+     }
+    },
+    "required": [
+     "claim",
+     "explanations",
+     "predictions",
+     "experiment",
+     "decisions",
+     "ledger"
+    ],
+    "type": "object"
+   },
+   "LedgerEntry": {
+    "additionalProperties": false,
+    "properties": {
+     "statement": {
+      "maxLength": 160,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "status": {
+      "enum": [
+       "source",
+       "inference",
+       "new-hypothesis"
+      ],
+      "type": "string"
+     },
+     "anchor": {
+      "anyOf": [
+       {
+        "$ref": "#/$defs/WikiAnchor"
+       },
+       {
+        "$ref": "#/$defs/PaperAnchor"
+       },
+       {
+        "type": "null"
+       }
+      ]
+     }
+    },
+    "required": [
+     "statement",
+     "status",
+     "anchor"
+    ],
+    "type": "object"
+   },
+   "PaperAnchor": {
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "const": "source",
+      "type": "string"
+     },
+     "paper": {
+      "maxLength": 200,
+      "minLength": 1,
+      "type": "string"
+     },
+     "page": {
+      "exclusiveMinimum": 0,
+      "type": "integer"
+     }
+    },
+    "required": [
+     "kind",
+     "paper",
+     "page"
+    ],
+    "type": "object"
+   },
+   "WikiAnchor": {
+    "additionalProperties": false,
+    "properties": {
+     "kind": {
+      "const": "wiki",
+      "type": "string"
+     },
+     "ref": {
+      "maxLength": 300,
+      "minLength": 3,
+      "pattern": "^[^\\s#/]+/[^\\s#/]+(#[a-z0-9][a-z0-9-]{0,63})?$",
+      "type": "string"
+     }
+    },
+    "required": [
+     "kind",
+     "ref"
+    ],
+    "type": "object"
+   }
+  },
+  "additionalProperties": false,
+  "properties": {
+   "answer": {
+    "maxLength": 2000,
+    "minLength": 1,
+    "type": "string"
+   },
+   "design": {
+    "anyOf": [
+     {
+      "$ref": "#/$defs/ExperimentDesign"
+     },
+     {
+      "type": "null"
+     }
+    ]
+   }
+  },
+  "required": [
+   "answer",
+   "design"
+  ],
+  "type": "object"
  }
 }

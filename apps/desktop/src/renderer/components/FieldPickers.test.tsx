@@ -7,7 +7,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { TodayContext } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { MenuItem } from './ActionMenu.js'
-import { ChoicePicker, DateButton, DateRangeField, DotsMenu } from './FieldPickers.js'
+import { CapsuleToggle, ChoicePicker, DateButton, DateRangeField, DotsMenu } from './FieldPickers.js'
 import { RowActions } from './Item.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
@@ -367,5 +367,31 @@ describe('DateRangeField', () => {
     expect(startDays.some((day) => day.disabled)).toBe(false)
     await act(async () => { startDays[19]!.click() })
     expect(onChange).toHaveBeenLastCalledWith({ start: '2026-10-20', end: '2026-10-20' })
+  })
+})
+
+describe('CapsuleToggle', () => {
+  beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true })
+
+  it('is the composer\'s capsule that turns on and off, pressed while on', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    function Toggling() {
+      const [on, setOn] = useState(false)
+      return <CapsuleToggle pressed={on} onToggle={() => setOn((held) => !held)}>实验设计</CapsuleToggle>
+    }
+    await act(async () => root.render(<Toggling />))
+    const capsule = host.querySelector('button')!
+
+    expect(capsule.className).toBe('choice-capsule')
+    expect(capsule.textContent).toBe('实验设计')
+    expect(capsule.getAttribute('aria-pressed')).toBe('false')
+    await act(async () => capsule.click())
+    expect(capsule.getAttribute('aria-pressed')).toBe('true')
+    await act(async () => capsule.click())
+    expect(capsule.getAttribute('aria-pressed')).toBe('false')
+    act(() => root.unmount())
+    host.remove()
   })
 })

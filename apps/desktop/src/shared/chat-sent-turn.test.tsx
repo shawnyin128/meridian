@@ -111,7 +111,7 @@ describe('a chat turn on the real Core chat service, with a reply that has not s
       baseUrl: 'http://127.0.0.1:11434/v1', model: 'local-model', authentication: 'none',
     })
     const runner: ChatHarnessRunner = {
-      checkConnection: vi.fn(), close: vi.fn(), listModels: vi.fn(),
+      checkConnection: vi.fn(), close: vi.fn(), listModels: vi.fn(), design: vi.fn(),
       answer: (_id, _text, _signal, on) => new Promise((resolve) => {
         on!.onModel({ route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' })
         on!.onText('写到一半')

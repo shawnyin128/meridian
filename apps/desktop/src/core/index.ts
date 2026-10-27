@@ -11,11 +11,13 @@ import {
   ChatWritingParamsSchema,
   ChatFailureParamsSchema,
   ChatRetryParamsSchema,
+  ChatSaveDesignParamsSchema,
   ChatCreateParamsSchema,
   ChatDeleteParamsSchema,
   ChatForPaperParamsSchema,
   ChatMessagesParamsSchema,
   ChatSendParamsSchema,
+  ChatDesignPreviewParamsSchema,
   ChatRecordActionParamsSchema,
   ChangelogArchiveParamsSchema,
   ChangelogDeleteParamsSchema,
@@ -159,7 +161,7 @@ import {
   createMainCredentialVault, createPaperWikiHarnessRunner, createSourceModels, discoverCli, followCliState, listCliModels, openChatModels,
   openCliChatSessions, redactSecrets, sourceIdOfInput, subscriptionStatus,
 } from './harness/index.js'
-import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
+import { designPreview, placeResearchIdeaOnGraph, promoteResearchIdea, saveDesignAsIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
 import { experimentProjects } from './wiki/index.js'
 
@@ -315,6 +317,7 @@ const chatHarness = createChatHarnessRunner({
   model: harnessModel,
   checkCli: (model) => checkCliConnection(model, { onLog: harnessLog, run: cliRunner }),
   cli: createCliChatRunner(cliRunnerDeps),
+  structured: cliRunner,
   sessions: chatSessions,
   choiceOf: chatModels.choiceOf,
   onLog: harnessLog,
@@ -985,10 +988,21 @@ registerHandler('chat.append', (params) => {
   return store.appendChatMessages(id, messages)
 })
 registerHandler('chat.send', (params) => {
-  const { id, runs } = ChatSendParamsSchema.parse(params)
-  return chatService.send(id, runs)
+  const { id, runs, design } = ChatSendParamsSchema.parse(params)
+  return chatService.send(id, runs, design)
 })
-registerHandler('chat.retry', (params) => chatService.retry(ChatRetryParamsSchema.parse(params).id))
+registerHandler('chat.retry', (params) => {
+  const { id, design } = ChatRetryParamsSchema.parse(params)
+  return chatService.retry(id, design)
+})
+registerHandler('chat.designPreview', (params) => {
+  const { id, messageId } = ChatDesignPreviewParamsSchema.parse(params)
+  return designPreview(store, id, messageId)
+})
+registerHandler('chat.saveDesign', (params) => {
+  const { id, messageId, fingerprint } = ChatSaveDesignParamsSchema.parse(params)
+  return saveDesignAsIdea(store, id, messageId, fingerprint)
+})
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
 registerHandler('chat.writing', (params) => chatService.writing(ChatWritingParamsSchema.parse(params).id))

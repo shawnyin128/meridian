@@ -1155,6 +1155,15 @@ export interface VaultStore {
    */
   addIdeaFile(ideaId: string, attachment: AttachmentFields): IdeaFile
 
+  /** The absolute path of the experiment design file `name` under the vault's `.meridian/designs/`, written or not. */
+  designFilePath(name: string): string
+
+  /**
+   * Writes `markdown` as the experiment design file `name` under the vault's `.meridian/designs/`,
+   * replacing what is there, and returns its absolute path.
+   */
+  writeDesignFile(name: string, markdown: string): string
+
   /**
    * Moves file `fileId` of idea `ideaId` to the trash, which puts it back in its place among that
    * idea's files. Throws `not-found` when the idea holds no such file.

@@ -110,3 +110,25 @@ describe('Table', () => {
     }
   })
 })
+
+describe('Table variants', () => {
+  const rows = (count: number) => Array.from({ length: count }, (_, at) => (
+    <TableRow key={at}><TableCell kind="title">{`第 ${at + 1} 行`}</TableCell></TableRow>
+  ))
+  const render = (node: React.ReactNode) => act(() => root.render(<MessagesProvider>{node}</MessagesProvider>))
+  const scroll = () => host.querySelector<HTMLElement>('.table-scroll')!
+
+  it('a capped table scrolls past five rows by default, and past its own limit when it names one', () => {
+    render(<Table rows="capped" columns={[{ key: 'name', label: '名称', width: 200 }]}>{rows(6)}</Table>)
+    expect(scroll().style.maxHeight).not.toBe('')
+    render(<Table rows="capped" limit={8} columns={[{ key: 'name', label: '名称', width: 200 }]}>{rows(6)}</Table>)
+    expect(scroll().style.maxHeight).toBe('')
+  })
+
+  it('a wrapping table lets its cells wrap instead of fading them', () => {
+    render(<Table wrap rows="capped" columns={[{ key: 'name', label: '名称', width: 200 }]}>{rows(1)}</Table>)
+    expect(host.querySelector('table')!.classList.contains('table--wrap')).toBe(true)
+    render(<Table rows="capped" columns={[{ key: 'name', label: '名称', width: 200 }]}>{rows(1)}</Table>)
+    expect(host.querySelector('table')!.classList.contains('table--wrap')).toBe(false)
+  })
+})

@@ -2525,6 +2525,14 @@ export function createFixtureStore(
       return structuredClone(file)
     },
 
+    designFilePath(name) {
+      return join('/fixture-vault', '.meridian', 'designs', name)
+    },
+
+    writeDesignFile(name) {
+      return join('/fixture-vault', '.meridian', 'designs', name)
+    },
+
     deleteIdeaFile(ideaId, fileId) {
       const own = ideaFiles.filter((file) => file.idea === ideaId)
       const position = own.findIndex((file) => file.attachment.id === fileId)

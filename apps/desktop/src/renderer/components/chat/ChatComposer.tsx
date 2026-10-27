@@ -11,6 +11,7 @@ import { sendsMessage } from '../../lib/chat.js'
 import { commitKeys, composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ComposerBox } from '../ComposerBox.js'
+import { CapsuleToggle } from '../FieldPickers.js'
 import { GenerationControl } from '../GenerationControl.js'
 import { ModelChips } from '../ModelChips.js'
 import { PickerPopover, PickOption } from '../PickerPopover.js'
@@ -61,7 +62,7 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
 /**
  * The one chat composer, in the Chat screen and the reader's paper chat: a ComposerBox holding a
  * CodeMirror editor over `draft` with its own undo history, then the model pickers of chat `chat`
- * (see ModelChips) and the send control, which stops the turn while `running`, as Escape anywhere in
+ * (see ModelChips), the capsule that makes the next turns design turns while `design.on`, and the send control, which stops the turn while `running`, as Escape anywhere in
  * the box does. Enter sends, Shift+Enter breaks the line, and an Enter that confirms an input
  * method's composition belongs to the input method. With `mentions`, typing `@` anywhere opens the picker of the candidates matching what
  * follows it up to the caret; picking one puts it in as a pill, which the caret steps over and a
@@ -70,7 +71,7 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
  * `label` names the editor for assistive technology, as the placeholder does without it.
  */
 export function ChatComposer({
-  ref, id, chat, label, placeholder, draft, onDraft, unavailable, running, sendId, onSend, onStop, mentions = [],
+  ref, id, chat, label, placeholder, draft, onDraft, unavailable, running, sendId, onSend, onStop, design, mentions = [],
 }: {
   ref?: Ref<ChatComposerHandle>
   chat: string | null
@@ -84,6 +85,7 @@ export function ChatComposer({
   sendId?: string
   onSend: () => void
   onStop: () => void
+  design: { on: boolean; onToggle: () => void }
   mentions?: readonly MentionCandidate[]
 }) {
   const m = useMessages()
@@ -176,7 +178,12 @@ export function ChatComposer({
                 }}
               />
             )}
-            chips={<ModelChips chat={chat} />}
+            chips={(
+              <>
+                <ModelChips chat={chat} />
+                <CapsuleToggle pressed={design.on} disabled={chat === null} onToggle={design.onToggle}>{m.chat.design.toggle}</CapsuleToggle>
+              </>
+            )}
             send={(
               <GenerationControl
                 className="send" id={sendId} running={running} disabled={unavailable || draftText(draft).trim() === ''}

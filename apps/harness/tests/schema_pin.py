@@ -1,4 +1,4 @@
-"""What a model-facing JSON schema may carry, measured against the schemas v0.0.23.0 sent."""
+"""What a model-facing JSON schema may carry, measured against the schemas as first sent."""
 
 from __future__ import annotations
 
@@ -10,8 +10,9 @@ from pydantic import BaseModel
 
 
 def released_schema(name: str) -> dict[str, object]:
-    """The JSON schema output class `name` had in v0.0.23.0, its titles and class docstrings
-    removed and every other key kept."""
+    """The JSON schema output class `name` had when it was first sent, in v0.0.23.0 or, for
+    ChatDesignAnswer, in v0.0.24.0, its titles and class docstrings removed and every other key
+    kept."""
 
     fixture = files("fixtures").joinpath("model_output_schemas.json")
     schemas = json.loads(fixture.read_text(encoding="utf-8"))

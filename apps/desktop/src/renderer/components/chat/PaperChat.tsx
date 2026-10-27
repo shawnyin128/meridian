@@ -57,6 +57,8 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   // The question being typed and an idea being drafted belong to their paper.
   const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
   const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
+  // Whether the paper chat's next turns are design turns stays with the paper, as its draft does.
+  const designs = useDrafts<boolean>(['paper', paper?.id ?? ''])
   const { running, stop } = useGenerations()
   const { track } = useModelStatus()
   const turn = useChatTurn(track)
@@ -66,6 +68,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
   const draft = paperId === null ? [] : drafts.get('chat-message') ?? []
+  const designing = paperId !== null && designs.get('chat-design') === true
   const ideaDraft = paperId === null ? undefined : ideaDrafts.get('chat-idea')
   const ideaSlot = useDraftSlot<HTMLDivElement>(
     ideaDraft !== undefined, () => { if (paperId !== null) ideaDrafts.set('chat-idea', { title: '', body: '' }) },
@@ -107,7 +110,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
     drafts.drop('chat-message')
     follow()
-    void turn.send(session.id, draft)
+    void turn.send(session.id, draft, designing)
   }
 
   const stopSending = () => {
@@ -141,10 +144,10 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
             : shownMessages(messages, sending || writing !== null).map((message, at, shown) => (
               <ChatMessageView
-                key={message.id} message={message} onAct={() => act(message)}
+                key={message.id} chat={sessionId} message={message} onAct={() => act(message)}
                 failure={at === shown.length - 1 ? failure : undefined}
                 onRetry={session !== null && !sending && at === shown.length - 1 && endsUnanswered(shown)
-                  ? () => { follow(); void turn.retry(session.id) }
+                  ? () => { follow(); void turn.retry(session.id, designing) }
                   : undefined}
               />
             ))}
@@ -179,6 +182,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             key={paperId} ref={composer} chat={sessionId} label={m.chat.askAboutPaper} placeholder={m.chat.composerPlaceholder}
             draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
             running={sending} onSend={submit} onStop={stopSending}
+            design={{ on: designing, onToggle: () => { if (paperId !== null) designs.set('chat-design', !designing) } }}
           />
         </div>
       </div>

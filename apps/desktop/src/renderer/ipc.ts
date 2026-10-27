@@ -1,7 +1,7 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import type {
-  AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
+  AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult, ChatDesignPreview,
   ChatMessage, ChatMessageFields, ChatModelChoice, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme,
   ColourThemeFile,
   ConclusionState, ContractMethod, Facet, FieldValue, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
@@ -297,10 +297,16 @@ export const chat = {
   forPaper: (paperId: string) => call<ChatSession>('chat.forPaper', { paperId }),
   append: (id: string, messages: ChatMessageFields[]) =>
     call<void>('chat.append', { id, messages }),
-  /** Sends what the user wrote in `runs`, each mention as a run of its own. */
-  send: (id: string, runs: ChatRun[]) => call<ChatSendResult>('chat.send', { id, runs }),
-  /** Asks again for an answer to the chat's last question after its turn ended in a status line. */
-  retry: (id: string) => call<ChatSendResult>('chat.retry', { id }),
+  /** Sends what the user wrote in `runs`, each mention as a run of its own, as a design turn with `design`. */
+  send: (id: string, runs: ChatRun[], design = false) =>
+    call<ChatSendResult>('chat.send', { id, runs, ...(design ? { design } : {}) }),
+  /** Asks again for an answer to the chat's last question after its turn ended in a status line, as a design turn with `design`. */
+  retry: (id: string, design = false) => call<ChatSendResult>('chat.retry', { id, ...(design ? { design } : {}) }),
+  /** What saving design answer `messageId` as an idea writes, with its fingerprint. */
+  designPreview: (id: string, messageId: string) => call<ChatDesignPreview>('chat.designPreview', { id, messageId }),
+  /** Saves design answer `messageId` as an idea; `fingerprint` is that of the preview shown. */
+  saveDesign: (id: string, messageId: string, fingerprint: string) =>
+    call<ResearchIdea>('chat.saveDesign', { id, messageId, fingerprint }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   /** The answer being written in the chat, with the model writing it, or null while no turn runs there. */
   writing: (id: string) => call<ChatWriting | null>('chat.writing', { id }),

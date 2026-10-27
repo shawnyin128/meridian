@@ -3446,6 +3446,16 @@ export function createVaultStore(
       return ideaFileOf(record)
     }),
 
+    designFilePath(name) {
+      return join(meridian, 'designs', name)
+    },
+
+    writeDesignFile: atomic((name, markdown) => {
+      const file = join(meridian, 'designs', name)
+      writePage(file, markdown, staging)
+      return file
+    }),
+
     deleteIdeaFile: atomic((ideaId, fileId) => {
       const own = ideaFiles.filter((file) => file.idea === ideaId)
       const position = own.findIndex((file) => file.id === fileId)
