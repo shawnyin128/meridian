@@ -361,10 +361,7 @@ on the reviewing machine.
   asked. Otherwise the agent names the milestone it suggests in its reply and
   leaves the issue in the backlog. The milestone-guard workflow undoes changes
   by unlisted accounts, but agents act through the owner's login, so only this
-  rule stops them. On the owner's machine a local Claude Code hook in
-  `.claude/settings.json` (ignored by git) runs `scripts/milestone-ask.mjs`
-  before every Bash command, and it asks the owner before any command that
-  changes a milestone.
+  rule stops them.
 - Commit messages follow Conventional Commits:
   `<type>(<scope>): <description>`, imperative, lowercase, no trailing period.
 - Stage explicit paths. Do not use `git add -A`, `git stash`, force-push, or
