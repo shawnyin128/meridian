@@ -32,6 +32,11 @@ export {
   recommendationFingerprint, recommendationQuery, recommendationSeedIds,
   selectRecommendationIntents,
 } from './profile.js'
+export {
+  directionBasis, directionIntents, directionLabel, directionsAfter, migratedDirections, mirroredDisabled,
+  scannedDirections,
+} from './directions.js'
+export type { DirectionPaper, DirectionRecord, ProjectDirections } from './directions.js'
 export { createRecommendationService } from './service.js'
 export {
   createEmbeddings, EMBEDDING_BATCH_LIMIT, EMBEDDING_CACHE_LIMIT, semanticEmbeddingUrl,

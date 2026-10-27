@@ -49,9 +49,10 @@ import {
 import type { RemotePaper } from './net/arxiv.js'
 import type { Publication } from './net/semantic-metadata.js'
 import {
-  applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
-  discoveryReasons, recommendationSeedIds,
-  type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type RefreshProgress, type RefreshScope,
+  buildRecommendationProfile, clusterRecommendationProfile, directionBasis, directionIntents, directionsAfter,
+  discoveryReasons, migratedDirections, mirroredDisabled, recommendationSeedIds, scannedDirections,
+  type DirectionPaper, type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type ProjectDirections, type RefreshProgress,
+  type RefreshScope,
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -382,6 +383,7 @@ export function createFixtureStore(
   let fetchedAt: number | null = null
   const discoverySchedules = new Map<string, DiscoverySchedule>()
   const discoveryPreferences = new Map<string, DiscoveryPreferences>()
+  const discoveryDirections = new Map<string, ProjectDirections>()
   const progressByScope = new Map<string, RefreshProgress>()
   let deliveryConfig: DeliverySettings = structuredClone(DEFAULT_DELIVERY_SETTINGS)
   /** Throws unless `scope` names a project or a watch the fixtures hold. */
@@ -596,10 +598,38 @@ export function createFixtureStore(
   const projectDiscoverySeeds = (projectId: string) => (
     recommendationSeedIds(projectDiscoveryProfile(projectId))
   )
-  const projectDiscoveryIntents = (projectId: string) => applyRecommendationPreferences(
-    clusterRecommendationProfile(projectDiscoveryProfile(projectId)),
-    discoveryPreferences.get(projectId) ?? { coreIntentId: null, disabledIntentIds: [] },
+  const preferencesOf = (projectId: string): DiscoveryPreferences => (
+    discoveryPreferences.get(projectId) ?? { coreIntentId: null, disabledIntentIds: [] }
   )
+  const projectDiscoveryIntents = (projectId: string) => directionIntents(
+    discoveryDirections.get(projectId), preferencesOf(projectId), projectDiscoveryProfile(projectId),
+  )
+  /** The fingerprint of the project fields its directions follow: topics, current goal and research path. */
+  const directionBasisOf = (project: FixtureProject): string => directionBasis({
+    topics: projectTopics(served(project)),
+    focus: project.focus,
+    path: (project.graph.activeNodes ?? []).flatMap((id) => project.graph.nodes.find((node) => node.id === id)?.label ?? []),
+  })
+  /** The Wiki topics and short title of each of the project's papers that seeds discovery, by seed id. */
+  const directionPapers = (project: FixtureProject) => {
+    const bySeed = new Map<string, DirectionPaper>(project.papers.flatMap((id) => {
+      const paper = byId.get(id)
+      const arxiv = libraryArxivId(paper)
+      return paper === undefined || arxiv === null ? [] : [[`ARXIV:${arxiv}`, { topics: paper.topics, shortTitle: paper.shortTitle }] as const]
+    }))
+    return (paperId: string) => bySeed.get(paperId)
+  }
+  /** Holds `next` as the project's directions, its candidates and declined directions among those turned off. */
+  const putDirections = (projectId: string, next: ProjectDirections, disabled = preferencesOf(projectId).disabledIntentIds): void => {
+    discoveryDirections.set(projectId, next)
+    discoveryPreferences.set(projectId, { ...preferencesOf(projectId), disabledIntentIds: mirroredDisabled(next, disabled) })
+  }
+  // The fixture projects stand for a vault an older version wrote: their derived directions are confirmed.
+  for (const project of projectById.values()) {
+    discoveryDirections.set(project.id, migratedDirections(
+      clusterRecommendationProfile(projectDiscoveryProfile(project.id)), directionBasisOf(project), directionPapers(project),
+    ))
+  }
 
   /** Stored chat. Throw when the id is absent from the vault. */
   const chatOf = (id: string): ChatRecord => {
@@ -1786,6 +1816,10 @@ export function createFixtureStore(
               seedCount: intent.seeds.length,
               seeds: intent.seeds.map((seed) => ({ id: seed.paperId, title: seed.title })),
             })),
+            candidates: (discoveryDirections.get(project.id)?.candidates ?? []).map((candidate) => ({
+              id: candidate.id, label: candidate.label, seedCount: candidate.seeds.length,
+              seeds: candidate.seeds.map((seed) => ({ id: seed.paperId, title: seed.title })),
+            })),
           }
         })
     },
@@ -1834,6 +1868,25 @@ export function createFixtureStore(
         coreIntentId: action === 'set-core' ? intentId : held.coreIntentId,
         disabledIntentIds: [...disabled],
       })
+    },
+
+    scanDiscoveryDirections(projectId) {
+      const project = projectById.get(projectId)
+      if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
+      const held = discoveryDirections.get(projectId)
+      const scanned = scannedDirections(
+        held, clusterRecommendationProfile(projectDiscoveryProfile(projectId)), directionBasisOf(project), directionPapers(project),
+      )
+      if (scanned === null) return []
+      if (scanned.found.length > 0 || (held !== undefined && held.basis !== scanned.next.basis)) putDirections(projectId, scanned.next)
+      return scanned.found.map(({ id, label }) => ({ id, label }))
+    },
+
+    setDiscoveryDirection(params) {
+      if (!projectById.has(params.projectId)) throw new CallError('not-found', `项目不存在：${params.projectId}`)
+      const next = directionsAfter(discoveryDirections.get(params.projectId), params)
+      const disabled = preferencesOf(params.projectId).disabledIntentIds
+      putDirections(params.projectId, next, params.action === 'add' ? disabled.filter((id) => id !== params.directionId) : disabled)
     },
 
     addDiscoveryEntries(projectId, found: DiscoveryPaper[], limit) {

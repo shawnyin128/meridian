@@ -7,7 +7,9 @@ import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/
 import { prepareWorkspace, redateEvents, seedLab, seedProposals } from './test-library/lab.mjs'
 import { seedModelChoice } from './test-library/model.mjs'
 import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers, writeLegacyOverlap } from './test-library/papers.mjs'
-import { discoveryProgress, discoveryRecords, redateProjects, seedProjects } from './test-library/projects.mjs'
+import {
+  discoveryProgress, discoveryRecords, redateProjects, seedProjects, writeDirectionChoices,
+} from './test-library/projects.mjs'
 import { relocate } from './test-library/relocate.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
 import { seedColourTheme } from './test-library/themes.mjs'
@@ -70,6 +72,9 @@ async function seed(out, app, today) {
     await seedProposals(state, call, files)
     await seedModelChoice(call)
   })
+  // Without the file, the next open confirms every project's directions, as it does for a vault an
+  // App before 0.0.23.0 wrote.
+  rmSync(join(out, 'library', '.meridian', 'discovery', 'directions.json'), { force: true })
   writeInbox(state, discoveryRecords(state))
   mkdirSync(join(out, 'library', '.meridian', 'discovery'), { recursive: true })
   writeJson(join(out, 'library', '.meridian', 'discovery', 'progress.json'), discoveryProgress(state))
@@ -80,6 +85,7 @@ async function seed(out, app, today) {
     await call('discovery.feedback', { id: 'seed-discovery-scissorhands', feedback: 'known' })
     await call('feed.list')
   })
+  writeDirectionChoices(state)
   await writeLegacyOverlap(state, files)
   redatePapers(state, titles)
   redateProjects(state, stamped)

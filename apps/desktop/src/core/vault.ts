@@ -1,6 +1,6 @@
 import type {
   AttachmentFields, ChangeEntry, ChangeSource, ChatMessage, ChatMessageFields, ChatSession, ConclusionState, Facet,
-  DeliverySettings, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields, FieldValue,
+  DeliverySettings, DiscoveryDirectionParams, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields, FieldValue,
   InboxDownloadResult, InboxEntry,
   InboxListParams, LaterEntry, ListParams, ListResult,
   GraphNode, MilestoneFields, PageVersion,
@@ -683,8 +683,25 @@ export interface VaultStore {
   /** Project papers plus explicit feedback, with text needed for intent clustering. */
   discoveryProfile(projectId: string): RecommendationProfile
 
-  /** Derived directions with user-owned core and enable preferences applied. */
+  /**
+   * The project's confirmed directions with user-owned core and enable preferences applied; none
+   * before its first directions are confirmed.
+   */
   discoveryIntents(projectId: string): RecommendationIntent[]
+
+  /**
+   * Scans the project's papers for new directions when its topics, current goal or research path
+   * changed since the last scan, or it holds no direction of any kind yet, and offers each new one as
+   * a candidate. Never changes a confirmed direction. Returns the candidates it found, none when no
+   * scan was due or the project's stored directions cannot be read. Throws if no such project exists.
+   */
+  scanDiscoveryDirections(projectId: string): { id: string; label: string }[]
+
+  /**
+   * Adds or declines one of a project's candidate directions, or renames a confirmed one. Throws
+   * `not-found` if the project or the direction the action needs does not exist.
+   */
+  setDiscoveryDirection(params: DiscoveryDirectionParams): void
 
   /** Persisted fairness state for bounded project and direction scheduling. */
   discoverySchedule(projectId: string): DiscoverySchedule

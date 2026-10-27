@@ -24,7 +24,15 @@ function seededProject(
     }, imported.title)
     void store.addPaper(project.id, imported.id)
   }
+  confirmDirections(store, project.id)
   return project.id
+}
+
+/** Confirms every direction a scan of `project` in `store` offers, as the user adding each one would. */
+function confirmDirections(store: ReturnType<typeof createFixtureStore>, project: string): void {
+  for (const found of store.scanDiscoveryDirections(project)) {
+    store.setDiscoveryDirection({ projectId: project, directionId: found.id, action: 'add' })
+  }
 }
 
 /** Store methods for a fake store that keeps no refresh progress between runs. */
@@ -55,6 +63,7 @@ describe('project recommendation service', () => {
       }, imported.title)
       await store.addPaper(project.id, imported.id)
     }
+    confirmDirections(store, project.id)
 
     const recommend = vi.fn(async (positive: RecommendationSeed[]) => (
       positive.some((seed) => seed.paperId === 'ARXIV:2605.29343') ? [ON_POLICY_DISTILLATION_SAMPLE.expected] : []
@@ -63,7 +72,7 @@ describe('project recommendation service', () => {
     const service = createRecommendationService({ store, provider: { recommend }, onWrite, now: () => 1 })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 2, added: 1, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1, directions: [],
     })
     expect(recommend).toHaveBeenCalledTimes(2)
     // project.papers is newest-first, so a tie in cluster score goes to the most recently linked paper.
@@ -78,7 +87,7 @@ describe('project recommendation service', () => {
       pdf: ON_POLICY_DISTILLATION_SAMPLE.expected.pdf,
       reasons: [
         { kind: 'project', label: '来自项目「OPD 与 speculative drafter」' },
-        { kind: 'intent', label: expect.stringContaining('distillation') },
+        { kind: 'intent', label: '匹配核心方向「Draft-OPD」' },
         { kind: 'seed', label: '基于 1 篇相关论文' },
       ],
     })
@@ -86,6 +95,41 @@ describe('project recommendation service', () => {
 
     store.feedbackDiscovery(found[0]!.id, 'more')
     expect(store.discoverySeeds(project.id).positive).toContain('ARXIV:2609.09338')
+  })
+
+  it('新项目的刷新只扫出候选方向并报出来，添加之前不请求 provider', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = store.createProject('新的发现项目')
+    const seed = ON_POLICY_DISTILLATION_SAMPLE.seeds[0]!
+    const imported = store.importPaper(`${seed.arxiv}.pdf`, minimalPdf({ lines: [seed.arxiv, seed.title] })).paper
+    store.fillPaperMetadata(imported.id, {
+      title: seed.title, authors: seed.authors, abstract: seed.abstract, identifier: `arXiv:${seed.arxiv}`,
+    }, imported.title)
+    await store.addPaper(project, imported.id)
+    const recommend = vi.fn(async () => [ON_POLICY_DISTILLATION_SAMPLE.expected])
+    const onWrite = vi.fn()
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite, now: () => 1 })
+
+    const first = await service.discover(project)
+    expect(first.directions).toEqual([{ projectId: project, id: expect.any(String), label: 'Draft-OPD' }])
+    expect(first).toMatchObject({ intents: 0, added: 0 })
+    expect(recommend).not.toHaveBeenCalled()
+    expect(onWrite).toHaveBeenCalled()
+
+    store.setDiscoveryDirection({ projectId: project, directionId: first.directions[0]!.id, action: 'add' })
+    await expect(service.discover(project)).resolves.toMatchObject({ intents: 1, added: 1, directions: [] })
+    expect(recommend).toHaveBeenCalledOnce()
+  })
+
+  it('项目的论文都移走了，已确认的方向照样按存下的种子请求', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '论文移走了', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    for (const paper of (await store.getProject(project)).papers) await store.removePaper(project, paper)
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [])
+    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
+    await service.discover(project)
+    expect(recommend.mock.calls.map(([positive]) => positive.map((held) => held.paperId)))
+      .toEqual([[`ARXIV:${ON_POLICY_DISTILLATION_SAMPLE.seeds[0]!.arxiv}`]])
   })
 
   it('没有论文种子的项目不请求 provider', async () => {
@@ -98,7 +142,7 @@ describe('project recommendation service', () => {
     })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 0, intents: 0, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: null,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: null, directions: [],
     })
     expect(recommend).not.toHaveBeenCalled()
   })
@@ -116,6 +160,7 @@ describe('project recommendation service', () => {
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
     await store.addPaper(project.id, imported.id)
+    confirmDirections(store, project.id)
     store.setDeliverySettings({ maxItemsPerRun: 1 })
     const papers = [0, 1, 2].map((at) => ({
       ...ON_POLICY_DISTILLATION_SAMPLE.expected,
@@ -142,6 +187,7 @@ describe('project recommendation service', () => {
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
     await store.addPaper(project.id, imported.id)
+    confirmDirections(store, project.id)
     store.addDiscoveryEntries(project.id, [ON_POLICY_DISTILLATION_SAMPLE.expected])
     const rejected = store.listInbox({ kind: 'discovery', project: project.id })[0]!
     store.feedbackDiscovery(rejected.id, 'less')
@@ -160,7 +206,7 @@ describe('project recommendation service', () => {
     })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 1, added: 1, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1, directions: [],
     })
     expect(recommend.mock.calls[0]?.[1]).toEqual([ON_POLICY_DISTILLATION_SAMPLE.expected.semanticId])
     expect(store.listInbox({ kind: 'discovery', project: project.id }).map((paper) => paper.title))
@@ -180,6 +226,7 @@ describe('project recommendation service', () => {
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
     await store.addPaper(project.id, imported.id)
+    confirmDirections(store, project.id)
     let now = 1_000
     const recommend = vi.fn(async () => [])
     const service = createRecommendationService({
@@ -215,6 +262,7 @@ describe('project recommendation service', () => {
       }, imported.title)
       await store.addPaper(project.id, imported.id)
     }
+    confirmDirections(store, project.id)
     let round = 1
     let call = 0
     const recommend = vi.fn(async () => {
@@ -228,7 +276,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 1, added: 1, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 1, nothingNew: false, lastFetchedAt: null,
+      cachedIntents: 0, failedIntents: 1, nothingNew: false, lastFetchedAt: null, directions: [],
     })
     expect(store.discoverySchedule(project.id).lastFetchedAt).toBeNull()
     expect(store.discoverySchedule(project.id).cursor).toBe(0)
@@ -237,7 +285,7 @@ describe('project recommendation service', () => {
     call = 0
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 1, added: 0, deferredProjects: 0,
-      cachedIntents: 1, failedIntents: 0, nothingNew: true, lastFetchedAt: 2,
+      cachedIntents: 1, failedIntents: 0, nothingNew: true, lastFetchedAt: 2, directions: [],
     })
     expect(recommend).toHaveBeenCalledTimes(3)
     expect(store.discoverySchedule(project.id).lastFetchedAt).toBe(2)
@@ -256,6 +304,7 @@ describe('project recommendation service', () => {
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
     await store.addPaper(project.id, imported.id)
+    confirmDirections(store, project.id)
     const service = createRecommendationService({
       store,
       provider: { recommend: async () => { throw new Error('temporary outage') } },
@@ -265,7 +314,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 0, intents: 0, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 1, nothingNew: false, lastFetchedAt: null,
+      cachedIntents: 0, failedIntents: 1, nothingNew: false, lastFetchedAt: null, directions: [],
     })
     expect(store.discoverySchedule(project.id)).toEqual({
       lastFetchedAt: null, cursor: 0, requests: {},
@@ -278,7 +327,7 @@ describe('project recommendation service', () => {
       id: `project-${at}`, name: `项目 ${at}`, seedCount: 1,
       positiveCount: 0, negativeCount: 0, intentCount: 1,
       lastFetchedAt: null as number | null,
-      intents: [],
+      intents: [], candidates: [],
     }))
     const profileFor = (projectId: string): RecommendationProfile => ({
       projectId,
@@ -292,6 +341,7 @@ describe('project recommendation service', () => {
     })
     const store = {
       deliverySettings: () => ({ maxItemsPerRun: 20 }),
+      scanDiscoveryDirections: () => [],
       listDiscoveryProfiles: () => profiles.map((profile) => ({
         ...profile,
         lastFetchedAt: schedules.get(profile.id)?.lastFetchedAt ?? null,
@@ -320,7 +370,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover()).resolves.toEqual({
       projects: 12, intents: 12, added: 0, deferredProjects: 3,
-      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1,
+      cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1, directions: [],
     })
     expect(requested).toEqual(Array.from({ length: 12 }, (_, at) => `seed-project-${at}`))
 
@@ -336,13 +386,14 @@ describe('project recommendation service', () => {
     const profiles = Array.from({ length: 5 }, (_, at) => ({
       id: `p${at}`, name: `项目 ${at}`, seedCount: 3,
       positiveCount: 0, negativeCount: 0, intentCount: 3, lastFetchedAt: null,
-      intents: [],
+      intents: [], candidates: [],
     }))
     const schedules = new Map<string, DiscoverySchedule>()
     const requested: string[] = []
     const service = createRecommendationService({
       store: {
         deliverySettings: () => ({ maxItemsPerRun: 20 }),
+        scanDiscoveryDirections: () => [],
         listDiscoveryProfiles: () => profiles,
         discoveryProfile: (projectId) => ({
           projectId, projectName: projectId, anchorText: `coreanchor${projectId}`,
@@ -382,7 +433,7 @@ describe('project recommendation service', () => {
 
     await expect(service.discover()).resolves.toEqual({
       projects: 5, intents: 12, added: 0, deferredProjects: 0,
-      cachedIntents: 0, failedIntents: 0, nothingNew: true, lastFetchedAt: 1,
+      cachedIntents: 0, failedIntents: 0, nothingNew: true, lastFetchedAt: 1, directions: [],
     })
     expect(requested.slice(0, 5)).toEqual(profiles.map((profile) => `${profile.id}-core`))
     expect(profiles.map((profile) => (
@@ -403,6 +454,7 @@ describe('project recommendation service', () => {
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
     await store.addPaper(project.id, imported.id)
+    confirmDirections(store, project.id)
     let now = 1
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [])
     const service = createRecommendationService({
@@ -436,6 +488,7 @@ describe('project recommendation service', () => {
       identifier: `arXiv:${seed.arxiv}`,
     }, imported.title)
     await store.addPaper(project.id, imported.id)
+    confirmDirections(store, project.id)
     const intent = store.discoveryIntents(project.id)[0]!
     store.setDiscoverySchedule(project.id, {
       lastFetchedAt: 1, cursor: 0, requests: { [intent.id]: fetchedRecord(intent, 1) },
@@ -501,9 +554,10 @@ describe('project recommendation service', () => {
     const service = createRecommendationService({
       store: {
         deliverySettings: () => ({ maxItemsPerRun: 20 }),
+        scanDiscoveryDirections: () => [],
         listDiscoveryProfiles: () => [{
           id: 'p', name: '五个方向', seedCount: 5, positiveCount: 0, negativeCount: 0, intentCount: 5,
-          lastFetchedAt: schedule.lastFetchedAt, intents: [],
+          lastFetchedAt: schedule.lastFetchedAt, intents: [], candidates: [],
         }],
         discoveryProfile: () => profile,
         discoveryIntents: () => intents,
@@ -687,9 +741,10 @@ describe('project recommendation service', () => {
     const delivered = new Map(ids.map((id) => [id, [] as string[]]))
     const store = {
       deliverySettings: () => ({ maxItemsPerRun: 3 }),
+      scanDiscoveryDirections: () => [],
       listDiscoveryProfiles: () => ids.map((id) => ({
         id, name: id, seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1,
-        lastFetchedAt: schedules.get(id)?.lastFetchedAt ?? null, intents: [],
+        lastFetchedAt: schedules.get(id)?.lastFetchedAt ?? null, intents: [], candidates: [],
       })),
       discoveryProfile: profileFor,
       discoveryIntents: (projectId: string) => clusterRecommendationProfile(profileFor(projectId)),
@@ -745,11 +800,11 @@ describe('project recommendation service', () => {
     const fetchedAt = now
     now += 60_000
     await expect(service.discover(project)).resolves.toMatchObject({
-      intents: 0, cachedIntents: 1, nothingNew: true, lastFetchedAt: fetchedAt,
+      intents: 0, cachedIntents: 1, nothingNew: true, lastFetchedAt: fetchedAt, directions: [],
     })
     fail = true
     await expect(service.discover(project, true)).resolves.toMatchObject({
-      failedIntents: 1, nothingNew: false, lastFetchedAt: fetchedAt,
+      failedIntents: 1, nothingNew: false, lastFetchedAt: fetchedAt, directions: [],
     })
   })
 

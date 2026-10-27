@@ -44,6 +44,7 @@ import {
   HarnessSourceModelsParamsSchema,
   HarnessSubscriptionStatusParamsSchema,
   HarnessUpdateSubscriptionParamsSchema,
+  DiscoveryDirectionParamsSchema,
   DiscoveryFeedbackParamsSchema,
   DiscoveryFetchParamsSchema,
   DiscoveryIntentUpdateParamsSchema,
@@ -817,6 +818,9 @@ registerHandler('discovery.intent', (params) => {
   const { projectId, intentId, action } = DiscoveryIntentUpdateParamsSchema.parse(params)
   return store.setDiscoveryIntent(projectId, intentId, action)
 })
+registerHandler('discovery.direction', (params) => (
+  store.setDiscoveryDirection(DiscoveryDirectionParamsSchema.parse(params))
+))
 registerHandler('discovery.feedback', (params) => {
   const { id, feedback } = DiscoveryFeedbackParamsSchema.parse(params)
   if (feedback === 'more') {

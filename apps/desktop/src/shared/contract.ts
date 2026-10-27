@@ -1531,6 +1531,10 @@ export const DiscoveryIntentSchema = z.object({
   seeds: z.array(z.object({ id: z.string(), title: z.string() }).strict()),
 }).strict()
 
+/** A direction a scan of the project found, waiting for the user to add or decline it; nothing is fetched for it. */
+export const DiscoveryCandidateSchema = DiscoveryIntentSchema.pick({ id: true, label: true, seedCount: true, seeds: true })
+
+/** A project's discovery: its seed counts, the confirmed directions in `intents` and the candidates waiting for the user. */
 export const DiscoveryProfileSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -1540,6 +1544,7 @@ export const DiscoveryProfileSchema = z.object({
   intentCount: z.number().int().min(0),
   lastFetchedAt: z.number().int().nullable(),
   intents: z.array(DiscoveryIntentSchema),
+  candidates: z.array(DiscoveryCandidateSchema),
 }).strict()
 
 export const DiscoveryFetchParamsSchema = z.object({
@@ -1557,12 +1562,27 @@ export const DiscoveryFetchResultSchema = z.object({
   nothingNew: z.boolean(),
   /** The latest time a project in the run's scope was refreshed, or null if none ever was. */
   lastFetchedAt: z.number().int().nullable(),
+  /** The candidate directions the run's scans found, per project, in the order found. */
+  directions: z.array(z.object({ projectId: z.string(), id: z.string(), label: z.string() }).strict()),
 }).strict()
 export const DiscoveryIntentUpdateParamsSchema = z.object({
   projectId: z.string(),
   intentId: z.string(),
   action: z.enum(['set-core', 'enable', 'disable']),
 }).strict()
+/**
+ * One decision on a project's direction: `add` confirms a candidate, `decline` declines it for good,
+ * `reopen` turns a confirmed or declined direction back into a candidate, and `rename` gives a
+ * confirmed direction `label`.
+ */
+export const DiscoveryDirectionParamsSchema = z.discriminatedUnion('action', [
+  z.object({ projectId: z.string(), directionId: z.string(), action: z.literal('add') }).strict(),
+  z.object({ projectId: z.string(), directionId: z.string(), action: z.literal('decline') }).strict(),
+  z.object({ projectId: z.string(), directionId: z.string(), action: z.literal('reopen') }).strict(),
+  z.object({
+    projectId: z.string(), directionId: z.string(), action: z.literal('rename'), label: z.string().trim().min(1).max(200),
+  }).strict(),
+])
 export const DiscoveryFeedbackParamsSchema = z.object({
   id: z.string(), feedback: z.enum(['more', 'less', 'known']),
 }).strict()
@@ -2906,6 +2926,8 @@ export type DiscoveryIntent = z.infer<typeof DiscoveryIntentSchema>
 export type DiscoveryProfile = z.infer<typeof DiscoveryProfileSchema>
 export type DiscoveryFetchResult = z.infer<typeof DiscoveryFetchResultSchema>
 export type DiscoveryIntentAction = z.infer<typeof DiscoveryIntentUpdateParamsSchema>['action']
+export type DiscoveryCandidate = z.infer<typeof DiscoveryCandidateSchema>
+export type DiscoveryDirectionParams = z.infer<typeof DiscoveryDirectionParamsSchema>
 export type DiscoveryFeedback = z.infer<typeof DiscoveryFeedbackParamsSchema>['feedback']
 export type DeliverySettings = z.infer<typeof DeliverySettingsSchema>
 export type LaterEntry = z.infer<typeof LaterEntrySchema>
@@ -3086,6 +3108,7 @@ export const CONTRACT_METHODS = [
   'discovery.profiles',
   'discovery.fetch',
   'discovery.intent',
+  'discovery.direction',
   'discovery.feedback',
   'later.list',
   'later.remove',
