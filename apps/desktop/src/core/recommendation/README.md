@@ -18,6 +18,9 @@ This folder owns paper recommendation as one replaceable Core domain.
 - `providers/` contains external API adapters; the Semantic Scholar adapter normalizes similarity,
   citation, reference and same-author candidates behind one `RecommendationProvider` boundary.
 - `scoring.ts` owns the ranking semantics shared by watch and discovery projections.
+- `embeddings.ts` fetches SPECTER2 vectors through Semantic Scholar's paper batch endpoint, 100 ids a
+  request, and caches them in the App's user-data folder, at most 5,000 papers, least recently used
+  first out. A 429 switches the rest of that refresh to the fallback; with no key it never calls.
 - `fixtures/` contains deterministic evaluation samples, not user knowledge or generated wiki pages.
 - `EVALUATION.md` records reproducible sample construction and live-provider quality observations.
 
