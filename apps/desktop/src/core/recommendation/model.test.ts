@@ -37,7 +37,7 @@ describe('scope model', () => {
     expect(byModel).toEqual(bySimilarity)
   })
 
-  it('有足够的例子时学到种子质心以外的东西', () => {
+  it('有足够的例子时学到最近种子相似度以外的东西', () => {
     // The prior centroid points along axis 0; the positives lean towards axis 1, the negatives towards axis 2.
     const seed = unit([1, 0, 0])
     const positives = Array.from({ length: 12 }, (_, at) => unit([0.6, 1, (at % 3) * 0.1]))

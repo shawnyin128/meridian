@@ -100,7 +100,7 @@ describe('project recommendation service', () => {
       positive.some((seed) => seed.paperId === 'ARXIV:2605.29343') ? [ON_POLICY_DISTILLATION_SAMPLE.expected] : []
     ))
     const onWrite = vi.fn()
-    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite, now: () => 1 })
+    const service = createRecommendationService({ scorer: keylessScorer(), store, provider: { recommend }, onWrite, now: () => 1 })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 2, added: 1, deferredProjects: 0,
       cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1, directions: [],
@@ -116,7 +116,10 @@ describe('project recommendation service', () => {
     expect(found[0]).toMatchObject({
       title: ON_POLICY_DISTILLATION_SAMPLE.expected.title,
       pdf: ON_POLICY_DISTILLATION_SAMPLE.expected.pdf,
-      reasons: [{ kind: 'intent', label: '方向「Draft-OPD」' }],
+      reasons: [
+        { kind: 'intent', label: '方向「Draft-OPD」' },
+        { kind: 'seed', label: '接近《Draft-OPD》', paperId: 'ARXIV:2605.29343' },
+      ],
     })
     expect(onWrite).toHaveBeenCalledOnce()
 

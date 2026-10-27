@@ -1,4 +1,4 @@
-/** Scale of the prior: the margin a paper gets per unit of cosine similarity to the prior centroid. */
+/** Scale of the prior: the margin a paper gets per unit of cosine similarity to its nearest prior example. */
 export const PRIOR_SCALE = 10
 /** Strength of the L2 penalty that holds a scope model to its prior. */
 export const L2_PENALTY = 1
@@ -8,32 +8,31 @@ const REFIT_STEPS = 50
 /** Most positives one scope scores leave-one-out as anchors, so a scope with many examples stays fast. */
 export const ANCHOR_LIMIT = 20
 
-/** One example of a scope model, by its row in the Gram matrix. `prior` marks the papers whose centroid is the prior. */
+/** One example of a scope model, by its row in the Gram matrix. `prior` marks the papers the prior measures against. */
 export type ModelExample = { weight: number; positive: boolean; prior: boolean }
 
 /**
  * A fitted scope model: the margin of a paper is PRIOR_SCALE times its cosine similarity to the
- * centroid of the prior examples, plus the learned `beta` weights of its dot products with the
- * examples. `bias` is the fitted intercept, which a margin leaves out.
+ * nearest prior example, plus the learned `beta` weights of its dot products with the examples.
+ * `bias` is the fitted intercept, which a margin leaves out.
  */
-export type ScopeModel = { rows: number[]; beta: number[]; bias: number; prior: number[]; priorNorm: number }
+export type ScopeModel = { rows: number[]; beta: number[]; bias: number; prior: number[] }
 
 const sigmoid = (value: number): number => 1 / (1 + Math.exp(-value))
 
 /** The margin under `model` of a paper whose dot products with every example row are `dots`. */
 export function marginOf(model: ScopeModel, dots: readonly number[]): number {
-  let prior = 0
-  for (const row of model.prior) prior += dots[row]!
   let learned = 0
   model.rows.forEach((row, at) => { learned += model.beta[at]! * dots[row]! })
-  return PRIOR_SCALE * prior / model.priorNorm + learned
+  return PRIOR_SCALE * Math.max(...model.prior.map((row) => dots[row]!)) + learned
 }
 
 /**
  * Fits a weighted, L2-regularised logistic regression on the examples whose rows `rows` lists, the
- * vectors given as their Gram matrix `gram` of unit vectors. The weights are held near the centroid
- * of the prior examples among `rows`, so with few examples the model ranks by similarity to that
- * centroid. Starts from `from` when given. Returns null when `rows` holds no prior example.
+ * vectors given as their Gram matrix `gram` of unit vectors, on top of the prior margin, the
+ * similarity to the nearest prior example among `rows`; the penalty holds the learned weights near
+ * zero, so with few examples the model ranks by nearest-seed similarity. Starts from `from` when given.
+ * Returns null when `rows` holds no prior example.
  */
 export function fitScopeModel(
   examples: readonly ModelExample[], gram: readonly (readonly number[])[], rows: readonly number[],
@@ -41,14 +40,7 @@ export function fitScopeModel(
 ): ScopeModel | null {
   const prior = rows.filter((row) => examples[row]!.prior)
   if (prior.length === 0) return null
-  let norm = 0
-  for (const left of prior) for (const right of prior) norm += gram[left]![right]!
-  const priorNorm = Math.sqrt(Math.max(norm, Number.EPSILON))
-  const priorMargin = rows.map((row) => {
-    let sum = 0
-    for (const held of prior) sum += gram[held]![row]!
-    return PRIOR_SCALE * sum / priorNorm
-  })
+  const priorMargin = rows.map((row) => PRIOR_SCALE * Math.max(...prior.map((held) => gram[held]![row]!)))
   const total = rows.reduce((sum, row) => sum + examples[row]!.weight, 0)
   // Unit vectors bound the curvature of the weighted log loss by total / 2, so this step never overshoots.
   const step = 1 / (total / 2 + L2_PENALTY)
@@ -64,7 +56,7 @@ export function fitScopeModel(
     gradient.forEach((value, at) => { beta[at] = beta[at]! - step * (value + L2_PENALTY * beta[at]!) })
     bias -= step * gradient.reduce((sum, value) => sum + value, 0)
   }
-  return { rows: [...rows], beta, bias, prior, priorNorm }
+  return { rows: [...rows], beta, bias, prior }
 }
 
 /** A calibration point: the margin of an example scored without it, its label and its weight. */

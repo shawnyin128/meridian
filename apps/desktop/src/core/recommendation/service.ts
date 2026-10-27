@@ -95,22 +95,22 @@ const directionKey = (projectId: string, directionId: string): string => `direct
 
 /**
  * The papers of every scope outside a run, by owner, for the scorer's background: the seeds of each
- * confirmed direction and the cards of every active project, and the cards of every watch, whose group
- * id `inRun` does not hold; each paper's text is handed to `text`.
+ * confirmed direction, which are positives, and the cards of every active project, and the cards of
+ * every watch, whose group id `inRun` does not hold; each paper's text is handed to `text`.
  */
 export function scoringBackground(
   store: Pick<VaultStore, 'listDiscoveryProfiles' | 'discoveryIntents' | 'scopeCards' | 'listWatches'>,
   inRun: ReadonlySet<string>, text: (paperId: string, title: string, abstract: string) => void,
-): { paperId: string; owner: string }[] {
+): { paperId: string; owner: string; positive: boolean }[] {
   const cardsOf = (kind: 'project' | 'watch', id: string) => store.scopeCards({ kind, id }).map((card) => {
     text(card.paperId, card.title, card.abstract)
-    return { paperId: card.paperId, owner: `${kind}:${id}` }
+    return { paperId: card.paperId, owner: `${kind}:${id}`, positive: false }
   })
   return [
     ...store.listDiscoveryProfiles().filter((profile) => !inRun.has(`project:${profile.id}`)).flatMap((profile) => [
       ...store.discoveryIntents(profile.id).flatMap((intent) => intent.seeds.map((seed) => {
         text(seed.paperId, seed.title, seed.abstract)
-        return { paperId: seed.paperId, owner: directionKey(profile.id, intent.id) }
+        return { paperId: seed.paperId, owner: directionKey(profile.id, intent.id), positive: true }
       })),
       ...cardsOf('project', profile.id),
     ]),

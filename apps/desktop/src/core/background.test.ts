@@ -14,6 +14,7 @@ import { probePdf } from './paper-library/index.js'
 import { createCannedGet, type CannedTable } from './net/canned-http.js'
 import { searchUrl, watchQuery } from './net/arxiv.js'
 import { minimalPdf } from './net/minimal-pdf.js'
+import { semanticEmbeddingUrl } from './recommendation/index.js'
 
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
 /** The user-data folders the Backgrounds of this file keep their embeddings in, removed after each case. */
@@ -188,6 +189,25 @@ describe('createBackground', () => {
     expect(new Set(hosts)).toEqual(new Set(['export.arxiv.org']))
     const rows = store.listInbox({ kind: 'discovery', project: 'draft' })
     expect(rows[0]!.reasons.map((reason) => reason.kind)).toEqual(['intent', 'seed'])
+  })
+
+  it('存的 key 被拒时论文发现照常送出,改按回退打分,Core 日志记一条不带 key 的错误', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const canned = createCannedGet(cannedNet as CannedTable, VAULT)
+    const store = createFixtureStore(() => '2026-08-25')
+    const background = createBackground({
+      userData: userData(),
+      store, probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+      semanticScholarApiKey: () => 'revoked-key',
+      get: (url, options) => (url === semanticEmbeddingUrl
+        ? Promise.resolve({ status: 401, body: new TextEncoder().encode('{"message":"Unauthorized"}') })
+        : canned(url, options)),
+    })
+    await expect(background.fetchDiscoveries('draft')).resolves.toMatchObject({ added: 2 })
+    expect(store.listInbox({ kind: 'discovery', project: 'draft' })).toHaveLength(2)
+    expect(JSON.stringify(logged.mock.calls)).toMatch(/refused the saved key/)
+    expect(JSON.stringify(logged.mock.calls)).not.toContain('revoked-key')
+    vi.restoreAllMocks()
   })
 
   it('存了 key 后每次 Semantic Scholar 请求都带上，改了立即生效', async () => {

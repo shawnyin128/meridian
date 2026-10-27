@@ -119,6 +119,8 @@ describe('paper embeddings', () => {
     ['timeout', timeout],
     ['network', offline],
     ['server', () => ({ status: 503, body: '{"message":"Service Unavailable"}' })],
+    ['auth', () => ({ status: 401, body: '{"message":"Unauthorized"}' })],
+    ['auth', () => ({ status: 403, body: '{"message":"Forbidden"}' })],
   ] as const)('switches the rest of a run to the fallback on a %s answer, recording why', async (reason, refuse: Answer) => {
     let calls = 0
     const api = stubApi((asked) => {
@@ -141,8 +143,6 @@ describe('paper embeddings', () => {
 
   it.each([
     ['a bad request', () => ({ status: 400, body: '{"error":"Unrecognized or unsupported fields"}' })],
-    ['an invalid key', () => ({ status: 401, body: '{"message":"Unauthorized"}' })],
-    ['a forbidden key', () => ({ status: 403, body: '{"message":"Forbidden"}' })],
     ['a response that is not a list', () => ({ status: 200, body: '{"data":[]}' })],
   ] as const)('throws on %s instead of falling back', async (_name, refuse: Answer) => {
     const embeddings = open(stubApi(refuse).get)

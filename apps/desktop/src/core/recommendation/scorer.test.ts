@@ -3,7 +3,9 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { EmbeddingLookup, Embeddings } from './embeddings.js'
-import { createScorer, type ScoredText, type ScoreGap, type ScoreGroup } from './scorer.js'
+import {
+  createScorer, FIXED_PRIOR, MIN_RANDOM_NEGATIVES, randomNegatives, type ScoredText, type ScoreGap, type ScoreGroup,
+} from './scorer.js'
 
 /** A deterministic generator of numbers in [0, 1). */
 const generator = (seed: number) => () => {
@@ -63,8 +65,8 @@ const group: ScoreGroup = {
   items: [...ids('rotation', 3, 11), ...ids('protein', 0, 8)],
 }
 const background = [
-  ...ids('protein', 8, 14).map((paperId) => ({ paperId, owner: 'project:q' })),
-  ...ids('drafter', 0, 14).map((paperId) => ({ paperId, owner: 'watch:w' })),
+  ...ids('protein', 8, 14).map((paperId) => ({ paperId, owner: 'project:q', positive: false })),
+  ...ids('drafter', 0, 14).map((paperId) => ({ paperId, owner: 'watch:w', positive: false })),
 ]
 
 /** Embeddings that answer from `vectors` for the ids `has` keeps, on `path`. */
@@ -138,6 +140,23 @@ describe('paper scorer', () => {
     expect(readFileSync(file, 'utf8')).toBe(before)
   })
 
+  it('key 被拒时这一轮全走回退,在 Core 日志里记一条错误', async () => {
+    const logged = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const refused: Embeddings = {
+      startRun: () => ({ path: 'api' }),
+      vectorsFor: async (asked, run) => {
+        if (run.path === 'api') Object.assign(run, { path: 'fallback', reason: 'auth' })
+        return { model: null, vectors: new Map(), missing: [...asked], path: 'fallback', reason: 'auth' }
+      },
+    }
+    const scores = await scoresOf(refused, calibrationFile())
+    expect([...scores.values()].every((score) => score.path === 'fallback')).toBe(true)
+    expect(scores.get('rotation-3')!.score).toBeGreaterThanOrEqual(0.5)
+    expect(logged).toHaveBeenCalledOnce()
+    expect(String(logged.mock.calls[0]![0])).toMatch(/refused the saved key/)
+    logged.mockRestore()
+  })
+
   it('一轮中途被限流:有向量的照样走 API,没向量的走回退,不改映射也不记差距', async () => {
     const onGap = vi.fn()
     const file = calibrationFile()
@@ -148,7 +167,7 @@ describe('paper scorer', () => {
     expect(existsSync(file)).toBe(false)
   })
 
-  it('随机反例只从别的范围的论文里按范围抽,同样的输入抽出同样的反例,背景只读缓存', async () => {
+  it('背景论文只从缓存里读向量,不为它们调 API', async () => {
     const calls: { asked: string[]; path: string }[] = []
     const embeddings = embeddingsFrom('api')
     const recording: Embeddings = {
@@ -159,24 +178,9 @@ describe('paper scorer', () => {
       },
     }
     await scoresOf(recording, calibrationFile())
-    await scoresOf(recording, calibrationFile())
-    const [fetched, cached] = [calls[0]!, calls[1]!]
-    expect(fetched.path).toBe('api')
-    expect(new Set(fetched.asked)).toEqual(new Set([...group.items, ...seeds]))
-    expect(cached.path).toBe('fallback')
-    // Three seeds ask for thirty negatives; the background holds twenty, so every one of them is drawn.
-    expect(new Set(cached.asked)).toEqual(new Set(background.map((held) => held.paperId)))
-    expect(calls[3]!.asked).toEqual(cached.asked)
-
-    // One seed asks for ten of the twenty, the same ten on every run.
-    const one: ScoreGroup = { ...group, scopes: [{ ...group.scopes[0]!, examples: [group.scopes[0]!.examples[0]!], prior: [seeds[0]!] }] }
-    calls.length = 0
-    for (let run = 0; run < 2; run += 1) {
-      await createScorer({ embeddings: recording, calibrationFile: calibrationFile() }).score({ groups: [one], papers, background })
-    }
-    expect(calls[1]!.asked).toHaveLength(10)
-    expect(calls[1]!.asked.every((paperId) => background.some((held) => held.paperId === paperId))).toBe(true)
-    expect(calls[3]!.asked).toEqual(calls[1]!.asked)
+    expect(calls.map((call) => call.path)).toEqual(['api', 'fallback'])
+    expect(new Set(calls[0]!.asked)).toEqual(new Set([...group.items, ...seeds]))
+    expect(new Set(calls[1]!.asked)).toEqual(new Set(background.map((held) => held.paperId)))
   })
 
   it('一篇种子的方向用这次召回的论文作锚点:召回的里面贴近种子的过线,离题的不过', async () => {
@@ -193,5 +197,49 @@ describe('paper scorer', () => {
       expect(lone.items.map((paperId) => [paperId, run.scoreOf(lone.id, paperId)!.score >= 0.5]))
         .toEqual(lone.items.map((paperId) => [paperId, paperId.startsWith('rotation')]))
     }
+  })
+})
+
+describe('random negatives', () => {
+  /** Papers on a circle: their similarity is the cosine of the angle between them, in degrees. */
+  const angle = (paperId: string): number => Number(paperId.split('@')[1])
+  const similarity = (left: string, right: string): number => Math.cos((angle(left) - angle(right)) * Math.PI / 180)
+  // Three seeds at 0, 10 and 20 degrees: the weakest, at 0 or 20, sits 10 degrees from their centroid.
+  const scope = { key: 'direction:p:d', groupId: 'project:p', seeds: ['s@0', 's@10', 's@20'], taken: new Set(['s@0', 's@10', 's@20']), positiveWeight: 3 }
+  const far = Array.from({ length: 40 }, (_, at) => [`far${at}@${90 + at}`, new Set(['watch:far'])] as const)
+  const owned = (...extra: (readonly [string, Set<string>])[]) => new Map<string, ReadonlySet<string>>([...far, ...extra])
+
+  it('不抽任何范围的正例,也不抽这个范围和它所在项目自己的论文', () => {
+    const drawn = randomNegatives(scope, owned(
+      ['seed-of-another@100', new Set(['direction:q:e'])], ['own-card@100', new Set(['project:p'])],
+    ), new Set(['seed-of-another@100']), similarity).map((negative) => negative.paperId)
+    expect(drawn).toHaveLength(30)
+    expect(drawn).not.toContain('seed-of-another@100')
+    expect(drawn).not.toContain('own-card@100')
+  })
+
+  it('不抽和种子质心的相似度达到最弱那篇种子的论文', () => {
+    // Listed under the far watch, whose centroid stays far, so only its own similarity can keep it out.
+    const negatives = (paper: string) => randomNegatives({ ...scope, positiveWeight: 10 }, owned([paper, new Set(['watch:far'])]), new Set(), similarity)
+    expect(negatives('close@15').map((negative) => negative.paperId)).not.toContain('close@15')
+    expect(negatives('beyond@31').map((negative) => negative.paperId)).toContain('beyond@31')
+  })
+
+  it('一个范围讲的是同一件事时,它的卡片一张都不抽,哪怕单看有的离得远', () => {
+    // The watch's centroid sits within 4 degrees of the seeds'; its stray card, alone, is 15 degrees off.
+    const sameSubject = ['on@9', 'on@10', 'on@11', 'stray@25'].map((paperId) => [paperId, new Set(['watch:same'])] as const)
+    const drawn = randomNegatives({ ...scope, positiveWeight: 10 }, owned(...sameSubject), new Set(), similarity).map((negative) => negative.paperId)
+    expect(drawn).toHaveLength(40)
+    expect(drawn.some((paperId) => paperId.startsWith('on@') || paperId === 'stray@60')).toBe(false)
+  })
+
+  it('剩下的不够时改用固定先验,权重和它顶替的反例一样;够时按范围抽,每次一样', () => {
+    const few = new Map<string, ReadonlySet<string>>(far.slice(0, MIN_RANDOM_NEGATIVES - 1))
+    expect(randomNegatives(scope, few, new Set(), similarity)).toEqual([{ paperId: FIXED_PRIOR, weight: expect.closeTo(3), positive: false }])
+    const once = randomNegatives(scope, owned(), new Set(), similarity)
+    expect(once).toHaveLength(30)
+    expect(once.every((negative) => negative.weight === 0.1 && !negative.positive)).toBe(true)
+    expect(randomNegatives(scope, new Map([...owned()].reverse()), new Set(), similarity)).toEqual(once)
+    expect(randomNegatives({ ...scope, key: 'direction:p:other' }, owned(), new Set(), similarity)).not.toEqual(once)
   })
 })

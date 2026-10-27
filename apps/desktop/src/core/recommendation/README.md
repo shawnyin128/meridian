@@ -16,8 +16,8 @@ This folder owns paper recommendation as one replaceable Core domain.
 - `signals.ts` finds the read-only canonical Wiki topic/method terms a paper contains; it never writes
   recommendation state back into Wiki pages.
 - `examples.ts` turns a scope's stored seeds, actions and ratings into weighted training examples.
-- `model.ts` is the scope model: a weighted, L2-regularised logistic regression held to the centroid
-  of its prior papers, Platt scaling, a monotone map, and seeded sampling.
+- `model.ts` is the scope model: a weighted, L2-regularised logistic regression on top of the
+  similarity to the nearest seed, Platt scaling, a monotone map, and seeded sampling.
 - `scorer.ts` scores one run's candidates and cards per direction or watch, on SPECTER2 vectors where
   they exist and TF-IDF vectors elsewhere, both Platt-fitted to the same anchors, and keeps each
   scope's fallback-to-API map in the App's user-data folder. `onGap` receives both paths' scores of
@@ -30,8 +30,8 @@ This folder owns paper recommendation as one replaceable Core domain.
 - `scoring.ts` owns the sorts shared by watch and discovery projections; 推荐 is the stored score.
 - `embeddings.ts` fetches SPECTER2 vectors through Semantic Scholar's paper batch endpoint, 100 ids a
   request, and caches them in the App's user-data folder, at most 5,000 papers, least recently used
-  first out. A 429, a 403 quota answer, a timeout, a network error or a 5xx switches the rest of that
-  refresh to the fallback and records why; with no key it never calls.
+  first out. A 429, a 403 quota answer, a refused key, a timeout, a network error or a 5xx switches
+  the rest of that refresh to the fallback and records why; with no key it never calls.
 - `fixtures/` contains deterministic evaluation samples, not user knowledge or generated wiki pages.
 - `EVALUATION.md` records reproducible sample construction and live-provider quality observations.
 
