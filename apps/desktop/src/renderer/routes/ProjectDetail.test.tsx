@@ -870,6 +870,24 @@ describe('项目页上点标题就地改名', () => {
     release()
   })
 
+  it('旧版右栏名称格留下的改名草稿,打开项目页时出现在标题的改名框里,只留一份;Esc 之后不再回来', async () => {
+    // The draft as 0.0.21.5 kept it: the rail's name field under target `name` of ['project', id].
+    window.localStorage.setItem(keptDraftsKey('/vaults/project-test'), JSON.stringify({
+      format: 1, drafts: [[['project', 'draft'], 'name', '旧版打到一半的名字']],
+    }))
+    const host = await mount()
+    const title = () => host.querySelector<HTMLElement>('.desk-head .page-title-field')!
+    await vi.waitFor(() => expect(title().querySelector('input')?.value).toBe('旧版打到一半的名字'))
+    expect(kept()).toEqual([[['project', 'draft'], 'title-rename', '旧版打到一半的名字']])
+    await press(title().querySelector('input')!, 'Escape')
+    expect(title().querySelector('input')).toBeNull()
+    expect(kept()).toEqual([])
+    unmount()
+    const again = await mount()
+    expect(again.querySelector('.desk-head .page-title-field input')).toBeNull()
+    expect(writes('project.update')).toEqual([])
+  })
+
   it('项目页标题改到一半按 Esc 什么也不写;清空了回车也不写,框留着标成不合法', async () => {
     const host = await mount()
     const title = () => host.querySelector<HTMLElement>('.desk-head .page-title-field')!

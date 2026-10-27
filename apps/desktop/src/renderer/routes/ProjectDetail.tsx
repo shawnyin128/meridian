@@ -187,6 +187,9 @@ export function ProjectIdeaPanel({
 /** The draft a project's rename from its page title is kept under, with its project, so it reopens where it was typed. */
 const TITLE_RENAME = 'title-rename'
 
+/** The draft older Apps kept a project's name under while it was typed in the rail's name field. */
+const RAIL_NAME = 'name'
+
 /** Newest first, by creation day, then by id, which later ideas take higher numbers in. */
 const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
   b.created.localeCompare(a.created) || b.id.localeCompare(a.id, undefined, { numeric: true })
@@ -322,6 +325,14 @@ export function ProjectDetail({
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
   const edits = useDrafts<EditDraft>(['project', projectId])
+  const names = useDrafts<string>(['project', projectId])
+  const railName = names.get(RAIL_NAME)
+  // A name an older App kept from the rail's name field reopens as the title's rename it now is.
+  useEffect(() => {
+    if (railName === undefined) return
+    if (names.get(TITLE_RENAME) === undefined) names.set(TITLE_RENAME, railName)
+    names.drop(RAIL_NAME)
+  }, [railName, names])
   const [creating, setCreating] = useDraft<PlanCreating>(['project', projectId], 'new-row')
   const shownProject = project?.id === projectId ? project : null
   usePruneDrafts(['project', projectId, 'task'], shownProject === null ? null : shownProject.tasks.map((task) => task.id))
