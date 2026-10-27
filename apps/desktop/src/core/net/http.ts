@@ -79,9 +79,9 @@ export function retryAfterMs(value: string | null, now = Date.now()): number | u
   return Number.isNaN(at) ? undefined : Math.max(0, at - now)
 }
 
-/** The server returned a non-200 status code. */
+/** The server returned a non-200 status code; `body` is the response body when the sender kept it. */
 export class HttpStatusError extends Error {
-  constructor(readonly status: number, readonly retryAfterMs?: number) {
+  constructor(readonly status: number, readonly retryAfterMs?: number, readonly body?: Uint8Array) {
     super(`服务器返回 ${status}`)
   }
 }
@@ -114,7 +114,7 @@ export async function requestWithRetry(
         timeoutMs: policy.timeoutMs, limit: policy.limit,
         ...(policy.maxQueueMs === undefined ? {} : { maxQueueMs: policy.maxQueueMs }), ...request,
       })
-      if (response.status !== 200) throw new HttpStatusError(response.status, response.retryAfterMs)
+      if (response.status !== 200) throw new HttpStatusError(response.status, response.retryAfterMs, response.body)
       return response.body
     } catch (error) {
       const final = error instanceof HttpStatusError && error.status !== 429 && error.status < 500
