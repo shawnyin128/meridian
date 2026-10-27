@@ -569,8 +569,9 @@ export function createChatHarnessRunner(options: {
 
   /**
    * The one structured model call of a design turn of chat `chatId` on `model`, ending when `signal`
-   * aborts, with the vault lookups a turn of that chat has, outside the chat's CLI session; a CLI
-   * failure goes to `onFailure`.
+   * aborts, with the vault lookups a turn of that chat has, a paper chat's search and page read only
+   * when its context cannot hold the whole paper, outside the chat's CLI session; a CLI failure goes
+   * to `onFailure`.
    */
   const cliDesign = (
     chatId: string, model: HarnessCliModel, signal: AbortSignal, onFailure: (failure: CliRunError) => void,
@@ -581,6 +582,7 @@ export function createChatHarnessRunner(options: {
       called = true
       const call = DesignModelInvokeParamsSchema.parse(params)
       const paperId = options.store.chatSession(chatId).paperId
+      const wholePaper = paperId !== undefined && await paperSource(paperId).then(({ whole }) => whole, () => false)
       let result: CliResult
       try {
         result = await options.structured({
@@ -588,7 +590,7 @@ export function createChatHarnessRunner(options: {
           ...(model.model === undefined ? {} : { model: model.model }),
           ...(model.effort === undefined ? {} : { effort: model.effort }),
           ...call,
-          lookup: paperId === undefined ? {} : { paperId },
+          lookup: paperId === undefined || wholePaper ? {} : { paperId },
           timeoutMs: CLI_CALL_TIMEOUT_MS,
           signal,
         })

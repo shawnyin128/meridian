@@ -1345,6 +1345,30 @@ describe('a design turn', () => {
     close()
   })
 
+  it('offers a CLI design call no paper search or page read when the chat\'s context holds the whole paper, and keeps them when it holds part', async () => {
+    const structured = vi.fn<CliRunner>(async () => ({ output: { answer: '可以测。', design: null }, durationMs: 1 }))
+    const { child, runner, store, close } = chatRunner(CLI_MODEL, vi.fn<CliChatRunner>(), structured)
+    const line = 'Speculative decoding drafts tokens with a small model and verifies them with the large one. '.repeat(2)
+    // One-point type on one-point lines, so a single page holds more text than the context's budget.
+    const pdf = (characters: number) => minimalPdf({
+      lines: Array.from({ length: Math.ceil(characters / line.length) }, () => line), size: 1, leading: 1,
+    })
+    const short = store.importPaper('short.pdf', pdf(2_000)).paper.id
+    const long = store.importPaper('long.pdf', pdf(CHAT_CONTEXT_BUDGETS.sourceCharacters + 1_000)).paper.id
+    for (const [at, paper] of [short, long].entries()) {
+      const designing = runner.design(store.chatForPaper(paper).id, 'Design it', new AbortController().signal)
+      if (at === 0) child.ready()
+      const request = await child.frame()
+      child.callModel(paper, request['id'] as number, { system: 'Rules and context', prompt: 'Design it', schema: { type: 'object' } })
+      await child.frame()
+      child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design: null } })
+      await designing
+    }
+
+    expect(structured.mock.calls.map(([call]) => call.lookup)).toEqual([{}, { paperId: long }])
+    close()
+  })
+
   it('reads a stored design back into the history as its sections after the answer', () => {
     const [turn] = packChatHistory([{ ...message('a', 'ai', '可以测。'), design: DESIGN }])
     expect(turn!.text.startsWith('可以测。\n\n## Explanations')).toBe(true)
