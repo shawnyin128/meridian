@@ -44,7 +44,7 @@ describe('发表信息只改 App 填的值，用户改过的不动', () => {
   })
 })
 
-describe('论文页头菜单里的补全发表信息', () => {
+describe('设置里 Semantic Scholar 卡片的补全发表信息', () => {
   it('按 arXiv 编号和 DOI 一次查完库里的论文，只改查到发表信息的那几篇，每篇记一条能撤销的变动', async () => {
     const { store, id } = arxivPaper()
     const doi = store.importPaper('doi.pdf', minimalPdf({ lines: ['doi'] })).paper.id

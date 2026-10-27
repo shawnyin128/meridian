@@ -78,6 +78,7 @@ export const papers = {
   publication: {
     fill: '补全发表信息',
     filled: (count: number) => `补全了 ${count} 篇的发表信息`,
+    filling: '正在补全发表信息…',
     none: '没有查到新的发表信息',
   },
   upload: {

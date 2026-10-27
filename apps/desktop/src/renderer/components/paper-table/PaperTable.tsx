@@ -6,7 +6,7 @@ import type {
 } from '../../../shared/contract.js'
 import { MAX_PDF_UPLOAD_BYTES } from '../../../shared/contract.js'
 import { DEFAULT_PAPER_GROUPS, PAPER_PAGE, READ_STATES } from '../../../shared/vocabulary.js'
-import { delivery, papers } from '../../ipc.js'
+import { papers } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import { useFormat } from '../../lib/format.js'
 import type { Catalog } from '../../messages/catalog.js'
@@ -50,8 +50,7 @@ import { Table, TableCell, TableOpen, TableRow, type TableColumn } from '../Tabl
 import { Toolbar } from '../Toolbar.js'
 import { PanelBody, PanelHead, SidePanel } from '../SidePanel.js'
 import { FadeText } from '../FadeText.js'
-import { ActionMenu, MenuItem, MenuRadioGroup, MenuRadioItem } from '../ActionMenu.js'
-import { DotsMenu } from '../FieldPickers.js'
+import { ActionMenu, MenuRadioGroup, MenuRadioItem } from '../ActionMenu.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ContextMenu, ContextMenuItem, ContextMenuSeparator } from '../ContextMenu.js'
 import { FilterMenu } from '../FilterMenu.js'
@@ -257,7 +256,7 @@ export function PaperTable() {
 
   const notice = useNotice()
   const paperCount = usePaperCount()
-  const { jump, open, enter } = useJump()
+  const { jump, open } = useJump()
   // The revision is bumped after a write so the grouping and row-fetch effects run again, like the
   // demo's renderLibRows call after a submit.
   const { revision, bump } = useVaultRevision()
@@ -300,24 +299,6 @@ export function PaperTable() {
   const titleCount = !filtered ? paperCount
     : view === 'research-map' ? (mapLoading ? null : mapTotal)
       : listed ? total : null
-
-  // The header's … menu fills publication info from Semantic Scholar, so it shows only while a key is saved.
-  const [keyed, setKeyed] = useState(false)
-  useEffect(() => {
-    void delivery.semanticKey().then((status) => setKeyed(status.configured)).catch(report)
-  }, [revision, report])
-
-  /**
-   * Fills the papers' publication venue and year from Semantic Scholar and says how many changed; each
-   * changed paper is one entry of Recent changes, which the notice opens.
-   */
-  const fillPublication = () => {
-    void write(papers.fillPublication().then((result) => {
-      if (result.updated === 0) notice.success(m.papers.publication.none)
-      else notice.success(m.papers.publication.filled(result.updated), { label: m.common.open, onAction: () => enter('changelog') })
-      return result
-    }))
-  }
 
   useEffect(() => {
     // Fetching the column configuration also queues on the column chain, so it waits for a write in
@@ -948,9 +929,6 @@ export function PaperTable() {
               size="regular" className="pdfupload" busy={uploading} busyLabel={m.papers.upload.importing}
               onClick={() => uploadInput.current?.click()}
             >{m.papers.upload.importAction}</AddAction>
-            {keyed
-              ? <DotsMenu><MenuItem onSelect={fillPublication}>{m.papers.publication.fill}</MenuItem></DotsMenu>
-              : null}
           </>
         )}
       >

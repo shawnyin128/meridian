@@ -1,9 +1,10 @@
 import { useEffect, useState } from 'react'
 import type { SemanticKeyCheckResult, SemanticKeyStatus } from '../../../shared/contract.js'
-import { delivery } from '../../ipc.js'
+import { delivery, papers } from '../../ipc.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import { useMessages } from '../../messages/useMessages.js'
+import { useJump, useNotice, useSettingsOpen, useVaultRevision } from '../../shell/AppShell.js'
 import { EntityLink } from '../EntityLink.js'
 import { FieldRow, FieldRows, FormInput } from '../FormControls.js'
 import { PageError } from '../PageShell.js'
@@ -18,7 +19,10 @@ const APPLY_URL = 'https://www.semanticscholar.org/product/api#api-key-form'
 
 type ConnectionCheckState = { state: 'idle' | 'testing' } | SemanticKeyCheckResult
 
-/** The optional Semantic Scholar API key: shown masked once saved, replaced or removed on request. */
+/**
+ * The optional Semantic Scholar API key: shown masked once saved, replaced or removed on request.
+ * While a key is saved, it also fills the papers' publication info from Semantic Scholar.
+ */
 export function SemanticKeySettings() {
   const m = useMessages()
   const copy = m.settings.research.semanticKey
@@ -31,7 +35,13 @@ export function SemanticKeySettings() {
   const [saved, setSaved] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
   const [connectionCheck, setConnectionCheck] = useState<ConnectionCheckState>({ state: 'idle' })
+  const [filling, setFilling] = useState(false)
+  const [fillError, setFillError] = useState<string | null>(null)
   const { error, load } = useScreenLoad()
+  const notice = useNotice()
+  const { enter } = useJump()
+  const { setOpen } = useSettingsOpen()
+  const { bump } = useVaultRevision()
 
   useEffect(() => load('status', delivery.semanticKey(), setStatus), [load])
 
@@ -55,6 +65,33 @@ export function SemanticKeySettings() {
       setSaveError(errorLabel(m, caught))
     } finally {
       setSaving(false)
+    }
+  }
+
+  /**
+   * Fills the papers' publication venue and year from Semantic Scholar and says how many changed; each
+   * changed paper is one entry of Recent changes, which the notice opens.
+   */
+  const fillPublication = async () => {
+    setFilling(true)
+    setFillError(null)
+    try {
+      const result = await papers.fillPublication()
+      bump()
+      if (result.updated === 0) notice.success(m.papers.publication.none)
+      else {
+        notice.success(m.papers.publication.filled(result.updated), {
+          label: m.common.open,
+          onAction: () => {
+            setOpen(false)
+            enter('changelog')
+          },
+        })
+      }
+    } catch (caught) {
+      setFillError(errorLabel(m, caught))
+    } finally {
+      setFilling(false)
     }
   }
 
@@ -131,6 +168,12 @@ export function SemanticKeySettings() {
               }}
             />
           ) : null}
+          {status.configured ? (
+            <Button
+              size="regular" busy={filling} busyLabel={m.papers.publication.filling}
+              onClick={() => { void fillPublication() }}
+            >{m.papers.publication.fill}</Button>
+          ) : null}
           <Button
             size="regular" disabled={!canTestConnection || saving}
             busy={connectionCheck.state === 'testing'} busyLabel={m.settings.model.connection.testing}
@@ -144,6 +187,7 @@ export function SemanticKeySettings() {
         </ServiceActions>
       </ServiceFoot>
       {saveError === null ? null : <ServiceError>{saveError}</ServiceError>}
+      {fillError === null ? null : <ServiceError>{fillError}</ServiceError>}
     </ServiceCard>
   )
 }
