@@ -174,7 +174,7 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
     .toEqual(agg.body.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3)))
   await expect(shown(win).locator('.wkgrid .wkcard')).toHaveCount(agg.children.length)
   await expect(shown(win).locator('.split-rail .property-value').nth(0)).toHaveText(agg.kindLabel)
-  await expect(shown(win).locator('.split-rail .property-value').nth(2))
+  await expect(shown(win).locator('.split-rail .property-value').nth(1))
     .toHaveText(`${agg.memberCount} 篇 · ${agg.childCount} 细分`)
 
   // A child aggregation goes one level deeper: the breadcrumb's middle segment is its first parent.
