@@ -8,7 +8,12 @@ from pathlib import Path
 from typing import Any, BinaryIO, Callable
 
 from meridian import __version__
-from meridian.lab import apply_lab_update, materialize_lab_graph, record_lab_result
+from meridian.lab import (
+    apply_lab_update,
+    compact_lab_graph,
+    materialize_lab_graph,
+    record_lab_result,
+)
 from meridian.mcp import adapter
 from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import (
@@ -16,6 +21,7 @@ from meridian.workspace_protocol import (
     IDEA_CONTEXT_MAX_LEN,
     IDEA_TITLE_MAX_LEN,
     add_workspace_agent_idea,
+    add_workspace_agent_idea_file,
     add_workspace_agent_task,
     add_workspace_event,
     inspect_project_workspace,
@@ -166,6 +172,11 @@ class MeridianMCPServer:
             return workspace.wiki_root
         raise FileNotFoundError(adapter.NEEDS_INIT_MESSAGE)
 
+    def vault_root(self) -> Path | None:
+        """The Meridian library of the configured Paper Wiki, or None when none is configured."""
+        workspace = resolve_workspace(wiki_root=self.default_wiki_root) if self.default_wiki_root else resolve_workspace()
+        return None if workspace is None else workspace.library_root
+
     def workspace_root(self, arguments: JsonDict) -> Path:
         explicit = arguments.get("workspace_root")
         if explicit:
@@ -296,6 +307,8 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "task_id": {"type": "string", "description": "Read only this task."},
+                    "milestone_id": {"type": "string", "description": "Read only this milestone."},
                 }
             ),
         },
@@ -323,7 +336,10 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.workspace_idea",
-            "description": "Coding context: expand one current App-owned idea referenced by the change list.",
+            "description": (
+                "Coding context: expand one current App-owned idea referenced by the change list, with the "
+                "files it holds (name, size and absolute path) when the Paper Wiki library is configured."
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {
@@ -401,6 +417,30 @@ def tool_definitions() -> list[JsonDict]:
             ),
         },
         {
+            "name": "meridian.workspace_idea_file_add",
+            "description": (
+                "Project Workspace: attach one file in the repository that belongs to an idea, such as a "
+                "proposal written for it, so the Meridian App shows it with the idea and with the project "
+                "the idea is carried out in. The App keeps the file where it is."
+            ),
+            "inputSchema": _schema(
+                {
+                    "workspace_root": {
+                        "type": "string",
+                        "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
+                    },
+                    "file_id": {"type": "string", "description": "Stable idempotency key for the file."},
+                    "idea_id": {
+                        "type": "string",
+                        "description": "The idea_id given to meridian.workspace_idea_add, or an App idea id from meridian.workspace_changes.",
+                    },
+                    "path": {"type": "string", "description": "Existing file relative to the repository."},
+                    "date": {"type": "string", "description": "YYYY-MM-DD; defaults to the local current date."},
+                },
+                required=["file_id", "idea_id", "path"],
+            ),
+        },
+        {
             "name": "meridian.workspace_task_add",
             "description": (
                 "Project Workspace: add one clear, concrete next step the user and you agreed on to the "
@@ -423,13 +463,18 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.lab_graph",
-            "description": "Lab: read the current Markdown-backed research graph and detailed health without changing it.",
+            "description": (
+                "Lab: read the research graph and its health without changing it: each node's id, title, state, "
+                "parent and active flag, and the edges. Read a node's content with meridian.lab_node; "
+                "detail full returns every node's Markdown, details and artifacts."
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "detail": {"type": "string", "enum": ["compact", "full"], "default": "compact"},
                 }
             ),
         },
@@ -680,7 +725,11 @@ def _call_workspace_status(server: MeridianMCPServer, arguments: JsonDict) -> Js
 
 
 def _call_workspace_plan(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
-    return read_project_plan(server.workspace_root(arguments))
+    return read_project_plan(
+        server.workspace_root(arguments),
+        task_id=str(arguments["task_id"]) if arguments.get("task_id") not in (None, "") else None,
+        milestone_id=str(arguments["milestone_id"]) if arguments.get("milestone_id") not in (None, "") else None,
+    )
 
 
 def _call_workspace_changes(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
@@ -702,24 +751,25 @@ def _call_workspace_changes(server: MeridianMCPServer, arguments: JsonDict) -> J
         expansions: list[JsonDict] = []
         for ref in change.get("refs", []):
             if ref.get("kind") == "project":
-                candidate = {
-                    "tool": "meridian.workspace_plan",
-                    "arguments": dict(workspace_arguments),
-                }
+                named = [("task_id", item) for item in change.get("task_ids", [])]
+                named += [("milestone_id", item) for item in change.get("milestone_ids", [])]
+                candidates = [
+                    {"tool": "meridian.workspace_plan", "arguments": {**workspace_arguments, key: item_id}}
+                    for key, item_id in named
+                ] or [{"tool": "meridian.workspace_plan", "arguments": dict(workspace_arguments)}]
             elif ref.get("kind") == "idea":
-                candidate = {
+                candidates = [{
                     "tool": "meridian.workspace_idea",
                     "arguments": {**workspace_arguments, "idea_id": ref.get("id")},
-                }
+                }]
             elif ref.get("kind") == "node":
-                candidate = {
+                candidates = [{
                     "tool": "meridian.lab_node",
                     "arguments": {**workspace_arguments, "node_id": ref.get("id")},
-                }
+                }]
             else:
                 continue
-            if candidate not in expansions:
-                expansions.append(candidate)
+            expansions += [candidate for candidate in candidates if candidate not in expansions]
         change["expand"] = expansions
     return payload
 
@@ -728,6 +778,7 @@ def _call_workspace_idea(server: MeridianMCPServer, arguments: JsonDict) -> Json
     return read_workspace_idea(
         server.workspace_root(arguments),
         _required(arguments, "idea_id"),
+        vault=server.vault_root(),
     )
 
 
@@ -760,6 +811,20 @@ def _call_workspace_idea_add(server: MeridianMCPServer, arguments: JsonDict) -> 
     )
 
 
+def _call_workspace_idea_file_add(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    schema = next(tool["inputSchema"] for tool in tool_definitions() if tool["name"] == "meridian.workspace_idea_file_add")
+    unknown = sorted(set(arguments) - set(schema["properties"]))
+    if unknown:
+        raise ValueError(f"meridian.workspace_idea_file_add does not take {', '.join(unknown)}")
+    return add_workspace_agent_idea_file(
+        server.workspace_root(arguments),
+        file_id=_required(arguments, "file_id"),
+        idea_id=_required(arguments, "idea_id"),
+        path=_required(arguments, "path"),
+        file_date=str(arguments["date"]) if arguments.get("date") not in (None, "") else None,
+    )
+
+
 def _call_workspace_task_add(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
     return add_workspace_agent_task(
         server.workspace_root(arguments),
@@ -771,10 +836,19 @@ def _call_workspace_task_add(server: MeridianMCPServer, arguments: JsonDict) -> 
 
 
 def _call_lab_graph(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
+    detail = str(arguments.get("detail") or "compact")
+    if detail not in {"compact", "full"}:
+        raise ValueError(f"detail must be compact or full, not {detail}")
     result = materialize_lab_graph(server.workspace_root(arguments))
+    if detail == "full":
+        return {
+            "schema_version": "meridian.mcp_lab_graph.v1",
+            "graph": result.graph,
+            "health": result.health,
+        }
     return {
-        "schema_version": "meridian.mcp_lab_graph.v1",
-        "graph": result.graph,
+        "schema_version": "meridian.mcp_lab_graph_compact.v1",
+        "graph": compact_lab_graph(result.graph),
         "health": result.health,
     }
 
@@ -850,6 +924,7 @@ TOOL_CALLS: dict[str, Callable[[MeridianMCPServer, JsonDict], JsonDict]] = {
     "meridian.workspace_idea": _call_workspace_idea,
     "meridian.workspace_event_add": _call_workspace_event_add,
     "meridian.workspace_idea_add": _call_workspace_idea_add,
+    "meridian.workspace_idea_file_add": _call_workspace_idea_file_add,
     "meridian.workspace_task_add": _call_workspace_task_add,
     "meridian.lab_graph": _call_lab_graph,
     "meridian.lab_node": _call_lab_node,

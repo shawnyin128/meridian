@@ -12,7 +12,7 @@ import watchList from './fixtures/watches.json' with { type: 'json' }
 import wikiFixture from './fixtures/wiki.json' with { type: 'json' }
 import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
-  Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry, InboxStream,
+  Attachment, ChangeEntry, ChatMessage, IdeaFile, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry, InboxStream,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation,
   ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch, WikiAggregationCard,
 } from '../shared/contract.js'
@@ -77,6 +77,7 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'project'; project: FixtureProject }
   | { kind: 'idea'; idea: ResearchIdea }
   | { kind: 'attachment'; projectId: string; attachment: Attachment; position: number }
+  | { kind: 'ideaFile'; ideaId: string; attachment: Attachment; position: number }
   | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
   | { kind: 'later'; later: LaterRecord; position: number }
   | { kind: 'chat'; chat: ChatRecord; position: number }
@@ -334,6 +335,7 @@ export function createFixtureStore(
     (row) => withProjectLinks(row, [...projectById.values()]),
   )
   let trash: TrashRecord[] = []
+  let ideaFiles: IdeaFile[] = []
   let feed = (feedEntries as FeedEntry[]).map((e) => structuredClone(e))
   let inbox = (inboxEntries as InboxRecord[]).map((e) => ({
     ...structuredClone(e),
@@ -2120,6 +2122,10 @@ export function createFixtureStore(
       proposals = structuredClone(rows)
     },
 
+    proposalUnknownOpKeys() {
+      return []
+    },
+
     nextProposalId() {
       return nextId('proposal')
     },
@@ -2261,6 +2267,7 @@ export function createFixtureStore(
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
+          : item.kind === 'ideaFile' ? ideas.some((idea) => idea.id === item.ideaId)
           : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
           : item.kind === 'page' ? wiki.pages[item.pageId] === undefined
           : item.kind !== 'paper' || !byId.has(item.paper.id),
@@ -2313,6 +2320,12 @@ export function createFixtureStore(
         if ((held?.messages.length ?? 0) > 0) throw new CallError('refused', `这篇论文已经有了新的对话：${item.title}`)
         const rest = chats.filter((chat) => chat !== held)
         chats = [...rest.slice(0, item.position), structuredClone(item.chat), ...rest.slice(item.position)]
+      }
+      else if (item.kind === 'ideaFile') {
+        if (!ideas.some((idea) => idea.id === item.ideaId)) throw new CallError('not-found', `想法不存在：${item.ideaId}`)
+        const own = ideaFiles.flatMap((file, at) => (file.idea === item.ideaId ? [at] : []))
+        const at = item.position < own.length ? own[item.position]! : (own.at(-1) ?? -1) + 1
+        ideaFiles = [...ideaFiles.slice(0, at), { idea: item.ideaId, attachment: item.attachment }, ...ideaFiles.slice(at)]
       }
       else {
         const project = projectById.get(item.projectId)
@@ -2497,6 +2510,50 @@ export function createFixtureStore(
       trash = [{
         id: nextId('trash'), kind: 'idea', title: idea.title, deletedAt: nowMs(), idea,
       }, ...trash]
+    },
+
+    listIdeaFiles() {
+      const listed = new Set(ideas.map((idea) => idea.id))
+      return structuredClone(ideaFiles.filter((file) => listed.has(file.idea)))
+    },
+
+    addIdeaFile(ideaId, attachment) {
+      if (!isAbsolute(attachment.path)) throw new CallError('invalid', `附件路径不是绝对路径：${attachment.path}`)
+      if (!ideas.some((idea) => idea.id === ideaId)) throw new CallError('not-found', `想法不存在：${ideaId}`)
+      const file = { idea: ideaId, attachment: { id: nextId('att'), ...attachment } }
+      ideaFiles = [file, ...ideaFiles]
+      return structuredClone(file)
+    },
+
+    designFilePath(name) {
+      return join('/fixture-vault', '.meridian', 'designs', name)
+    },
+
+    writeDesignFile(name) {
+      return join('/fixture-vault', '.meridian', 'designs', name)
+    },
+
+    deleteIdeaFile(ideaId, fileId) {
+      const own = ideaFiles.filter((file) => file.idea === ideaId)
+      const position = own.findIndex((file) => file.attachment.id === fileId)
+      const file = own[position]
+      if (file === undefined) throw new CallError('not-found', `附件不存在：${fileId}`)
+      ideaFiles = ideaFiles.filter((held) => held !== file)
+      trash = [{
+        id: nextId('trash'), kind: 'ideaFile', title: file.attachment.name, deletedAt: nowMs(),
+        ideaId, attachment: file.attachment, position,
+      }, ...trash]
+    },
+
+    markIdeaDraftSaved(id, messageId, ideaId) {
+      const chat = chatOf(id)
+      const message = chat.messages.find((held) => held.id === messageId)
+      if (message?.idea === undefined) throw new CallError('not-found', `这条回答没有想法草稿：${messageId}`)
+      const idea = message.idea
+      chats = chats.map((held) => (held !== chat ? held : {
+        ...held,
+        messages: held.messages.map((candidate) => (candidate !== message ? candidate : { ...candidate, idea: { ...idea, saved: ideaId } })),
+      }))
     },
 
     recordAction(id, messageId) {

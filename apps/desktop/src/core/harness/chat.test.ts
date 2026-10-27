@@ -5,21 +5,26 @@ import { join, resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import type { ChatMessage, PaperReading } from '../../shared/contract.js'
+import { ChatSendParamsSchema, type ChatMessage, type ExperimentDesign, type PaperReading } from '../../shared/contract.js'
+import experimentDesign from '../fixtures/experiment-design.json' with { type: 'json' }
 import { CallError } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
+import { minimalPdf } from '../net/minimal-pdf.js'
 import type { VaultStore } from '../vault.js'
 import {
-  CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, createChatHarnessRunner, messagesBefore, packChatHistory,
+  CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, createChatHarnessRunner, messagesBefore, modelText, packChatHistory,
   packPaperReading,
 } from './chat.js'
 import { createChatService } from './chat-service.js'
-import { type CliChatSessions, openCliChatSessions } from './cli/chat-sessions.js'
+import { type CliChatSessions, openCliChatSessions, type ResumableSession } from './cli/chat-sessions.js'
 import { CliRunError } from './cli/child.js'
 import { type CliChatCall, type CliChatRunner, createCliChatRunner } from './cli/chat-turn.js'
+import type { CliRunner } from './cli/runner.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
 import { HARNESS_CAPABILITIES, HARNESS_PROTOCOL_VERSION } from './protocol.js'
 import { type HarnessChild, HarnessRpcError } from './rpc.js'
+
+const DESIGN = experimentDesign as ExperimentDesign
 
 function message(id: string, role: ChatMessage['role'], text: string): ChatMessage {
   return { id, role, runs: [{ kind: 'text', text }], actions: [] }
@@ -51,6 +56,23 @@ describe('Harness chat context budgets', () => {
       id: 'mention', role: 'you', actions: [],
       runs: [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速' }, { kind: 'text', text: ' 这条线还剩什么' }],
     }])).toEqual([{ role: 'user', text: '看看 @推测解码加速 这条线还剩什么' }])
+  })
+
+  it('packs a turn holding a mention of an entity with the entity\'s kind and id, as the model was asked it', () => {
+    const runs = [
+      { kind: 'text' as const, text: '看看 ' },
+      { kind: 'mention' as const, text: '@KV cache 量化', target: { kind: 'page', id: 'topics/kv-cache-quantization' } },
+      { kind: 'text' as const, text: ' 和 ' },
+      { kind: 'mention' as const, text: '@SmoothQuant', target: { kind: 'paper', id: '2210.17323' } },
+      { kind: 'text' as const, text: ' 对 ' },
+      { kind: 'mention' as const, text: '@草稿树项目', target: { kind: 'project', id: 'draft' } },
+      { kind: 'text' as const, text: ' 有用吗' },
+    ]
+    const asked = '看看 @KV cache 量化 (Wiki page topics/kv-cache-quantization) 和 @SmoothQuant (paper papers/2210.17323) 对 '
+      + '@草稿树项目 (project draft) 有用吗'
+    expect(packChatHistory([{ id: 'mention', role: 'you', runs, actions: [] }])).toEqual([{ role: 'user', text: asked }])
+    expect(messagesBefore([{ id: 'mention', role: 'you', runs, actions: [] }], asked)).toEqual([])
+    expect(modelText(runs)).toBe(asked)
   })
 
   it('caps turn count independently from the character budget', () => {
@@ -138,6 +160,7 @@ describe('model connection check', () => {
         return { state: 'connected', modelCalls: 1 }
       },
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
     })
 
@@ -153,6 +176,7 @@ describe('model connection check', () => {
       model: { runtime: async (choice: unknown) => { asked.push(choice); return { source: 'cli', cli: 'codex' } } } as unknown as HarnessModelConfig,
       checkCli: async () => ({ state: 'connected', modelCalls: 1 }),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
     })
 
@@ -170,6 +194,7 @@ describe('model connection check', () => {
       model: { runtime: async () => ({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }) } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       launch: () => child,
     })
@@ -196,6 +221,7 @@ describe('model connection check', () => {
       model: { runtime: async () => model } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       launch: () => child,
     })
@@ -222,6 +248,7 @@ describe('model connection check', () => {
       model: { runtime: async (choice: unknown) => { asked.push(choice); return model } } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       launch: () => child,
     })
@@ -242,6 +269,12 @@ describe('model connection check', () => {
     runner.close()
   })
 })
+
+/** The chat context, without its history, that a stand-in Harness turn shows in its system prompt. */
+const TURN_CONTEXT = {
+  title: 'Speculative decoding',
+  paper: { id: 'paper-1', title: 'EAGLE', reading: { highlights: [], notes: [{ page: 2, text: 'Drafts features.' }], remark: '' } },
+}
 
 class FakeHarness extends EventEmitter implements HarnessChild {
   readonly stdin = new PassThrough()
@@ -267,21 +300,21 @@ class FakeHarness extends EventEmitter implements HarnessChild {
   }
 
   callModel(callbackId: string, id = 1, params: object = {
-    system: 'Chat rules and context', prompt: 'History, then: Why?', message: 'Why?',
+    system: 'Chat rules and context', prompt: 'History, then: Why?', message: 'Why?', context: TURN_CONTEXT,
   }) {
     this.send({ type: 'callback', id, callbackId, method: 'model.invoke', params })
   }
 
   /**
    * Answers the chat.answer request Core sends next the way Harness does: one model call, with the
-   * whole turn and the new message built from `text`, then the call's output as the answer, or,
-   * with `reject`, a model error instead.
+   * whole turn and the new message built from `text` and the chat's `context`, then the call's
+   * output as the answer, or, with `reject`, a model error instead.
    */
-  async answerTurn(text: string, reject = false) {
+  async answerTurn(text: string, reject = false, context: object = TURN_CONTEXT) {
     const request = await this.frame()
     const id = request['id'] as number
     const replied = this.frame()
-    this.callModel(`call-${id}`, id, { system: 'Chat rules and context', prompt: `History, then: ${text}`, message: text })
+    this.callModel(`call-${id}`, id, { system: 'Chat rules and context', prompt: `History, then: ${text}`, message: text, context })
     const output = ((await replied)['result'] as { output: string }).output
     this.send(reject
       ? { type: 'error', id, ok: false, error: { kind: 'model_error', message: '模型输出包含无效页码引用' } }
@@ -402,18 +435,19 @@ function sessionChat(initial: HarnessRuntimeModel) {
       internalMcp: async () => ({ claudeArgs: [], codexArgs: [], env: {}, close: async () => {} }),
       environment,
     }),
+    structured: vi.fn<CliRunner>(),
     sessions,
     launch: () => child,
     onLog: (level, line) => logs.push(`${level} ${line}`),
   })
   const service = createChatService({ store, model, runner })
   let started = false
-  /** Sends `text` and lets the stand-in Harness answer it, or reject the answer with `reject`. */
-  const send = async (text: string, reject = false) => {
+  /** Sends `text` and lets the stand-in Harness answer it in `context`, or reject the answer with `reject`. */
+  const send = async (text: string, reject = false, context?: object) => {
     const sent = service.send(chat, [{ kind: 'text', text }])
     if (!started) child.ready()
     started = true
-    await child.answerTurn(text, reject)
+    await child.answerTurn(text, reject, context)
     return sent
   }
   const retry = async () => {
@@ -432,7 +466,7 @@ function sessionChat(initial: HarnessRuntimeModel) {
   }
   /** Deletes the CLI sessions of the chats the vault no longer keeps, the way Core does after the trash changes. */
   const prune = () => sessions.prune(new Set(store.chatIds()))
-  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close, prune, service, child, hold }
+  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close, prune, service, child, hold, sessions }
 }
 
 const sessionOf = (turn: SeenTurn) => (turn.argv.includes('--resume') ? turn.argv[turn.argv.indexOf('--resume') + 1]
@@ -441,7 +475,7 @@ const sessionOf = (turn: SeenTurn) => (turn.argv.includes('--resume') ? turn.arg
 const resumes = (turn: SeenTurn) => turn.argv.includes('--resume') || turn.argv[1] === 'resume'
 
 /** A runner whose chat turns on a subscription CLI `cli` answers, with a session store in a folder of its own. */
-function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
+function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner, structured: CliRunner = vi.fn<CliRunner>()) {
   const child = new FakeHarness()
   const logs: string[] = []
   const store = createFixtureStore()
@@ -452,6 +486,7 @@ function chatRunner(model: HarnessRuntimeModel, cli: CliChatRunner) {
     model: { runtime: async () => model } as unknown as HarnessModelConfig,
     checkCli: async () => ({ state: 'connected', modelCalls: 0, maxOutputTokens: 1 }),
     cli,
+    structured,
     sessions: openCliChatSessions({ root, vault: '/vaults/research', environment: { CLAUDE_CONFIG_DIR: root, CODEX_HOME: root } }),
     launch: () => child,
     onLog: (level, line) => logs.push(`${level} ${line}`),
@@ -511,6 +546,7 @@ describe('a chat turn on a subscription CLI', () => {
       } as unknown as HarnessModelConfig,
       checkCli: vi.fn(),
       cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
       sessions: {} as CliChatSessions,
       choiceOf: (id) => (id === chat ? { source: 'api:openai', model: 'gpt-6.1', effort: 'xhigh' } : null),
       launch: () => child,
@@ -616,6 +652,33 @@ describe('a chat turn on a subscription CLI', () => {
     close()
   })
 
+  it('offers no paper search or page read when the chat\'s context holds the whole paper, and keeps them when it holds part', async () => {
+    const calls: CliChatCall[] = []
+    const { child, runner, store, close } = chatRunner(CLI_MODEL, async (call) => {
+      calls.push(call)
+      return { answer: 'Answer', durationMs: 1 }
+    })
+    const line = 'Speculative decoding drafts tokens with a small model and verifies them with the large one. '.repeat(2)
+    // One-point type on one-point lines, so a single page holds more text than the context's budget.
+    const pdf = (characters: number) => minimalPdf({
+      lines: Array.from({ length: Math.ceil(characters / line.length) }, () => line), size: 1, leading: 1,
+    })
+    const short = store.importPaper('short.pdf', pdf(2_000)).paper.id
+    const long = store.importPaper('long.pdf', pdf(CHAT_CONTEXT_BUDGETS.sourceCharacters + 1_000)).paper.id
+    for (const [at, paper] of [short, long].entries()) {
+      const answering = runner.answer(store.chatForPaper(paper).id, 'Why?', new AbortController().signal)
+      if (at === 0) child.ready()
+      const request = await child.frame()
+      child.callModel(paper, request['id'] as number)
+      await child.frame()
+      child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
+      await answering
+    }
+
+    expect(calls.map((call) => call.lookup)).toEqual([{}, { paperId: long }])
+    close()
+  })
+
   it('fails a turn whose CLI call failed for the CLI problem it met, in the CLI\'s own words', async () => {
     for (const [kind, reason] of [['usage-limit', 'usage-limit'], ['signed-out', 'cli-signed-out'], ['failed', 'model']] as const) {
       const { child, runner, chat, close } = chatRunner(CLI_MODEL, async () => {
@@ -656,9 +719,10 @@ describe('a chat turn on a subscription CLI', () => {
   })
 
   it.each([
-    ['at the provider\'s own default', undefined, { maxOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 120 }],
-    ['at the high effort', 'high', { maxOutputTokens: 34_000, maxModelCalls: 1, timeoutSeconds: 600 }],
-  ])('sends a turn on an API model %s the output cap and timeout its effort gives', async (_, effort, limits) => {
+    ['at the provider\'s own default', undefined, { maxOutputTokens: 40_000, minOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+    ['at the high effort', 'high', { maxOutputTokens: 52_000, minOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+    ['at the none effort', 'none', { maxOutputTokens: 20_000, minOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 120 }],
+  ])('sends a turn on an API model %s a cap that holds its longest answer at a token a character, its reasoning, and today\'s cap as the floor', async (_, effort, limits) => {
     const model: HarnessRuntimeModel = {
       provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5',
       authentication: 'api-key', apiKey: 'sk-ant-test', ...(effort === undefined ? {} : { effort }),
@@ -772,6 +836,65 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
     }
   })
 
+  it('carries into a resumed Codex turn the parts of the chat\'s context its session has not seen, and only those', async () => {
+    const note = { page: 5, text: 'The acceptance rate drops at long contexts.' }
+    const noted = { ...TURN_CONTEXT, paper: { ...TURN_CONTEXT.paper, reading: { ...TURN_CONTEXT.paper.reading, notes: [...TURN_CONTEXT.paper.reading.notes, note] } } }
+    const renamed = { ...noted, title: 'EAGLE speedups' }
+    const chat = sessionChat({ source: 'cli', cli: 'codex' })
+    try {
+      await chat.send('What is EAGLE?')
+      await chat.send('And its speedup?')
+      await chat.send('Does my note hold?', false, noted)
+      await chat.send('And now?', false, noted)
+      await chat.send('Any other change?', false, renamed)
+
+      const turns = chat.seen()
+      expect(turns.map(resumes)).toEqual([false, true, true, true, true])
+      expect(new Set(turns.slice(1).map(sessionOf)).size).toBe(1)
+      expect(turns.map((turn) => turn.stdin).slice(1)).toEqual([
+        'And its speedup?',
+        'These parts of the conversation context changed since your last answer and now read:\n'
+          + `${JSON.stringify({ paper: { reading: { notes: noted.paper.reading.notes } } })}\n\nCurrent user message:\nDoes my note hold?`,
+        'And now?',
+        'These parts of the conversation context changed since your last answer and now read:\n'
+          + `${JSON.stringify({ title: 'EAGLE speedups' })}\n\nCurrent user message:\nAny other change?`,
+      ])
+    } finally {
+      chat.close()
+    }
+  })
+
+  it('resumes a Claude session with the new message alone when the context changed, which its system prompt file carries', async () => {
+    const chat = sessionChat(CLI_MODEL)
+    try {
+      await chat.send('What is EAGLE?')
+      await chat.send('Does my note hold?', false, { ...TURN_CONTEXT, title: 'EAGLE speedups' })
+
+      const [, second] = chat.seen()
+      expect([resumes(second!), second!.stdin]).toEqual([true, 'Does my note hold?'])
+    } finally {
+      chat.close()
+    }
+  })
+
+  it('resumes a Codex session an older App kept with no record of its context with the whole context', async () => {
+    const chat = sessionChat({ source: 'cli', cli: 'codex' })
+    try {
+      await chat.send('What is EAGLE?')
+      const file = join(chat.root, 'user-data', 'cli-chats', 'sessions.json')
+      const { resumable } = (JSON.parse(readFileSync(file, 'utf8')) as { chats: Array<{ resumable: ResumableSession }> }).chats[0]!
+      // What App 0.0.23.0 keeps of a session it ran.
+      chat.sessions.keep(chat.chat, { cli: 'codex', id: resumable.id, history: resumable.history, total: resumable.total! })
+      await chat.send('And its speedup?')
+
+      const [, second] = chat.seen()
+      expect([resumes(second!), second!.stdin]).toEqual([true, 'These parts of the conversation context changed since your '
+        + `last answer and now read:\n${JSON.stringify(TURN_CONTEXT)}\n\nCurrent user message:\nAnd its speedup?`])
+    } finally {
+      chat.close()
+    }
+  })
+
   it('starts a new session with the whole turn when the chat was edited in Meridian', async () => {
     const chat = sessionChat(CLI_MODEL)
     try {
@@ -854,6 +977,7 @@ describe('stopping a chat turn on a subscription CLI', () => {
         const id = (await chat.child.frame())['id'] as number
         chat.child.callModel(`call-${id}`, id, {
           system: 'Chat rules and context', prompt: 'History, then: And its speedup?', message: 'And its speedup?',
+          context: TURN_CONTEXT,
         })
         await vi.waitFor(() => expect(chat.service.writing(chat.chat)?.text).toBe('Half an answer'))
         const held = chat.seen()[1]!
@@ -914,4 +1038,427 @@ describe('deleting a chat on a subscription CLI', () => {
       }
     })
   }
+})
+
+describe('a chat turn on an API model', () => {
+  it('carries the claims of the Wiki pages the chat mentioned in its context, the latest mentioned first', async () => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const chat = store.createChat('Quantization', true).id
+    const mention = (text: string, kind: string, id: string) => ({ kind: 'mention' as const, text, target: { kind, id } })
+    store.appendChatMessages(chat, [
+      { role: 'you', actions: [], runs: [mention('@KV cache quantization', 'page', 'topics/kv-cache-quantization')] },
+      { role: 'ai', actions: [], runs: [{ kind: 'text', text: 'Answer' }] },
+      {
+        role: 'you', actions: [], runs: [
+          mention('@Weight-activation PTQ', 'page', 'topics/ptq-weight-activation'), mention('@草稿树项目', 'project', 'draft'),
+          mention('@Gone', 'page', 'topics/no-such-page'), mention('@KV cache quantization', 'page', 'topics/kv-cache-quantization'),
+        ],
+      },
+    ])
+    const runner = createChatHarnessRunner({
+      store,
+      model: { runtime: async () => ({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }) } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: 'Why?' } })
+    const { wiki } = (await context)['result'] as { wiki: Array<{ ref: string; page: string; text: string }> }
+
+    expect(wiki.map((claim) => [claim.ref, claim.page])).toEqual([
+      ['topics/kv-cache-quantization#per-channel-keys', 'KV cache quantization'],
+      ['topics/kv-cache-quantization#prefix-schedule', 'KV cache quantization'],
+      ['topics/ptq-weight-activation#rotation-kv', 'Weight-activation PTQ'],
+    ])
+    const claims = (await store.wikiAggregation('topics/kv-cache-quantization')).claims
+    expect(wiki[0]!.text).toBe(claims[0]!.text)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
+    await expect(answering).resolves.toBe('Answer')
+    runner.close()
+  })
+})
+
+describe('the claims of mentioned Wiki pages in a full context', () => {
+  /** The characters the Harness takes in one chat context, and the claims of a page kept when they must shrink. */
+  const BUDGET = 140_000
+  const KEPT = 8
+  type Context = {
+    title: string
+    history: Array<{ text: string }>
+    paper: { title: string; authors: string[]; abstract: string; reading: { remark: string; notes: Array<{ text: string }> } }
+    wiki: Array<{ ref: string; page: string; text: string }>
+  }
+  /** The characters of `context` the Harness counts against its context budget. */
+  const counted = ({ title, history, paper, wiki }: Context) => title.length
+    + history.reduce((sum, turn) => sum + turn.text.length, 0)
+    + paper.title.length + paper.authors.join('').length + paper.abstract.length + paper.reading.remark.length
+    + paper.reading.notes.reduce((sum, note) => sum + note.text.length, 0)
+    + wiki.reduce((sum, claim) => sum + claim.page.length + claim.text.length, 0)
+
+  /**
+   * The context of a paper chat whose history, abstract, authors and notes fill their budgets and
+   * whose last message mentions pages `a`, `b` and `c`, the first mentioned last; page `x` holds
+   * `claims[x]` claims of 1,000 characters under a title of 2,000.
+   */
+  const contextOf = async (claims: Record<'a' | 'b' | 'c', number>) => {
+    const base = createFixtureStore()
+    const paper = base.listPapers({ page: 1, size: 1 }).rows[0]!
+    const page = (id: 'a' | 'b' | 'c') => ({
+      id: `topics/${id}`, title: id.repeat(2_000),
+      claims: Array.from({ length: claims[id] }, (_, n) => ({ id: `${id}-${n}`, text: `${n}`.padEnd(1_000, id) })),
+    })
+    const mention = (id: string) => ({ kind: 'mention' as const, text: `@${id}`, target: { kind: 'page', id: `topics/${id}` } })
+    const messages = [
+      message('old', 'ai', 'x'.repeat(CHAT_CONTEXT_BUDGETS.historyCharacters)),
+      { id: 'asked', role: 'you' as const, actions: [], runs: [mention('c'), mention('b'), mention('a')] },
+    ]
+    const store = {
+      ...base,
+      chatSession: () => ({ id: 'chat', title: 'Paper chat', paperId: paper.id }),
+      chatMessages: () => messages,
+      getPaper: () => ({
+        ...paper, title: 'Paper', abstract: 'b'.repeat(CHAT_CONTEXT_BUDGETS.abstractCharacters),
+        authors: Array.from({ length: CHAT_CONTEXT_BUDGETS.authors }, () => 'n'.repeat(CHAT_CONTEXT_BUDGETS.authorCharacters)),
+      }),
+      paperReading: () => reading({
+        remark: 'r'.repeat(CHAT_CONTEXT_BUDGETS.readingRemarkCharacters),
+        notes: [1, 2, 3].map((n) => ({
+          id: `note-${n}`, page: n, text: 'n'.repeat(CHAT_CONTEXT_BUDGETS.readingItemCharacters), created: '2026-10-27', updated: '2026-10-27',
+        })),
+      }),
+      paperSource: () => { throw new CallError('not-found', 'no source') },
+      wikiCards: () => ['a', 'b', 'c'].map((id) => ({ id: `topics/${id}` })),
+      wikiAggregation: async (id: string) => page(id.slice('topics/'.length) as 'a' | 'b' | 'c'),
+    } as unknown as VaultStore
+    const child = new FakeHarness()
+    const runner = createChatHarnessRunner({
+      store,
+      model: { runtime: async () => ({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }) } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+    const answering = runner.answer('chat', 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const replied = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: 'chat', currentText: 'Why?' } })
+    const context = (await replied)['result'] as Context
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
+    await answering
+    runner.close()
+    return context
+  }
+  const refs = (context: Context) => context.wiki.map((claim) => claim.ref)
+  const claimsOf = (id: string, count: number) => Array.from({ length: count }, (_, n) => `topics/${id}#${id}-${n}`)
+
+  it('leaves out the last-mentioned pages\' claims first, and never trims the paper or the history', async () => {
+    const context = await contextOf({ a: 12, b: 12, c: 12 })
+    expect(counted({ ...context, wiki: [] })).toBeGreaterThan(BUDGET - 3 * 12 * 3_000)
+
+    expect(refs(context)).toEqual([...claimsOf('b', 12), ...claimsOf('c', 12)])
+    expect(counted(context)).toBeLessThanOrEqual(BUDGET)
+    expect(context.history.reduce((sum, turn) => sum + turn.text.length, 0)).toBe(CHAT_CONTEXT_BUDGETS.historyCharacters)
+    expect(context.paper.abstract.length).toBe(CHAT_CONTEXT_BUDGETS.abstractCharacters)
+  })
+
+  it('then keeps only the first claims of the first-mentioned page', async () => {
+    const context = await contextOf({ a: 6, b: 0, c: 34 })
+
+    expect(refs(context)).toEqual(claimsOf('c', KEPT))
+    expect(counted(context)).toBeLessThanOrEqual(BUDGET)
+  })
+
+  it('keeps every claim of the mentioned pages while they fit', async () => {
+    expect(refs(await contextOf({ a: 3, b: 2, c: 1 }))).toEqual([...claimsOf('a', 3), ...claimsOf('b', 2), ...claimsOf('c', 1)])
+  })
+})
+
+describe('a message at the length limit', () => {
+  it('reaches the model whole with its mentions\' kinds and ids on top of the 20,000 characters the user typed', async () => {
+    const mention = { kind: 'mention' as const, text: '@KV cache quantization', target: { kind: 'page', id: 'topics/kv-cache-quantization' } }
+    const runs = [{ kind: 'text' as const, text: 'a'.repeat(20_000 - mention.text.length) }, mention]
+    expect(ChatSendParamsSchema.parse({ id: 'chat-1', runs }).runs).toEqual(runs)
+    const text = modelText(runs)
+    expect(text.length).toBeGreaterThan(20_000)
+    const cli = vi.fn<CliChatRunner>(async () => ({ answer: 'Answer', durationMs: 1 }))
+    const { child, runner, chat, store, close } = chatRunner(CLI_MODEL, cli)
+    store.appendChatMessages(chat, [{ role: 'you', runs, actions: [] }])
+    const answering = runner.answer(chat, text, new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request).toMatchObject({ method: 'chat.answer', params: { text } })
+
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: text } })
+    expect(await context).toMatchObject({ callbackId: 'context', result: { history: [] } })
+    const called = child.frame()
+    child.callModel('call', request['id'] as number, { system: 'Chat rules', prompt: `Current user message:\n${text}`, message: text, context: TURN_CONTEXT })
+    expect(await called).toMatchObject({ callbackId: 'call', result: { output: 'Answer' } })
+    expect(cli.mock.calls[0]![0].prompt).toBe(`Current user message:\n${text}`)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
+    await expect(answering).resolves.toBe('Answer')
+    close()
+  })
+})
+
+const API_MODEL = { provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }
+
+describe('a design turn', () => {
+  /** A chat whose question mentions the fixture vault's KV cache quantization page. */
+  const mentioningChat = (store: VaultStore) => {
+    const chat = store.createChat('KV cache quantization', true).id
+    store.appendChatMessages(chat, [{
+      role: 'you', actions: [],
+      runs: [{ kind: 'mention', text: '@KV cache quantization', target: { kind: 'page', id: 'topics/kv-cache-quantization' } }],
+    }])
+    return chat
+  }
+  const apiRunner = (store: VaultStore, child: FakeHarness) => createChatHarnessRunner({
+    store,
+    model: { runtime: async () => API_MODEL } as unknown as HarnessModelConfig,
+    checkCli: vi.fn(),
+    cli: vi.fn<CliChatRunner>(),
+    structured: vi.fn<CliRunner>(),
+    sessions: {} as CliChatSessions,
+    launch: () => child,
+  })
+
+  it('asks for a design with the mentioned page\'s claims in its context and a cap that holds its longest output, and returns it', async () => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const chat = mentioningChat(store)
+    const runner = apiRunner(store, child)
+    const designing = runner.design(chat, 'Design it', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request).toMatchObject({ method: 'chat.answer', params: { chatId: chat, mode: 'design', limits: { maxOutputTokens: 28_120, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 600 } } })
+
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: 'Design it' } })
+    const { wiki } = (await context)['result'] as { wiki: Array<{ ref: string; page: string; text: string }> }
+    expect(wiki.map((claim) => claim.ref)).toEqual([
+      'topics/kv-cache-quantization#per-channel-keys', 'topics/kv-cache-quantization#prefix-schedule',
+    ])
+
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design: DESIGN } })
+    await expect(designing).resolves.toEqual({ answer: '可以测。', design: DESIGN })
+    runner.close()
+  })
+
+  it('gives an ordinary turn the same mentioned claims as a design turn, without asking for a design', async () => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const chat = mentioningChat(store)
+    const runner = apiRunner(store, child)
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request['params']).not.toHaveProperty('design')
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: 'Why?' } })
+    const { wiki } = (await context)['result'] as { wiki: Array<{ ref: string }> }
+    expect(wiki.map((claim) => claim.ref)).toEqual([
+      'topics/kv-cache-quantization#per-channel-keys', 'topics/kv-cache-quantization#prefix-schedule',
+    ])
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Because.' } })
+    await expect(answering).resolves.toBe('Because.')
+    runner.close()
+  })
+
+  it.each([
+    ['at the provider\'s own default', undefined, { maxOutputTokens: 28_120, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+    ['at the high effort', 'high', { maxOutputTokens: 40_120, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+    ['at the none effort', 'none', { maxOutputTokens: 8_120, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 120 }],
+  ])('sends a design turn on an API model %s a cap that holds its longest output at a token a character, its reasoning, and its old cap as the floor', async (_, effort, limits) => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const runner = createChatHarnessRunner({
+      store,
+      model: { runtime: async () => ({ ...API_MODEL, ...(effort === undefined ? {} : { effort }) }) } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      structured: vi.fn<CliRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+    const designing = runner.design(mentioningChat(store), 'Design it', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design: null } })
+
+    await expect(designing).resolves.toEqual({ answer: '可以测。', design: null })
+    expect(request['params']).toMatchObject({ limits })
+    runner.close()
+  })
+
+  it('fails as malformed output when the design anchors a claim the vault does not hold', async () => {
+    for (const ref of ['topics/kv-cache-quantization#made-up', 'topics/no-such-page']) {
+      const child = new FakeHarness()
+      const store = createFixtureStore()
+      const chat = mentioningChat(store)
+      const runner = apiRunner(store, child)
+      const designing = runner.design(chat, 'Design it', new AbortController().signal)
+      child.ready()
+      const request = await child.frame()
+      const design = { ...DESIGN, ledger: [{ statement: '一句', status: 'source', anchor: { kind: 'wiki', ref } }] }
+      child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design } })
+      await expect(designing).rejects.toMatchObject({ name: 'CallError', reason: 'malformed-output' })
+      runner.close()
+    }
+  })
+
+  it('runs on a subscription CLI as one structured call outside the chat\'s session', async () => {
+    const structured = vi.fn<CliRunner>(async () => ({
+      output: { answer: '可以测。', design: DESIGN }, durationMs: 9_000,
+      usage: { inputTokens: 9_000, cachedInputTokens: 0, outputTokens: 1_500 },
+    }))
+    const session = vi.fn<CliChatRunner>()
+    const { child, runner, logs, close, store } = chatRunner(CLI_MODEL, session, structured)
+    const chat = mentioningChat(store)
+    const designing = runner.design(chat, 'Design it', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request).toMatchObject({
+      method: 'chat.answer',
+      params: { mode: 'design', model: CLI_MODEL, limits: { maxOutputTokens: 4_000, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 120 } },
+    })
+    const replied = child.frame()
+    child.callModel('design', request['id'] as number, { system: 'Rules and context', prompt: 'History, then: Design it', schema: { type: 'object' } })
+    expect(await replied).toMatchObject({ type: 'response', callbackId: 'design', result: { output: { answer: '可以测。', design: DESIGN } } })
+    expect(structured).toHaveBeenCalledWith(expect.objectContaining({
+      cli: 'claude', model: 'opus', system: 'Rules and context', prompt: 'History, then: Design it', schema: { type: 'object' }, lookup: {},
+    }))
+    expect(session).not.toHaveBeenCalled()
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design: DESIGN } })
+    await expect(designing).resolves.toEqual({ answer: '可以测。', design: DESIGN })
+    expect(logs).toContainEqual('info claude: 9.0 s, 9000 input tokens (0 cached), 1500 output tokens')
+    close()
+  })
+
+  it('offers a CLI design call no paper search or page read when the chat\'s context holds the whole paper, and keeps them when it holds part', async () => {
+    const structured = vi.fn<CliRunner>(async () => ({ output: { answer: '可以测。', design: null }, durationMs: 1 }))
+    const { child, runner, store, close } = chatRunner(CLI_MODEL, vi.fn<CliChatRunner>(), structured)
+    const line = 'Speculative decoding drafts tokens with a small model and verifies them with the large one. '.repeat(2)
+    // One-point type on one-point lines, so a single page holds more text than the context's budget.
+    const pdf = (characters: number) => minimalPdf({
+      lines: Array.from({ length: Math.ceil(characters / line.length) }, () => line), size: 1, leading: 1,
+    })
+    const short = store.importPaper('short.pdf', pdf(2_000)).paper.id
+    const long = store.importPaper('long.pdf', pdf(CHAT_CONTEXT_BUDGETS.sourceCharacters + 1_000)).paper.id
+    for (const [at, paper] of [short, long].entries()) {
+      const designing = runner.design(store.chatForPaper(paper).id, 'Design it', new AbortController().signal)
+      if (at === 0) child.ready()
+      const request = await child.frame()
+      child.callModel(paper, request['id'] as number, { system: 'Rules and context', prompt: 'Design it', schema: { type: 'object' } })
+      await child.frame()
+      child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '可以测。', design: null } })
+      await designing
+    }
+
+    expect(structured.mock.calls.map(([call]) => call.lookup)).toEqual([{}, { paperId: long }])
+    close()
+  })
+
+  it('reads a stored design back into the history as its sections after the answer', () => {
+    const [turn] = packChatHistory([{ ...message('a', 'ai', '可以测。'), design: DESIGN }])
+    expect(turn!.text.startsWith('可以测。\n\n## Explanations')).toBe(true)
+    expect(turn!.text).toContain('| 输出分布偏离目标模型，或两组平均宽度相差超过 5% | 检验无效 | 修正对齐后重跑 | repairable |')
+  })
+})
+
+describe('an idea turn', () => {
+  /** A chat of `turns` question and answer pairs, then the question that asks for its idea. */
+  const longChat = (store: VaultStore, turns: number) => {
+    const chat = store.createChat('树宽', true).id
+    store.appendChatMessages(chat, Array.from({ length: turns }, (_, at) => [
+      { role: 'you' as const, actions: [], runs: [{ kind: 'text' as const, text: `问题 ${at + 1}` }] },
+      { role: 'ai' as const, actions: [], runs: [{ kind: 'text' as const, text: `回答 ${at + 1}` }] },
+    ]).flat())
+    store.appendChatMessages(chat, [{ role: 'you', actions: [], runs: [{ kind: 'text', text: '整理想法' }] }])
+    return chat
+  }
+  const apiRunner = (store: VaultStore, child: FakeHarness) => createChatHarnessRunner({
+    store,
+    model: { runtime: async () => API_MODEL } as unknown as HarnessModelConfig,
+    checkCli: vi.fn(),
+    cli: vi.fn<CliChatRunner>(),
+    structured: vi.fn<CliRunner>(),
+    sessions: {} as CliChatSessions,
+    launch: () => child,
+  })
+  /** Starts idea turn `text` in `chat`, answers its context read and returns the request, the context and the turn. */
+  const start = async (store: VaultStore, chat: string, text = '整理想法') => {
+    const child = new FakeHarness()
+    const runner = apiRunner(store, child)
+    const turn = runner.idea(chat, text, new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const read = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: text } })
+    const context = (await read)['result'] as { history: Array<{ role: string; text: string }> }
+    return { child, runner, request, context, turn }
+  }
+
+  it('asks for an idea with the whole chat as its history and a cap that holds its longest draft', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 15)
+    const { child, runner, request, context, turn } = await start(store, chat)
+
+    expect(request).toMatchObject({ method: 'chat.answer', params: { chatId: chat, mode: 'idea', limits: { maxOutputTokens: 26_140, minOutputTokens: 4_000 } } })
+    expect(context.history).toHaveLength(30)
+    expect(context.history[0]).toEqual({ role: 'user', text: '问题 1' })
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '整理好了。', idea: null } })
+    await expect(turn).resolves.toEqual({ answer: '整理好了。', idea: null })
+    runner.close()
+  })
+
+  it('keeps an ordinary turn\'s history at its twenty newest turns', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 15)
+    const child = new FakeHarness()
+    const runner = apiRunner(store, child)
+    const answering = runner.answer(chat, '整理想法', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const read = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: '整理想法' } })
+    expect(((await read)['result'] as { history: unknown[] }).history).toHaveLength(20)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '好。' } })
+    await answering
+    runner.close()
+  })
+
+  it('turns the draft\'s source turns into the ids of the messages they count, the current question last', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 3)
+    const ids = store.chatMessages(chat).map((message) => message.id)
+    const { child, runner, request, turn } = await start(store, chat)
+    const idea = { title: '按接受率调树宽', body: '树宽跟着接受率走。', sources: [7, 1, 3, 3] }
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '整理好了。', idea } })
+
+    await expect(turn).resolves.toEqual({
+      answer: '整理好了。', idea: { title: idea.title, body: idea.body, sources: [ids[0], ids[2], ids[6]] },
+    })
+    runner.close()
+  })
+
+  it('fails as malformed output when a source turn counts no message the turn was given', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 3)
+    const { child, runner, request, turn } = await start(store, chat)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '整理好了。', idea: { title: '题', body: '文', sources: [8] } } })
+
+    await expect(turn).rejects.toMatchObject({ name: 'CallError', reason: 'malformed-output' })
+    runner.close()
+  })
 })

@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { execFileSync, spawnSync } from 'node:child_process'
 import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
@@ -73,6 +73,7 @@ function remotePayload(files: Record<string, string | undefined>): Buffer {
 
 afterEach(() => {
   for (const root of roots.splice(0)) rmSync(root, { recursive: true, force: true })
+  vi.restoreAllMocks()
 })
 
 describe('project workspace protocol', () => {
@@ -183,6 +184,103 @@ describe('project workspace protocol', () => {
       'project.snapshot', 'idea.linked', 'idea.node_linked',
     ])
     expect(changes.changes.at(-1)?.refs).toContainEqual({ kind: 'node', id: 'direction.B' })
+  })
+
+  it('records a change into a journal a newer App wrote and keeps every field it does not know where it was', async () => {
+    const root = temporary()
+    const held = project(root)
+    const idea: ResearchIdea = {
+      id: 'idea-1', title: 'Dynamic threshold', body: 'Calibrate the threshold per batch.',
+      source: { chatId: 'chat-1', chatTitle: 'Threshold discussion' },
+      project: held.id, archived: false, created: '2026-09-16', updated: '2026-09-16',
+    }
+    await writeProjectWorkspaceState(held, [idea])
+    type Journal = {
+      next_sequence: number
+      ideas: Record<string, unknown>[]
+      changes: (Record<string, unknown> & { sequence: number; kind: string })[]
+    }
+    const file = join(root, '.meridian/control/changes.json')
+    const journal = JSON.parse(readFileSync(file, 'utf8')) as Journal
+    const retained = Array.from({ length: 500 }, (_, index) => ({
+      sequence: index + 1,
+      at: '2026-09-16T00:00:00.000Z',
+      kind: 'project.updated',
+      summary: 'Project tasks updated: Shared research',
+      refs: [{ kind: 'project', id: 'project-1', ...(index === 1 ? { title: 'Shared research' } : {}) }],
+      ...(index === 1 ? { added_by: { app: '0.0.99.0' } } : {}),
+    }))
+    const newer = {
+      ...journal,
+      next_sequence: 501,
+      ideas: journal.ideas.map((item) => ({
+        ...item, source: { ...(item['source'] as object), chat_id: 'chat-1' }, tags: ['latency'],
+      })),
+      changes: retained,
+      written_by: 'meridian-app 0.0.99.0',
+    }
+    writeFileSync(file, `${JSON.stringify(newer, null, 2)}\n`)
+
+    const renamed = { ...held, tasks: [{ ...held.tasks[0]!, title: 'Probe latency' }] }
+    await writeProjectWorkspaceState(renamed, [idea])
+
+    const plan = JSON.parse(readFileSync(join(root, '.meridian/control/plan.json'), 'utf8')) as { tasks: { title: string }[] }
+    expect(plan.tasks.map((task) => task.title)).toEqual(['Probe latency'])
+    const next = JSON.parse(readFileSync(file, 'utf8')) as Journal & { written_by?: string }
+    expect(next.written_by).toBe('meridian-app 0.0.99.0')
+    expect(JSON.stringify(next.ideas)).toBe(JSON.stringify(newer.ideas))
+    expect(next.next_sequence).toBe(502)
+    expect(next.changes.map((change) => change.sequence)).toEqual(
+      Array.from({ length: 500 }, (_, index) => index + 2),
+    )
+    expect(JSON.stringify(next.changes[0])).toBe(JSON.stringify(retained[1]))
+    expect(JSON.stringify(next.changes.slice(1, -1))).toBe(JSON.stringify(retained.slice(2)))
+    expect(next.changes.at(-1)).toMatchObject({ sequence: 501, kind: 'project.updated' })
+  })
+
+  it('keeps syncing past a change of a kind it does not know, keeps that change as written, and the plugin reports it unreadable', async () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const root = temporary()
+    const held = project(root)
+    await writeProjectWorkspaceState(held, [])
+    const file = join(root, '.meridian/control/changes.json')
+    const journal = JSON.parse(readFileSync(file, 'utf8')) as { next_sequence: number; changes: unknown[] }
+    const newer = {
+      sequence: 2, at: '2026-09-17T00:00:00.000Z', kind: 'project.archived', summary: 'Project archived by a newer App',
+      refs: [{ kind: 'project', id: 'project-1' }, { kind: 'run', id: 'run-7' }], reason: { by: 'agent' },
+    }
+    const known = {
+      sequence: 3, at: '2026-09-17T01:00:00.000Z', kind: 'project.updated', summary: 'Project tasks updated: Shared research',
+      refs: [{ kind: 'project', id: 'project-1' }],
+    }
+    writeFileSync(file, `${JSON.stringify({ ...journal, next_sequence: 4, changes: [...journal.changes, newer, known] }, null, 2)}\n`)
+
+    await writeProjectWorkspaceState({ ...held, tasks: [{ ...held.tasks[0]!, title: 'Probe latency' }] }, [])
+
+    const plan = JSON.parse(readFileSync(join(root, '.meridian/control/plan.json'), 'utf8')) as { tasks: { title: string }[] }
+    expect(plan.tasks.map((task) => task.title)).toEqual(['Probe latency'])
+    const next = JSON.parse(readFileSync(file, 'utf8')) as { next_sequence: number; changes: { sequence: number; kind: string }[] }
+    expect(next.changes.map((change) => [change.sequence, change.kind])).toEqual([
+      [1, 'project.snapshot'], [2, 'project.archived'], [3, 'project.updated'], [4, 'project.updated'],
+    ])
+    expect(next.next_sequence).toBe(5)
+    expect(JSON.stringify(next.changes[1])).toBe(JSON.stringify(newer))
+    expect(reported).toHaveBeenCalledWith(expect.stringMatching(/change 2 cannot be read by this version/))
+
+    const script = [
+      'import json, sys',
+      'from pathlib import Path',
+      'from meridian.workspace_protocol import read_workspace_changes',
+      'page = read_workspace_changes(Path(sys.argv[1]))',
+      'print(json.dumps([[change["sequence"] for change in page["changes"]], page["unreadable_changes"]]))',
+    ].join('\n')
+    const output = execFileSync('python', ['-c', script, root], {
+      env: { ...process.env, PYTHONPATH: join(REPO, 'src') }, encoding: 'utf8',
+    })
+    const [readable, unreadable] = JSON.parse(output) as [number[], string[]]
+    expect(readable).toEqual([1, 3, 4])
+    expect(unreadable).toHaveLength(1)
+    expect(unreadable[0]).toContain('kind is unknown: project.archived')
   })
 
   it('reads generated Lab graph and workspace events without rewriting either', async () => {

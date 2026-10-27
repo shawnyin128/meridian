@@ -27,9 +27,9 @@ import './shell.css'
 
 /**
  * The order of the groups: the order of each kind's row in the sidebar, top to bottom. Attachments
- * have no row there and come last.
+ * have no row there and come last, the files of ideas among them.
  */
-const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'chat', 'page', 'paper', 'project', 'idea', 'attachment']
+const KINDS: Exclude<TrashEntry['kind'], 'ideaFile'>[] = ['inbox', 'later', 'chat', 'page', 'paper', 'project', 'idea', 'attachment']
 /** The kinds whose title is, or for a chat can be, a paper title. */
 const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper', 'chat'])
 const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)
@@ -85,7 +85,7 @@ export function Trash() {
 
   const held = entries ?? []
   const groups = KINDS
-    .map((kind) => ({ kind, items: held.filter((e) => e.kind === kind) }))
+    .map((kind) => ({ kind, items: held.filter((e) => (e.kind === 'ideaFile' ? 'attachment' : e.kind) === kind) }))
     .filter((g) => g.items.length > 0)
 
   return (
@@ -130,7 +130,8 @@ export function Trash() {
                               label={m.common.restore} size="nested" disabled={!entry.restorable} onClick={() => restore(entry)}
                               note={entry.restorable
                                 ? undefined
-                                : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken : m.trash.projectGone}
+                                : entry.kind === 'paper' ? m.trash.paperTaken : entry.kind === 'chat' ? m.trash.chatTaken
+                                  : entry.kind === 'ideaFile' ? m.trash.ideaGone : m.trash.projectGone}
                             ><IconRestore /></IconButton>
                             <ConfirmDialog
                               trigger={(

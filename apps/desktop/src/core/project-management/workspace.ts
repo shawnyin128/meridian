@@ -9,7 +9,7 @@ import type {
   ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea, SshFolders,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
-import { readStoredList } from '../vault/stored-records.js'
+import { readRecord, readStoredList, withUnknownFields, type UnknownField } from '../vault/stored-records.js'
 import type { ProjectRecord } from './page.js'
 
 export const WORKSPACE_SCHEMA = 'meridian.workspace.v1'
@@ -23,6 +23,9 @@ const GRAPH = '.meridian/graph/graph.json'
 const EVENTS = '.meridian/events/events.json'
 const CHANGES = '.meridian/control/changes.json'
 const AGENT_IDEAS = '.meridian/ideas/ideas.json'
+// Not declared in the manifest, as the tasks file is not.
+const AGENT_IDEA_FILES = '.meridian/ideas/files.json'
+export const WORKSPACE_AGENT_IDEA_FILES_SCHEMA = 'meridian.workspace-agent-idea-files.v1'
 // Not declared in the manifest: a 0.0.14 plugin rejects a manifest naming a surface it does not know.
 const AGENT_TASKS = '.meridian/tasks/tasks.json'
 export const WORKSPACE_AGENT_TASKS_SCHEMA = 'meridian.workspace-agent-tasks.v1'
@@ -80,6 +83,8 @@ const WorkspaceChangeSchema = z.object({
   kind: WorkspaceChangeKindSchema,
   summary: z.string(),
   refs: z.array(ChangeRefSchema),
+  task_ids: z.array(z.string().min(1)).optional(),
+  milestone_ids: z.array(z.string().min(1)).optional(),
 }).strict()
 
 const WorkspaceChangesSchema = z.object({
@@ -88,20 +93,11 @@ const WorkspaceChangesSchema = z.object({
   epoch: z.string(),
   next_sequence: z.number().int().positive(),
   ideas: z.array(IdeaProjectionSchema),
-  changes: z.array(WorkspaceChangeSchema).max(MAX_RETAINED_CHANGES),
+  /** Changes as written; parsedChanges reads each one on its own with WorkspaceChangeSchema. */
+  changes: z.array(z.unknown()).max(MAX_RETAINED_CHANGES),
 }).strict().superRefine((value, context) => {
   if (new Set(value.ideas.map((idea) => idea.id)).size !== value.ideas.length) {
     context.addIssue({ code: 'custom', path: ['ideas'], message: 'Idea IDs must be unique' })
-  }
-  let previous = 0
-  for (const [index, change] of value.changes.entries()) {
-    if (change.sequence <= previous || change.sequence >= value.next_sequence) {
-      context.addIssue({
-        code: 'custom', path: ['changes', index, 'sequence'],
-        message: 'Change sequences must increase and remain below next_sequence',
-      })
-    }
-    previous = change.sequence
   }
 })
 
@@ -315,11 +311,11 @@ function changesOf(
   project: ProjectRecord,
   priorPlan: JsonObject | undefined,
   nextPlan: JsonObject,
-  prior: WorkspaceChanges | undefined,
+  prior: { value: WorkspaceChanges; unknown: UnknownField[] } | undefined,
   ideas: readonly ResearchIdea[],
 ): WorkspaceChanges {
   const projected = ideaProjections(project, ideas)
-  const base: WorkspaceChanges = prior ?? {
+  const base: WorkspaceChanges = prior?.value ?? {
     schema_version: WORKSPACE_CHANGES_SCHEMA,
     project_id: project.id,
     epoch: randomUUID(),
@@ -335,12 +331,12 @@ function changesOf(
       at,
       ...change,
     }))
-  return {
+  return withUnknownFields({
     ...base,
     next_sequence: base.next_sequence + additions.length,
     ideas: projected,
     changes: [...base.changes, ...additions].slice(-MAX_RETAINED_CHANGES),
-  }
+  }, prior?.unknown ?? []) as WorkspaceChanges
 }
 
 function planOf(project: ProjectRecord): { revision: string; value: JsonObject } {
@@ -643,9 +639,31 @@ function parsedObject(text: string | undefined): JsonObject | undefined {
   return obj(value)
 }
 
-function parsedChanges(text: string | undefined): WorkspaceChanges | undefined {
+/**
+ * The change journal `file` holds as `text`, with the fields this version does not know, or nothing.
+ * Its changes stay as written; each one this version cannot read is reported on stderr. Throws when
+ * the journal cannot be read, or the sequences of the changes it reads do not increase below
+ * `next_sequence`.
+ */
+function parsedChanges(
+  file: string, text: string | undefined,
+): { value: WorkspaceChanges; unknown: UnknownField[] } | undefined {
   if (text === undefined) return undefined
-  return WorkspaceChangesSchema.parse(JSON.parse(text))
+  const read = readRecord(WorkspaceChangesSchema, JSON.parse(text))
+  if ('error' in read) throw new Error(read.error)
+  let previous = 0
+  for (const [index, raw] of read.value.changes.entries()) {
+    const change = readRecord(WorkspaceChangeSchema, raw)
+    if ('error' in change) {
+      console.error(`[workspace] ${file}: change ${index + 1} cannot be read by this version and is kept as it is (the App may need an update): ${change.error}`)
+      continue
+    }
+    if (change.value.sequence <= previous || change.value.sequence >= read.value.next_sequence) {
+      throw new Error(`${file}: change sequences must increase and remain below next_sequence`)
+    }
+    previous = change.value.sequence
+  }
+  return read
 }
 
 /**
@@ -678,7 +696,7 @@ export async function writeProjectWorkspaceState(
         project,
         parsedObject(files.get(PLAN)),
         planned.value,
-        parsedChanges(files.get(CHANGES)),
+        parsedChanges(`${remote.host}:${CHANGES}`, files.get(CHANGES)),
         ideas,
       )
       await writeRemoteFiles(
@@ -698,7 +716,7 @@ export async function writeProjectWorkspaceState(
     project,
     existsSync(planFile) ? parsedObject(readFileSync(planFile, 'utf8')) : undefined,
     planned.value,
-    existsSync(changesFile) ? parsedChanges(readFileSync(changesFile, 'utf8')) : undefined,
+    existsSync(changesFile) ? parsedChanges(changesFile, readFileSync(changesFile, 'utf8')) : undefined,
     ideas,
   )
   atomicJson(planFile, planned.value)
@@ -1015,6 +1033,40 @@ export function readWorkspaceAgentIdeas(root: string | undefined): WorkspaceAgen
   try {
     const { ideas } = AgentIdeasFileSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
     return readStoredList(file, ideas, AgentIdeaSchema, 'id').rows
+  } catch (error) {
+    console.error(`[workspace] ${file}: ${error instanceof Error ? error.message : String(error)}`)
+    return []
+  }
+}
+
+const AgentIdeaFileSchema = z.object({
+  id: z.string().min(1),
+  idea_id: z.string().min(1),
+  path: z.string().min(1),
+  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+})
+
+const AgentIdeaFilesFileSchema = z.object({
+  schema_version: z.literal(WORKSPACE_AGENT_IDEA_FILES_SCHEMA),
+  files: z.array(z.unknown()),
+})
+
+/** One file a coding agent attached to an idea in a project workspace; `path` is relative to the workspace root. */
+export type WorkspaceAgentIdeaFile = z.infer<typeof AgentIdeaFileSchema>
+
+/**
+ * Returns the idea files coding agents attached in the local workspace at `root` that this version
+ * can read, in file order, as readWorkspaceAgentIdeas reads ideas: empty when `root` is undefined or
+ * the file is absent, a file that breaks the schema reported on stderr and skipped. The file is never
+ * written.
+ */
+export function readWorkspaceAgentIdeaFiles(root: string | undefined): WorkspaceAgentIdeaFile[] {
+  if (root === undefined) return []
+  const file = join(root, AGENT_IDEA_FILES)
+  if (!existsSync(file)) return []
+  try {
+    const { files } = AgentIdeaFilesFileSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
+    return readStoredList(file, files, AgentIdeaFileSchema, 'id').rows
   } catch (error) {
     console.error(`[workspace] ${file}: ${error instanceof Error ? error.message : String(error)}`)
     return []

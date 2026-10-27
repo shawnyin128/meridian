@@ -1,8 +1,8 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { basename, dirname, isAbsolute, join } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { z } from 'zod'
 import type {
-  ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, InboxStream, PaperColumns, PaperImportResult,
+  ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, IdeaFile, InboxStream, PaperColumns, PaperImportResult,
   PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
   ResearchIdea, Task, TaskFields,
@@ -11,6 +11,7 @@ import type {
 import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
+import { attachmentSizeText } from '../shared/attachment-size.js'
 import { projectControlState } from '../shared/project-control.js'
 import { projectTopics, sortRecordsNewestFirst } from '../shared/project-signals.js'
 import { slugOf } from '../shared/slug.js'
@@ -33,7 +34,7 @@ import {
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
-  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
+  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeaFiles, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, servedTopics, storedTopics, titledTopics, topicPinsOf, topicScopeOf, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
@@ -54,11 +55,12 @@ import type { Publication } from './net/semantic-metadata.js'
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
-  ChatRecord, DiscoveryDirectionsRecord, InboxLeft, InboxRecord, PaperSnapshot, RefreshProgressRecord, TrashRecord,
-  VaultState,
+  ChatRecord, DiscoveryDirectionsRecord, IdeaFileRecord, InboxLeft, InboxRecord, PaperSnapshot, RefreshProgressRecord,
+  TrashRecord, VaultState,
 } from './vault/records.js'
 import {
-  ChatRecordSchema, DeliveredRecordSchema, DiscoveryDirectionsRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
+  ChatRecordSchema, DeliveredRecordSchema, DiscoveryDirectionsRecordSchema, DiscoveryPreferencesRecordSchema, IdeaFileRecordSchema,
+  InboxRecordSchema, LaterRecordSchema,
   MetadataFillRecordSchema, PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
@@ -461,6 +463,24 @@ export function createVaultStore(
     save('feed', feed)
   }
   let trash = load('trash', TrashRecordSchema)
+  let ideaFiles = load('idea-files', IdeaFileRecordSchema)
+  /**
+   * The ids of the ideas the vault holds: listed, in the trash, or stored in a record this version
+   * cannot read, which may be an idea or a trash entry holding one.
+   */
+  const heldIdeaIds = (): Set<string> => new Set([
+    ...ideas.map((idea) => idea.id),
+    ...trash.flatMap((item) => (item.kind === 'idea' ? [item.idea.id] : [])),
+    ...[...lists.get('ideas')?.unreadable ?? [], ...lists.get('trash')?.unreadable ?? []].flatMap((record) => {
+      const held = record as { id?: unknown; idea?: { id?: unknown } } | null
+      return [held?.id, held?.idea?.id].filter((id): id is string => typeof id === 'string')
+    }),
+  ])
+  // An older App purges an idea from the trash without knowing its files; they go once it is gone.
+  {
+    const held = heldIdeaIds()
+    if (ideaFiles.some((file) => !held.has(file.idea))) ideaFiles = save('idea-files', ideaFiles.filter((file) => held.has(file.idea)))
+  }
   let delivered = load('discovery/delivered', DeliveredRecordSchema)
   let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
   let fills = load('metadata-fills', MetadataFillRecordSchema, 'paper')
@@ -503,19 +523,7 @@ export function createVaultStore(
     const kept = trash.filter((item) => item.kind !== 'inbox' || !ids.has(item.entryId))
     if (kept.length !== trash.length) trash = saveTrash(kept)
   }
-  // Another App version may have written queue records this one cannot read; keep those as written.
-  const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
-    ? JSON.parse(readFileSync(join(meridian, 'proposals.json'), 'utf8')) as unknown[] : []
-  let proposals: ProposalRecord[] = []
-  const unreadProposals: unknown[] = []
-  for (const [at, held] of heldProposals.entries()) {
-    const parsed = ProposalRecordSchema.safeParse(held)
-    if (parsed.success) proposals.push(parsed.data)
-    else {
-      unreadProposals.push(held)
-      console.error(`[wiki] proposal queue record ${at + 1} cannot be read by this version and is kept as it is (the App may need an update): ${parsed.error.message}`)
-    }
-  }
+  let proposals: ProposalRecord[] = load('proposals', ProposalRecordSchema)
   const inboxDir = join(meridian, 'proposal-inbox')
 
   // Older versions left watch-derived recommendations in inbox.json after a watch was removed.
@@ -1119,6 +1127,7 @@ export function createVaultStore(
    */
   const absorbAgentIdeas = atomic((): void => {
     const taken = new Set(state.agentIdeas ?? [])
+    const ids = { ...state.agentIdeaIds }
     const added: ResearchIdea[] = []
     for (const project of projects()) {
       const fresh = readWorkspaceAgentIdeas(project.workspaceRoot).filter((found) => !taken.has(`${project.id}:${found.id}`))
@@ -1127,12 +1136,82 @@ export function createVaultStore(
         const idea = createResearchIdea(nextId('idea'), found.title, found.body, {
           chatTitle: found.context ?? project.name, agent: true,
         }, found.date)
+        ids[`${project.id}:${found.id}`] = idea.id
         added.push({ ...idea, sourceProject: project.id, ...(found.node === undefined ? {} : { candidateNode: found.node }) })
       }
     }
-    if (added.length === 0) return
-    ideas = save('ideas', [...added, ...ideas])
-    saveState({ ...state, agentIdeas: [...taken] })
+    if (added.length > 0) ideas = save('ideas', [...added, ...ideas])
+    const files = absorbAgentIdeaFiles(ids)
+    if (added.length === 0 && files === 0 && Object.keys(ids).length === Object.keys(state.agentIdeaIds ?? {}).length) return
+    saveState({ ...state, agentIdeas: [...taken], ...(Object.keys(ids).length === 0 ? {} : { agentIdeaIds: ids }) })
+  })
+
+  /** The agent idea files already reported as waiting, by `<project id>:<file id>`, so each is reported once. */
+  const waitingFiles = new Set<string>()
+
+  /**
+   * Takes the idea files coding agents attached in bound local workspaces into the idea files, each
+   * once, kept where they are in the workspace. A file names its idea by the id the agent gave it,
+   * which `ids` maps to the vault idea, or by the vault id of an idea carried out in that project. An
+   * agent idea `ids` does not map is matched by its project, title and date, and the match added to
+   * `ids`. A file whose idea is not found, or that is missing or outside the workspace, waits and is
+   * reported. Returns how many files it took in.
+   */
+  const absorbAgentIdeaFiles = (ids: Record<string, string>): number => {
+    const taken = new Set(state.agentIdeaFiles ?? [])
+    const held = heldIdeaIds()
+    const known = [...ideas, ...trash.flatMap((item) => (item.kind === 'idea' ? [item.idea] : []))]
+    const added: IdeaFileRecord[] = []
+    for (const project of projects()) {
+      const root = project.workspaceRoot
+      const requests = readWorkspaceAgentIdeaFiles(root).filter((request) => !taken.has(`${project.id}:${request.id}`))
+      if (root === undefined || requests.length === 0) continue
+      const agentIdeas = readWorkspaceAgentIdeas(root)
+      const ideaOf = (named: string): string | undefined => {
+        const key = `${project.id}:${named}`
+        const found = agentIdeas.find((agentIdea) => agentIdea.id === named)
+        const matched = ids[key] ?? (found === undefined ? undefined : known.find((idea) => idea.source.agent === true
+          && idea.sourceProject === project.id && idea.title === found.title && idea.created === found.date)?.id)
+        if (matched !== undefined) {
+          ids[key] = matched
+          return held.has(matched) ? matched : undefined
+        }
+        return ideas.find((idea) => idea.id === named && idea.project === project.id)?.id
+      }
+      for (const request of requests) {
+        const key = `${project.id}:${request.id}`
+        const idea = ideaOf(request.idea_id)
+        const path = resolve(root, request.path)
+        const inside = !isAbsolute(request.path) && !relative(root, path).startsWith('..')
+        if (idea === undefined || !inside || !existsSync(path) || !statSync(path).isFile()) {
+          if (!waitingFiles.has(key)) {
+            waitingFiles.add(key)
+            console.error(`[workspace] ${root}: idea file ${request.id} waits: ${idea === undefined ? `no idea ${request.idea_id}` : `no file ${request.path} inside the workspace`}`)
+          }
+          continue
+        }
+        taken.add(key)
+        added.push({ id: nextId('att'), name: basename(path), size: attachmentSizeText(statSync(path).size), path: storedFilePath(path), idea })
+      }
+    }
+    if (added.length === 0) return 0
+    ideaFiles = save('idea-files', [...added.reverse(), ...ideaFiles])
+    saveState({ ...state, agentIdeaFiles: [...taken] })
+    return added.length
+  }
+
+  /**
+   * The path idea-files.json stores for the file at absolute `path`: relative to the vault, with `/`
+   * between its parts, when the file lies inside the vault, so it moves with the vault; else `path`.
+   */
+  const storedFilePath = (path: string): string => {
+    const inner = relative(root, path)
+    return inner === '' || inner.startsWith('..') || isAbsolute(inner) ? path : inner.split(sep).join('/')
+  }
+
+  /** An idea file as the contract carries it, its path absolute. */
+  const ideaFileOf = ({ idea, ...attachment }: IdeaFileRecord): IdeaFile => ({
+    idea, attachment: { ...structuredClone(attachment), path: isAbsolute(attachment.path) ? attachment.path : join(root, attachment.path) },
   })
 
   /** Appends one feed entry dated now. */
@@ -1288,6 +1367,9 @@ export function createVaultStore(
    */
   const discard = (item: TrashRecord): void => {
     if (item.kind === 'paper' || item.kind === 'project' || item.kind === 'page') removePage(trashPage(item.id))
+    if (item.kind === 'idea' && ideaFiles.some((file) => file.idea === item.idea.id)) {
+      ideaFiles = save('idea-files', ideaFiles.filter((file) => file.idea !== item.idea.id))
+    }
   }
 
   /** Permanently removes expired trash records and their stored content. */
@@ -2960,8 +3042,15 @@ export function createVaultStore(
 
     saveProposalRecords(rows) {
       const next = structuredClone(rows)
-      save('proposals', [...next, ...unreadProposals])
+      save('proposals', next)
       proposals = next
+    },
+
+    proposalUnknownOpKeys(id) {
+      const record = proposals.find((held) => held.id === id)
+      const read = record === undefined ? undefined : readRecord(ProposalRecordSchema, storedRecord('proposals', record))
+      return read === undefined || 'error' in read ? []
+        : read.unknown.filter((field) => field.at[0] === 'proposal' && field.at[1] === 'ops').map((field) => field.key)
     },
 
     nextProposalId() {
@@ -3103,6 +3192,7 @@ export function createVaultStore(
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
+          : item.kind === 'ideaFile' ? ideas.some((idea) => idea.id === item.ideaId)
           : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
           : (item.kind !== 'paper' && item.kind !== 'page') || !existsSync(join(root, item.page)),
       }))
@@ -3169,6 +3259,11 @@ export function createVaultStore(
           const project = projectById.get(item.idea.project)
           if (project !== undefined) syncProjectWorkspace(project)
         }
+      } else if (item.kind === 'ideaFile') {
+        if (!ideas.some((idea) => idea.id === item.ideaId)) throw new CallError('not-found', `想法不存在：${item.ideaId}`)
+        const own = ideaFiles.flatMap((file, at) => (file.idea === item.ideaId ? [at] : []))
+        const at = item.position < own.length ? own[item.position]! : (own.at(-1) ?? -1) + 1
+        ideaFiles = save('idea-files', [...ideaFiles.slice(0, at), { ...item.attachment, idea: item.ideaId }, ...ideaFiles.slice(at)])
       } else {
         const project = projectById.get(item.projectId)
         if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
@@ -3335,6 +3430,53 @@ export function createVaultStore(
       toTrash({
         id: nextId('trash'), kind: 'idea', title: idea.title, deletedAt: nowMs(), idea,
       })
+    }),
+
+    listIdeaFiles() {
+      absorbAgentIdeas()
+      const listed = new Set(ideas.map((idea) => idea.id))
+      return ideaFiles.filter((file) => listed.has(file.idea)).map(ideaFileOf)
+    },
+
+    addIdeaFile: atomic((ideaId, attachment) => {
+      if (!isAbsolute(attachment.path)) throw new CallError('invalid', `附件路径不是绝对路径：${attachment.path}`)
+      if (!ideas.some((idea) => idea.id === ideaId)) throw new CallError('not-found', `想法不存在：${ideaId}`)
+      const record: IdeaFileRecord = { id: nextId('att'), ...attachment, path: storedFilePath(attachment.path), idea: ideaId }
+      ideaFiles = save('idea-files', [record, ...ideaFiles])
+      return ideaFileOf(record)
+    }),
+
+    designFilePath(name) {
+      return join(meridian, 'designs', name)
+    },
+
+    writeDesignFile: atomic((name, markdown) => {
+      const file = join(meridian, 'designs', name)
+      writePage(file, markdown, staging)
+      return file
+    }),
+
+    deleteIdeaFile: atomic((ideaId, fileId) => {
+      const own = ideaFiles.filter((file) => file.idea === ideaId)
+      const position = own.findIndex((file) => file.id === fileId)
+      const record = own[position]
+      if (record === undefined) throw new CallError('not-found', `附件不存在：${fileId}`)
+      ideaFiles = save('idea-files', ideaFiles.filter((file) => file !== record))
+      const { idea, ...attachment } = record
+      toTrash({
+        id: nextId('trash'), kind: 'ideaFile', title: record.name, deletedAt: nowMs(), ideaId: idea, attachment, position,
+      })
+    }),
+
+    markIdeaDraftSaved: atomic((id, messageId, ideaId) => {
+      const chat = chatOf(id)
+      const message = chat.messages.find((held) => held.id === messageId)
+      if (message?.idea === undefined) throw new CallError('not-found', `这条回答没有想法草稿：${messageId}`)
+      const idea = message.idea
+      chats = save('chats', chats.map((held) => (held !== chat ? held : {
+        ...held,
+        messages: held.messages.map((candidate) => (candidate !== message ? candidate : { ...candidate, idea: { ...idea, saved: ideaId } })),
+      })))
     }),
 
     recordAction: atomic((id, messageId) => {

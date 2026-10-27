@@ -11,6 +11,14 @@ from meridian.mcp.server import MeridianMCPServer
 
 
 class MCPWorkspaceTests(unittest.TestCase):
+    def setUp(self) -> None:
+        # No case reads the user's own Meridian config while resolving the vault.
+        config_home = TemporaryDirectory()
+        self.addCleanup(config_home.cleanup)
+        environment = patch.dict("os.environ", {"MERIDIAN_CONFIG_HOME": config_home.name})
+        environment.start()
+        self.addCleanup(environment.stop)
+
     def _workspace(self, root: Path) -> Path:
         meridian_root = root / ".meridian"
         (meridian_root / "control").mkdir(parents=True)
@@ -207,6 +215,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                 "meridian.workspace_plan",
                 "meridian.workspace_event_add",
                 "meridian.workspace_idea_add",
+                "meridian.workspace_idea_file_add",
                 "meridian.workspace_task_add",
             },
         )
@@ -365,6 +374,55 @@ class MCPWorkspaceTests(unittest.TestCase):
             properties = definition["inputSchema"]["properties"]
             self.assertEqual((properties["title"]["maxLength"], properties["context"]["maxLength"]), (80, 60))
 
+    def test_idea_file_add_records_a_workspace_file_for_an_idea_and_rejects_unknown_arguments(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            (root / "docs").mkdir()
+            (root / "docs/proposal.md").write_text("# Proposal\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+            arguments = {"file_id": "proposal", "idea_id": "reuse-distance", "path": "docs/proposal.md", "date": "2026-10-21"}
+
+            _, created = self._call(server, "meridian.workspace_idea_file_add", arguments)
+            _, repeated = self._call(server, "meridian.workspace_idea_file_add", arguments)
+            unknown, _ = self._call(server, "meridian.workspace_idea_file_add", {**arguments, "name": "Proposal"})
+            missing, _ = self._call(server, "meridian.workspace_idea_file_add", {**arguments, "file_id": "x", "path": "nope.md"})
+
+            self.assertEqual((created["status"], repeated["status"]), ("created", "unchanged"))
+            self.assertTrue(unknown["isError"])
+            self.assertTrue(missing["isError"])
+            stored = json.loads((root / ".meridian/ideas/files.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored, {
+                "schema_version": "meridian.workspace-agent-idea-files.v1",
+                "files": [{"id": "proposal", "idea_id": "reuse-distance", "path": "docs/proposal.md", "date": "2026-10-21"}],
+            })
+
+    def test_workspace_idea_lists_the_idea_files_the_vault_holds_at_absolute_paths(self) -> None:
+        with TemporaryDirectory() as tmp, TemporaryDirectory() as vault_tmp:
+            root = Path(tmp)
+            vault = Path(vault_tmp)
+            self._workspace(root)
+            (vault / "wiki").mkdir()
+            (vault / ".meridian").mkdir()
+            (vault / ".meridian/idea-files.json").write_text(json.dumps([
+                {"id": "att-2", "name": "d1.md", "size": "1 KB", "path": ".meridian/designs/d1.md", "idea": "idea-1"},
+                {"id": "att-1", "name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md", "idea": "idea-1"},
+                {"id": "att-3", "name": "other.md", "size": "1 KB", "path": "/research/other.md", "idea": "idea-2"},
+            ]), encoding="utf-8")
+
+            _, unconfigured = self._call(MeridianMCPServer(default_workspace_root=root), "meridian.workspace_idea", {"idea_id": "idea-1"})
+            _, idea = self._call(
+                MeridianMCPServer(default_wiki_root=vault / "wiki", default_workspace_root=root),
+                "meridian.workspace_idea", {"idea_id": "idea-1"},
+            )
+
+            self.assertNotIn("files", unconfigured)
+            self.assertEqual(idea["idea"], unconfigured["idea"])
+            self.assertEqual(idea["files"], [
+                {"name": "d1.md", "size": "1 KB", "path": str(vault.resolve() / ".meridian/designs/d1.md")},
+                {"name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md"},
+            ])
+
     def test_task_add_records_agent_tasks_idempotently_and_leaves_the_plan_alone(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
@@ -452,6 +510,99 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual(idea["idea"]["body"], "Run the smallest discriminating probe.")
             self.assertEqual(node["node"]["id"], "direction.A")
             self.assertEqual(node["linked_ideas"][0]["id"], "idea-1")
+
+    def test_a_plan_change_naming_its_tasks_and_milestones_expands_to_each_one_alone(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan_path = self._workspace(root)
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            plan["tasks"] = [{"id": "task-1", "title": "Run probe"}, {"id": "task-2", "title": "Write up"}]
+            plan["milestones"] = [{"id": "ms-1", "title": "Decision"}, {"id": "ms-2", "title": "Release"}]
+            plan_path.write_text(json.dumps(plan) + "\n", encoding="utf-8")
+            changes_path = root / ".meridian/control/changes.json"
+            journal = json.loads(changes_path.read_text(encoding="utf-8"))
+            journal["next_sequence"] = 5
+            journal["changes"] += [
+                {
+                    "sequence": 3,
+                    "at": "2026-09-17T00:00:00Z",
+                    "kind": "project.updated",
+                    "summary": "Project tasks updated: Shared research",
+                    "refs": [{"kind": "project", "id": "project-1"}],
+                },
+                {
+                    "sequence": 4,
+                    "at": "2026-09-18T00:00:00Z",
+                    "kind": "project.updated",
+                    "summary": "Project tasks, milestones updated: Shared research",
+                    "refs": [{"kind": "project", "id": "project-1"}],
+                    "task_ids": ["task-1", "task-gone"],
+                    "milestone_ids": ["ms-1"],
+                },
+            ]
+            changes_path.write_text(json.dumps(journal) + "\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            _, changes = self._call(server, "meridian.workspace_changes", {"cursor": "mcp-feed:2"})
+            without_ids, with_ids = changes["changes"]
+            expanded = [self._call(server, item["tool"], item["arguments"])[1] for item in with_ids["expand"]]
+
+            self.assertEqual(without_ids["expand"], [{"tool": "meridian.workspace_plan", "arguments": {}}])
+            self.assertEqual(
+                with_ids["expand"],
+                [
+                    {"tool": "meridian.workspace_plan", "arguments": {"task_id": "task-1"}},
+                    {"tool": "meridian.workspace_plan", "arguments": {"task_id": "task-gone"}},
+                    {"tool": "meridian.workspace_plan", "arguments": {"milestone_id": "ms-1"}},
+                ],
+            )
+            self.assertEqual(
+                [(item["tasks"], item["milestones"]) for item in expanded],
+                [
+                    ([{"id": "task-1", "title": "Run probe"}], []),
+                    ([], []),
+                    ([], [{"id": "ms-1", "title": "Decision"}]),
+                ],
+            )
+            self.assertEqual({item["revision"] for item in expanded}, {"revision-1"})
+            self.assertEqual({item["project"]["id"] for item in expanded}, {"project-1"})
+
+    def test_a_plan_read_takes_one_task_or_one_milestone_at_a_time(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            result, error = self._call(
+                server, "meridian.workspace_plan", {"task_id": "task-1", "milestone_id": "ms-1"},
+            )
+
+            self.assertTrue(result["isError"])
+            self.assertIn("one of task_id or milestone_id", error["message"])
+
+    def test_a_change_whose_changed_ids_are_not_a_list_of_ids_is_reported_unreadable(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            changes_path = root / ".meridian/control/changes.json"
+            journal = json.loads(changes_path.read_text(encoding="utf-8"))
+            journal["next_sequence"] = 4
+            journal["changes"].append({
+                "sequence": 3,
+                "at": "2026-09-17T00:00:00Z",
+                "kind": "project.updated",
+                "summary": "Project tasks updated: Shared research",
+                "refs": [{"kind": "project", "id": "project-1"}],
+                "task_ids": "task-1",
+            })
+            changes_path.write_text(json.dumps(journal) + "\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            _, changes = self._call(server, "meridian.workspace_changes", {"cursor": "mcp-feed:2"})
+
+            self.assertEqual(changes["changes"], [])
+            self.assertEqual(len(changes["unreadable_changes"]), 1)
+            self.assertIn("task_ids must be an array of ids", changes["unreadable_changes"][0])
 
     def test_unreadable_changes_are_reported_while_other_changes_and_the_node_still_read(self) -> None:
         with TemporaryDirectory() as tmp:
@@ -651,7 +802,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                     "next_action": "Run the second probe.",
                 },
             )
-            _, graph = self._call(server, "meridian.lab_graph", {})
+            _, graph = self._call(server, "meridian.lab_graph", {"detail": "full"})
 
             self.assertEqual(result["status"], "applied")
             self.assertEqual(duplicate["status"], "unchanged")
@@ -865,7 +1016,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                     "experiment": self.NEW_EXPERIMENT,
                 },
             )
-            _, graph = self._call(server, "meridian.lab_graph", {})
+            _, graph = self._call(server, "meridian.lab_graph", {"detail": "full"})
 
             self.assertEqual(result["status"], "applied")
             self.assertIn(".meridian/experiments/second.md", result["written_paths"])

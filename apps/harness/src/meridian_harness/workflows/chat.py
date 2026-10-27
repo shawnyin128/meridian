@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Literal, Protocol
+from typing import Annotated, Literal, Protocol
 
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel, LanguageModelInput
 from langchain_core.prompts import ChatPromptTemplate
@@ -21,11 +24,17 @@ from typing_extensions import TypedDict
 from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
+    StructuredOutput,
+    caches_by_breakpoint,
     create_chat_model,
+    log_output_cap,
     runs_on_cli,
-    structured_output_method,
+    usage_line,
+    with_closed_output,
 )
 from meridian_harness.protocol import ProtocolViolation
+
+_log = logging.getLogger(__name__)
 
 
 class CoreReadContext(Protocol):
@@ -100,14 +109,25 @@ class PaperContext(BaseModel):
     reading: ReadingContext
 
 
+class WikiClaim(BaseModel):
+    """One claim of a Wiki page the user mentioned, which a design may anchor by `ref`."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str = Field(min_length=1, max_length=300)
+    page: str = Field(min_length=1, max_length=2_000)
+    text: str = Field(min_length=1, max_length=1_000)
+
+
 class ChatContext(BaseModel):
     """Closed context contract returned by Core."""
 
     model_config = ConfigDict(extra="forbid")
 
     title: str = Field(min_length=1, max_length=2_000)
-    history: list[HistoryTurn] = Field(max_length=20)
+    history: list[HistoryTurn] = Field(max_length=100)
     paper: PaperContext | None = None
+    wiki: list[WikiClaim] = Field(default_factory=list, max_length=40)
 
     @model_validator(mode="after")
     def enforce_total_character_budget(self) -> ChatContext:
@@ -125,12 +145,13 @@ class ChatContext(BaseModel):
                 for item in self.paper.reading.highlights
             )
             total += sum(len(item.text) for item in self.paper.reading.notes)
+        total += sum(len(claim.page) + len(claim.text) for claim in self.wiki)
         if total > 140_000:
             raise ValueError("chat context exceeds the total character budget")
         return self
 
 
-class ChatAnswer(BaseModel):
+class ChatAnswer(StructuredOutput):
     """The only model-derived field allowed to cross back into Core."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -138,11 +159,136 @@ class ChatAnswer(BaseModel):
     answer: str = Field(min_length=1, max_length=20_000)
 
 
+def _line(max_length: int) -> object:
+    """A required, trimmed, one-line string of 1 to `max_length` characters."""
+
+    return Field(min_length=1, max_length=max_length, pattern=r"^[^\n]*$")
+
+
+class _Closed(StructuredOutput):
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+
+class DesignClaim(_Closed):
+    """The idea as one testable sentence, and whether anything was measured."""
+
+    text: str = _line(160)  # type: ignore[assignment]
+    status: Literal["hypothesis", "observed"]
+
+
+class DesignExplanations(_Closed):
+    """The proposed mechanism, its strongest alternative, and one consequential null or artifact."""
+
+    m1: str = _line(160)  # type: ignore[assignment]
+    m2: str = _line(160)  # type: ignore[assignment]
+    m0: str = _line(160)  # type: ignore[assignment]
+
+
+class DesignPrediction(_Closed):
+    """What each explanation predicts under one intervention; None is an unknown prediction."""
+
+    regime: str = _line(80)  # type: ignore[assignment]
+    m1: str | None = Field(min_length=1, max_length=40, pattern=r"^[^\n]*$")
+    m2: str | None = Field(min_length=1, max_length=40, pattern=r"^[^\n]*$")
+    m0: str | None = Field(min_length=1, max_length=40, pattern=r"^[^\n]*$")
+    metric: str = _line(40)  # type: ignore[assignment]
+    chosen: bool
+
+
+class DesignExperiment(_Closed):
+    """The smallest substrate that keeps the disputed mechanism."""
+
+    substrate: Literal["analytic", "synthetic", "component", "small-system", "full-system"]
+    keeps: str = _line(160)  # type: ignore[assignment]
+    untested: str = _line(160)  # type: ignore[assignment]
+
+
+DesignOutcome = Literal["invalid", "alternative", "expand", "below-gate", "kill", "inconclusive"]
+REQUIRED_OUTCOMES = frozenset({"invalid", "expand", "kill", "inconclusive"})
+
+
+class DesignDecision(_Closed):
+    """One result pattern declared before the deciding run."""
+
+    pattern: str = _line(120)  # type: ignore[assignment]
+    outcome: DesignOutcome
+    interpretation: str = _line(60)  # type: ignore[assignment]
+    next: str = _line(60)  # type: ignore[assignment]
+
+
+class WikiAnchor(_Closed):
+    """A Wiki claim (`<page id>#<claim id>`) or a Wiki page."""
+
+    kind: Literal["wiki"]
+    ref: str = Field(
+        min_length=3, max_length=300, pattern=r"^[^\s#/]+/[^\s#/]+(#[a-z0-9][a-z0-9-]{0,63})?$",
+    )
+
+
+class PaperAnchor(_Closed):
+    """A one-based page of the chat's paper."""
+
+    kind: Literal["source"]
+    paper: str = Field(min_length=1, max_length=200)
+    page: int = Field(gt=0)
+
+
+class LedgerEntry(_Closed):
+    """One statement the design rests on and how it is known."""
+
+    statement: str = _line(160)  # type: ignore[assignment]
+    status: Literal["source", "inference", "new-hypothesis"]
+    anchor: WikiAnchor | PaperAnchor | None
+
+
+class ExperimentDesign(_Closed):
+    """The experiment design card of a design turn."""
+
+    claim: DesignClaim
+    explanations: DesignExplanations
+    predictions: list[DesignPrediction] = Field(min_length=1, max_length=4)
+    experiment: DesignExperiment
+    decisions: list[DesignDecision] = Field(min_length=4, max_length=6)
+    ledger: list[LedgerEntry] = Field(min_length=1, max_length=6)
+
+
+class ChatDesignAnswer(StructuredOutput):
+    """A design turn's model output: an answer, and its design or None."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    answer: str = Field(min_length=1, max_length=2_000)
+    design: ExperimentDesign | None
+
+
+class IdeaDraft(_Closed):
+    """The idea a conversation holds, as the user may save it: its title, its body, and the turns
+    of the conversation it came from, the history counted from 1 and the current message last."""
+
+    title: str = _line(80)  # type: ignore[assignment]
+    body: str = Field(min_length=1, max_length=4_000)
+    sources: list[Annotated[int, Field(ge=1)]] = Field(min_length=1, max_length=20)
+
+
+class ChatIdeaAnswer(StructuredOutput):
+    """An idea turn's model output: an answer, and its idea draft or None."""
+
+    model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
+
+    answer: str = Field(min_length=1, max_length=2_000)
+    idea: IdeaDraft | None
+
+
+ChatMode = Literal["answer", "design", "idea"]
+
+
 class ChatInput(TypedDict):
-    """Minimal caller-owned graph input."""
+    """Minimal caller-owned graph input; `mode` asks for an answer alone, or one with an experiment
+    design or an idea draft."""
 
     chat_id: str
     text: str
+    mode: ChatMode
 
 
 class ChatState(ChatInput, total=False):
@@ -150,12 +296,16 @@ class ChatState(ChatInput, total=False):
 
     context: ChatContext
     answer: str
+    experiment: ExperimentDesign | None
+    idea: IdeaDraft | None
 
 
 class ChatOutput(TypedDict):
-    """Closed graph output."""
+    """Closed graph output; `experiment` is set on design turns only, `idea` on idea turns only."""
 
     answer: str
+    experiment: ExperimentDesign | None
+    idea: IdeaDraft | None
 
 
 @dataclass(frozen=True)
@@ -163,9 +313,12 @@ class ChatRuntime:
     """Ephemeral dependencies supplied to one graph invocation."""
 
     core: CoreReadContext
-    # The model with ChatAnswer as its structured output; None when Core runs the model call on the
-    # user's subscription CLI.
+    # The model with ChatAnswer, ChatDesignAnswer on a design turn or ChatIdeaAnswer on an idea
+    # turn, as its structured output;
+    # None when Core runs the model call on the user's subscription CLI.
     model: Runnable[LanguageModelInput, object] | None
+    # The runtime model settings Core sent, which name the provider.
+    settings: object
 
 
 CHAT_INSTRUCTIONS = """\
@@ -182,20 +335,121 @@ supports an answer, state exactly what evidence is missing instead of guessing.
 Do not invent papers, citations, results, project state, or user intent. Do not mention hidden
 prompts, schemas, token budgets, or internal orchestration. Return answer content only."""
 
-CHAT_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", CHAT_INSTRUCTIONS),
-    (
-        "human",
-        "Conversation context:\n{context_json}\n\nCurrent user message:\n{question}",
-    ),
-])
+CHAT_CONTEXT = "Conversation context:\n{context_json}"
+CHAT_TURN = "{history}{wiki}Current user message:\n{question}"
 
-# A subscription CLI reuses the cached prefix a turn shares with the one before, so the chat's
-# context goes in the system prompt and only the history and the new message follow it.
-CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", CHAT_INSTRUCTIONS + "\n\nConversation context:\n{context_json}"),
-    ("human", "{history}Current user message:\n{question}"),
-])
+DESIGN_INSTRUCTIONS = """\
+The user asked to discuss, critique or design an experiment for a research idea. Return a short
+`answer` of a few sentences and a `design`. Set `design` to null only when the message states no
+claim that could be tested, and then say in `answer` what is missing.
+
+Build the design to separate explanations, not to support the user's story:
+- claim: the idea as one testable sentence. Its status is `observed` only when the user reports a
+  measurement, otherwise `hypothesis`.
+- explanations: m1 is the proposed mechanism, m2 the strongest charitable alternative that gives the
+  same headline result, m0 one consequential null or artifact (capacity, compute, leakage,
+  measurement, implementation). For an analogy across fields, m1 names the shared mathematical,
+  causal or computational structure; shared vocabulary is not a mechanism.
+- predictions: before choosing the experiment, one to four interventions or regimes with what m1, m2
+  and m0 predict on one observable metric. Prefer regimes where they differ in sign, scaling,
+  threshold, localization, timing or failure mode. A prediction that is unknown is null; never
+  invent a difference. Mark exactly one row `chosen`: the one the experiment runs.
+- experiment: the lowest substrate that keeps the disputed mechanism, what it keeps, and what it
+  leaves untested.
+- decisions: four to six rows declared before any run, each an observable pattern with its
+  threshold, its interpretation and the next action, every outcome at most once. Always include
+  `invalid` (a failed validity check, which calls for repair and is not a negative result),
+  `expand` (a valid m1-specific contrast that passes the expansion gate), `kill` (a precise null
+  that excludes the required effect; an imprecise null is never a kill) and `inconclusive`. Add
+  `alternative` (a valid contrast that favours m2) and `below-gate` (an identified effect below the
+  gate) when they apply.
+- ledger: one to six statements the design rests on. A statement is `source` only with an anchor: a
+  Wiki `ref` (`<page id>#<claim id>` for a claim, or a page id) from the supplied Wiki claims or a
+  page you read, or a page of the supplied paper. Anything else is `inference` or `new-hypothesis`
+  and has no anchor. Novelty is never established here.
+Keep every field one short line; a prediction is a few words."""
+
+# A design turn sends exactly what a chat turn sends up to the current message, so it reuses the
+# chat's cached prefix, and its instructions come only after the context, the history and the
+# claims of the mentioned Wiki pages.
+DESIGN_TURN = "{history}{wiki}" + DESIGN_INSTRUCTIONS + "\n\nCurrent user message:\n{question}"
+
+IDEA_INSTRUCTIONS = """\
+The user asked to organize this conversation into a research idea they can save. Return a short
+`answer` and an `idea`.
+
+An idea must stand alone as a research contribution: a method, a hypothesis or a question that a
+project of its own could start from. Findings, results, observations, design choices or open
+questions alone are not ideas. When the conversation holds no such contribution, set `idea` to null
+and say in `answer` what it holds instead and why that is no idea.
+
+Read the whole conversation. When several turns build the same idea, merge them into one idea; leave
+out turns on other topics, and name in `answer` each thread you left out.
+- title: names the idea on its own, in the user's language, at most 80 characters on one line.
+- body: states the contribution, what it builds on and what is still open, drawn only from the
+  conversation; add nothing the conversation does not say.
+- sources: the numbers of the turns it came from, each once, counting the entries of the
+  conversation history from 1 and the current message as the turn after the last entry."""
+
+# An idea turn, like a design turn, sends what a chat turn sends up to the current message.
+IDEA_TURN = "{history}{wiki}" + IDEA_INSTRUCTIONS + "\n\nCurrent user message:\n{question}"
+
+
+def _api_prompt(turn: str) -> ChatPromptTemplate:
+    """Return the prompt of `turn` on an API model: the instructions, the stable context, then
+    `turn`."""
+
+    return ChatPromptTemplate.from_messages([
+        ("system", CHAT_INSTRUCTIONS),
+        ("human", CHAT_CONTEXT + "\n\n" + turn),
+    ])
+
+
+def _anthropic_prompt(turn: str) -> ChatPromptTemplate:
+    """Return the prompt of `turn` on an Anthropic model: _api_prompt's, with a cache breakpoint
+    after the stable context."""
+
+    return ChatPromptTemplate.from_messages([
+        ("system", CHAT_INSTRUCTIONS),
+        ("human", [
+            {"type": "text", "text": CHAT_CONTEXT, "cache_control": {"type": "ephemeral"}},
+            {"type": "text", "text": "\n\n" + turn},
+        ]),
+    ])
+
+
+def _cli_prompt(turn: str) -> ChatPromptTemplate:
+    """Return the prompt of `turn` on a subscription CLI: the instructions and the stable context as
+    the system prompt, and `turn`."""
+
+    return ChatPromptTemplate.from_messages([
+        ("system", CHAT_INSTRUCTIONS + "\n\n" + CHAT_CONTEXT),
+        ("human", turn),
+    ])
+
+
+# A provider's prefix cache serves the part a turn shares with the one before, so the chat's stable
+# context comes first and only the history, the claims of the mentioned Wiki pages and the new
+# message follow it.
+CHAT_PROMPT = _api_prompt(CHAT_TURN)
+DESIGN_PROMPT = _api_prompt(DESIGN_TURN)
+
+# Anthropic caches a prompt only up to a breakpoint, so its prompt ends the stable context with one,
+# which keeps the cached prefix for Anthropic's default five minutes.
+ANTHROPIC_CHAT_PROMPT = _anthropic_prompt(CHAT_TURN)
+ANTHROPIC_DESIGN_PROMPT = _anthropic_prompt(DESIGN_TURN)
+IDEA_PROMPT = _api_prompt(IDEA_TURN)
+ANTHROPIC_IDEA_PROMPT = _anthropic_prompt(IDEA_TURN)
+
+CLI_CHAT_PROMPT = _cli_prompt(CHAT_TURN)
+# A design turn on a subscription CLI is one structured call outside the chat's session, so it
+# carries the whole turn, split as a chat turn is.
+CLI_DESIGN_PROMPT = _cli_prompt(DESIGN_TURN)
+CLI_IDEA_PROMPT = _cli_prompt(IDEA_TURN)
+
+# The longest message the model is asked: the 20,000 characters the user typed, which Core bounds,
+# with the kind and id of each entity they mention on top, at most as long as a turn's whole prompt.
+MAX_MODEL_TEXT_CHARACTERS = 200_000
 
 _CITATION_TOKEN = re.compile(r"\[(?:p|pp)\.[^\]]*\]")
 _VALID_CITATION = re.compile(r"\[p\. ([1-9]\d*)\]")
@@ -229,35 +483,88 @@ def _validate_citations(answer: str, context: ChatContext, *, whole_paper: bool)
             raise ModelInvocationError("模型输出包含无效页码引用", "structured_output")
 
 
+def _validate_design(design: ExperimentDesign, context: ChatContext, *, whole_vault: bool) -> None:
+    """Reject a design that breaks a rule its schema cannot state.
+
+    Exactly one prediction is chosen; outcomes are unique and cover REQUIRED_OUTCOMES; a statement
+    has an anchor exactly when it is `source`. A Wiki anchor names a supplied claim or its page, or,
+    with `whole_vault`, anything a subscription CLI could read through its lookup tools, which Core
+    checks against the vault; a paper anchor names a page the turn could read of the chat's paper.
+    """
+
+    def invalid() -> ModelInvocationError:
+        return ModelInvocationError("模型输出的实验设计不成立", "structured_output")
+
+    if sum(row.chosen for row in design.predictions) != 1:
+        raise invalid()
+    outcomes = [row.outcome for row in design.decisions]
+    if len(set(outcomes)) != len(outcomes) or not set(outcomes) >= REQUIRED_OUTCOMES:
+        raise invalid()
+    refs = {claim.ref for claim in context.wiki}
+    refs |= {claim.ref.split("#")[0] for claim in context.wiki}
+    paper = context.paper
+    pages = set() if paper is None else {page.number for page in paper.pages}
+    if paper is not None and whole_vault:
+        pages |= set(range(1, paper.page_count + 1))
+    for entry in design.ledger:
+        anchor = entry.anchor
+        if (anchor is None) != (entry.status != "source"):
+            raise invalid()
+        if isinstance(anchor, WikiAnchor) and not whole_vault and anchor.ref not in refs:
+            raise invalid()
+        if isinstance(anchor, PaperAnchor) and (
+            paper is None or anchor.paper != paper.id or anchor.page not in pages
+        ):
+            raise invalid()
+
+
 def _compact(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
-def _prompt_context(context: ChatContext) -> dict[str, object]:
-    """Return the context as the prompt shows it; the page count serves validation only."""
+def _stable_context(context: ChatContext) -> dict[str, object]:
+    """Return the stable context of `context` as the prompt shows it: all but the history and the
+    claims of the mentioned Wiki pages. The page count serves validation only."""
 
-    return context.model_dump(mode="json", exclude={"paper": {"page_count"}})
+    return context.model_dump(
+        mode="json", exclude={"history": True, "wiki": True, "paper": {"page_count"}},
+    )
+
+
+def _prompt_values(context: ChatContext, question: str, *, claims: bool) -> dict[str, str]:
+    """Return the values of a chat prompt for `question` in `context`: the stable context, then the
+    history and, with `claims`, the claims of the mentioned Wiki pages, each when there is any."""
+
+    packed = context.model_dump(mode="json", include={"history", "wiki"})
+    history = packed["history"]
+    wiki = packed["wiki"]
+    return {
+        "context_json": _compact(_stable_context(context)),
+        "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
+        "wiki": f"Mentioned Wiki claims:\n{_compact(wiki)}\n\n" if wiki and claims else "",
+        "question": question,
+    }
 
 
 def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -> object:
     """Ask Core for the turn's one model call on the user's subscription CLI; return its output.
 
-    Core gets the turn whole, as `system` and `prompt`, and the new message alone, as `message`,
-    for a CLI session that already holds the rest. A CLI failure Core reports is a model failure.
+    Core gets the turn whole, as `system` and `prompt`, the new message alone, as `message`, for a
+    CLI session that already holds the rest, and the context `system` shows, as `context`, for a
+    session that holds an older one; the CLI reads a mentioned Wiki page through its lookups. A CLI
+    failure Core reports is a model failure.
     """
 
-    packed = _prompt_context(context)
-    history = packed.pop("history")
-    system, human = CLI_CHAT_PROMPT.invoke({
-        "context_json": _compact(packed),
-        "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
-        "question": question,
-    }).to_messages()
+    values = _prompt_values(context, question, claims=False)
+    system, human = CLI_CHAT_PROMPT.invoke(values).to_messages()
     from meridian_harness.server import CoreCallbackError
 
     try:
         result = core.invoke_model({
-            "system": system.content, "prompt": human.content, "message": question,
+            "system": system.content,
+            "prompt": human.content,
+            "message": question,
+            "context": _stable_context(context),
         })
     except CoreCallbackError as cause:
         if cause.kind != "model_error":
@@ -268,31 +575,139 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
     return result.get("output")
 
 
+def _structured_on_cli(
+    core: CoreReadContext, context: ChatContext, question: str,
+    template: ChatPromptTemplate, schema: type[StructuredOutput],
+) -> object:
+    """Ask Core for a design or idea turn's one structured model call on the user's subscription
+    CLI, with `template` and the output schema `schema`.
+
+    Core gets the whole turn as `system` and `prompt` and the output's JSON Schema as `schema`; the
+    call runs outside the chat's CLI session. A CLI failure Core reports is a model failure.
+    """
+
+    values = _prompt_values(context, question, claims=True)
+    system, human = template.invoke(values).to_messages()
+    from meridian_harness.server import CoreCallbackError
+
+    try:
+        result = core.invoke_model({
+            "system": system.content, "prompt": human.content,
+            "schema": schema.model_json_schema(),
+        })
+    except CoreCallbackError as cause:
+        if cause.kind != "model_error":
+            raise
+        raise ModelInvocationError(str(cause), "subscription_cli") from cause
+    if not isinstance(result, dict):
+        raise ProtocolViolation("Core returned an invalid model call result")
+    return result.get("output")
+
+
+def _answer_on_api(
+    model: Runnable[LanguageModelInput, object],
+    settings: object,
+    anthropic: ChatPromptTemplate,
+    template: ChatPromptTemplate,
+    state: ChatState,
+) -> object:
+    """Ask API model `model`, whose runtime settings are `settings`, the turn of `state` through
+    `anthropic` on a provider that caches by breakpoint and `template` on any other; log its usage
+    and return its output. Output its parser rejects is a structured output failure."""
+
+    chosen = anthropic if caches_by_breakpoint(settings) else template
+    prompt = chosen.invoke(_prompt_values(state["context"], state["text"], claims=True))
+    usage = UsageMetadataCallbackHandler()
+    started = time.monotonic()
+    try:
+        return model.invoke(prompt, config={"callbacks": [usage]})
+    except (ValidationError, OutputParserException) as cause:
+        raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
+    except Exception as cause:
+        raise ModelInvocationError.from_exception(cause) from cause
+    finally:
+        if usage.usage_metadata:
+            _log.info(usage_line(settings, time.monotonic() - started, usage.usage_metadata))
+
+
+def _generate_design(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[str, object]:
+    """Answer a design turn with one structured model call, validated as a ChatDesignAnswer."""
+
+    model = runtime.context.model
+    if model is None:
+        candidate = _structured_on_cli(
+            runtime.context.core, state["context"], state["text"],
+            CLI_DESIGN_PROMPT, ChatDesignAnswer,
+        )
+    else:
+        candidate = _answer_on_api(
+            model, runtime.context.settings, ANTHROPIC_DESIGN_PROMPT, DESIGN_PROMPT, state,
+        )
+    runtime.context.core.check_cancelled()
+    try:
+        answer = ChatDesignAnswer.model_validate(candidate)
+    except ValidationError as cause:
+        raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
+    _validate_citations(answer.answer, state["context"], whole_paper=model is None)
+    if answer.design is not None:
+        _validate_design(answer.design, state["context"], whole_vault=model is None)
+    return {"answer": answer.answer, "experiment": answer.design, "idea": None}
+
+
+def _validate_sources(idea: IdeaDraft, context: ChatContext) -> None:
+    """Reject an idea whose source turns repeat or name a turn the conversation does not have: the
+    history counted from 1, and the current message as the turn after it."""
+
+    turns = len(context.history) + 1
+    if len(set(idea.sources)) != len(idea.sources) or any(turn > turns for turn in idea.sources):
+        raise ModelInvocationError("模型输出的想法来源不成立", "structured_output")
+
+
+def _generate_idea(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[str, object]:
+    """Answer an idea turn with one structured model call, validated as a ChatIdeaAnswer."""
+
+    model = runtime.context.model
+    if model is None:
+        candidate = _structured_on_cli(
+            runtime.context.core, state["context"], state["text"], CLI_IDEA_PROMPT, ChatIdeaAnswer,
+        )
+    else:
+        candidate = _answer_on_api(
+            model, runtime.context.settings, ANTHROPIC_IDEA_PROMPT, IDEA_PROMPT, state,
+        )
+    runtime.context.core.check_cancelled()
+    try:
+        answer = ChatIdeaAnswer.model_validate(candidate)
+    except ValidationError as cause:
+        raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
+    _validate_citations(answer.answer, state["context"], whole_paper=model is None)
+    if answer.idea is not None:
+        _validate_sources(answer.idea, state["context"])
+    return {"answer": answer.answer, "experiment": None, "idea": answer.idea}
+
+
 def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[str, object]:
     runtime.context.core.check_cancelled()
+    if state["mode"] == "design":
+        return _generate_design(state, runtime)
+    if state["mode"] == "idea":
+        return _generate_idea(state, runtime)
     model = runtime.context.model
     if model is None:
         candidate: object = {
             "answer": _answer_on_cli(runtime.context.core, state["context"], state["text"]),
         }
     else:
-        prompt = CHAT_PROMPT.invoke({
-            "context_json": _compact(_prompt_context(state["context"])),
-            "question": state["text"],
-        })
-        try:
-            candidate = model.invoke(prompt)
-        except (ValidationError, OutputParserException) as cause:
-            raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
-        except Exception as cause:
-            raise ModelInvocationError.from_exception(cause) from cause
+        candidate = _answer_on_api(
+            model, runtime.context.settings, ANTHROPIC_CHAT_PROMPT, CHAT_PROMPT, state,
+        )
     runtime.context.core.check_cancelled()
     try:
         answer = ChatAnswer.model_validate(candidate)
     except ValidationError as cause:
         raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
     _validate_citations(answer.answer, state["context"], whole_paper=model is None)
-    return {"answer": answer.answer}
+    return {"answer": answer.answer, "experiment": None, "idea": None}
 
 
 def _compile_graph() -> CompiledStateGraph:
@@ -325,25 +740,40 @@ def _text(value: object, label: str) -> str:
     return value.strip()
 
 
+# The closed output of a turn of each mode.
+OUTPUTS: dict[str, type[StructuredOutput]] = {
+    "answer": ChatAnswer, "design": ChatDesignAnswer, "idea": ChatIdeaAnswer,
+}
+
+
 def build_chat_method(
     model_factory: Callable[[object, object], BaseChatModel] = create_chat_model,
 ) -> Callable[[CoreReadContext, object], object]:
-    """Return a graph-backed one-call chat method with a closed output envelope."""
+    """Return a graph-backed one-call chat method with a closed output envelope.
+
+    The envelope is a ChatAnswer, or, when the params' `mode` is `design` or `idea`, a
+    ChatDesignAnswer or a ChatIdeaAnswer.
+    """
 
     def answer(context: CoreReadContext, value: object) -> object:
         params = _mapping(value, "chat params")
         chat_id = _text(params.get("chatId"), "chatId")
         text = _text(params.get("text"), "chat text")
-        if len(text) > 20_000:
-            raise ProtocolViolation("chat text exceeds 20000 characters")
+        mode = params.get("mode", "answer")
+        if mode not in OUTPUTS:
+            raise ProtocolViolation("chat mode must be answer, design or idea")
+        if len(text) > MAX_MODEL_TEXT_CHARACTERS:
+            raise ProtocolViolation("chat text exceeds 200000 characters")
         chat_model = _mapping(params.get("model"), "chat model")
         limits = _mapping(params.get("limits"), "chat limits")
         try:
             model = (
                 None
                 if runs_on_cli(chat_model)
-                else model_factory(chat_model, limits).with_structured_output(
-                    ChatAnswer, method=structured_output_method(chat_model),
+                else with_closed_output(
+                    model_factory(chat_model, limits),
+                    OUTPUTS[mode],
+                    chat_model,
                 )
             )
         except ModelConfigurationError as cause:
@@ -352,13 +782,21 @@ def build_chat_method(
             raise HarnessFailure("no_model", str(cause)) from cause
         try:
             result = CHAT_GRAPH.invoke(
-                {"chat_id": chat_id, "text": text},
-                context=ChatRuntime(core=context, model=model),
+                {"chat_id": chat_id, "text": text, "mode": mode},
+                context=ChatRuntime(core=context, model=model, settings=chat_model),
             )
         except ModelInvocationError as cause:
             from meridian_harness.server import HarnessFailure
 
+            if cause.detail == "structured_output" and model is not None:
+                log_output_cap(chat_model, limits)
             raise HarnessFailure("model_error", str(cause), cause.detail) from cause
+        if mode == "design":
+            designed = ChatDesignAnswer(answer=result["answer"], design=result["experiment"])
+            return designed.model_dump(mode="json")
+        if mode == "idea":
+            drafted = ChatIdeaAnswer(answer=result["answer"], idea=result["idea"])
+            return drafted.model_dump(mode="json")
         return ChatAnswer(answer=result["answer"]).model_dump(mode="json")
 
     return answer

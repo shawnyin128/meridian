@@ -1,12 +1,12 @@
 import type { AppUpdateStatus } from '../shared/app-update.js'
 import type { AppCommand, MenuState } from '../shared/app-commands.js'
 import type {
-  AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult,
+  AttachmentFields, AuthorCandidate, AuthorSearchFailed, CallRejection, ChangeEntry, ChatCancelResult, ChatDesignPreview, ChatIdeaPreview, ChatTurnMode,
   ChatMessage, ChatMessageFields, ChatModelChoice, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme,
   ColourThemeFile,
   ConclusionState, ContractMethod, Facet, FieldValue, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryDirectionParams, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
-  ExtensionStatus, FeedEntry, FeedFields,
+  ExtensionStatus, FeedEntry, FeedFields, IdeaFile,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
   HarnessAddModelParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
   HarnessFailureDetail, HarnessSourceModels, HarnessUpdateModelParams,
@@ -27,6 +27,7 @@ import type {
   WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
 } from '../shared/contract.js'
 import { CallError } from './call-error.js'
+import type { Locale } from './shell/language.js'
 
 /**
  * The CallError for a rejected `method` call: Core rejects with a CallRejection; any other rejection,
@@ -297,10 +298,23 @@ export const chat = {
   forPaper: (paperId: string) => call<ChatSession>('chat.forPaper', { paperId }),
   append: (id: string, messages: ChatMessageFields[]) =>
     call<void>('chat.append', { id, messages }),
-  /** Sends what the user wrote in `runs`, each mention as a run of its own. */
-  send: (id: string, runs: ChatRun[]) => call<ChatSendResult>('chat.send', { id, runs }),
-  /** Asks again for an answer to the chat's last question after its turn ended in a status line. */
-  retry: (id: string) => call<ChatSendResult>('chat.retry', { id }),
+  /** Sends what the user wrote in `runs`, each mention as a run of its own, as a design or idea turn with `mode`. */
+  send: (id: string, runs: ChatRun[], mode: ChatTurnMode | null = null) =>
+    call<ChatSendResult>('chat.send', { id, runs, ...(mode === null ? {} : { mode }) }),
+  /** Asks again for an answer to the chat's last question after its turn ended in a status line, as a design or idea turn with `mode`. */
+  retry: (id: string, mode: ChatTurnMode | null = null) => call<ChatSendResult>('chat.retry', { id, ...(mode === null ? {} : { mode }) }),
+  /** What saving design answer `messageId` as an idea writes, with its fingerprint. */
+  designPreview: (id: string, messageId: string, language: Locale) =>
+    call<ChatDesignPreview>('chat.designPreview', { id, messageId, language }),
+  /** Saves design answer `messageId` as an idea; `fingerprint` is that of the preview shown. */
+  saveDesign: (id: string, messageId: string, fingerprint: string, language: Locale) =>
+    call<ResearchIdea>('chat.saveDesign', { id, messageId, fingerprint, language }),
+  /** What saving the idea draft of answer `messageId` with `title` and `body` writes, with its fingerprint. */
+  ideaPreview: (id: string, messageId: string, title: string, body: string) =>
+    call<ChatIdeaPreview>('chat.ideaPreview', { id, messageId, title, body }),
+  /** Saves the idea draft of answer `messageId` with `title` and `body`; `fingerprint` is that of the preview shown. */
+  saveIdea: (id: string, messageId: string, title: string, body: string, fingerprint: string) =>
+    call<ResearchIdea>('chat.saveIdea', { id, messageId, title, body, fingerprint }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   /** The answer being written in the chat, with the model writing it, or null while no turn runs there. */
   writing: (id: string) => call<ChatWriting | null>('chat.writing', { id }),
@@ -334,6 +348,10 @@ export const idea = {
     call<ResearchIdeaPlaceOnGraphResult>('idea.placeOnGraph', { id, placement }),
   delete: (id: string) => call<TrashedEntry>('idea.delete', { id }),
   reorder: (order: string[]) => call<void>('idea.reorder', { order }),
+  /** The files of every idea not in the trash, each idea's newest first. */
+  files: () => call<IdeaFile[]>('idea.files', {}),
+  addFile: (id: string, attachment: AttachmentFields) => call<IdeaFile>('idea.addFile', { id, attachment }),
+  deleteFile: (id: string, fileId: string) => call<TrashedEntry>('idea.deleteFile', { id, fileId }),
 }
 
 export const inbox = {

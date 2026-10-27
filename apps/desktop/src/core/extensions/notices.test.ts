@@ -1,12 +1,15 @@
-import { mkdtempSync, rmSync } from 'node:fs'
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { ExtensionStatus, FeedRun } from '../../shared/contract.js'
 import { noteVersionChanges } from './notices.js'
 
 const temporary: string[] = []
-afterEach(() => { for (const root of temporary.splice(0)) rmSync(root, { recursive: true, force: true }) })
+afterEach(() => {
+  for (const root of temporary.splice(0)) rmSync(root, { recursive: true, force: true })
+  vi.restoreAllMocks()
+})
 
 function noticeFile(): string {
   const root = mkdtempSync(join(tmpdir(), 'meridian-notices-'))
@@ -61,5 +64,23 @@ describe('noteVersionChanges', () => {
     const file = noticeFile()
     expect(run(file, '0.0.3', '0.0.1', [codex('not-installed'), { ...codex('installed', '0.0.1'), id: 'claude-code' }]))
       .toEqual([])
+  })
+
+  it('新版本在文件里多写的键不影响读出记下的版本,写回时原样留着', () => {
+    const file = noticeFile()
+    writeFileSync(file, JSON.stringify({ appVersion: '0.0.3', extensions: ['codex@0.0.2'], seen: { feed: 3 } }))
+    expect(run(file, '0.0.4', '0.0.2', [codex('update-required', '0.0.1')])).toEqual(['Meridian 已更新到 0.0.4。'])
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ appVersion: '0.0.4', extensions: ['codex@0.0.2'], seen: { feed: 3 } })
+  })
+
+  it('读不了的文件报出来,当作首次运行:不报「已更新」,记下现在的版本', () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+    for (const text of ['[', JSON.stringify({ appVersion: '0.0.3', extensions: 'codex@0.0.2' })]) {
+      const file = noticeFile()
+      writeFileSync(file, text)
+      expect(run(file, '0.0.4', '0.0.1', [])).toEqual([])
+      expect(reported).toHaveBeenLastCalledWith(expect.stringContaining(file))
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ appVersion: '0.0.4', extensions: [] })
+    }
   })
 })

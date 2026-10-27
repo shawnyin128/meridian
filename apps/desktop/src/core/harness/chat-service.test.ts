@@ -2,13 +2,16 @@ import { mkdtempSync, readFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { describe, expect, it, vi } from 'vitest'
+import type { ExperimentDesign } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
+import experimentDesign from '../fixtures/experiment-design.json' with { type: 'json' }
 import { openCoreLog, teeConsole } from '../core-log.js'
 import { ChatFailure, chatHarnessError, redactSecrets, sanitizeModelConnectionDetail, type ChatHarnessRunner } from './chat.js'
 import { CliRunError } from './cli/child.js'
 import { HarnessRpcError } from './rpc.js'
 
+const DESIGN = experimentDesign as ExperimentDesign
 const CJK = /[\u3000-\u303f\u3400-\u9fff\uff00-\uffef]/
 import { createChatService } from './chat-service.js'
 import type { CredentialVault } from './credential-vault.js'
@@ -56,7 +59,7 @@ describe('Core chat service', () => {
     })
     const opus = (await model.addModel({ source: { kind: 'cli', cli: 'claude' }, model: 'opus', effort: 'high' }))
       .models.find((entry) => entry.model === 'opus')!.id
-    const runner: ChatHarnessRunner = { checkConnection: vi.fn(), answer: vi.fn(async () => '回答'), close: vi.fn(), listModels: vi.fn() }
+    const runner: ChatHarnessRunner = { checkConnection: vi.fn(), answer: vi.fn(async () => '回答'), close: vi.fn(), listModels: vi.fn(), design: vi.fn(), idea: vi.fn() }
     const service = createChatService({
       store: createFixtureStore(), model, runner, choiceOf: (id) => (id === 'amortize' ? { source: opus } : null),
     })
@@ -75,6 +78,8 @@ describe('Core chat service', () => {
       answer: vi.fn(async () => '基于当前上下文的回答'),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -88,7 +93,7 @@ describe('Core chat service', () => {
     ])
   })
 
-  it('stores a mention as a run of its own, trims the turn at its ends and hands the model the whole sentence', async () => {
+  it('stores a mention as a run of its own, trims the turn at its ends and hands the model the whole sentence, naming the mentioned entity', async () => {
     const store = createFixtureStore()
     const runner: ChatHarnessRunner = {
       checkConnection: vi.fn(async () => ({
@@ -97,6 +102,8 @@ describe('Core chat service', () => {
       answer: vi.fn(async () => '回答'),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -106,7 +113,7 @@ describe('Core chat service', () => {
     expect(store.chatMessages('amortize')[before]!.runs).toEqual([
       { kind: 'text', text: '看看 ' }, mention, { kind: 'text', text: ' 这条线还剩什么' },
     ])
-    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @草稿树项目 这条线还剩什么', expect.anything(), expect.any(Object))
+    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @草稿树项目 (project draft) 这条线还剩什么', expect.anything(), expect.any(Object))
   })
 
   it('hands over a mention with the entity it names while that entity is in the vault, and as its text once it is gone', async () => {
@@ -148,6 +155,8 @@ describe('Core chat service', () => {
       })),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     expect(service.writing('amortize')).toBeNull()
@@ -184,6 +193,8 @@ describe('Core chat service', () => {
       answer: vi.fn(async () => '回答'),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     await service.send('amortize', written('问'))
@@ -201,6 +212,8 @@ describe('Core chat service', () => {
       })),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -230,6 +243,8 @@ describe('Core chat service', () => {
       })),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -268,6 +283,8 @@ describe('Core chat service', () => {
       }),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const before = store.chatMessages('amortize').length
@@ -301,6 +318,8 @@ describe('Core chat service', () => {
       answer: vi.fn(async () => { throw new Error('401 Unauthorized: invalid x-api-key') }),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
 
@@ -321,6 +340,8 @@ describe('Core chat service', () => {
       }),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
   }
   const textsAfter = (store: ReturnType<typeof createFixtureStore>, before: number) =>
@@ -459,6 +480,8 @@ describe('Core chat service', () => {
       })),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const first = service.send('amortize', written('第一句'))
@@ -479,6 +502,8 @@ describe('Core chat service', () => {
       answer: vi.fn(() => new Promise<string>((resolve) => { reply = resolve })),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     expect(service.generating()).toEqual([])
@@ -501,6 +526,8 @@ describe('Core chat service', () => {
       })),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model: await configuredModel(), runner })
     const stopped = service.send('amortize', written('停止这个请求'))
@@ -525,6 +552,8 @@ describe('Core chat service', () => {
       answer: vi.fn(async () => '订阅模型的回答'),
       close: vi.fn(),
       listModels: vi.fn(),
+      design: vi.fn(),
+      idea: vi.fn(),
     }
     const service = createChatService({ store, model, runner })
 
@@ -544,5 +573,92 @@ describe('Core chat service', () => {
     const result = await service.send('amortize', written('测试'))
     expect(result).toEqual({ id: 'amortize', state: 'failed', reason: 'no-model' })
     expect(store.chatMessages('amortize').slice(before).map((message) => message.role)).toEqual(['you'])
+  })
+})
+
+describe('a design turn in the chat service', () => {
+  const designRunner = (result: { answer: string; design: ExperimentDesign | null }): ChatHarnessRunner => ({
+    checkConnection: vi.fn(),
+    answer: vi.fn(async () => { throw new Error('a design turn must not run as an ordinary turn') }),
+    design: vi.fn(async (_id, _text, _signal, progress) => {
+      progress?.onModel({ route: 'api', id: 'local-model' })
+      return result
+    }),
+    idea: vi.fn(async () => { throw new Error('a design turn must not run as an idea turn') }),
+    close: vi.fn(),
+    listModels: vi.fn(),
+  })
+
+  it('keeps the answer of a design turn with the design it carries', async () => {
+    const store = createFixtureStore()
+    const runner = designRunner({ answer: '可以测。', design: DESIGN })
+    const service = createChatService({ store, model: await configuredModel(), runner })
+
+    await expect(service.send('amortize', written('设计实验'), 'design')).resolves.toEqual({ id: 'amortize', state: 'complete' })
+    expect(runner.design).toHaveBeenCalledWith('amortize', '设计实验', expect.any(AbortSignal), expect.anything())
+    expect(store.chatMessages('amortize').at(-1)).toEqual({
+      id: expect.any(String), role: 'ai', runs: [{ kind: 'text', text: '可以测。' }], actions: [],
+      model: { route: 'api', id: 'local-model' }, design: DESIGN,
+    })
+  })
+
+  it('keeps an answer without a design when the model found nothing to test', async () => {
+    const store = createFixtureStore()
+    const service = createChatService({ store, model: await configuredModel(), runner: designRunner({ answer: '先说清要测的主张。', design: null }) })
+
+    await service.send('amortize', written('设计实验'), 'design')
+    expect(store.chatMessages('amortize').at(-1)).not.toHaveProperty('design')
+  })
+
+  it('asks again as a design turn when the retry asks for one', async () => {
+    const store = createFixtureStore()
+    const runner = designRunner({ answer: '可以测。', design: DESIGN })
+    const service = createChatService({ store, model: await configuredModel(), runner })
+    store.appendChatMessages('amortize', [
+      { role: 'you', runs: written('设计实验'), actions: [] },
+      { role: 'status', runs: written('生成失败：AI 服务停了'), actions: [] },
+    ])
+
+    await service.retry('amortize', 'design')
+    expect(runner.design).toHaveBeenCalledWith('amortize', '设计实验', expect.any(AbortSignal), expect.anything())
+    expect(store.chatMessages('amortize').at(-1)?.design).toEqual(DESIGN)
+  })
+})
+
+describe('an idea turn in the chat service', () => {
+  const draft = { title: '按接受率调树宽', body: '大 batch 下树宽跟着接受率走。', sources: ['m1', 'm3'] }
+  const ideaRunner = (result: { answer: string; idea: typeof draft | null }): ChatHarnessRunner => ({
+    checkConnection: vi.fn(),
+    answer: vi.fn(async () => { throw new Error('an idea turn must not run as an ordinary turn') }),
+    design: vi.fn(async () => { throw new Error('an idea turn must not run as a design turn') }),
+    idea: vi.fn(async (_id, _text, _signal, progress) => {
+      progress?.onModel({ route: 'api', id: 'local-model' })
+      return result
+    }),
+    close: vi.fn(),
+    listModels: vi.fn(),
+  })
+
+  it('keeps the answer of an idea turn with the idea draft it carries', async () => {
+    const store = createFixtureStore()
+    const runner = ideaRunner({ answer: '整理好了。', idea: draft })
+    const service = createChatService({ store, model: await configuredModel(), runner })
+
+    await expect(service.send('amortize', written('整理想法'), 'idea')).resolves.toEqual({ id: 'amortize', state: 'complete' })
+    expect(runner.idea).toHaveBeenCalledWith('amortize', '整理想法', expect.any(AbortSignal), expect.anything())
+    expect(store.chatMessages('amortize').at(-1)).toEqual({
+      id: expect.any(String), role: 'ai', runs: [{ kind: 'text', text: '整理好了。' }], actions: [],
+      model: { route: 'api', id: 'local-model' }, idea: draft,
+    })
+  })
+
+  it('writes no draft when the chat holds no idea, only the answer that says so', async () => {
+    const store = createFixtureStore()
+    const service = createChatService({ store, model: await configuredModel(), runner: ideaRunner({ answer: '这里只有结论，没有想法。', idea: null }) })
+    const ideas = store.listIdeas().length
+
+    await service.send('amortize', written('整理想法'), 'idea')
+    expect(store.chatMessages('amortize').at(-1)).not.toHaveProperty('idea')
+    expect(store.listIdeas()).toHaveLength(ideas)
   })
 })

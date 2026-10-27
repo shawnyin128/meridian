@@ -12,6 +12,8 @@ import { InlineMessage } from '../InlineMessage.js'
 import { AgentLabel, ModelLabel } from '../SourceLabel.js'
 import { Tag } from '../Tag.js'
 import { Button } from '../Button.js'
+import { DesignCard } from './DesignCard.js'
+import { IdeaCard } from './IdeaCard.js'
 import { failedReason, statusLine } from './status-lines.js'
 
 export const plain = (text: string): { kind: 'text'; text: string } => ({ kind: 'text', text })
@@ -64,9 +66,12 @@ function Runs({ runs }: { runs: ChatRun[] }) {
  * detail. With `onRetry`, given to the status line of a turn that got no answer, the line ends with
  * Retry. With `writingSince`, when its turn
  * began, the answer is being written, and until it has text it says the model is thinking and for
- * how long so far, beside the running ring.
+ * how long so far, beside the running ring. An answer that carries an experiment design shows it
+ * under its text, with what saving it as an idea of chat `chat` writes, and one that carries an
+ * idea draft shows what saving the draft writes.
  */
-export function ChatMessageView({ message, onAct, onRetry, failure, writingSince }: {
+export function ChatMessageView({ chat = null, message, onAct, onRetry, failure, writingSince }: {
+  chat?: string | null
   message: ChatMessage
   onAct: (action: ChatAction) => void
   onRetry?: (() => void) | undefined
@@ -126,6 +131,8 @@ export function ChatMessageView({ message, onAct, onRetry, failure, writingSince
               </InlineMessage>
             )
             : <Runs runs={message.runs} />}
+          {chat === null || message.design === undefined ? null : <DesignCard chat={chat} messageId={message.id} design={message.design} />}
+          {chat === null || message.idea === undefined ? null : <IdeaCard chat={chat} messageId={message.id} idea={message.idea} />}
           {message.actions.length > 0
             ? (
               <div className="macts">

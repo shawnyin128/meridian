@@ -1301,13 +1301,13 @@ describe('侧栏对话行的改名与删除', () => {
 describe('垃圾桶的分组顺序', () => {
   /** The sidebar row each trash kind's group stands for; null for a kind the sidebar has no row for. */
   const SIDEBAR_ROW: Record<TrashEntry['kind'], string | null> = {
-    attachment: null, chat: '[data-sect="chats"]', idea: '[data-desk="ideas"]', inbox: '#rowInboxAll',
+    attachment: null, ideaFile: null, chat: '[data-sect="chats"]', idea: '[data-desk="ideas"]', inbox: '#rowInboxAll',
     later: '[data-desk="later"]', page: '[data-desk="wiki"]', paper: '[data-desk="papers"]', project: '[data-desk="resproj"]',
   }
 
   afterEach(() => { fixture.trash = [] })
 
-  it('垃圾桶的分组按侧栏里各自那一行的先后排，侧栏没有的附件排最后', async () => {
+  it('垃圾桶的分组按侧栏里各自那一行的先后排，侧栏没有的附件排最后，想法的文件也算附件', async () => {
     const kinds = Object.keys(SIDEBAR_ROW) as TrashEntry['kind'][]
     const deletedAt = Date.parse('2026-10-18T00:00:00Z')
     fixture.trash = kinds.map((kind) => ({ id: `trash-${kind}`, kind, title: kind, deletedAt, restorable: true }))
@@ -1323,6 +1323,7 @@ describe('垃圾桶的分组顺序', () => {
       return sidebar.indexOf(row!)
     }
     const groups = [...document.querySelectorAll('.tgroup')].map((list) => list.querySelector('.tt2')!.textContent)
-    expect(groups).toEqual([...kinds].sort((a, b) => place(a) - place(b)))
+    expect(groups).toEqual([...kinds].filter((kind) => kind !== 'ideaFile').sort((a, b) => place(a) - place(b)))
+    expect([...document.querySelectorAll('.tgroup')].at(-1)!.querySelectorAll('.tt2')).toHaveLength(2)
   })
 })

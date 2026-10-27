@@ -20,7 +20,8 @@ const STYLESHEETS = FILES.filter((path) => path.endsWith('.css'))
 const ACCENT_TEXT = [
   '.nav-row.on', '.segmented-control>button[data-state="on"]', '.chip-toggle[data-state="on"]', '.item--selected',
   '.table-row--selected>.table-cell--title', '.mi .ck', '.ring',
-  '.btn:not(.danger)[aria-pressed="true"]', '.icbtn[aria-pressed="true"]', '.cd.sel', '.reader-rail button.on',
+  '.btn:not(.danger)[aria-pressed="true"]', '.icbtn[aria-pressed="true"]', '.choice-capsule[aria-pressed="true"]', '.cd.sel',
+  '.reader-rail button.on',
   '.pgbtn.on', '.filter-menu.on', '.ctbtn.on', '.rgn.sel .rgn-label', '.gbar.active',
   '.appearance-choice[aria-checked="true"] .appearance-label', '.wktoc li.on', '.wktoc li.l3.on',
 ]

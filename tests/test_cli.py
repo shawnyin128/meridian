@@ -335,6 +335,12 @@ class CliTests(unittest.TestCase):
             claude = (CLAUDE_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
             self.assertEqual(agent, codex, skill_name)
             self.assertEqual(claude, codex, skill_name)
+            references = {
+                root: {path.name: path.read_text(encoding="utf-8") for path in (root / skill_name / "references").glob("*.md")}
+                for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT)
+            }
+            self.assertEqual(references[AGENT_PLUGIN_SKILL_ROOT], references[CODEX_PLUGIN_SKILL_ROOT], skill_name)
+            self.assertEqual(references[CLAUDE_PLUGIN_SKILL_ROOT], references[CODEX_PLUGIN_SKILL_ROOT], skill_name)
 
     def test_agent_surfaces_name_findings_and_experiment_conclusions_with_the_app_words(self) -> None:
         def helps(parser: argparse.ArgumentParser) -> list[str]:
@@ -1838,7 +1844,7 @@ class CliTests(unittest.TestCase):
             result = mcp_harness.run_stdio_harness(wiki_root=wiki_root, out_path=report_path)
             self.assertEqual(result["status"], "pass")
             self.assertTrue(report_path.exists())
-            self.assertEqual(result["summary"]["tool_count"], 18)
+            self.assertEqual(result["summary"]["tool_count"], 19)
             self.assertTrue(result["summary"]["blocked_internal_read"])
             self.assertEqual(result["summary"]["fixture_propose_status"], "submitted")
             self.assertEqual(result["summary"]["fixture_proposal_status"], "waiting_for_app")

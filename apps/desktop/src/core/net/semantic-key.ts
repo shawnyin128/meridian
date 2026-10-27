@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { z } from 'zod'
 import type { SemanticKeyStatus } from '../../shared/contract.js'
+import { readStoredFile, withUnknownFields } from '../vault/stored-records.js'
 
 /** The OS-backed encryption the store needs; Core's composition root passes the Harness credential vault. */
 export type SecretSealer = {
@@ -24,19 +25,22 @@ const lastFourOf = (secret: string) => Array.from(secret).slice(-4).join('')
 
 /**
  * The user's optional Semantic Scholar API key, kept in `file` encrypted by the OS-backed `vault`
- * and decrypted once while opening. A key the vault re-encrypts on open is written back. A saved key
- * the vault cannot decrypt is reported and treated as not saved, so Core still starts; saving a new
- * key replaces it.
+ * and decrypted once while opening. A key the vault re-encrypts on open is written back, and every
+ * write keeps the keys of `file` this version does not know. A file this version cannot read, or a
+ * saved key the vault cannot decrypt, is reported and treated as not saved, so Core still starts;
+ * saving a new key replaces it.
  */
 export async function openSemanticKeyStore({ file, vault }: {
   file: string
   vault: SecretSealer
 }): Promise<SemanticKeyStore> {
-  let stored = existsSync(file) ? StoredSchema.parse(JSON.parse(readFileSync(file, 'utf8'))) : null
+  const read = readStoredFile(file, StoredSchema)
+  let stored = read?.value ?? null
+  let unknown = read?.unknown ?? []
   let key: string | undefined
   const write = (value: z.infer<typeof StoredSchema>) => {
     mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, `${JSON.stringify(value, null, 2)}\n`, 'utf8')
+    writeFileSync(file, `${JSON.stringify(withUnknownFields(value, unknown), null, 2)}\n`, 'utf8')
   }
   if (stored !== null) {
     try {
@@ -59,6 +63,7 @@ export async function openSemanticKeyStore({ file, vault }: {
       if (trimmed === '') {
         rmSync(file, { force: true })
         stored = null
+        unknown = []
         key = undefined
         return
       }

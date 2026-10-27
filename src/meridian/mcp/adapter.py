@@ -111,7 +111,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "name": "meridian.workspace_plan",
             "workflow": "Project Workspace",
             "summary": "Read the App-owned project plan without changing it.",
-            "inputs": ["workspace_root"],
+            "inputs": ["workspace_root", "task_id", "milestone_id"],
             "outputs": ["revision", "project", "tasks", "milestones"],
         },
         {
@@ -143,6 +143,13 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "outputs": ["status", "path", "idea"],
         },
         {
+            "name": "meridian.workspace_idea_file_add",
+            "workflow": "Project Workspace",
+            "summary": "Attach an idempotent file in the repository to an idea, for the App to show with it.",
+            "inputs": ["workspace_root", "file_id", "idea_id", "path", "date"],
+            "outputs": ["status", "path", "file"],
+        },
+        {
             "name": "meridian.workspace_task_add",
             "workflow": "Project Workspace",
             "summary": "Add an idempotent concrete next step agreed with the user to the App's project plan.",
@@ -152,8 +159,8 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         {
             "name": "meridian.lab_graph",
             "workflow": "Lab",
-            "summary": "Read the current Markdown-backed research graph and its health without changing App planning state.",
-            "inputs": ["workspace_root"],
+            "summary": "Read each research node's id, title, state, parent and active flag, the edges and health; detail full adds node content.",
+            "inputs": ["workspace_root", "detail"],
             "outputs": ["graph", "health"],
         },
         {

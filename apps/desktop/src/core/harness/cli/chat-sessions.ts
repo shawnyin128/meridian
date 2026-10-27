@@ -19,7 +19,8 @@ const CliSessionRecordSchema = z.looseObject({ cli: HarnessCliSchema, id: Sessio
 /**
  * The session a chat's next turn may resume: on `cli` running `model`, absent for the CLI's own
  * default, and holding the turns `history` fingerprints. `total` is the running total of the usage
- * Codex reported for it.
+ * Codex reported for it, and `context` fingerprints, part by part, the chat context a Codex session
+ * has been given.
  */
 const ResumableRecordSchema = z.looseObject({
   cli: HarnessCliSchema,
@@ -27,6 +28,7 @@ const ResumableRecordSchema = z.looseObject({
   model: z.string().optional(),
   history: z.string().min(1),
   total: UsageRecordSchema.optional(),
+  context: z.record(z.string(), z.string()).optional(),
 })
 /** One chat's CLI sessions: every session it started, and the one its next turn may resume. */
 const CliChatRecordSchema = z.looseObject({

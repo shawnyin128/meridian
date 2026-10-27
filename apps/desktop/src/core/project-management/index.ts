@@ -25,6 +25,7 @@ export {
   readLocalProjectWorkspace,
   readProjectWorkspace,
   readWorkspaceAgentIdeas,
+  readWorkspaceAgentIdeaFiles,
   readWorkspaceAgentTasks,
   sshConfigHosts,
   sshFolders,

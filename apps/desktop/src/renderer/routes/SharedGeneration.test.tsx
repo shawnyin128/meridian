@@ -166,7 +166,7 @@ describe('一条会话在生成，打开它的每一屏都知道', () => {
     act(() => typeInto(document.querySelector<HTMLElement>('[aria-label="向当前论文提问"]')!, '关键假设是什么？'))
     act(() => readerControl().click())
     await settle()
-    expect(core.send).toHaveBeenCalledExactlyOnceWith('chat-paper-1', [{ kind: 'text', text: '关键假设是什么？' }])
+    expect(core.send).toHaveBeenCalledExactlyOnceWith('chat-paper-1', [{ kind: 'text', text: '关键假设是什么？' }], null)
   }
 
   it('阅读器里问的问题还在生成时，对话屏打开同一条会话也显示停止，输入框不可再发', async () => {

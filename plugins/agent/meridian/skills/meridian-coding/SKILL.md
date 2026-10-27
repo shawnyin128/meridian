@@ -17,8 +17,11 @@ When the repository has `.meridian/` and Meridian MCP is available:
    current task. Omit `cursor` only when this task has no prior cursor.
 2. Compare the returned change summaries with the coding request.
 3. Follow only relevant `expand` entries:
-   - `meridian.workspace_plan` for a project/task/milestone change;
-   - `meridian.workspace_idea` for one changed idea;
+   - `meridian.workspace_plan` for a project/task/milestone change; with a
+     `task_id` or `milestone_id` it returns only that one, and empty lists
+     mean it was removed;
+   - `meridian.workspace_idea` for one changed idea, with the files it holds
+     (`files`: name, size and absolute path), which you can open;
    - `meridian.lab_node` for one referenced research node.
 4. Keep the new `next_cursor` in task context for the next check.
 5. When the work is for a Lab node, make that node the active path before the
@@ -114,7 +117,15 @@ of at most 80 characters that names the idea on its own, a `body` that states
 it, and a `context` of at most 60 characters naming the work it came up in,
 without dates, times or agent names; the App records those. Pass `node` when it
 grows out of a Lab node. Do not record implementation details, TODOs, bug
-notes, or restatements of an existing idea.
+notes, or restatements of an existing idea. When you write a file in the
+repository for an idea, such as a proposal, call
+`meridian.workspace_idea_file_add` once (or `python -m meridian workspace
+idea-file-add`) with a stable `file_id`, the idea's `idea_id` (the one you gave
+`meridian.workspace_idea_add`, or an App idea id from
+`meridian.workspace_changes`) and the file's `path` relative to the repository;
+the App shows the file with the idea and keeps it where it is.
+`meridian.workspace_idea` lists the files an idea holds under `files`, each with
+its absolute `path`; read them there before writing another.
 
 For a long-running task where App edits could invalidate the implementation,
 call `meridian.workspace_changes` once more with the current cursor before

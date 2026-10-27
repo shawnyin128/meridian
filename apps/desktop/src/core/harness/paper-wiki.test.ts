@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -8,18 +8,26 @@ import type {
   HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow, WikiPaper,
 } from '../../shared/contract.js'
 import { callFailure } from '../call-error.js'
+import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
+import { createVaultStore } from '../vault-store.js'
 import { type CliFailureKind, CliRunError } from './cli/child.js'
 import { type CliCall, type CliRunner, createCliRunner } from './cli/runner.js'
 import type { HarnessExecution } from './cost-gate.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
 import type { PaperWikiDraft } from './paper-wiki.js'
 import {
-  citablePages, createPaperWikiHarnessRunner, paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft,
-  validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
+  citablePages, createPaperWikiHarnessRunner, paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft, validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
+  withoutBibliography,
 } from './paper-wiki.js'
 import { HARNESS_CAPABILITIES, HARNESS_PROTOCOL_VERSION } from './protocol.js'
+import SOURCES from './fixtures/paper-wiki-sources.json' with { type: 'json' }
 import { type HarnessChild, HarnessRpcError } from './rpc.js'
+
+vi.mock('../paper-library/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../paper-library/index.js')>()
+  return { ...actual, extractPdfPages: vi.fn(actual.extractPdfPages) }
+})
 
 const draft = (): PaperWikiDraft => ({
   problem: { text: 'Exact bottleneck', pages: [1] },
@@ -287,7 +295,7 @@ const execution = (signal = new AbortController().signal): HarnessExecution => (
     wiki: {} as WikiPaper,
   },
   signal,
-  limits: { maxOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 120 },
+  limits: { maxOutputTokens: 6_000, minOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 120 },
   requestTimeoutMs: 120_000,
 })
 
@@ -532,7 +540,7 @@ describe('Paper Wiki run on a subscription CLI', () => {
 
   it('sends an API run\'s limits to Harness and gives up on its request after the run\'s own timeout', async () => {
     const { child, runner } = paperWikiRunner(API_MODEL, vi.fn<CliRunner>())
-    const limits = { maxOutputTokens: 38_000, maxModelCalls: 1, timeoutSeconds: 600 }
+    const limits = { maxOutputTokens: 38_000, minOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 600 }
     const running = runner.run({ ...execution(), limits, requestTimeoutMs: 50 })
     child.ready()
 
@@ -554,5 +562,105 @@ describe('Paper Wiki run on a subscription CLI', () => {
     child.send({ type: 'response', id: 1, ok: true, result: envelope() })
     await running
     runner.close()
+  })
+})
+
+/** A seeded test library (`node scripts/test-library.mjs seed`), whose four real arXiv PDFs the cases below read. */
+const testLibrary = process.env['MERIDIAN_TEST_LIBRARY']
+const testLibraryIt = testLibrary === undefined ? it.skip : it
+
+/**
+ * The test library's real papers: their page count, the page with the references heading, the last
+ * page of reference entries, one entry's text, and whether page 1 holds the stored abstract.
+ */
+const REAL_PAPERS = [
+  { id: '2401-15077', pages: 13, heading: 9, last: 11, entry: 'NEFTune: Noisy em- beddings improve instruction finetuning', abstractOnPage1: true },
+  { id: '2309-06180', pages: 16, heading: 14, last: 16, entry: 'Check- mate: Breaking the memory wall', abstractOnPage1: true },
+  { id: '2402-02750', pages: 15, heading: 10, last: 11, entry: 'The refinedweb dataset for falcon llm', abstractOnPage1: true },
+  { id: '2401-10774', pages: 27, heading: 10, last: 12, entry: 'Judging llm-as-a-judge with mt-bench and chatbot arena', abstractOnPage1: false },
+]
+
+/** What a Paper Wiki run on `store` answers Harness's `papers.get` and `papers.source` reads of paper `id`. */
+async function sentPaper(store: VaultStore, id: string) {
+  const child = new FakeHarness()
+  const runner = createPaperWikiHarnessRunner({
+    store, model: { runtime: async () => API_MODEL } as unknown as HarnessModelConfig, cli: vi.fn<CliRunner>(), launch: () => child,
+  })
+  const running = runner.run({ ...execution(), plan: { ...execution().plan, targetId: id } }).catch(() => undefined)
+  child.ready()
+  await child.frame()
+  const read = async (method: string) => {
+    const reply = child.frame()
+    child.send({ type: 'callback', id: 1, callbackId: method, method, params: { id } })
+    return ((await reply) as { result: unknown }).result
+  }
+  const paper = await read('papers.get') as Record<string, unknown>
+  const source = await read('papers.source') as { pages: Array<{ number: number; text: string }> }
+  child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'stand-in ends the run' } })
+  await running
+  runner.close()
+  return { paper, pages: source.pages }
+}
+
+describe('What a Paper Wiki run sends of its paper', () => {
+  testLibraryIt('leaves out each real paper\'s bibliography text but keeps every page, and every other page\'s text as extracted', async () => {
+    const vault = mkdtempSync(join(tmpdir(), 'meridian-wiki-ingest-'))
+    cpSync(join(testLibrary!, 'library'), vault, { recursive: true })
+    try {
+      const store = createVaultStore(vault)
+      for (const paper of REAL_PAPERS) {
+        const extracted = await extractPdfPages(store.paperSource(paper.id))
+        const sent = await sentPaper(store, paper.id)
+        expect(extracted.map((page) => page.text).join(' ')).toContain(paper.entry)
+        expect(sent.pages.map((page) => page.number)).toEqual(Array.from({ length: paper.pages }, (_, at) => at + 1))
+        for (const [at, page] of sent.pages.entries()) {
+          const original = extracted[at]!.text
+          if (page.number === paper.heading) {
+            expect(page.text).toMatch(/\sReferences$/u)
+            expect(original.startsWith(page.text)).toBe(true)
+          } else if (page.number > paper.heading && page.number <= paper.last) {
+            expect(page.text).toBe('')
+          } else {
+            expect(page.text).toBe(original)
+          }
+        }
+        expect(sent.pages.map((page) => page.text).join(' ')).not.toContain(paper.entry)
+        const stored = store.getPaper(paper.id)
+        expect(stored.abstract).toBeTruthy()
+        expect(sent.paper).toEqual({
+          id: stored.id, title: stored.title, authors: stored.authors, year: stored.year, venue: stored.venue,
+          identifier: stored.identifier, ...(paper.abstractOnPage1 ? {} : { abstract: stored.abstract }),
+        })
+      }
+    } finally {
+      rmSync(vault, { recursive: true, force: true })
+    }
+  })
+
+  testLibraryIt('sends a real paper whole when its references heading is gone', async () => {
+    const vault = mkdtempSync(join(tmpdir(), 'meridian-wiki-ingest-'))
+    cpSync(join(testLibrary!, 'library'), vault, { recursive: true })
+    try {
+      const store = createVaultStore(vault)
+      for (const paper of REAL_PAPERS) {
+        const unheaded = (await extractPdfPages(store.paperSource(paper.id)))
+          .map((page) => ({ ...page, text: page.text.replace(/\sReferences\s/gu, ' Literature ') }))
+        expect(withoutBibliography(unheaded)).toEqual(unheaded)
+      }
+    } finally {
+      rmSync(vault, { recursive: true, force: true })
+    }
+  })
+
+  it.each(SOURCES.cases)('sends a source with $name as its fixture expects', async (source) => {
+    vi.mocked(extractPdfPages).mockResolvedValueOnce(source.pages)
+    const store = {
+      getPaper: () => ({ id: 'synthetic', title: 'Paged attention', authors: [], venue: '', abstract: source.abstract }),
+      paperSource: () => new Uint8Array(),
+    } as unknown as VaultStore
+    const sent = await sentPaper(store, 'synthetic')
+    expect(sent.pages).toEqual(source.pages.map((page, at) =>
+      ({ number: page.number, text: source.sent[at] === 'same' ? page.text : source.sent[at] })))
+    expect(sent.paper['abstract']).toBe(source.abstractSent ? source.abstract : undefined)
   })
 })

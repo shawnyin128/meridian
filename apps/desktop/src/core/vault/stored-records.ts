@@ -1,3 +1,4 @@
+import { existsSync, readFileSync } from 'node:fs'
 import type { z } from 'zod'
 
 /** One step from a record down to a nested object: a key, a list position, or the list element carrying this `id`. */
@@ -36,6 +37,26 @@ export function readRecord<T>(schema: z.ZodType<T>, raw: unknown): ReadRecord<T>
   }
   const read = schema.safeParse(bare)
   return read.success ? { value: read.data, unknown } : { error: whole.error.message }
+}
+
+/**
+ * Reads the JSON file `file` with `schema` the way readRecord does, or returns null when there is no
+ * such file. A file that is not JSON, or that cannot be read even without the keys `schema` does not
+ * know, is reported on stderr with the reason and also returns null, so its reader treats it as absent.
+ */
+export function readStoredFile<T>(file: string, schema: z.ZodType<T>): { value: T; unknown: UnknownField[] } | null {
+  if (!existsSync(file)) return null
+  let read: ReadRecord<T>
+  try {
+    read = readRecord(schema, JSON.parse(readFileSync(file, 'utf8')))
+  } catch (error) {
+    read = { error: error instanceof Error ? error.message : String(error) }
+  }
+  if ('error' in read) {
+    console.error(`[config] ${file} cannot be read by this version and is treated as absent (the App may need an update): ${read.error}`)
+    return null
+  }
+  return read
 }
 
 /**

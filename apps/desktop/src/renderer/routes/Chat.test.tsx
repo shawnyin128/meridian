@@ -230,7 +230,7 @@ describe('Chat composer', () => {
       await Promise.resolve()
     })
     expect(api.create).toHaveBeenCalledWith('结论冲突', true)
-    expect(api.send).toHaveBeenCalledWith('chat-9', [{ kind: 'text', text: '为什么说这两条结论冲突？' }])
+    expect(api.send).toHaveBeenCalledWith('chat-9', [{ kind: 'text', text: '为什么说这两条结论冲突？' }], null)
   })
 
   /** The chat page's title as a rename field, null when the title does not rename. */
@@ -285,7 +285,24 @@ describe('Chat composer', () => {
     type('为什么')
     expect(press('Enter').defaultPrevented).toBe(true)
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenCalledWith('chat-1', [{ kind: 'text', text: '为什么' }])
+    expect(api.send).toHaveBeenCalledWith('chat-1', [{ kind: 'text', text: '为什么' }], null)
+  })
+
+  it('按下输入框里的「实验设计」后，这一问和之后的每一问都按设计轮次发出；再按一下就回到普通的问', async () => {
+    const capsule = () => [...document.querySelectorAll<HTMLButtonElement>('.choice-capsule')].find((held) => held.textContent === '实验设计')!
+    expect(capsule().getAttribute('aria-pressed')).toBe('false')
+    act(() => capsule().click())
+    expect(capsule().getAttribute('aria-pressed')).toBe('true')
+    type('帮我设计实验')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-1', [{ kind: 'text', text: '帮我设计实验' }], 'design')
+
+    act(() => capsule().click())
+    type('为什么')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-1', [{ kind: 'text', text: '为什么' }], null)
   })
 
   it('没配置模型时发送失败，输入框里显示「AI 未连接」的状态，点它打开设置的模型一栏；配好后再发一次成功，状态就消失', async () => {
@@ -368,7 +385,7 @@ describe('Chat composer', () => {
     expect(api.send).toHaveBeenCalledWith('chat-1', [
       { kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@草稿树项目', target: { kind: 'project', id: 'draft' } },
       { kind: 'text', text: ' 这条线还剩什么' },
-    ])
+    ], null)
     expect([typed(), pills()]).toEqual(['', []])
   })
 
@@ -460,7 +477,7 @@ describe('Chat composer', () => {
     expect(retry()?.textContent).toBe('重试')
     act(() => retry()!.click())
     await settle()
-    expect(api.retry).toHaveBeenCalledExactlyOnceWith('chat-1')
+    expect(api.retry).toHaveBeenCalledExactlyOnceWith('chat-1', null)
     expect(api.send).not.toHaveBeenCalled()
   })
 
@@ -627,7 +644,7 @@ describe('Chat composer', () => {
     type('第二条的问题')
     press('Enter')
     await act(async () => { await Promise.resolve() })
-    expect(api.send).toHaveBeenLastCalledWith('chat-2', [{ kind: 'text', text: '第二条的问题' }])
+    expect(api.send).toHaveBeenLastCalledWith('chat-2', [{ kind: 'text', text: '第二条的问题' }], null)
     await finish()
   })
 
@@ -658,72 +675,34 @@ describe('Chat composer', () => {
     await finish()
   })
 
-  it('快捷引用是一行的幽灵 chip，保存为想法是排在工具栏末尾的幽灵按钮，还没讨论时只是按不了，旁边不写字', () => {
+  it('上面一行只有快捷引用的幽灵 chip；下面一行是模型胶囊、一道细竖线，再是实验设计和整理想法两个模式胶囊', () => {
     const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
     expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
       .toEqual([['btn ghost sm qm', '@草稿树项目']])
-    const save = document.querySelector<HTMLButtonElement>('#qaIdea')!
-    expect(save.className).toBe('btn ghost sm save-idea')
-    expect(save.parentElement!.lastElementChild).toBe(save)
-    expect([save.disabled, save.previousElementSibling?.id]).toEqual([true, 'qmChips'])
+    expect([...document.querySelector('.qacts')!.children].map((part) => part.id)).toEqual(['qmChips'])
+    const foot = document.querySelector('.cbox-foot')!
+    expect([...foot.children].map((part) => [part.className, part.textContent])).toEqual([
+      ['choice-capsule', '模型'], ['cbox-divider', ''], ['choice-capsule', '实验设计'], ['choice-capsule', '整理想法'], ['cbox-send', ''],
+    ])
+    const organize = document.querySelector<HTMLButtonElement>('#qaIdea')!
+    expect([organize.textContent, organize.getAttribute('aria-pressed')]).toEqual(['整理想法', 'false'])
     expect(document.querySelector('.qsep')).toBeNull()
   })
 
-  /** Shows the chat `id` holding one message of yours, as the shell does when that chat is picked. */
-  const showChat = async (id: string) => {
-    session.id = id
-    session.revision += 1
-    api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
-    await act(async () => {
-      root!.render(screen())
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-  }
-  const ideaDraft = () => document.querySelector<HTMLElement>('.idea-draft')
-  const keyIn = (target: Element, key: string, init: KeyboardEventInit = {}) => act(() => {
-    target.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true, ...init }))
-  })
-
-  it('保存为想法在最后一条消息下面就地打开草稿,不弹对话框,标明落到想法和它的来源,焦点在标题', async () => {
-    await showChat('chat-1')
-    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
-    expect(document.querySelector('[role="dialog"]')).toBeNull()
-    const msgs = document.querySelector('.msgs')!
-    expect(msgs.lastElementChild!.contains(ideaDraft())).toBe(true)
-    expect(msgs.lastElementChild!.previousElementSibling!.textContent).toContain('先讨论机制')
-    expect(ideaDraft()!.querySelector('.draft-form-destination')!.textContent).toBe('→想法')
-    expect(ideaDraft()!.querySelector('.idea-draft-source')!.textContent).toBe('来源：讨论')
-    expect(document.activeElement).toBe(ideaDraft()!.querySelector('input'))
-  })
-
-  it('想法草稿在正文上按 ⌘Enter 经 idea.create 存进这条对话的想法;Esc 收起,什么也不存', async () => {
-    await showChat('chat-1')
-    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
-    act(() => setValue(ideaDraft()!.querySelector('input')!, '批大小拐点'))
-    const body = () => EditorView.findFromDOM(ideaDraft()!.querySelector<HTMLElement>('.form-markdown .cm-editor')!)!
-    act(() => body().dispatch({ changes: { from: 0, insert: '验证最优批大小是否随推理深度稳定迁移。' }, userEvent: 'input.type' }))
-    keyIn(body().contentDOM, 'Enter')
-    expect(api.createIdea).not.toHaveBeenCalled()
-    expect(body().state.doc.lines).toBe(2)
-    await act(async () => { keyIn(body().contentDOM, 'Enter', { metaKey: true }); await Promise.resolve() })
-    expect(api.createIdea).toHaveBeenCalledWith('chat-1', '批大小拐点', '验证最优批大小是否随推理深度稳定迁移。')
-    expect(ideaDraft()).toBeNull()
-
-    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
-    keyIn(ideaDraft()!.querySelector('input')!, 'Escape')
-    expect(ideaDraft()).toBeNull()
-    expect(api.createIdea).toHaveBeenCalledOnce()
-  })
-
-  it('想法草稿留在它的对话上:换一条对话时不跟过去,回来时还在', async () => {
-    await showChat('chat-1')
-    act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
-    act(() => setValue(ideaDraft()!.querySelector('input')!, '只属于这条对话'))
-    await showChat('chat-2')
-    expect(ideaDraft()).toBeNull()
-    await showChat('chat-1')
-    expect(ideaDraft()!.querySelector('input')!.value).toBe('只属于这条对话')
+  it('整理想法和实验设计互斥：按下一个就松开另一个；整理想法开着时这一问按整理想法轮次发出，不再打开空白表单', async () => {
+    const capsule = (name: string) => [...document.querySelectorAll<HTMLButtonElement>('.choice-capsule')].find((held) => held.textContent === name)!
+    const pressed = () => ['实验设计', '整理想法'].map((name) => capsule(name).getAttribute('aria-pressed'))
+    act(() => capsule('实验设计').click())
+    expect(pressed()).toEqual(['true', 'false'])
+    act(() => capsule('整理想法').click())
+    expect(pressed()).toEqual(['false', 'true'])
+    type('把这段整理成想法')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-1', [{ kind: 'text', text: '把这段整理成想法' }], 'idea')
+    expect(document.querySelector('.idea-draft')).toBeNull()
+    act(() => capsule('整理想法').click())
+    expect(pressed()).toEqual(['false', 'false'])
   })
 
   it('快捷引用的名字被截断时，悬停在共享 tooltip 里显示全名，放得下时不弹', () => {

@@ -1,3 +1,5 @@
+import { mkdirSync, statSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 import { onDay } from './app.mjs'
 
 const text = (value) => ({ kind: 'text', text: value })
@@ -15,7 +17,10 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * One chat an idea was saved from is then deleted into Trash, so that idea, carried out in the
  * speculative decoding project on a node of its graph, has a deleted chat as its source.
  * Two ideas relate to projects and a Wiki page other than where they came from, and one is written
- * down on the KV cache project's page.
+ * down on the KV cache project's page. One answer to a design turn carries its experiment design;
+ * one answer to an idea turn carries the idea draft it merged from a long chat, and another drafts
+ * none. The idea promoted to a project holds two files, written under `<out>/files`, which its
+ * project lists too, and a third that went to Trash.
  */
 export async function seedConversations(seed, call) {
   const append = (id, messages) => call('chat.append', { id, messages })
@@ -78,6 +83,16 @@ export async function seedConversations(seed, call) {
   await idea(width, '草稿头和目标模型共享浅层 KV', '草稿头直接读目标模型浅层的 KV，省掉草稿自己的 KV cache。', { project: spec })
   await idea(width, '按 token 难度跳过验证', '对置信度很高的 token 直接接受，不进验证。', { project: spec, archived: true })
   const promoted = await idea(h2o, '推测解码和 KV 量化联合优化', '草稿阶段用低位宽 KV，验证阶段用全精度 KV，两边的显存和速度一起算。')
+  const ideaFile = async (name, text) => {
+    mkdirSync(join(seed.out, 'files'), { recursive: true })
+    const path = join(seed.out, 'files', name)
+    writeFileSync(path, text, 'utf8')
+    const size = `${Math.max(1, Math.round(statSync(path).size / 1024))} KB`
+    return (await call('idea.addFile', { id: promoted, attachment: { name, size, path } })).attachment.id
+  }
+  await ideaFile('联合优化-proposal.md', '# 推测解码和 KV 量化联合优化\n\n草稿阶段用低位宽 KV，验证阶段用全精度 KV。\n')
+  await ideaFile('显存与速度估算.csv', 'bits,draft_mem_gb,verify_mem_gb,tokens_per_s\n4,3.1,12.4,41\n8,5.8,12.4,37\n')
+  await call('idea.deleteFile', { id: promoted, fileId: await ideaFile('旧草稿.md', '# 旧草稿\n') })
   await onDay(seed, -5, async () => {
     const { project } = await call('idea.promote', { id: promoted })
     seed.projects.promoted = { id: project.id, days: -5 }
@@ -92,6 +107,164 @@ export async function seedConversations(seed, call) {
   await call('idea.update', { id: moeIdea, patch: { relations: { projects: [seed.projects.moe.id], pages: [] } } })
   await call('idea.create', {
     title: '按层分配 KV 位宽预算', body: '浅层对量化误差更敏感，给定总位宽时按层分配，而不是每层一样。', sourceProject: seed.projects.kv.id,
+  })
+
+  // A design turn's answer carries its experiment design, anchored in the speculative decoding page and its claim.
+  await onDay(seed, -1, async () => {
+    const designed = await call('chat.create', { title: '动态树宽在大 batch 下是否优于固定树宽', named: true })
+    await append(designed.id, [
+      say('you', { kind: 'mention', text: '@推测解码加速', target: { kind: 'project', id: spec } },
+        ' 里我有个想法：按接受率动态调整草稿树的宽度，在大 batch 下会比固定宽度更好。帮我设计一个能把它和别的解释分开的实验。'),
+      {
+        ...say('ai', '可以测，但“更好”要先拆开。大 batch 下验证成了主要成本，动态宽度的收益可能来自少验证注定被拒的分支，也可能只是平均宽度变窄省下的算力。下面的设计用等平均宽度的固定树把这两者分开，并在跑之前定好怎么判。'),
+        model: { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
+        design: {
+    "claim": {
+      "text": "大 batch 下，按接受率动态调整草稿树宽度，端到端吞吐高于固定宽度。",
+      "status": "hypothesis"
+    },
+    "explanations": {
+      "m1": "动态宽度把验证预算投向接受率高的位置，少验证注定被拒的分支。",
+      "m2": "收益只来自平均宽度变窄：同等平均宽度的固定窄树一样快。",
+      "m0": "测量假象：batch 组成、预热或请求长度两组没有对齐。"
+    },
+    "predictions": [
+      {
+        "regime": "B 从 16 到 64，对照为等平均宽度的固定树",
+        "m1": "差距随 B 增大",
+        "m2": "差距消失",
+        "m0": "差距不稳定",
+        "metric": "吞吐 tok/s",
+        "chosen": true
+      },
+      {
+        "regime": "宽度与接受率脱钩，宽度分布不变",
+        "m1": "收益消失",
+        "m2": "收益保留",
+        "m0": "无变化",
+        "metric": "接受长度",
+        "chosen": false
+      },
+      {
+        "regime": "B = 1",
+        "m1": "收益小或为负",
+        "m2": "收益小",
+        "m0": null,
+        "metric": "单请求延迟",
+        "chosen": false
+      }
+    ],
+    "experiment": {
+      "substrate": "component",
+      "keeps": "真实 GPU 上随 batch 变化的验证开销，和真实的接受率分布",
+      "untested": "到达流量、调度器与草稿头训练"
+    },
+    "decisions": [
+      {
+        "pattern": "输出分布偏离目标模型，或两组平均宽度相差超过 5%",
+        "outcome": "invalid",
+        "interpretation": "检验无效",
+        "next": "修正对齐后重跑"
+      },
+      {
+        "pattern": "等平均宽度的固定树与动态宽度相差不到 2%",
+        "outcome": "alternative",
+        "interpretation": "支持 M2：收益来自变窄",
+        "next": "改写主张，另立 M2 节点"
+      },
+      {
+        "pattern": "B ≥ 32 时吞吐高至少 8%，CI 不含 0，脱钩后收益消失",
+        "outcome": "expand",
+        "interpretation": "支持 M1",
+        "next": "扩展到完整服务系统"
+      },
+      {
+        "pattern": "B ≥ 32 时差距可辨但低于 8%",
+        "outcome": "below-gate",
+        "interpretation": "机制成立，收益不够",
+        "next": "记结论，不扩展"
+      },
+      {
+        "pattern": "B ≥ 32 时差距的 95% CI 落在 ±2% 内",
+        "outcome": "kill",
+        "interpretation": "排除所需效应",
+        "next": "确认后关闭节点"
+      },
+      {
+        "pattern": "CI 跨过 0 且宽于 ±8%",
+        "outcome": "inconclusive",
+        "interpretation": "无法判定",
+        "next": "增加请求块"
+      }
+    ],
+    "ledger": [
+      {
+        "statement": "加速比主要取决于草稿的接受率",
+        "status": "source",
+        "anchor": {
+          "kind": "wiki",
+          "ref": "topics/speculative-decoding#acceptance-rate"
+        }
+      },
+      {
+        "statement": "已有工作按接受率调整树宽",
+        "status": "source",
+        "anchor": {
+          "kind": "wiki",
+          "ref": "topics/speculative-decoding"
+        }
+      },
+      {
+        "statement": "大 batch 下验证开销成为主要成本",
+        "status": "inference",
+        "anchor": null
+      },
+      {
+        "statement": "动态宽度的收益随 batch 增大",
+        "status": "new-hypothesis",
+        "anchor": null
+      }
+    ]
+  },
+      },
+    ])
+  })
+
+  // An idea turn's answer drafts one idea from the rounds of a long chat that build it, leaving out an
+  // unrelated thread; another idea turn finds only findings and drafts none.
+  await onDay(seed, -1, async () => {
+    const organized = await call('chat.create', { title: '树宽、接受率和一个 MoE 的岔题', named: true })
+    await append(organized.id, [
+      say('you', { kind: 'mention', text: '@推测解码加速', target: { kind: 'project', id: spec } }, ' 里固定树宽在大 batch 下浪费验证算力，你怎么看？'),
+      say('ai', '大 batch 下验证成了主要成本，宽树里被拒的分支都白算了。'),
+      say('you', '顺便问一句，MoE 的容量因子一般取多少？'),
+      say('ai', '训练时 1.25 比较稳，推理时可以降到 1.0。'),
+      say('you', '回到树宽：能不能让宽度跟着每一步的接受率变？'),
+      say('ai', '可以：接受率高的位置多展开分支，低的位置收窄，把验证预算投到更可能被接受的地方。'),
+      say('you', '这和已有的动态树方法有什么不同？'),
+      say('ai', '已有工作按全局接受率选一棵树；按每一步的接受率在一次验证里调整宽度，目标是大 batch 下的吞吐。'),
+      say('you', '帮我把这段整理成想法。'),
+    ])
+    const ids = (await call('chat.messages', { id: organized.id })).map((message) => message.id)
+    await append(organized.id, [{
+      ...say('ai', '整理成了一个想法：把第 1、3、4 轮关于树宽的讨论合在一起；第 2 轮 MoE 容量因子的岔题和这个想法无关，没有放进去。'),
+      model: { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
+      idea: {
+        title: '按每步接受率调整草稿树宽，提高大 batch 吞吐',
+        body: '在推测解码中，按每一步的接受率在一次验证里调整草稿树的宽度：接受率高的位置多展开分支，低的位置收窄，把验证预算投到更可能被接受的地方。\n\n建立在已有的动态树方法上，它们按全局接受率选一棵树。\n\n还没定：大 batch（B ≥ 32）下的吞吐收益有多大，以及和等平均宽度的固定树相比是否仍然更好。',
+        sources: [ids[0], ids[1], ids[4], ids[5], ids[6], ids[7]],
+      },
+    }])
+    const findings = await call('chat.create', { title: 'KV 量化的两个结论', named: true })
+    await append(findings.id, [
+      say('you', 'K 按通道量化、V 按 token 量化，2bit 时精度掉了不到 1 个点。'),
+      say('ai', '这说明 K 的离群通道是主要误差来源。'),
+      say('you', '整理成想法吧。'),
+      {
+        ...say('ai', '这段对话里只有两条实验结论（K 按通道、V 按 token 时 2bit 精度几乎不掉），还没有一个能单独成立的研究贡献，所以没有整理出想法。可以把它们记成科研记录。'),
+        model: { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
+      },
+    ])
   })
 
   const temperature = await call('chat.create', { title: '草稿采样的温度要不要调', named: true })

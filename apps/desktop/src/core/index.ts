@@ -11,11 +11,15 @@ import {
   ChatWritingParamsSchema,
   ChatFailureParamsSchema,
   ChatRetryParamsSchema,
+  ChatSaveDesignParamsSchema,
+  ChatSaveIdeaParamsSchema,
+  ChatIdeaPreviewParamsSchema,
   ChatCreateParamsSchema,
   ChatDeleteParamsSchema,
   ChatForPaperParamsSchema,
   ChatMessagesParamsSchema,
   ChatSendParamsSchema,
+  ChatDesignPreviewParamsSchema,
   ChatRecordActionParamsSchema,
   ChangelogArchiveParamsSchema,
   ChangelogDeleteParamsSchema,
@@ -94,6 +98,8 @@ import {
   ProjectUnverifyConclusionParamsSchema,
   ProjectVerifyConclusionParamsSchema,
   ResearchIdeaCreateParamsSchema,
+  ResearchIdeaAddFileParamsSchema,
+  ResearchIdeaDeleteFileParamsSchema,
   ResearchIdeaDeleteParamsSchema,
   ResearchIdeaPlaceOnGraphParamsSchema,
   ResearchIdeaPromoteParamsSchema,
@@ -157,7 +163,9 @@ import {
   createMainCredentialVault, createPaperWikiHarnessRunner, createSourceModels, discoverCli, followCliState, listCliModels, openChatModels,
   openCliChatSessions, redactSecrets, sourceIdOfInput, subscriptionStatus,
 } from './harness/index.js'
-import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
+import {
+  designPreview, ideaPreview, placeResearchIdeaOnGraph, promoteResearchIdea, saveDesignAsIdea, saveIdeaDraft,
+} from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
 import { experimentProjects } from './wiki/index.js'
 
@@ -313,6 +321,7 @@ const chatHarness = createChatHarnessRunner({
   model: harnessModel,
   checkCli: (model) => checkCliConnection(model, { onLog: harnessLog, run: cliRunner }),
   cli: createCliChatRunner(cliRunnerDeps),
+  structured: cliRunner,
   sessions: chatSessions,
   choiceOf: chatModels.choiceOf,
   onLog: harnessLog,
@@ -983,10 +992,29 @@ registerHandler('chat.append', (params) => {
   return store.appendChatMessages(id, messages)
 })
 registerHandler('chat.send', (params) => {
-  const { id, runs } = ChatSendParamsSchema.parse(params)
-  return chatService.send(id, runs)
+  const { id, runs, mode } = ChatSendParamsSchema.parse(params)
+  return chatService.send(id, runs, mode)
 })
-registerHandler('chat.retry', (params) => chatService.retry(ChatRetryParamsSchema.parse(params).id))
+registerHandler('chat.retry', (params) => {
+  const { id, mode } = ChatRetryParamsSchema.parse(params)
+  return chatService.retry(id, mode)
+})
+registerHandler('chat.designPreview', (params) => {
+  const { id, messageId, language } = ChatDesignPreviewParamsSchema.parse(params)
+  return designPreview(store, id, messageId, language)
+})
+registerHandler('chat.saveDesign', (params) => {
+  const { id, messageId, fingerprint, language } = ChatSaveDesignParamsSchema.parse(params)
+  return saveDesignAsIdea(store, id, messageId, fingerprint, language)
+})
+registerHandler('chat.ideaPreview', (params) => {
+  const { id, messageId, title, body } = ChatIdeaPreviewParamsSchema.parse(params)
+  return ideaPreview(store, id, messageId, title, body)
+})
+registerHandler('chat.saveIdea', (params) => {
+  const { id, messageId, title, body, fingerprint } = ChatSaveIdeaParamsSchema.parse(params)
+  return saveIdeaDraft(store, id, messageId, title, body, fingerprint)
+})
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
 registerHandler('chat.writing', (params) => chatService.writing(ChatWritingParamsSchema.parse(params).id))
@@ -1027,6 +1055,18 @@ registerHandler('idea.delete', (params) => {
 })
 registerHandler('idea.reorder', (params) =>
   store.reorderIdeas(ResearchIdeaReorderParamsSchema.parse(params).order))
+registerHandler('idea.files', (params) => {
+  EmptyParamsSchema.parse(params)
+  return store.listIdeaFiles()
+})
+registerHandler('idea.addFile', (params) => {
+  const { id, attachment } = ResearchIdeaAddFileParamsSchema.parse(params)
+  return store.addIdeaFile(id, attachment)
+})
+registerHandler('idea.deleteFile', (params) => {
+  const { id, fileId } = ResearchIdeaDeleteFileParamsSchema.parse(params)
+  return trashedEntry(store, () => store.deleteIdeaFile(id, fileId))
+})
 registerHandler('chat.recordAction', (params) => {
   const { id, messageId } = ChatRecordActionParamsSchema.parse(params)
   return store.recordAction(id, messageId)

@@ -1,9 +1,9 @@
 import { useEffect, useRef, useState } from 'react'
-import type { ChatMessage, ChatRun, ChatSession, PaperRow } from '../../../shared/contract.js'
-import { chat, feed, idea as ideaApi } from '../../ipc.js'
+import type { ChatMessage, ChatRun, ChatSession, ChatTurnMode, PaperRow } from '../../../shared/contract.js'
+import { chat, feed } from '../../ipc.js'
 import { errorLabel } from '../../lib/failure-label.js'
 import {
-  useJump, useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
+  useNotice, usePaperChatCollapsed, usePaperChatGrip, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { GripTooltip } from '../../shell/GripTooltip.js'
 import { ChatMessageView, endsUnanswered, shownMessages } from './ChatMessage.js'
@@ -17,7 +17,6 @@ import { PageError, PageHeader, PageTitle } from '../PageShell.js'
 import { ScrollArea } from '../ScrollArea.js'
 import { useDrafts } from '../../hooks/useDrafts.js'
 import { useChatTurn } from '../../hooks/useChatTurn.js'
-import { useDraftSlot } from '../DraftSlot.js'
 import { useAnswerSoFar } from '../../hooks/useAnswerSoFar.js'
 import { useChatFailure } from '../../hooks/useChatFailure.js'
 import { useGenerations } from '../../hooks/useGenerations.js'
@@ -25,12 +24,9 @@ import { useFollowEnd } from '../../hooks/useFollowEnd.js'
 import { useModelStatus } from '../../hooks/useModelStatus.js'
 import { useScreenLoad } from '../../hooks/useScreenLoad.js'
 import { namedRuns } from '../TitleNote.js'
-import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useMessages } from '../../messages/useMessages.js'
-import { IdeaDraft, type IdeaDraftText } from '../ideas/IdeaDraft.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
-import { Button } from '../Button.js'
 import './Chat.css'
 
 /**
@@ -48,15 +44,14 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const m = useMessages()
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
-  const { open } = useJump()
-  const write = useVaultWrite()
   const grip = usePaperChatGrip()
   const collapsed = usePaperChatCollapsed()
   const [session, setSession] = useState<ChatSession | null>(null)
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
-  // The question being typed and an idea being drafted belong to their paper.
+  // The question being typed belongs to its paper.
   const drafts = useDrafts<ChatRun[]>(['paper', paper?.id ?? ''])
-  const ideaDrafts = useDrafts<IdeaDraftText>(['paper', paper?.id ?? ''])
+  // The mode of the paper chat's next turns stays with the paper, as its draft does.
+  const modes = useDrafts<ChatTurnMode>(['paper', paper?.id ?? ''])
   const { running, stop } = useGenerations()
   const { track } = useModelStatus()
   const turn = useChatTurn(track)
@@ -66,10 +61,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
   const paperId = paper?.id ?? null
   const sessionId = session?.id ?? null
   const draft = paperId === null ? [] : drafts.get('chat-message') ?? []
-  const ideaDraft = paperId === null ? undefined : ideaDrafts.get('chat-idea')
-  const ideaSlot = useDraftSlot<HTMLDivElement>(
-    ideaDraft !== undefined, () => { if (paperId !== null) ideaDrafts.set('chat-idea', { title: '', body: '' }) },
-  )
+  const mode = paperId === null ? null : modes.get('chat-mode') ?? null
   const sending = sessionId !== null && running(sessionId)
   const writing = useAnswerSoFar(sessionId, sending, messages)
   const failure = useChatFailure(sessionId, messages)
@@ -107,7 +99,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     if (draftText(draft).trim() === '' || paperId === null || session === null || sending) return
     drafts.drop('chat-message')
     follow()
-    void turn.send(session.id, draft)
+    void turn.send(session.id, draft, mode)
   }
 
   const stopSending = () => {
@@ -124,7 +116,6 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
     }).catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
   }
 
-  const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
   return (
     <aside className="paper-chat stream" aria-label={m.chat.paperChatLabel} inert={collapsed}>
@@ -141,44 +132,28 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             ? <div className="mwrap"><EmptyState variant="page" icon={<Icon sw={1.4}><path d={CHAT_BUBBLE_PATH} /></Icon>} /></div>
             : shownMessages(messages, sending || writing !== null).map((message, at, shown) => (
               <ChatMessageView
-                key={message.id} message={message} onAct={() => act(message)}
+                key={message.id} chat={sessionId} message={message} onAct={() => act(message)}
                 failure={at === shown.length - 1 ? failure : undefined}
                 onRetry={session !== null && !sending && at === shown.length - 1 && endsUnanswered(shown)
-                  ? () => { follow(); void turn.retry(session.id) }
+                  ? () => { follow(); void turn.retry(session.id, mode) }
                   : undefined}
               />
             ))}
           {writing === null ? null : (
             <ChatMessageView key={writing.message.id} message={writing.message} onAct={() => act(writing.message)} writingSince={writing.since} />
           )}
-          {session === null || paper === null || ideaDraft === undefined
-            ? null
-            : (
-              <div className="mwrap" ref={ideaSlot.slot}>
-                <IdeaDraft
-                  key={session.id} source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
-                  onChange={(next) => ideaDrafts.set('chat-idea', next)} onCancel={() => ideaDrafts.drop('chat-idea')}
-                  onSave={(title, body) => write(ideaApi.create(session.id, title, body), {
-                    note: m.chat.ideaSavedNote,
-                    action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
-                  }).then((saved) => { if (saved) ideaDrafts.drop('chat-idea') })}
-                />
-              </div>
-            )}
         </div>
       </ScrollArea>
       <div className="composer paper-chat-composer">
         <div className="mwrap">
-          <div className="qacts">
-            <Button
-              size="compact" variant="ghost" className="save-idea" disabled={session === null || !hasDiscussion}
-              onClick={ideaSlot.start}
-            >{m.chat.saveIdeaLabel}</Button>
-          </div>
           <ChatComposer
             key={paperId} ref={composer} chat={sessionId} label={m.chat.askAboutPaper} placeholder={m.chat.composerPlaceholder}
             draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
             running={sending} onSend={submit} onStop={stopSending}
+            mode={{
+              value: mode,
+              onChange: (next) => { if (paperId !== null) { if (next === null) modes.drop('chat-mode'); else modes.set('chat-mode', next) } },
+            }}
           />
         </div>
       </div>

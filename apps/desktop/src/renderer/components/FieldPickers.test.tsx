@@ -7,7 +7,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { TodayContext } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { MenuItem } from './ActionMenu.js'
-import { ChoicePicker, DateButton, DateRangeField, DotsMenu } from './FieldPickers.js'
+import { CapsuleButton, CapsuleModes, ChoicePicker, DateButton, DateRangeField, DotsMenu } from './FieldPickers.js'
 import { RowActions } from './Item.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
@@ -367,5 +367,72 @@ describe('DateRangeField', () => {
     expect(startDays.some((day) => day.disabled)).toBe(false)
     await act(async () => { startDays[19]!.click() })
     expect(onChange).toHaveBeenLastCalledWith({ start: '2026-10-20', end: '2026-10-20' })
+  })
+})
+
+describe('CapsuleButton', () => {
+  beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true })
+
+  it('is the composer\'s capsule: with pressed it turns on and off and is pressed while on; without it it only acts', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const saved = vi.fn()
+    function Capsules() {
+      const [on, setOn] = useState(false)
+      return (
+        <>
+          <CapsuleButton pressed={on} onClick={() => setOn((held) => !held)}>实验设计</CapsuleButton>
+          <CapsuleButton id="qaIdea" onClick={saved}>保存为想法</CapsuleButton>
+        </>
+      )
+    }
+    await act(async () => root.render(<Capsules />))
+    const [toggle, action] = [...host.querySelectorAll('button')]
+
+    expect([toggle!.className, toggle!.textContent, toggle!.getAttribute('aria-pressed')]).toEqual(['choice-capsule', '实验设计', 'false'])
+    await act(async () => toggle!.click())
+    expect(toggle!.getAttribute('aria-pressed')).toBe('true')
+    await act(async () => toggle!.click())
+    expect(toggle!.getAttribute('aria-pressed')).toBe('false')
+    expect([action!.className, action!.id, action!.hasAttribute('aria-pressed')]).toEqual(['choice-capsule', 'qaIdea', false])
+    await act(async () => action!.click())
+    expect(saved).toHaveBeenCalledOnce()
+    act(() => root.unmount())
+    host.remove()
+  })
+})
+
+describe('CapsuleModes', () => {
+  beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true })
+
+  it('presses one mode at a time: pressing another turns the first off, pressing the one on turns it off', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    const changes: Array<string | null> = []
+    function Modes() {
+      const [mode, setMode] = useState<'design' | 'idea' | null>(null)
+      return (
+        <CapsuleModes
+          value={mode} options={[{ value: 'design', label: '实验设计' }, { value: 'idea', label: '整理想法', id: 'qaIdea' }]}
+          onChange={(next) => { changes.push(next); setMode(next) }}
+        />
+      )
+    }
+    await act(async () => root.render(<Modes />))
+    const [design, idea] = [...host.querySelectorAll('button')]
+    const pressed = () => [design!.getAttribute('aria-pressed'), idea!.getAttribute('aria-pressed')]
+
+    expect([design!.className, idea!.id, pressed()]).toEqual(['choice-capsule', 'qaIdea', ['false', 'false']])
+    await act(async () => design!.click())
+    expect(pressed()).toEqual(['true', 'false'])
+    await act(async () => idea!.click())
+    expect(pressed()).toEqual(['false', 'true'])
+    await act(async () => idea!.click())
+    expect(pressed()).toEqual(['false', 'false'])
+    expect(changes).toEqual(['design', 'idea', null])
+    act(() => root.unmount())
+    host.remove()
   })
 })

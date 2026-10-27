@@ -6,6 +6,8 @@ button.pv{border:0;background:transparent;font-family:var(--sans);font-size:var(
 /* The composer's picker: text and a small caret on a neutral capsule, its fill deeper under the pointer and while open. */
 .choice-capsule{display:inline-flex;align-items:center;gap:var(--sp-4);min-width:0;max-width:100%;padding:var(--sp-2) var(--sp-8);border:0;border-radius:var(--r-chip);background:var(--chip);color:var(--sec);font-family:var(--sans);font-size:var(--fs-sm);line-height:var(--lh-ui);cursor:pointer;transition:color var(--t-fast) var(--e-out)}
 .choice-capsule:enabled:hover,.choice-capsule[data-state="open"]{background-image:linear-gradient(var(--hover),var(--hover));color:var(--ink)}
+/* A capsule that toggles is pressed as a small control is: the neutral selected fill and the accent text. */
+.choice-capsule[aria-pressed="true"]{background-color:var(--selected);color:var(--accent-text)}
 .choice-capsule:disabled{opacity:.45;cursor:default}
 .choice-capsule[aria-busy="true"]{opacity:1}
 .choice-capsule-caret{display:flex;flex:none;color:var(--ter)}

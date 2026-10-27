@@ -1,11 +1,14 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { dirname, join } from 'node:path'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { openSemanticKeyStore, type SecretSealer } from './semantic-key.js'
 
 const temporary: string[] = []
-afterEach(() => { for (const root of temporary.splice(0)) rmSync(root, { recursive: true, force: true }) })
+afterEach(() => {
+  for (const root of temporary.splice(0)) rmSync(root, { recursive: true, force: true })
+  vi.restoreAllMocks()
+})
 
 function keyFile(): string {
   const root = mkdtempSync(join(tmpdir(), 'meridian-semantic-key-'))
@@ -67,5 +70,36 @@ describe('openSemanticKeyStore', () => {
     const reopened = await openSemanticKeyStore({ file, vault: sealer(true) })
     expect(reopened.current()).toBe('abcd1234wxyz')
     expect(JSON.parse(readFileSync(file, 'utf8')).ciphertext).toBe('resealed:abcd1234wxyz')
+  })
+
+  it('新版本在文件里多写的键不影响读出 key,换密文和重新保存时原样留着', async () => {
+    const file = keyFile()
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, JSON.stringify({ ciphertext: 'sealed:abcd1234wxyz', lastFour: 'wxyz', savedBy: { app: '0.0.99.0' } }))
+    const store = await openSemanticKeyStore({ file, vault: sealer(true) })
+    expect(store.status()).toEqual({ configured: true, lastFour: 'wxyz' })
+    expect(store.current()).toBe('abcd1234wxyz')
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      ciphertext: 'resealed:abcd1234wxyz', lastFour: 'wxyz', savedBy: { app: '0.0.99.0' },
+    })
+    await store.set('newkey5678')
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      ciphertext: 'sealed:newkey5678', lastFour: '5678', savedBy: { app: '0.0.99.0' },
+    })
+  })
+
+  it('读不了的文件报出来,当作没存过 key,照常打开;再存一次会覆盖', async () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+    for (const text of ['{"ciphertext": ', JSON.stringify({ ciphertext: 7, lastFour: 'wxyz' })]) {
+      const file = keyFile()
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, text)
+      const store = await openSemanticKeyStore({ file, vault: sealer() })
+      expect(store.status()).toEqual({ configured: false })
+      expect(store.current()).toBeUndefined()
+      expect(reported).toHaveBeenLastCalledWith(expect.stringContaining(file))
+      await store.set('newkey5678')
+      expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({ ciphertext: 'sealed:newkey5678', lastFour: '5678' })
+    }
   })
 })

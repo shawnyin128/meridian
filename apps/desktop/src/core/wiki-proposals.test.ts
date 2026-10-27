@@ -343,6 +343,58 @@ describe('review queue on a vault', () => {
     expect(saved[1]).toEqual(future)
   })
 
+  it('另一个版本存的提案里操作多出来的键不管:已知的字段照常显示,处理之后那些键原样留着;新交来的提案多一个键照样拒收', async () => {
+    const queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
+    const { id, node } = await project()
+    const receipt = await queue.propose(envelope(store, [{ op: 'addClaim', page: 'topics/draft-acceptance', claim: {
+      id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: id, node }],
+    } }]))
+    const file = join(meridian(), 'proposals.json')
+    const [record] = JSON.parse(readFileSync(file, 'utf8')) as { proposal: { ops: Record<string, unknown>[] } }[]
+    const entry = { op: 'appendEntry', page: 'topics/qat', section: '笔记', date: TODAY, text: '记一笔', anchor: { page: 3 } }
+    const parents = { op: 'setParents', page: 'topics/qat', parents: [], order: 2 }
+    const newer = { ...record!, proposal: { ...record!.proposal, ops: [...record!.proposal.ops, entry, parents] } }
+    writeFileSync(file, JSON.stringify([newer]))
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+
+    const reopened = createVaultStore(vault, () => TODAY, () => new Date(NOW))
+    const again = createWikiProposals({ store: reopened, pdf: fakePdf(null), now: () => NOW })
+    const [shown] = await again.list()
+    expect(shown?.id).toBe(receipt.id)
+    expect(shown?.proposal?.ops.slice(1)).toEqual([
+      { op: 'appendEntry', page: 'topics/qat', section: '笔记', date: TODAY, text: '记一笔' },
+      { op: 'setParents', page: 'topics/qat', parents: [] },
+    ])
+    expect(reported).not.toHaveBeenCalled()
+    await again.decide(receipt.id, 'decline', '先不写')
+    const [saved] = JSON.parse(readFileSync(file, 'utf8')) as typeof newer[]
+    expect(saved).toMatchObject({ status: 'rejected' })
+    expect(saved!.proposal.ops).toEqual(newer.proposal.ops)
+
+    await expect(again.propose(envelope(reopened, [parents as ProposalOp], { key: 'model' }))).rejects.toThrow(/提案的格式不对/)
+  })
+
+  it('另一个版本存的提案里操作多出来的键可能改了操作的意思:应用时拒绝,说要更新 App,什么都不写,提案留在队列里', async () => {
+    const queue = createWikiProposals({ store, pdf: fakePdf(null), now: () => NOW })
+    const { id, node } = await project()
+    const receipt = await queue.propose(envelope(store, [{ op: 'addClaim', page: 'topics/draft-acceptance', claim: {
+      id: 'n', text: 'x', evidence: [{ kind: 'experiment', project: id, node }],
+    } }]))
+    const file = join(meridian(), 'proposals.json')
+    const [record] = JSON.parse(readFileSync(file, 'utf8')) as { proposal: { ops: Record<string, unknown>[] } }[]
+    const parents = { op: 'setParents', page: 'topics/draft-acceptance', parents: [], order: 2 }
+    writeFileSync(file, JSON.stringify([{ ...record!, proposal: { ...record!.proposal, ops: [...record!.proposal.ops, parents] } }]))
+    const page = join(vault, 'wiki', 'topics', 'draft-acceptance.md')
+    const before = readFileSync(page, 'utf8')
+
+    const reopened = createVaultStore(vault, () => TODAY, () => new Date(NOW))
+    const again = createWikiProposals({ store: reopened, pdf: fakePdf(null), now: () => NOW })
+    await expect(again.decide(receipt.id, 'apply')).rejects.toMatchObject({ reason: 'newer-version' })
+    expect(readFileSync(page, 'utf8')).toBe(before)
+    expect((await again.list()).map((r) => [r.id, r.status])).toEqual([[receipt.id, 'queued']])
+    expect((await again.decide(receipt.id, 'decline', '先不写')).status).toBe('rejected')
+  })
+
   it('信号文件:打开时写一次;处理完冲突再写一次,冲突信号没了', () => {
     const file = join(meridian(), 'wiki-signals.json')
     const first = JSON.parse(readFileSync(file, 'utf8')) as { generated_at: string; signals: { kind: string; page: string }[] }

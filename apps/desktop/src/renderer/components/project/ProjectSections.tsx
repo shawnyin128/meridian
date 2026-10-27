@@ -1,11 +1,7 @@
-import { useRef, useState } from 'react'
+import { useRef } from 'react'
 import type { ReactNode, RefObject } from 'react'
-import type { AgentSession, Attachment, RelationGroup } from '../../../shared/contract.js'
-import { AddAction } from '../AddAction.js'
+import type { AgentSession, RelationGroup } from '../../../shared/contract.js'
 import { CardTray } from '../CardTray.js'
-import { FadeText } from '../FadeText.js'
-import { IconButton } from '../IconButton.js'
-import { IconTrash } from '../icons.js'
 import { EmptyState } from '../EmptyState.js'
 import { MarkdownSection } from '../Markdown.js'
 import { PaperText } from '../paper/PaperText.js'
@@ -18,8 +14,7 @@ import { FormInput } from '../FormControls.js'
 import { SectionHeading } from '../PageShell.js'
 import { SegmentedControl } from '../SegmentedControl.js'
 import { ChipList } from '../ChipList.js'
-import { Item, ItemOpen } from '../Item.js'
-import { List } from '../List.js'
+import { Item } from '../Item.js'
 import { Tag } from '../Tag.js'
 import { TopicChips } from '../TopicChips.js'
 import './ProjectSections.css'
@@ -98,8 +93,6 @@ export function ProjectUrlDraft({ row, triggers, initial, onSubmit, onCancel, on
     </div>
   )
 }
-
-const CLIP_PATH = 'M21.4 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48'
 
 /**
  * Project `projectId`'s topics in its property rail, on the same TopicChips papers use: a chip per
@@ -246,85 +239,6 @@ export function ProjectRelations({
           />
         )
       })}
-    </>
-  )
-}
-
-export const attachmentSizeText = (bytes: number) => bytes >= 1048576
-  ? `${(bytes / 1048576).toFixed(1)} MB`
-  : `${Math.max(1, Math.round(bytes / 1024))} KB`
-
-/** Attachment drop target and list; persistence and reveal behavior stay injected. */
-export function ProjectAttachments({ attachments, onAdd, onReveal, onRemove }: {
-  attachments: Attachment[]
-  onAdd: (files: File[]) => void
-  onReveal: (path: string) => void
-  onRemove: (attachmentId: string) => void
-}) {
-  const m = useMessages()
-  const [over, setOver] = useState(false)
-  const input = useRef<HTMLInputElement>(null)
-  return (
-    <>
-      <SectionHeading
-        level="group"
-        actions={(
-          <AddAction size="compact" label={m.project.attachments.addTitle} onClick={() => input.current?.click()}>
-            {m.project.sections.attachments}
-          </AddAction>
-        )}
-      >{m.project.sections.attachments}
-      </SectionHeading>
-      <div
-        className={over ? 'attachments drag' : 'attachments'}
-        onDragOver={(event) => { event.preventDefault(); setOver(true) }}
-        onDragLeave={() => setOver(false)}
-        onDrop={(event) => {
-          event.preventDefault(); setOver(false)
-          const dropped = [...event.dataTransfer.files]
-          if (dropped.length) onAdd(dropped)
-        }}
-      >
-        <FormInput
-          ref={input} type="file" multiple hidden
-          onChange={(event) => {
-            const picked = [...(event.target.files ?? [])]
-            event.target.value = ''
-            if (picked.length) onAdd(picked)
-          }}
-        />
-        {attachments.length === 0 ? <EmptyState variant="section" /> : null}
-        {attachments.length === 0
-          ? null
-          : (
-            <List className="attachment-list" variant="embedded">
-              {attachments.map((attachment) => (
-                <Item
-                  className="attrow" key={attachment.id}
-                  {...(attachment.path === undefined ? {} : { composite: true, onActivate: () => onReveal(attachment.path!) })}
-                  leading={(
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                      <path d={CLIP_PATH} />
-                    </svg>
-                  )}
-                  title={(
-                    <>
-                      <ItemOpen className="an" disabled={attachment.path === undefined}><FadeText>{attachment.name}</FadeText></ItemOpen>
-                      {attachment.path === undefined ? <Tag>{m.project.attachments.noPath}</Tag> : null}
-                    </>
-                  )}
-                  trailing={<span className="as">{attachment.size}</span>}
-                  actions={(
-                    <IconButton
-                      label={m.project.attachments.delete} size="nested" tone="danger" className="ax"
-                      onClick={(event) => { event.stopPropagation(); onRemove(attachment.id) }}
-                    ><IconTrash /></IconButton>
-                  )}
-                />
-              ))}
-            </List>
-          )}
-      </div>
     </>
   )
 }

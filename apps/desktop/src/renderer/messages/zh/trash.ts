@@ -7,6 +7,7 @@ export const trash = {
   autoClear: (days: number) => `${days} 天后自动清除`,
   daysLeft: (days: number) => `${days} 天`,
   projectGone: '项目已删除',
+  ideaGone: '想法已删除',
   paperTaken: '库中已有同名论文',
   chatTaken: '论文已有新的对话',
   clear: '清空垃圾桶',

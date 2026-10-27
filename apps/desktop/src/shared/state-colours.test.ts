@@ -184,7 +184,8 @@ describe('强调色', () => {
   const ACCENT = [
     'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri', 'components/Button.css  .btn:not(.danger)[aria-pressed="true"]',
     'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/ComposerBox.css  .send',
-    'components/FieldPickers.css  .cd.sel', 'components/FilterMenu.css  .filter-menu.on',
+    'components/FieldPickers.css  .cd.sel', 'components/FieldPickers.css  .choice-capsule[aria-pressed="true"]',
+    'components/FilterMenu.css  .filter-menu.on',
     'components/IconButton.css  .icbtn[aria-pressed="true"]', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
     'components/Pager.css  .pgbtn.on',
     'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
@@ -233,6 +234,7 @@ describe('强调色', () => {
       ['routes/Reader.css', '.reader-rail button.on', ['--selected', '--accent-text']],
       ['components/Button.css', '.btn:not(.danger)[aria-pressed="true"]', ['--selected', '--accent-text']],
       ['components/IconButton.css', '.icbtn[aria-pressed="true"]', ['--selected', '--accent-text']],
+      ['components/FieldPickers.css', '.choice-capsule[aria-pressed="true"]', ['--selected', '--accent-text']],
       ['components/Pager.css', '.pgbtn.on', ['--selected-strong', '--accent-text']],
       ['components/FilterMenu.css', '.filter-menu.on', ['--selected-strong', '--accent-text']],
       ['components/paper-table/PaperTable.css', '.ctbtn.on', ['--selected-strong', '--accent-text']],

@@ -9,7 +9,6 @@ export const project = {
     links: '关联',
     papers: '论文',
     urls: '链接',
-    attachments: '附件',
     timeline: '本项目时间线',
     plan: '科研计划',
     records: '科研记录',
@@ -160,13 +159,6 @@ export const project = {
     editTitle: '编辑关联',
     paperRemoved: (title: string) => `已移除关联「${title}」`,
     removed: (text: string) => `已移除关联「${text}」`,
-  },
-  attachments: {
-    addTitle: '添加附件',
-    delete: '删除附件',
-    localOnly: '只能添加本机上的文件',
-    noPath: '无文件位置',
-    missing: '文件已经不在原来的位置',
   },
   agentSessions: {
     heading: 'Agent · 已完成',

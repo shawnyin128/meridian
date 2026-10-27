@@ -21,24 +21,21 @@ components/chat/Chat.css:19: .composer { padding }
 components/chat/Chat.css:19: .composer { background }
 components/chat/Chat.css:21: .qacts { padding }
 components/chat/Chat.css:23: .qm { max-width }
-components/chat/Chat.css:24: .save-idea { margin-left }
-components/chat/Chat.css:24: .qacts>.tag { margin-left }
-components/chat/Chat.css:25: .qacts>.tag+.save-idea { margin-left }
-components/chat/Chat.css:31: .chat-composer { color }
-components/chat/Chat.css:31: .chat-composer { font-family }
-components/chat/Chat.css:31: .chat-composer { font-size }
-components/chat/Chat.css:32: .chat-composer .cm-editor.cm-focused { outline }
-components/chat/Chat.css:33: .chat-composer .cm-scroller { font-family }
-components/chat/Chat.css:33: .chat-composer .cm-scroller { line-height }
-components/chat/Chat.css:33: .chat-composer .cm-scroller { max-height }
-components/chat/Chat.css:33: .chat-composer .cm-scroller { overflow-y }
-components/chat/Chat.css:34: .chat-composer .cm-content { padding }
-components/chat/Chat.css:34: .chat-composer .cm-content { caret-color }
-components/chat/Chat.css:35: .chat-composer .cm-line { padding }
-components/chat/Chat.css:36: .chat-composer .cm-placeholder { color }
-components/chat/Chat.css:36: .chat-composer .cm-placeholder { white-space }
-components/chat/Chat.css:36: .chat-composer .cm-placeholder { overflow }
-components/chat/Chat.css:36: .chat-composer .cm-placeholder { text-overflow }
+components/chat/Chat.css:29: .chat-composer { color }
+components/chat/Chat.css:29: .chat-composer { font-family }
+components/chat/Chat.css:29: .chat-composer { font-size }
+components/chat/Chat.css:30: .chat-composer .cm-editor.cm-focused { outline }
+components/chat/Chat.css:31: .chat-composer .cm-scroller { font-family }
+components/chat/Chat.css:31: .chat-composer .cm-scroller { line-height }
+components/chat/Chat.css:31: .chat-composer .cm-scroller { max-height }
+components/chat/Chat.css:31: .chat-composer .cm-scroller { overflow-y }
+components/chat/Chat.css:32: .chat-composer .cm-content { padding }
+components/chat/Chat.css:32: .chat-composer .cm-content { caret-color }
+components/chat/Chat.css:33: .chat-composer .cm-line { padding }
+components/chat/Chat.css:34: .chat-composer .cm-placeholder { color }
+components/chat/Chat.css:34: .chat-composer .cm-placeholder { white-space }
+components/chat/Chat.css:34: .chat-composer .cm-placeholder { overflow }
+components/chat/Chat.css:34: .chat-composer .cm-placeholder { text-overflow }
 components/ideas/IdeaDraft.css:1: .idea-draft-source { color }
 components/ideas/IdeaDraft.css:1: .idea-draft-source { font-size }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { margin }
@@ -237,11 +234,6 @@ components/project/ProjectSections.css:4: .agstep .agt { font-size }
 components/project/ProjectSections.css:4: .agstep .agt { color }
 components/project/ProjectSections.css:4: .agstep .agt { width }
 components/project/ProjectSections.css:6: .memo { font-size }
-components/project/ProjectSections.css:12: .attachments { border-radius }
-components/project/ProjectSections.css:12: .attachments { transition }
-components/project/ProjectSections.css:12: .attachments { outline }
-components/project/ProjectSections.css:13: .attachments.drag { background }
-components/project/ProjectSections.css:13: .attachments.drag { outline-color }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-kind-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-date-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-gap }

@@ -1,5 +1,5 @@
 import type {
-  AttachmentFields, ChangeEntry, ChangeSource, ChatMessage, ChatMessageFields, ChatSession, ConclusionState, Facet,
+  AttachmentFields, ChangeEntry, ChangeSource, ChatMessage, ChatMessageFields, ChatSession, ConclusionState, Facet, IdeaFile,
   DeliverySettings, DiscoveryDirectionParams, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields, FieldValue,
   InboxDownloadResult, InboxEntry,
   InboxListParams, LaterEntry, ListParams, ListResult,
@@ -853,6 +853,9 @@ export interface VaultStore {
   /** Replaces the review-queue records with `rows`, newest first. */
   saveProposalRecords(rows: ProposalRecord[]): void
 
+  /** The keys this version does not know on the ops of review-queue record `id`, as stored. */
+  proposalUnknownOpKeys(id: string): string[]
+
   /** Returns an unused review-queue record id, `proposal-<n>`. */
   nextProposalId(): string
 
@@ -1137,6 +1140,41 @@ export interface VaultStore {
 
   /** Moves an idea into the shared trash so it can be restored during the retention window. */
   deleteIdea(id: string): void
+
+  /**
+   * Returns the files of every idea listIdeas returns, each idea's newest first, after taking in the
+   * files coding agents attached in bound local workspaces. The files of an idea in the trash are
+   * left out until it is restored.
+   */
+  listIdeaFiles(): IdeaFile[]
+
+  /**
+   * Adds the local file `attachment` describes, kept where it is, to idea `ideaId` as its newest file
+   * and returns it. Throws `invalid` when its path is not absolute and `not-found` when there is no
+   * such idea.
+   */
+  addIdeaFile(ideaId: string, attachment: AttachmentFields): IdeaFile
+
+  /** The absolute path of the experiment design file `name` under the vault's `.meridian/designs/`, written or not. */
+  designFilePath(name: string): string
+
+  /**
+   * Writes `markdown` as the experiment design file `name` under the vault's `.meridian/designs/`,
+   * replacing what is there, and returns its absolute path.
+   */
+  writeDesignFile(name: string, markdown: string): string
+
+  /**
+   * Moves file `fileId` of idea `ideaId` to the trash, which puts it back in its place among that
+   * idea's files. Throws `not-found` when the idea holds no such file.
+   */
+  deleteIdeaFile(ideaId: string, fileId: string): void
+
+  /**
+   * Records that the idea draft of message `messageId` of chat `id` was saved as idea `ideaId`.
+   * Throws `not-found` when the message holds no idea draft.
+   */
+  markIdeaDraftSaved(id: string, messageId: string, ideaId: string): void
 
   /**
    * Appends the writeBack action on the given message to its project as a

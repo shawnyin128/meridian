@@ -16,8 +16,73 @@ from meridian_harness.models import (
     check_model_connection,
     create_chat_model,
     list_models,
+    output_cap,
     structured_output_method,
 )
+
+
+class OutputCapTests(unittest.TestCase):
+    def test_a_profiled_model_takes_the_cap_core_sets_while_its_limit_holds_it(self) -> None:
+        opus = {
+            **_model("anthropic", "https://api.anthropic.com", "messages"),
+            "model": "claude-opus-4-6",
+        }
+        model = create_chat_model(opus, _capped(40_000, 2_000))
+
+        self.assertEqual(model.max_tokens, 40_000)
+        self.assertEqual(output_cap(opus, _capped(40_000, 2_000)), (40_000, 128_000))
+
+    def test_a_profiled_model_whose_limit_is_under_the_cap_takes_its_limit(self) -> None:
+        openai = create_chat_model({**_model("openai"), "model": "gpt-4o"}, _capped(40_000, 2_000))
+        gemini = create_chat_model(
+            {
+                **_model(
+                    "google-gemini",
+                    "https://generativelanguage.googleapis.com/v1beta",
+                    "generate-content",
+                ),
+                "model": "gemini-3.5-flash",
+            },
+            _capped(80_000, 2_000),
+        )
+
+        self.assertEqual(openai.max_tokens, 16_384)
+        self.assertEqual(gemini.max_output_tokens, 65_536)
+
+    def test_a_compatible_or_unprofiled_model_takes_at_most_the_common_floor(self) -> None:
+        compatible = create_chat_model(
+            {**_model("openai-compatible", "https://api.example.test", "chat-completions"),
+             "model": "deepseek-chat"},
+            _capped(40_000, 2_000),
+        )
+        # A compatible service's own model is not the provider's, whatever its name.
+        named = create_chat_model(
+            {
+                **_model("openai-compatible", "https://api.example.test", "responses"),
+                "model": "gpt-5.6",
+            },
+            _capped(40_000, 2_000),
+        )
+        unprofiled = create_chat_model(_model("openai"), _capped(40_000, 2_000))
+
+        self.assertEqual(compatible.extra_body, {"max_tokens": 8_192})
+        self.assertEqual(named.max_tokens, 8_192)
+        self.assertEqual(unprofiled.max_tokens, 8_192)
+
+    def test_a_clamp_never_takes_the_cap_below_the_floor_core_sets(self) -> None:
+        openai = create_chat_model({**_model("openai"), "model": "gpt-4o"}, _capped(40_000, 20_000))
+        compatible = create_chat_model(
+            _model("openai-compatible", "https://api.example.test", "chat-completions"),
+            _capped(26_000, 9_000),
+        )
+
+        self.assertEqual(openai.max_tokens, 20_000)
+        self.assertEqual(compatible.extra_body, {"max_tokens": 9_000})
+
+    def test_rejects_a_floor_that_is_not_a_positive_count_within_the_cap(self) -> None:
+        for floor in (0, 40_001, "2000", True):
+            with self.subTest(floor=floor), self.assertRaises(ModelConfigurationError):
+                create_chat_model(_model("openai"), _capped(40_000, floor))
 
 
 class ModelFactoryTests(unittest.TestCase):
@@ -399,6 +464,10 @@ def _model(
 
 def _limits() -> dict[str, object]:
     return {"maxOutputTokens": 6000, "maxModelCalls": 1}
+
+
+def _capped(cap: int, floor: object) -> dict[str, object]:
+    return {"maxOutputTokens": cap, "minOutputTokens": floor, "maxModelCalls": 1}
 
 
 if __name__ == "__main__":

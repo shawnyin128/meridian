@@ -10,6 +10,7 @@ from tempfile import TemporaryDirectory
 
 from meridian.cli import main
 from meridian.workspace_protocol import (
+    AGENT_IDEA_FILES_PATH,
     AGENT_IDEAS_PATH,
     CHANGES_PATH,
     EVENTS_PATH,
@@ -17,6 +18,7 @@ from meridian.workspace_protocol import (
     _validate_agent_ideas,
     _validate_changes,
     add_workspace_agent_idea,
+    add_workspace_agent_idea_file,
     add_workspace_event,
     inspect_project_workspace,
     read_project_plan,
@@ -394,6 +396,30 @@ class WorkspaceProtocolTest(unittest.TestCase):
             self.assertFalse(incremental["baseline_truncated"])
             self.assertEqual(reset["cursor_status"], "reset_required")
             self.assertEqual(idea["idea"]["body"], "Calibrate by batch.")
+            self.assertNotIn("files", idea)
+
+            with TemporaryDirectory() as vault_tmp:
+                vault = Path(vault_tmp)
+                self._write_json(
+                    vault / ".meridian/idea-files.json",
+                    [
+                        {"id": "att-3", "name": "d1.md", "size": "1 KB", "path": ".meridian/designs/d1.md", "idea": "idea-1"},
+                        {"id": "att-2", "name": "other.md", "size": "1 KB", "path": "/research/other.md", "idea": "idea-2"},
+                        {"id": "att-9", "name": ["not", "a", "name"], "idea": "idea-1"},
+                        {"id": "att-1", "name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md", "idea": "idea-1", "later": 1},
+                    ],
+                )
+                with_files = read_workspace_idea(root, "idea-1", vault=vault)
+                self.assertEqual(with_files["idea"], idea["idea"])
+                self.assertEqual(
+                    with_files["files"],
+                    [
+                        {"name": "d1.md", "size": "1 KB", "path": str(vault.resolve() / ".meridian/designs/d1.md")},
+                        {"name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md"},
+                    ],
+                )
+                (vault / ".meridian/idea-files.json").unlink()
+                self.assertEqual(read_workspace_idea(root, "idea-1", vault=vault)["files"], [])
 
     def test_change_journal_reads_an_idea_the_user_wrote_down_without_a_chat(self) -> None:
         def journal(chat_title: str) -> dict[str, object]:
@@ -568,6 +594,94 @@ class WorkspaceProtocolTest(unittest.TestCase):
             self.assertEqual(code, 1)
             self.assertIn("idea context must not hold a date or time", stderr.getvalue())
             self.assertFalse((root / AGENT_IDEAS_PATH).exists())
+
+    def test_agent_idea_file_add_records_a_file_inside_the_workspace_once(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            (root / "docs").mkdir()
+            (root / "docs/proposal.md").write_text("# Proposal\n", encoding="utf-8")
+
+            created = add_workspace_agent_idea_file(
+                root, file_id="proposal", idea_id="reuse-distance", path="./docs/../docs/proposal.md", file_date="2026-10-21",
+            )
+            repeated = add_workspace_agent_idea_file(
+                root, file_id="proposal", idea_id="reuse-distance", path="docs/proposal.md", file_date="2026-10-21",
+            )
+            with self.assertRaisesRegex(WorkspaceProtocolError, "already exists with different content"):
+                add_workspace_agent_idea_file(
+                    root, file_id="proposal", idea_id="idea-7", path="docs/proposal.md", file_date="2026-10-21",
+                )
+
+            entry = {"id": "proposal", "idea_id": "reuse-distance", "path": "docs/proposal.md", "date": "2026-10-21"}
+            self.assertEqual((created["status"], repeated["status"]), ("created", "unchanged"))
+            self.assertEqual(created["file"], entry)
+            self.assertEqual(
+                json.loads((root / AGENT_IDEA_FILES_PATH).read_text(encoding="utf-8")),
+                {"schema_version": "meridian.workspace-agent-idea-files.v1", "files": [entry]},
+            )
+
+    def test_agent_idea_file_add_rejects_a_missing_outside_or_protocol_file_and_a_bad_id(self) -> None:
+        with TemporaryDirectory() as tmp, TemporaryDirectory() as outside_tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            outside = Path(outside_tmp) / "outside.md"
+            outside.write_text("outside\n", encoding="utf-8")
+            (root / "proposal.md").write_text("proposal\n", encoding="utf-8")
+
+            for path, reason in [
+                ("missing.md", "existing file"),
+                (str(outside), "relative to the workspace root"),
+                ("../" + outside.name, "existing file"),
+                (".meridian/workspace.json", "not a protocol projection"),
+                (".", "existing file"),
+            ]:
+                with self.assertRaisesRegex(WorkspaceProtocolError, reason):
+                    add_workspace_agent_idea_file(root, file_id="f", idea_id="i", path=path)
+            for file_id, idea_id in [("", "i"), ("f", " "), ("f/1", "i")]:
+                with self.assertRaisesRegex(WorkspaceProtocolError, "URL-safe"):
+                    add_workspace_agent_idea_file(root, file_id=file_id, idea_id=idea_id, path="proposal.md")
+            self.assertFalse((root / AGENT_IDEA_FILES_PATH).exists())
+
+    def test_agent_idea_file_add_keeps_stored_files_it_cannot_read(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            (root / "proposal.md").write_text("proposal\n", encoding="utf-8")
+            malformed = {"id": "bad", "path": ["not", "a", "path"], "extra": True}
+            self._write_json(
+                root / AGENT_IDEA_FILES_PATH,
+                {"schema_version": "meridian.workspace-agent-idea-files.v1", "files": [malformed], "later": 1},
+            )
+
+            add_workspace_agent_idea_file(root, file_id="new", idea_id="i", path="proposal.md", file_date="2026-10-21")
+
+            stored = json.loads((root / AGENT_IDEA_FILES_PATH).read_text(encoding="utf-8"))
+            self.assertEqual(stored["later"], 1)
+            self.assertEqual([item["id"] for item in stored["files"]], ["bad", "new"])
+            self.assertEqual(stored["files"][0], malformed)
+
+    def test_cli_idea_file_add_writes_the_file_and_prints_the_result(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            (root / "proposal.md").write_text("proposal\n", encoding="utf-8")
+            stdout = StringIO()
+
+            with redirect_stdout(stdout):
+                code = main(
+                    [
+                        "workspace", "idea-file-add", "--root", str(root), "--id", "proposal",
+                        "--idea", "reuse-distance", "--path", "proposal.md", "--date", "2026-10-21",
+                    ]
+                )
+
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(stdout.getvalue())["status"], "created")
+            self.assertEqual(
+                json.loads((root / AGENT_IDEA_FILES_PATH).read_text(encoding="utf-8"))["files"],
+                [{"id": "proposal", "idea_id": "reuse-distance", "path": "proposal.md", "date": "2026-10-21"}],
+            )
 
     def test_change_reader_has_explicit_fallback_for_legacy_workspace(self) -> None:
         with TemporaryDirectory() as tmp:

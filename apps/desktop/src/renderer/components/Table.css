@@ -85,6 +85,9 @@
 
 /* Text that does not fit fades out, until the pointer rests on its cell or keyboard focus is in it. */
 .table-text{display:block;overflow:hidden;white-space:nowrap}
+/* A wrapping table's rows grow with their text, which starts on each cell's first line. */
+.table--wrap td{height:auto;min-height:var(--row-table-h);vertical-align:top;white-space:normal}
+.table--wrap .table-text{white-space:normal;overflow-wrap:anywhere}
 .table td:not(:hover)>.table-text.table-cut:not(:has(:focus-visible)){mask-image:var(--clipfade)}
 /* Resting on the cell shows the text whole in place (Excel style): it stays put, over the cells beside it, in the row's colours. */
 .table td:has(>.table-cut):hover{overflow:visible}

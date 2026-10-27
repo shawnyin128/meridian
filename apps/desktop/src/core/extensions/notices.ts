@@ -1,7 +1,8 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { z } from 'zod'
 import type { ExtensionStatus, FeedRun } from '../../shared/contract.js'
+import { readStoredFile, withUnknownFields } from '../vault/stored-records.js'
 
 const NoticesSchema = z.object({
   appVersion: z.string(),
@@ -12,8 +13,9 @@ const NoticesSchema = z.object({
  * Tells the user, through the feed, about version changes they would otherwise not see: the app
  * having updated itself since the last run, and each plugin older than `pluginVersion`, the newest
  * plugin version known. Every
- * notice is posted once per machine; `file` remembers what was posted. The first run on a machine
- * records the app version without announcing it.
+ * notice is posted once per machine; `file` remembers what was posted, keeping the keys this version
+ * does not know. The first run on a machine records the app version without announcing it; a `file`
+ * this version cannot read is reported and counts as a first run.
  */
 export function noteVersionChanges({ file, appVersion, pluginVersion, extensions, post }: {
   file: string
@@ -22,7 +24,8 @@ export function noteVersionChanges({ file, appVersion, pluginVersion, extensions
   extensions: ExtensionStatus[]
   post: (runs: FeedRun[]) => void
 }): void {
-  const prior = existsSync(file) ? NoticesSchema.parse(JSON.parse(readFileSync(file, 'utf8'))) : null
+  const read = readStoredFile(file, NoticesSchema)
+  const prior = read?.value ?? null
   const noticed = new Set(prior?.extensions ?? [])
   if (prior !== null && prior.appVersion !== appVersion) {
     post([
@@ -45,5 +48,6 @@ export function noteVersionChanges({ file, appVersion, pluginVersion, extensions
     ])
   }
   mkdirSync(dirname(file), { recursive: true })
-  writeFileSync(file, `${JSON.stringify({ appVersion, extensions: [...noticed] }, null, 2)}\n`, 'utf8')
+  const next = withUnknownFields({ appVersion, extensions: [...noticed] }, read?.unknown ?? [])
+  writeFileSync(file, `${JSON.stringify(next, null, 2)}\n`, 'utf8')
 }

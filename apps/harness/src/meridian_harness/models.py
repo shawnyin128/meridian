@@ -2,16 +2,20 @@
 
 from __future__ import annotations
 
+import logging
 import re
-from collections.abc import Callable
-from typing import TYPE_CHECKING, Literal
+from collections.abc import Callable, Mapping
+from functools import reduce
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
 
 from langchain_core.messages import HumanMessage
-from pydantic import SecretStr
+from langchain_core.messages.ai import UsageMetadata, add_usage
+from pydantic import BaseModel, ConfigDict, SecretStr
 
 if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
+    from langchain_core.language_models import BaseChatModel, LanguageModelInput
+    from langchain_core.runnables import Runnable
 
 DEFAULT_TIMEOUT_SECONDS = 120.0
 MAX_TIMEOUT_SECONDS = 900
@@ -19,6 +23,9 @@ CONNECTION_CHECK_TIMEOUT_SECONDS = 20.0
 MODEL_LIST_TIMEOUT_SECONDS = 20.0
 MAX_LISTED_MODELS = 1000
 CONNECTION_CHECK_LIMITS = {"maxOutputTokens": 1, "maxModelCalls": 1}
+# The output cap of a model with no LangChain profile, or on an OpenAI-compatible service: the most
+# that DeepSeek's chat models, the lowest common limit, take.
+UNPROFILED_OUTPUT_TOKENS = 8_192
 MAX_CONNECTION_ERROR_DETAIL = 500
 # The reasoning efforts each provider's LangChain integration takes: OpenAI's reasoning.effort,
 # Anthropic's output_config.effort and Gemini's thinking_level. Core offers the same levels.
@@ -41,6 +48,7 @@ _QUERY_SECRET_PATTERN = re.compile(
     r"(?i)([?&](?:api[-_]?key|key|token|access_token|secret)=)[^&#\s]+"
 )
 _TOKEN_PATTERN = re.compile(r"\b(?:sk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{20,})\b")
+_log = logging.getLogger(__name__)
 
 
 class ModelConfigurationError(RuntimeError):
@@ -156,6 +164,73 @@ def structured_output_method(model: object) -> Literal["json_schema", "function_
     return "json_schema"
 
 
+def _drop_titles(node: object) -> None:
+    if isinstance(node, dict):
+        if isinstance(node.get("title"), str):
+            del node["title"]
+        for value in node.values():
+            _drop_titles(value)
+    elif isinstance(node, list):
+        for value in node:
+            _drop_titles(value)
+
+
+def _model_facing(schema: dict[str, Any]) -> None:
+    """Remove from the JSON schema pydantic makes of one class its title, its docstring and the
+    titles of its fields."""
+
+    schema.pop("title", None)
+    schema.pop("description", None)
+    for field in schema.get("properties", {}).values():
+        _drop_titles(field)
+
+
+class StructuredOutput(BaseModel):
+    """A model's structured output, whose JSON schema says only what the model needs: it carries
+    no pydantic titles and no class docstrings, which are written for developers."""
+
+    model_config = ConfigDict(json_schema_extra=_model_facing)
+
+
+def with_closed_output(
+    chat_model: BaseChatModel, schema: type[StructuredOutput], model: object,
+) -> Runnable[LanguageModelInput, object]:
+    """Return `chat_model` answering with the closed schema `schema` through the provider-native
+    structured output runtime model `model` takes, as structured_output_method names it. An
+    OpenAI-compatible service's answer comes back as the tool call's arguments, every other
+    provider's as a `schema` instance; either needs validating."""
+
+    method = structured_output_method(model)
+    if method == "function_calling":
+        # LangChain names the tool after the schema's title, which a structured output leaves out.
+        named = {**schema.model_json_schema(), "title": schema.__name__}
+        return chat_model.with_structured_output(named, method=method)
+    return chat_model.with_structured_output(schema, method=method)
+
+
+def caches_by_breakpoint(model: object) -> bool:
+    """Whether the provider of runtime model `model` caches a prompt prefix only up to a
+    `cache_control` breakpoint the prompt carries, as Anthropic does; the other providers cache
+    prefixes on their own. Raises ModelConfigurationError as structured_output_method does."""
+
+    return _runtime_model(model)["provider"] == "anthropic"
+
+
+def usage_line(model: object, seconds: float, usage: Mapping[str, UsageMetadata]) -> str:
+    """One log line saying how long a call to runtime model `model` took, and its input tokens, the
+    cached ones among them, and its output tokens, as LangChain's non-empty `usage` by model name
+    counts them."""
+
+    runtime = _runtime_model(model)
+    total = reduce(add_usage, usage.values())
+    cached = total.get("input_token_details", {}).get("cache_read") or 0
+    return (
+        f"{runtime['provider']} {runtime['name']}: {seconds:.1f} s, "
+        f"{total['input_tokens']} input tokens ({cached} cached), "
+        f"{total['output_tokens']} output tokens"
+    )
+
+
 def _output_limit(value: object) -> int:
     limits = _mapping(value, "limits")
     output_tokens = limits.get("maxOutputTokens")
@@ -182,6 +257,57 @@ def _call_timeout(value: object, fallback: float) -> float:
     return float(timeout)
 
 
+def _output_floor(value: object, cap: int) -> int:
+    """The cap a clamp never goes below: `limits`' `minOutputTokens`, or `cap` when it sets none."""
+
+    floor = _mapping(value, "limits").get("minOutputTokens", cap)
+    if not isinstance(floor, int) or isinstance(floor, bool) or not 0 < floor <= cap:
+        raise ModelConfigurationError("minOutputTokens must be from 1 to maxOutputTokens")
+    return floor
+
+
+def _model_output_limit(runtime: dict[str, object], chat_model: BaseChatModel) -> int:
+    """The output tokens the model of `chat_model` takes at most, by its LangChain profile.
+
+    A model on an OpenAI-compatible service, or one with no profile, takes UNPROFILED_OUTPUT_TOKENS.
+    """
+
+    if runtime["provider"] == "openai-compatible":
+        return UNPROFILED_OUTPUT_TOKENS
+    limit = (chat_model.profile or {}).get("max_output_tokens")
+    if not isinstance(limit, int) or isinstance(limit, bool) or limit <= 0:
+        return UNPROFILED_OUTPUT_TOKENS
+    return limit
+
+
+def output_cap(model: object, limits: object) -> tuple[int, int]:
+    """Return the output cap a call on runtime model `model` under `limits` runs with, and the
+    output tokens the model takes at most.
+
+    The cap is `maxOutputTokens` lowered to the model's limit, but never below `minOutputTokens`;
+    without `minOutputTokens` it is `maxOutputTokens`. Raises ModelConfigurationError for a model
+    or limits create_chat_model would refuse.
+    """
+
+    runtime = _runtime_model(model)
+    requested = _output_limit(limits)
+    floor = _output_floor(limits, requested)
+    limit = _model_output_limit(runtime, _chat_model(runtime, requested, DEFAULT_TIMEOUT_SECONDS))
+    return max(min(requested, limit), floor), limit
+
+
+def log_output_cap(model: object, limits: object) -> None:
+    """Log, as a warning, the output cap and the model's output limit of a call on runtime model
+    `model` under `limits` whose output did not validate."""
+
+    cap, limit = output_cap(model, limits)
+    _log.warning(
+        "the output of %s did not validate; its output cap was %d tokens, "
+        "the model takes at most %d",
+        _runtime_model(model)["name"], cap, limit,
+    )
+
+
 def create_chat_model(
     model: object,
     limits: object,
@@ -190,13 +316,20 @@ def create_chat_model(
 ) -> BaseChatModel:
     """Build one LangChain chat model with retries disabled at the paid boundary.
 
-    The model runs at the reasoning effort `model` sets, or at the provider's own default, and a
-    call may take the `timeoutSeconds` `limits` sets, or `timeout_seconds` when it sets none.
+    The model runs at the reasoning effort `model` sets, or at the provider's own default, with the
+    output cap output_cap gives, and a call may take the `timeoutSeconds` `limits` sets, or
+    `timeout_seconds` when it sets none.
     """
 
-    runtime = _runtime_model(model)
-    max_output_tokens = _output_limit(limits)
-    timeout_seconds = _call_timeout(limits, timeout_seconds)
+    cap, _ = output_cap(model, limits)
+    return _chat_model(_runtime_model(model), cap, _call_timeout(limits, timeout_seconds))
+
+
+def _chat_model(
+    runtime: dict[str, object], max_output_tokens: int, timeout_seconds: float,
+) -> BaseChatModel:
+    """The LangChain chat model of `runtime`, capped at `max_output_tokens`, with no retries."""
+
     provider = runtime["provider"]
     api_key = SecretStr(str(runtime["api_key"]))
     name = str(runtime["name"])

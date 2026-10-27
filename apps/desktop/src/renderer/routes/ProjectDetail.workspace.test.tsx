@@ -29,7 +29,7 @@ vi.mock('../ipc.js', () => ({
   chat: { list: vi.fn(async () => []) },
   changelog: { undo: vi.fn() },
   files: {},
-  idea: { list: vi.fn(async () => []) },
+  idea: { list: vi.fn(async () => []), files: vi.fn(async () => []) },
   papers: { list: vi.fn(async () => ({ rows: [], total: 0 })) },
   project: {
     get: vi.fn(async () => PROJECT),

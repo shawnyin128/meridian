@@ -277,26 +277,86 @@ test('设置里「打开」进那条归档的会话,模态让开且屏上标出�
   await expect(shown(win, '.msg')).toHaveCount(archived.messageCount)
 })
 
-test('把讨论整理成可回看的想法', async ({ win }) => {
+test('「整理想法」和「实验设计」一次只开一个', async ({ win }) => {
   await gotoChat(win)
-  await say(win, '@draft 效率 拐点是 batch size 的函数')
+  const design = shown(win, '.cbox').getByRole('button', { name: '实验设计' })
+  const idea = shown(win, '#qaIdea')
+  await expect(idea).toHaveText('整理想法')
+  await expect(idea).toHaveAttribute('aria-pressed', 'false')
 
-  await shown(win, '#qaIdea').click()
-  const draft = shown(win, '.msgs .idea-draft')
-  await draft.locator('.form-input').fill('批大小拐点')
-  await draft.locator('.form-markdown .cm-content').fill('验证最优批大小是否随推理深度稳定迁移。')
-  await draft.getByRole('button', { name: '保存' }).click()
-  await expect(draft).toHaveCount(0)
+  await idea.click()
+  await expect(idea).toHaveAttribute('aria-pressed', 'true')
+  await design.click()
+  await expect(design).toHaveAttribute('aria-pressed', 'true')
+  await expect(idea).toHaveAttribute('aria-pressed', 'false')
+  await design.click()
+  await expect(design).toHaveAttribute('aria-pressed', 'false')
+  await expect(idea).toHaveAttribute('aria-pressed', 'false')
+})
+
+test('一条整理出想法的回答把「将写入」收起；展开后标题可改、列出来源轮次，确认后存成那个想法', async ({ win }) => {
+  const { id } = await core<{ id: string }>(win, 'chat.create', { title: '树宽能不能跟着接受率变', named: true })
+  await core(win, 'chat.append', { id, messages: [
+    { role: 'you', runs: [{ kind: 'text', text: '固定树宽在大 batch 下浪费验证算力。' }], actions: [] },
+    { role: 'ai', runs: [{ kind: 'text', text: '被拒的分支都白算了。' }], actions: [] },
+    { role: 'you', runs: [{ kind: 'text', text: '宽度能跟着每一步的接受率变吗？' }], actions: [] },
+    { role: 'ai', runs: [{ kind: 'text', text: '可以：接受率高的位置多展开分支。' }], actions: [] },
+    { role: 'you', runs: [{ kind: 'text', text: '整理成想法。' }], actions: [] },
+  ] })
+  const ids = (await core<Array<{ id: string }>>(win, 'chat.messages', { id })).map((message) => message.id)
+  await core(win, 'chat.append', { id, messages: [{
+    role: 'ai', runs: [{ kind: 'text', text: '把两轮关于树宽的讨论合成了一个想法。' }], actions: [],
+    idea: { title: '按接受率调整草稿树宽', body: '按每一步的接受率调整草稿树的宽度。', sources: [ids[0], ids[2], ids[3]] },
+  }] })
+  // The chat was made through Core directly, so the sidebar reads its list again only after a reload.
+  await win.reload()
+  await win.locator(`#chatList [data-chat="${id}"]`).click()
+  const answer = shown(win, '.msg').last()
+  await expect(answer.locator('.writes')).toHaveCount(0)
+
+  await answer.getByRole('button', { name: '将写入' }).click()
+  const writes = answer.locator('.writes')
+  await expect(writes).toContainText('按每一步的接受率调整草稿树的宽度。')
+  await expect(writes).toContainText('树宽能不能跟着接受率变')
+  await expect(writes).toContainText('来自 第 1、2 轮')
+  await writes.getByRole('button', { name: '按接受率调整草稿树宽' }).click()
+  await writes.getByRole('textbox', { name: '编辑想法' }).fill('按每步接受率调整树宽')
+  await win.keyboard.press('Enter')
+  await writes.getByRole('button', { name: '确认写入' }).click()
+  await expect(answer.getByRole('button', { name: /^将写入/ })).toContainText('已存为想法')
+
   await win.locator('[data-desk="ideas"]').click()
-  // Target the new idea by its own title: the ideas list holds many fixture cards, not sorted with ours first.
-  const ideaCard = shown(win, '.idea-card').filter({ hasText: '批大小拐点' })
-  await expect(ideaCard).toContainText('批大小拐点')
-  // A new idea is not started: its card leads with the title and keeps the body for the detail panel.
-  await expect(ideaCard).not.toContainText('验证最优批大小是否随推理深度稳定迁移。')
-  await ideaCard.click()
-  await expect(shown(win, '.idea-detail-panel'))
-    .toContainText('验证最优批大小是否随推理深度稳定迁移。')
-  await expect(win.locator('#qaConcl')).toHaveCount(0)
+  await shown(win, '.idea-card').filter({ hasText: '按每步接受率调整树宽' }).click()
+  await expect(shown(win, '.idea-detail-panel')).toContainText('按每一步的接受率调整草稿树的宽度。')
+})
+
+test('一条带实验设计的回答在正文下列出设计；展开「将写入」看全要写的东西，确认后它成了以主张为题、带设计文件的想法', async ({ win }) => {
+  const design = JSON.parse(readFileSync(resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/experiment-design.json'), 'utf8')) as {
+    claim: { text: string }
+  }
+  const { id } = await core<{ id: string }>(win, 'chat.create', { title: '动态树宽的实验', named: true })
+  await core(win, 'chat.append', { id, messages: [
+    { role: 'you', runs: [{ kind: 'text', text: '帮我设计实验' }], actions: [] },
+    { role: 'ai', runs: [{ kind: 'text', text: '可以测。' }], actions: [], design },
+  ] })
+  // The chat was made through Core directly, so the sidebar reads its list again only after a reload.
+  await win.reload()
+  await win.locator(`#chatList [data-chat="${id}"]`).click()
+  const card = shown(win, '.design-card')
+  await expect(card.locator('[role="heading"]')).toHaveText(['主张', '解释', '预测', '最小实验', '决策', '证据', '将写入'])
+  await expect(card.locator('table').nth(1).locator('tbody tr')).toHaveCount(6)
+  await expect(card.locator('.writes')).toHaveCount(0)
+
+  await card.getByRole('button', { name: '将写入' }).click()
+  const writes = card.locator('.writes')
+  await expect(writes).toContainText(design.claim.text)
+  await expect(writes).toContainText('不为 M2 或 M0 建节点')
+  await writes.getByRole('button', { name: '确认写入' }).click()
+  await expect(card.getByRole('button', { name: /^将写入/ })).toContainText('已存为想法')
+
+  await win.locator('[data-desk="ideas"]').click()
+  await shown(win, '.idea-card').filter({ hasText: design.claim.text }).click()
+  await expect(shown(win, '.idea-detail-panel')).toContainText(/实验设计-msg-\d+\.md/)
 })
 
 test('会话行的更多菜单是真菜单:触发器报 menu,重命名、归档之后是删除,下键两次高亮归档,回车归档且不进那条会话', async ({ win }) => {

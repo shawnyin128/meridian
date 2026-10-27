@@ -2,10 +2,10 @@
 import { act } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { MessagesProvider } from '../../messages/useMessages.js'
-import { ProjectAttachments } from './ProjectSections.js'
+import { MessagesProvider } from '../messages/useMessages.js'
+import { Attachments } from './Attachments.js'
 
-describe('ProjectAttachments', () => {
+describe('Attachments', () => {
   let host: HTMLDivElement
   let root: Root
 
@@ -25,7 +25,7 @@ describe('ProjectAttachments', () => {
   it('puts the attachment\'s delete into the row-actions slot as a glyph that turns red on hover', () => {
     act(() => root.render(
       <MessagesProvider>
-        <ProjectAttachments
+        <Attachments
           attachments={[{ id: 'a1', name: 'run.log', size: '2 KB', path: 'attachments/run.log' }]}
           onAdd={vi.fn()} onReveal={vi.fn()} onRemove={vi.fn()}
         />
@@ -42,7 +42,7 @@ describe('ProjectAttachments', () => {
     const onReveal = vi.fn()
     act(() => root.render(
       <MessagesProvider>
-        <ProjectAttachments attachments={[attachment]} onAdd={vi.fn()} onReveal={onReveal} onRemove={vi.fn()} />
+        <Attachments attachments={[attachment]} onAdd={vi.fn()} onReveal={onReveal} onRemove={vi.fn()} />
       </MessagesProvider>,
     ))
     const name = host.querySelector<HTMLElement>('.attrow .an')!
@@ -55,7 +55,7 @@ describe('ProjectAttachments', () => {
     const onReveal = vi.fn()
     act(() => root.render(
       <MessagesProvider>
-        <ProjectAttachments
+        <Attachments
           attachments={[{ id: 'a1', name: 'run.log', size: '2 KB' }]} onAdd={vi.fn()} onReveal={onReveal} onRemove={vi.fn()}
         />
       </MessagesProvider>,

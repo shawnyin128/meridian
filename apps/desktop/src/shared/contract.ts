@@ -699,7 +699,11 @@ export const HarnessPlanSchema = z.object({
     cli: HarnessCliSchema.optional(),
     effort: HarnessEffortSchema.optional(),
   }).strict(),
-  /** The output cap of a run on an API model at a reasoning effort, raised by the reasoning it may spend; absent otherwise. */
+  /**
+   * The output cap of a run on an API model, raised by the reasoning it may spend at its effort or,
+   * without one, at the medium effort, before Harness lowers it to the model's own limit; absent
+   * when nothing raises it.
+   */
   outputLimit: z.number().int().positive().optional(),
   expiresAt: IsoTimestamp,
 }).strict()
@@ -1684,12 +1688,12 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  * `kind` preserves the former type and `title` its display name. `deletedAt` is
  * UTC midnight for the vault date and starts retention. `restorable` is false
  * when the original destination is missing, such as an attachment whose project
- * remains deleted, or taken, such as a paper whose page's place another page
- * holds, or a paper chat whose paper has started another chat.
+ * remains deleted or an idea file whose idea does, or taken, such as a paper whose page's place another page
+ * holds, or a paper chat whose paper has started another chat. `ideaFile` is a file an idea held.
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat', 'page']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'ideaFile', 'project', 'idea', 'chat', 'page']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),
@@ -2323,11 +2327,69 @@ export const ChatAnswerModelSchema = z.discriminatedUnion('route', [
   z.object({ route: z.literal('api'), id: z.string().min(1).max(200) }).strict(),
 ])
 
+/** A required, trimmed one-line string of at most `max` characters, as model output must be. */
+const DesignLine = (max: number) => z.string().trim().min(1).max(max).regex(/^[^\n]*$/)
+
+/**
+ * The experiment design a design turn's answer carries, as the Harness validated it: the claim, the
+ * explanations it competes with (M1 the proposed mechanism, M2 the strongest alternative, M0 one null
+ * or artifact), what each predicts where (null is an unknown prediction, exactly one row `chosen`),
+ * the smallest experiment, the decision table declared before the run (each outcome once, `invalid`,
+ * `expand`, `kill` and `inconclusive` always among them) and the evidence ledger, where a `source`
+ * statement alone has an anchor: a Wiki claim or page, or a page of a paper.
+ */
+export const ExperimentDesignSchema = z.object({
+  claim: z.object({ text: DesignLine(160), status: z.enum(['hypothesis', 'observed']) }).strict(),
+  explanations: z.object({ m1: DesignLine(160), m2: DesignLine(160), m0: DesignLine(160) }).strict(),
+  predictions: z.array(z.object({
+    regime: DesignLine(80),
+    m1: DesignLine(40).nullable(),
+    m2: DesignLine(40).nullable(),
+    m0: DesignLine(40).nullable(),
+    metric: DesignLine(40),
+    chosen: z.boolean(),
+  }).strict()).min(1).max(4),
+  experiment: z.object({
+    substrate: z.enum(['analytic', 'synthetic', 'component', 'small-system', 'full-system']),
+    keeps: DesignLine(160),
+    untested: DesignLine(160),
+  }).strict(),
+  decisions: z.array(z.object({
+    pattern: DesignLine(120),
+    outcome: z.enum(['invalid', 'alternative', 'expand', 'below-gate', 'kill', 'inconclusive']),
+    interpretation: DesignLine(60),
+    next: DesignLine(60),
+  }).strict()).min(4).max(6),
+  ledger: z.array(z.object({
+    statement: DesignLine(160),
+    status: z.enum(['source', 'inference', 'new-hypothesis']),
+    anchor: z.discriminatedUnion('kind', [
+      z.object({ kind: z.literal('wiki'), ref: z.string().min(3).max(300) }).strict(),
+      z.object({ kind: z.literal('source'), paper: z.string().min(1).max(200), page: z.number().int().positive() }).strict(),
+    ]).nullable(),
+  }).strict()).min(1).max(6),
+}).strict()
+
+/**
+ * The idea an idea turn's answer drafts from its chat: a title on one line, a body, and the
+ * messages it came from, by id, oldest first. `saved` is the idea it was saved as, once it is.
+ */
+export const IdeaDraftSchema = z.object({
+  title: DesignLine(80),
+  body: z.string().trim().min(1).max(4_000),
+  sources: z.array(z.string().min(1)).min(1).max(20),
+  saved: z.string().optional(),
+}).strict()
+
+/** The modes of a chat turn beside an ordinary answer: an experiment design, or an idea draft. */
+export const ChatTurnModeSchema = z.enum(['design', 'idea'])
+
 /**
  * Chat message. `role` distinguishes user, AI answer, and Meridian status copy;
  * status messages are not rendered as answer bubbles. Messages without buttons
  * carry an empty actions array. `model`, on an AI answer, is the model that wrote
- * it; answers kept before 0.0.21.0 name none.
+ * it; answers kept before 0.0.21.0 name none. `design`, on an AI answer to a design turn, is the
+ * experiment design it carries, and `idea`, on one to an idea turn, the idea draft.
  */
 export const ChatMessageSchema = z.object({
   id: z.string(),
@@ -2335,6 +2397,8 @@ export const ChatMessageSchema = z.object({
   runs: z.array(ChatRunSchema),
   actions: z.array(ChatActionSchema),
   model: ChatAnswerModelSchema.optional(),
+  design: ExperimentDesignSchema.optional(),
+  idea: IdeaDraftSchema.optional(),
 }).strict()
 
 /**
@@ -2425,10 +2489,12 @@ export const ChatAppendParamsSchema = z.object({
  * One explicit send is one billable model turn; Core owns persistence, context, and cancellation.
  * `runs` is what the user wrote, each mention as a run of its own, `@` and the name on one line,
  * naming the project, paper or Wiki page it mentions; the whole text holds at most 20,000
- * characters and more than whitespace.
+ * characters and more than whitespace. With `mode` the turn is a design turn, whose answer may carry
+ * an experiment design, or an idea turn, whose answer may carry an idea draft of the whole chat.
  */
 export const ChatSendParamsSchema = z.object({
   id: z.string(),
+  mode: ChatTurnModeSchema.optional(),
   runs: z.array(ChatRunSchema.refine((run) => (run.kind === 'text'
     ? run.target === undefined
     : /^@[^\n]+$/.test(run.text) && ['project', 'paper', 'page'].includes(run.target?.kind ?? '')))).min(1),
@@ -2494,7 +2560,73 @@ export const HarnessFailureDetailSchema = z.object({
 export const ChatFailureParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
-export const ChatRetryParamsSchema = z.object({ id: z.string() }).strict()
+export const ChatRetryParamsSchema = z.object({ id: z.string(), mode: ChatTurnModeSchema.optional() }).strict()
+
+/**
+ * Reads what saving the idea draft of answer `messageId` of chat `id` writes, with `title` and
+ * `body` as the user left them; answers a ChatIdeaPreview.
+ */
+export const ChatIdeaPreviewParamsSchema = z.object({
+  id: z.string(), messageId: z.string(),
+  title: IdeaDraftSchema.shape.title, body: IdeaDraftSchema.shape.body,
+}).strict()
+
+/**
+ * Everything saving an idea draft writes: the idea from the chat `chat`, its title, its body and
+ * the project it relates to (the project the chat last mentioned, if any), with `rounds`, the
+ * chat's rounds, counted by its questions, that the draft came from. `fingerprint` names exactly
+ * this; `saved` is the idea the draft was saved as, or null.
+ */
+export const ChatIdeaPreviewSchema = z.object({
+  idea: z.object({
+    title: z.string(), body: z.string(),
+    project: z.object({ id: z.string(), name: z.string() }).strict().nullable(),
+  }).strict(),
+  chat: z.string(),
+  rounds: z.array(z.number().int().positive()),
+  fingerprint: z.string().regex(/^[0-9a-f]{16}$/),
+  saved: z.string().nullable(),
+}).strict()
+
+/** Saves the idea draft of answer `messageId` of chat `id` with `title` and `body`; `fingerprint` is that of the preview shown. Answers the idea. */
+export const ChatSaveIdeaParamsSchema = ChatIdeaPreviewParamsSchema.extend({ fingerprint: z.string() }).strict()
+
+/**
+ * Reads what saving the design answer `messageId` of chat `id` carries as an idea would write, its
+ * file in the App language `language`; answers a ChatDesignPreview.
+ */
+export const ChatDesignPreviewParamsSchema = z.object({
+  id: z.string(), messageId: z.string(), language: z.enum(['zh', 'en']),
+}).strict()
+
+/**
+ * Everything saving a design as an idea writes, and the nodes the coding agent's Lab skill will build
+ * from it when the idea is started: the idea, titled by the claim, with its body and the project it
+ * relates to (the project the chat last mentioned, if any); its one file, the Markdown of the whole
+ * design; a hypothesis node for the claim, under `under`, the related project's active node, or a
+ * root when it is null; and an experiment node under it for the chosen prediction, its declared
+ * decision table as one history line. `fingerprint` names exactly this; `saved` is the idea that
+ * already holds this design, or null.
+ */
+export const ChatDesignPreviewSchema = z.object({
+  idea: z.object({
+    title: z.string(),
+    body: z.string(),
+    project: z.object({ id: z.string(), name: z.string() }).strict().nullable(),
+  }).strict(),
+  file: z.object({ name: z.string(), markdown: z.string() }).strict(),
+  nodes: z.object({
+    hypothesis: z.object({ title: z.string(), under: z.object({ id: z.string(), label: z.string() }).strict().nullable() }).strict(),
+    experiment: z.object({ title: z.string(), history: z.string() }).strict(),
+  }).strict(),
+  fingerprint: z.string().regex(/^[0-9a-f]{16}$/),
+  saved: z.string().nullable(),
+}).strict()
+
+/** Saves the design answer `messageId` of chat `id` as an idea, its file in `language`; `fingerprint` is that of the preview the user saw. Answers the idea. */
+export const ChatSaveDesignParamsSchema = z.object({
+  id: z.string(), messageId: z.string(), fingerprint: z.string(), language: z.enum(['zh', 'en']),
+}).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
 /**
@@ -2520,6 +2652,25 @@ export const ResearchIdeaUpdateParamsSchema = z.object({
 }).strict()
 
 export const ResearchIdeaPromoteParamsSchema = z.object({ id: z.string() }).strict()
+
+/**
+ * A file an idea holds, kept where it is on disk: `idea` names the idea, `attachment` the file the
+ * same way a project's attachment does. A project lists the files of the ideas carried out in it
+ * beside its own attachments.
+ */
+export const IdeaFileSchema = z.object({ idea: z.string(), attachment: AttachmentSchema }).strict()
+
+/** Adds the local file `attachment` describes to idea `id`; answers the IdeaFile written. */
+export const ResearchIdeaAddFileParamsSchema = z.object({
+  id: z.string(),
+  attachment: AttachmentFieldsSchema,
+}).strict()
+
+/** Moves file `fileId` of idea `id` to the trash; answers a TrashedEntry. */
+export const ResearchIdeaDeleteFileParamsSchema = z.object({
+  id: z.string(),
+  fileId: z.string(),
+}).strict()
 export const ResearchIdeaDeleteParamsSchema = z.object({ id: z.string() }).strict()
 /** Sets the manual display order for the idea list, the same way project.reorder does for projects. */
 export const ResearchIdeaReorderParamsSchema = z.object({
@@ -2983,6 +3134,11 @@ export type ProposalStatus = ProposalRecord['status']
 export type ChatRun = z.infer<typeof ChatRunSchema>
 export type ChatAction = z.infer<typeof ChatActionSchema>
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
+export type ExperimentDesign = z.infer<typeof ExperimentDesignSchema>
+export type ChatDesignPreview = z.infer<typeof ChatDesignPreviewSchema>
+export type IdeaDraft = z.infer<typeof IdeaDraftSchema>
+export type ChatTurnMode = z.infer<typeof ChatTurnModeSchema>
+export type ChatIdeaPreview = z.infer<typeof ChatIdeaPreviewSchema>
 export type ChatAnswerModel = z.infer<typeof ChatAnswerModelSchema>
 export type ChatWriting = z.infer<typeof ChatWritingSchema>
 export type ChatMessageFields = z.infer<typeof ChatMessageFieldsSchema>
@@ -2994,6 +3150,7 @@ export type ResearchIdea = z.infer<typeof ResearchIdeaSchema>
 export type IdeaRelations = z.infer<typeof IdeaRelationsSchema>
 export type ResearchIdeaPatch = z.infer<typeof ResearchIdeaUpdateParamsSchema>['patch']
 export type ResearchIdeaPromoteResult = z.infer<typeof ResearchIdeaPromoteResultSchema>
+export type IdeaFile = z.infer<typeof IdeaFileSchema>
 export type ResearchIdeaGraphPlacement = z.infer<typeof ResearchIdeaGraphPlacementSchema>
 export type ResearchIdeaPlaceOnGraphResult = z.infer<typeof ResearchIdeaPlaceOnGraphResultSchema>
 export type SearchHit = z.infer<typeof SearchHitSchema>
@@ -3156,6 +3313,10 @@ export const CONTRACT_METHODS = [
   'chat.failure',
   'chat.model',
   'chat.setModel',
+  'chat.designPreview',
+  'chat.saveDesign',
+  'chat.ideaPreview',
+  'chat.saveIdea',
   'idea.list',
   'idea.create',
   'idea.update',
@@ -3163,6 +3324,9 @@ export const CONTRACT_METHODS = [
   'idea.placeOnGraph',
   'idea.delete',
   'idea.reorder',
+  'idea.files',
+  'idea.addFile',
+  'idea.deleteFile',
   'chat.recordAction',
   'chat.setArchived',
   'chat.rename',
