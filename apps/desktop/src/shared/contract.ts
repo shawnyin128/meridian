@@ -1584,7 +1584,7 @@ export const DiscoveryDirectionParamsSchema = z.discriminatedUnion('action', [
   }).strict(),
 ])
 export const DiscoveryFeedbackParamsSchema = z.object({
-  id: z.string(), feedback: z.enum(['more', 'less', 'known']),
+  id: z.string(), feedback: z.literal('known'),
 }).strict()
 
 /**

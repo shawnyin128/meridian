@@ -824,10 +824,6 @@ registerHandler('discovery.direction', (params) => (
 ))
 registerHandler('discovery.feedback', (params) => {
   const { id, feedback } = DiscoveryFeedbackParamsSchema.parse(params)
-  if (feedback === 'more') {
-    store.feedbackDiscovery(id, feedback)
-    return null
-  }
   return trashedEntry(store, () => store.feedbackDiscovery(id, feedback))
 })
 registerHandler('later.list', (params) => {

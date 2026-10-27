@@ -166,8 +166,8 @@ const discovered = (seed, id, arxiv, submitted, title, authors, abstract) => ({
 /**
  * Recommendations project discovery would have brought for the KV cache project, in the stored shape it
  * writes: KVQuant as this version scores it, with its calibrated score, the path that scored it and its
- * reasons, and the others as an older version wrote them. The seed gives SnapKV `less` and Scissorhands
- * `known` feedback, which put both in the trash.
+ * reasons, and the others as an older version wrote them. The seed queues KVQuant to read later,
+ * dismisses SnapKV and gives Scissorhands `known` feedback, which puts those two in the trash.
  */
 export function discoveryRecords(seed) {
   const authors = ['Coleman Hooper', 'Sehoon Kim', 'Hiva Mohammadzadeh', 'Michael W. Mahoney', 'Yakun Sophia Shao', 'Kurt Keutzer', 'Amir Gholami']

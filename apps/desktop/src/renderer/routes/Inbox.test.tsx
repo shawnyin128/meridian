@@ -19,7 +19,7 @@ const api = vi.hoisted(() => ({
   restored: [] as string[],
   writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   downloads: {} as Record<string, InboxDownloadResult>,
-  feedback: vi.fn(async (id: string, value: string) => (value === 'more' ? null : { trash: `trash-${id}` })),
+  feedback: vi.fn(async (id: string) => ({ trash: `trash-${id}` })),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
   /** While true the inbox list never arrives. */
@@ -234,9 +234,8 @@ describe('Inbox', () => {
     expect(host.querySelector('.desk-head .t')?.textContent).toBe('论文发现 · 1')
     expect(host.querySelector('.prec')?.textContent)
       .toContain('来自项目「项目一」 · 基于 2 篇相关论文')
-    const more = host.querySelector<HTMLButtonElement>('[aria-label="更多类似"]')!
-    await act(async () => { more.click() })
-    expect(api.feedback).toHaveBeenCalledWith('d1', 'more')
+    expect([...host.querySelectorAll('.paper-card .item-actions [aria-label]')].map((action) => action.getAttribute('aria-label')))
+      .toEqual(['已经了解', '下载并入库', '稍后阅读', '忽略'])
     await act(async () => { root.unmount() })
   })
 
@@ -306,7 +305,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('一个图标只表示一种操作：忽略进垃圾桶画垃圾桶，已经了解不用选中的勾，更多类似按下后报出按下', async () => {
+  it('一个图标只表示一种操作：忽略进垃圾桶画垃圾桶，已经了解不用选中的勾；旧版本按过更多类似的卡片也没有按下的按钮', async () => {
     const card = (kind: InboxEntry['kind']): InboxEntry => ({
       id: kind, kind, watch: kind === 'watch' ? 'w1' : '', project: kind === 'watch' ? '' : 'p1', source: '主题 · w1',
       title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', feedback: 'more',
@@ -325,7 +324,8 @@ describe('Inbox', () => {
     await act(async () => { again.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(glyph('已经了解')).toBe(renderToStaticMarkup(<IconSeen />))
     expect(glyph('已经了解')).not.toBe(renderToStaticMarkup(<IconCheck />))
-    expect(host.querySelector('[aria-label="更多类似"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(host.querySelector('[aria-label="更多类似"]')).toBeNull()
+    expect(host.querySelector('[aria-pressed]')).toBeNull()
     await act(async () => { again.unmount() })
   })
 
@@ -360,30 +360,26 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('减少类似和已经了解让卡片离开,提示里的撤销从垃圾桶把它放回;更多类似留在原处', async () => {
+  it('已经了解让卡片离开,提示里的撤销从垃圾桶把它放回', async () => {
     const entry = (id: string): InboxEntry => ({
       id, kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一', title: `Paper ${id}`,
       authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', reasons: [], downloaded: false, paper: '',
       pdf: 'https://arxiv.org/pdf/2609.1',
     })
-    api.entries = [entry('d1'), entry('d2'), entry('d3')]
+    api.entries = [entry('d2')]
     api.mode = 'discovery'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
-    for (const [id, label, note] of [['d1', '减少类似', '已记住'], ['d2', '已经了解', '已标记为已经了解']] as const) {
-      await act(async () => { card(id).querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click() })
-      expect(card(id).classList.contains('is-leaving')).toBe(true)
-      await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
-      const written = api.writes.at(-1)!
-      const action = written.opts.action!(written.result as never)
-      expect([written.opts.note, action.label]).toEqual([note, '撤销'])
-      await act(async () => { action.onAction() })
-      expect(api.restored.at(-1)).toBe(`trash-${id}`)
-    }
-    await act(async () => { card('d3').querySelector<HTMLButtonElement>('[aria-label="更多类似"]')!.click() })
-    expect(card('d3').classList.contains('is-leaving')).toBe(false)
-    expect(api.feedback).toHaveBeenLastCalledWith('d3', 'more')
+    await act(async () => { card('d2').querySelector<HTMLButtonElement>('[aria-label="已经了解"]')!.click() })
+    expect(card('d2').classList.contains('is-leaving')).toBe(true)
+    await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
+    expect(api.feedback).toHaveBeenLastCalledWith('d2', 'known')
+    const written = api.writes.at(-1)!
+    const action = written.opts.action!(written.result as never)
+    expect([written.opts.note, action.label]).toEqual(['已标记为已经了解', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.restored.at(-1)).toBe('trash-d2')
     await act(async () => { root.unmount() })
   })
 
@@ -423,7 +419,7 @@ describe('Inbox', () => {
     await act(async () => { discovering.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(api.lists.at(-1)).toMatchObject({ kind: 'discovery', project: 'p1' })
     expect(host.querySelector('.desk-head .t')?.textContent).toBe('项目 · 项目一 · 1')
-    expect(host.querySelector('[aria-label="减少类似"]')).not.toBeNull()
+    expect(host.querySelector('[aria-label="已经了解"]')).not.toBeNull()
     await act(async () => { discovering.unmount() })
   })
 

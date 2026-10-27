@@ -80,8 +80,8 @@ async function seed(out, app, today) {
   writeJson(join(out, 'library', '.meridian', 'discovery', 'progress.json'), discoveryProgress(state))
   await session(out, app, {}, async (call) => {
     await seedInbox(state, call)
-    await call('discovery.feedback', { id: 'seed-discovery-kvquant', feedback: 'more' })
-    await call('discovery.feedback', { id: 'seed-discovery-snapkv', feedback: 'less' })
+    await call('inbox.readLater', { id: 'seed-discovery-kvquant' })
+    await call('inbox.dismiss', { id: 'seed-discovery-snapkv' })
     await call('discovery.feedback', { id: 'seed-discovery-scissorhands', feedback: 'known' })
     await call('feed.list')
   })

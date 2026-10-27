@@ -358,9 +358,9 @@ export const discovery = {
     call<void>('discovery.intent', { projectId, intentId, action }),
   /** Adds, declines, reopens as a candidate or renames one of a project's directions. */
   direction: (params: DiscoveryDirectionParams) => call<void>('discovery.direction', params),
-  /** Records the feedback; `less` and `known` move the entry to the trash and answer that trash entry. */
+  /** Records the feedback, which moves the entry to the trash, and answers that trash entry. */
   feedback: (id: string, feedback: DiscoveryFeedback) =>
-    call<TrashedEntry | null>('discovery.feedback', { id, feedback }),
+    call<TrashedEntry>('discovery.feedback', { id, feedback }),
 }
 
 export const delivery = {

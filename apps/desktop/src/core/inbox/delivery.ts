@@ -79,17 +79,16 @@ export function withoutStreams<E extends StreamEntry>(entry: E, gone: (stream: I
 }
 
 /**
- * Cuts a refresh of one scope to `shown` cards besides those given `more` feedback. `live` are the
- * cards the scope shows and `fresh` the papers it found to deliver; a live card given `more` feedback
- * always stays and takes no place, and the rest are ranked by recommendation score, ties keeping live
- * cards first, each list in its own order. Returns the fresh papers that make the cut, in their order,
- * and the ids of the live cards that do not.
+ * Cuts a refresh of one scope to `shown` cards. `live` are the cards the scope shows and `fresh` the
+ * papers it found to deliver, all ranked by recommendation score, ties keeping live cards first, each
+ * list in its own order. Returns the fresh papers that make the cut, in their order, and the ids of
+ * the live cards that do not.
  */
 export function cutBelow<P extends Pick<InboxEntry, 'ranking'>>(
-  live: Pick<InboxEntry, 'id' | 'feedback' | 'ranking'>[], fresh: P[], shown: number,
+  live: Pick<InboxEntry, 'id' | 'ranking'>[], fresh: P[], shown: number,
 ): { kept: P[]; folded: Set<string> } {
   const ranked: { card?: string; paper?: P; score: number }[] = [
-    ...live.filter((card) => card.feedback !== 'more').map((card) => ({ card: card.id, score: recommendationScore(card) })),
+    ...live.map((card) => ({ card: card.id, score: recommendationScore(card) })),
     ...fresh.map((paper) => ({ paper, score: recommendationScore(paper) })),
   ]
   const order = new Map(ranked.map((item, at) => [item, at]))

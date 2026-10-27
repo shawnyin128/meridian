@@ -43,6 +43,7 @@ const noProgress = {
   refreshProgress: () => ({ steps: {}, candidates: [], favouredAt: null, newest: [], poolStalled: false }),
   setRefreshProgress: () => {},
   scopeCards: () => [],
+  scopeSignals: () => ({ cards: [], ratings: {} }),
   knownPapers: () => new Map(),
   listWatches: () => [],
 }
@@ -78,7 +79,7 @@ const fetchedRecord = (intent: RecommendationIntent, fetchedAt: number) => ({
 })
 
 describe('project recommendation service', () => {
-  it('用五篇 OPD/KD 论文建档后发布 provider 给出的 Osprey,并把正反馈并入下一轮', async () => {
+  it('用五篇 OPD/KD 论文建档后发布 provider 给出的 Osprey', async () => {
     const store = createFixtureStore(() => '2026-09-17')
     store.createProject('OPD 与 speculative drafter')
     const project = store.listProjects().find((item) => item.name === 'OPD 与 speculative drafter')!
@@ -122,9 +123,6 @@ describe('project recommendation service', () => {
       ],
     })
     expect(onWrite).toHaveBeenCalledOnce()
-
-    store.feedbackDiscovery(found[0]!.id, 'more')
-    expect(store.discoverySeeds(project.id).positive).toContain('ARXIV:2609.09338')
   })
 
   it('新项目的刷新只扫出候选方向并报出来，添加之前不请求 provider', async () => {
@@ -204,7 +202,7 @@ describe('project recommendation service', () => {
     expect(store.listInbox({ kind: 'discovery', project: project.id })).toHaveLength(1)
   })
 
-  it('provider 即使回传显式负反馈论文也不会重新发布', async () => {
+  it('provider 即使回传标过已经了解的论文也不会重新发布', async () => {
     const store = createFixtureStore(() => '2026-09-17')
     store.createProject('反馈项目')
     const project = store.listProjects().find((item) => item.name === '反馈项目')!
@@ -220,7 +218,7 @@ describe('project recommendation service', () => {
     confirmDirections(store, project.id)
     store.addDiscoveryEntries(project.id, [ON_POLICY_DISTILLATION_SAMPLE.expected], undefined, fixedRanking())
     const rejected = store.listInbox({ kind: 'discovery', project: project.id })[0]!
-    store.feedbackDiscovery(rejected.id, 'less')
+    store.feedbackDiscovery(rejected.id, 'known')
 
     const next = {
       ...ON_POLICY_DISTILLATION_SAMPLE.expected,
@@ -228,7 +226,7 @@ describe('project recommendation service', () => {
     }
     const recommend = vi.fn(async (positive: RecommendationSeed[], negative: string[]) => {
       expect(positive.map((seed) => seed.paperId)).toEqual(['ARXIV:2605.29343'])
-      expect(negative).toEqual([ON_POLICY_DISTILLATION_SAMPLE.expected.semanticId])
+      expect(negative).toEqual([])
       return [ON_POLICY_DISTILLATION_SAMPLE.expected, next]
     })
     const service = createRecommendationService({ scorer: flatScorer,
@@ -238,7 +236,7 @@ describe('project recommendation service', () => {
       projects: 1, intents: 1, added: 1, deferredProjects: 0,
       cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1, directions: [],
     })
-    expect(recommend.mock.calls[0]?.[1]).toEqual([ON_POLICY_DISTILLATION_SAMPLE.expected.semanticId])
+    expect(recommend).toHaveBeenCalledOnce()
     expect(store.listInbox({ kind: 'discovery', project: project.id }).map((paper) => paper.title))
       .toEqual(['A genuinely new candidate'])
   })
@@ -796,6 +794,7 @@ describe('project recommendation service', () => {
         found.filter((paper) => ![...delivered.values()].some((held) => held.includes(paper.id)))
       ),
       scopeCards: () => [],
+      scopeSignals: () => ({ cards: [], ratings: {} }),
       knownPapers: () => new Map(),
       listWatches: () => [],
     }

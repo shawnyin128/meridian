@@ -21,8 +21,6 @@ export const inbox = {
   },
   dismissAll: 'Dismiss all',
   actions: {
-    more: 'More like this',
-    less: 'Less like this',
     known: 'Already familiar',
     download: 'Download and add to library',
     readLater: 'Read later',
@@ -37,7 +35,6 @@ export const inbox = {
     duplicateToast: 'Already in the library',
     downloaded: 'Added to library',
     downloadFailed: 'Download failed',
-    remembered: 'Got it',
     known: 'Marked as familiar',
   },
 } satisfies typeof zh

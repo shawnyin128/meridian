@@ -216,8 +216,9 @@ describe('vault store', () => {
         s.addDiscoveryEntries(project, [discovered('2609.24001')], undefined, fixedRanking())
         const [card] = s.listInbox({ kind: 'discovery', project })
         expect(card!.kind).toBe('watch')
-        s.feedbackDiscovery(card!.id, 'less')
-        expect(s.discoverySeeds(project).negative).toEqual(['semantic-2609.24001'])
+        s.feedbackDiscovery(card!.id, 'known')
+        expect(s.scopeSignals({ kind: 'project', id: project }).cards)
+          .toEqual([expect.objectContaining({ paperIds: ['semantic-2609.24001', 'ARXIV:2609.24001'], gone: true, feedback: 'known' })])
         expect(titles(s.listInbox())).not.toContain('Shared 2609.24001')
       })
     }
@@ -283,6 +284,20 @@ describe('vault store', () => {
         expect(s.undelivered([discovered('2609.28102'), discovered('2609.28104')]).map((paper) => paper.id)).toEqual(['2609.28104'])
       })
     }
+
+    it('真实实现:旧版本存下更多类似的卡片刷新时和别的卡片一样按排名剪,排不上就折叠', () => {
+      const project = store.createProject('按过更多类似')
+      const scores = (table: Record<string, number>) => (paperId: string) => table[paperId.replace('semantic-', '')] ?? 0
+      const ranking = fixedRanking({ score: scores({ '2609.28101': 0.6, '2609.28102': 0.7, '2609.28103': 0.9 }), shown: 2 })
+      expect(store.addDiscoveryEntries(project, [discovered('2609.28101'), discovered('2609.28102')], undefined, ranking)).toBe(2)
+      const file = join(vault, '.meridian', 'inbox.json')
+      const held = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>[]
+      writeFileSync(file, JSON.stringify(held.map((entry) => (entry['arxiv'] === '2609.28101' ? { ...entry, feedback: 'more' } : entry))), 'utf8')
+      const reopened = createVaultStore(vault)
+      expect(reopened.listInbox({ kind: 'discovery', project }).find((entry) => entry.title === 'Shared 2609.28101')?.feedback).toBe('more')
+      expect(reopened.addDiscoveryEntries(project, [discovered('2609.28103')], undefined, ranking)).toBe(1)
+      expect(titles(reopened.listInbox({ kind: 'discovery', project })).sort()).toEqual(['Shared 2609.28102', 'Shared 2609.28103'])
+    })
 
     it('真实实现:落到上限以下的卡片存成 gone 加 left: folded,不进垃圾桶;落到上限以下的新论文不送,不进收件也不记作送过', () => {
       store.setDeliverySettings({ maxItemsPerRun: 10, maxShownPerScope: 1 })
@@ -390,7 +405,7 @@ describe('vault store', () => {
     expect(store.getPaper(WITH_SOURCE).projects).toEqual([{ id, name: '项目乙' }])
   })
 
-  it('项目发现档案从关联论文取种子,结果与反馈重开后仍保留', async () => {
+  it('项目发现档案从关联论文取种子,结果重开后仍保留,旧版本存下的更多类似也读成种子', async () => {
     store.updatePaper(WITH_SOURCE, { identifier: 'arXiv:2211.17192' })
     store.createProject('发现项目')
     const projectId = store.listProjects().find((project) => project.name === '发现项目')!.id
@@ -415,7 +430,9 @@ describe('vault store', () => {
       pdf: 'https://arxiv.org/pdf/2609.88881',
     }], undefined, fixedRanking())).toBe(1)
     const entry = store.listInbox({ kind: 'discovery', project: projectId })[0]!
-    store.feedbackDiscovery(entry.id, 'more')
+    const file = join(vault, '.meridian', 'inbox.json')
+    const held = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>[]
+    writeFileSync(file, JSON.stringify(held.map((stored) => (stored['id'] === entry.id ? { ...stored, feedback: 'more' } : stored))), 'utf8')
 
     const reopened = createVaultStore(vault)
     expect(reopened.listInbox({ kind: 'discovery', project: projectId })[0])

@@ -67,4 +67,5 @@ export type {
   ScholarlyMetadata,
   ScopeCard,
   ScopeRanking,
+  ScopeSignals,
 } from './types.js'

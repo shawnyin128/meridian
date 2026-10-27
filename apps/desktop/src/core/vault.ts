@@ -16,7 +16,7 @@ import type { RemotePaper } from './net/arxiv.js'
 import type { Publication } from './net/semantic-metadata.js'
 import type {
   DiscoveryPaper, DiscoverySchedule, KnownPaper, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
-  ScopeCard, ScopeRanking,
+  ScopeCard, ScopeRanking, ScopeSignals,
 } from './recommendation/index.js'
 import type { WorkspaceAgentTask } from './project-management/index.js'
 import type { ResearchIdeaMutation } from './research-ideas/index.js'
@@ -658,10 +658,10 @@ export interface VaultStore {
    * before and the vault does not hold; a result that is already a live card is listed under this
    * watch on that card instead. These papers and the watch's cards in the feed are then cut down to
    * the delivery settings' `maxShownPerScope`: by `ranking` when given, which also rescores every
-   * card of the watch it scored; else by recommendation score, a card given `more` feedback always
-   * staying and not counted. A card cut is folded away as seen, and a paper cut is not delivered at
-   * all, neither a card nor remembered, so a later run may still deliver it, and `undelivered` still
-   * names it. Returns the arXiv ids of exactly the papers delivered. Throws if no such watch exists.
+   * card of the watch it scored; else by recommendation score. A card cut is folded away as seen, and
+   * a paper cut is not delivered at all, neither a card nor remembered, so a later run may still
+   * deliver it, and `undelivered` still names it. Returns the arXiv ids of exactly the papers
+   * delivered. Throws if no such watch exists.
    */
   addInboxEntries(watchId: string, found: RemotePaper[], limit?: number, ranking?: ScopeRanking): string[]
 
@@ -716,6 +716,13 @@ export interface VaultStore {
   /** Replaces the progress of `scope`. Throws if it does not exist. */
   setRefreshProgress(scope: RefreshScope, progress: RefreshProgress): void
 
+  /**
+   * What the user did with the papers of `scope`: every inbox entry a stream of `scope` lists, live
+   * and gone, with the reasons that stream gave, and for a project the library rating of each of its
+   * rated papers with an arXiv id, by `ARXIV:<id>`. Throws if `scope` does not exist.
+   */
+  scopeSignals(scope: RefreshScope): ScopeSignals
+
   /** Persists one user-owned core/enable decision without mutating Wiki knowledge. */
   setDiscoveryIntent(projectId: string, intentId: string, action: DiscoveryIntentAction): void
 
@@ -741,10 +748,9 @@ export interface VaultStore {
   knownPapers(paperIds: readonly string[]): Map<string, KnownPaper>
 
   /**
-   * Persists explicit discovery feedback on the live discovery entry with the
-   * given id. A `more` entry stays in the feed; a `less` or `known` one leaves
-   * it into the trash, and restoring its trash entry puts it back without the
-   * feedback. Throws if no such live entry exists or it is not a discovery.
+   * Records `known` feedback on the live discovery entry with the given id, which leaves the feed
+   * into the trash; restoring its trash entry puts it back without the feedback. Throws if no such
+   * live entry exists or it is not a discovery.
    */
   feedbackDiscovery(id: string, feedback: DiscoveryFeedback): void
 

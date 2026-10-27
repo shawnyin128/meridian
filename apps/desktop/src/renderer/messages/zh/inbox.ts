@@ -19,8 +19,6 @@ export const inbox = {
   },
   dismissAll: '全部忽略',
   actions: {
-    more: '更多类似',
-    less: '减少类似',
     known: '已经了解',
     download: '下载并入库',
     readLater: '稍后阅读',
@@ -35,7 +33,6 @@ export const inbox = {
     duplicateToast: '库里已有这一篇',
     downloaded: '已入库',
     downloadFailed: '下载失败',
-    remembered: '已记住',
     known: '已标记为已经了解',
   },
 } satisfies Record<string, unknown>

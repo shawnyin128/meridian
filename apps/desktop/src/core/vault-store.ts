@@ -38,7 +38,7 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, cutBelow, cutByRanking, listedUnder, orderListing, sortFound, withoutStreams, withStream,
+  combinedReasons, cutBelow, cutByRanking, listedUnder, orderListing, sortFound, streamsOf, withoutStreams, withStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
@@ -2667,6 +2667,34 @@ export function createVaultStore(
       progress = save('discovery/progress', [...progress.filter((row) => row.id !== id && !gone(row)), record])
     },
 
+    scopeSignals(scope) {
+      scopeOf(scope)
+      const kind = scope.kind === 'project' ? 'discovery' : 'watch'
+      const cards = inbox.flatMap((entry) => {
+        const stream = streamsOf(entry).find((held) => held.kind === kind && held.id === scope.id)
+        if (stream === undefined) return []
+        const rating = entry.paper === '' ? undefined : papers.get(paperOf(entry.paper))?.rating
+        return [{
+          paperIds: [...entry.semanticId === '' ? [] : [entry.semanticId], ...entry.arxiv === '' ? [] : [`ARXIV:${entry.arxiv}`]],
+          gone: entry.gone,
+          downloaded: entry.downloaded,
+          ...(entry.left === undefined ? {} : { left: entry.left }),
+          ...(entry.feedback === undefined ? {} : { feedback: entry.feedback }),
+          reasons: stream.reasons.map(({ kind: reason, label }) => ({ kind: reason, label })),
+          ...(rating === undefined ? {} : { rating }),
+        }]
+      })
+      const linked = scope.kind === 'project' ? projectOf(scope.id).papers : []
+      return {
+        cards,
+        ratings: Object.fromEntries(linked.flatMap((id) => {
+          const paper = papers.get(id)
+          const arxiv = libraryArxivId(paper)
+          return paper?.rating === undefined || arxiv === null ? [] : [[`ARXIV:${arxiv}`, paper.rating]]
+        })),
+      }
+    },
+
     setDiscoveryIntent(projectId, intentId, action) {
       projectOf(projectId)
       if (!projectDiscoveryIntents(projectId).some((intent) => intent.id === intentId)) {
@@ -2768,10 +2796,6 @@ export function createVaultStore(
     feedbackDiscovery: atomic((id, feedback) => {
       const entry = liveEntry(id)
       if (!listedUnder(entry, 'discovery')) throw new CallError('invalid', `这一条不是论文发现：${id}`)
-      if (feedback === 'more') {
-        putEntry(id, { feedback })
-        return
-      }
       leaveEntry(id, feedback, { feedback })
       toTrash({
         id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id, feedback,

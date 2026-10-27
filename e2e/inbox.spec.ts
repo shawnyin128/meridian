@@ -141,7 +141,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   expect(await card.locator('.plabel').allTextContents()).toEqual(['摘要', '推荐理由'])
 })
 
-test('关注与项目发现是两条流,发现解释来源并接受显式反馈', async ({ win }) => {
+test('关注与项目发现是两条流,发现解释来源,卡片只有从卡片上就能决定的操作', async ({ win }) => {
   await openInbox(win, 'discovery')
   await expect(win.locator('[data-inbox="discovery"]')).toHaveClass(/\bon\b/)
   await expect(shown(win, '.desk-head .t')).toHaveText('论文发现 · 0')
@@ -164,17 +164,13 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group')).toHaveCount(1)
   await openInbox(win, 'discovery')
 
-  // More-like-this feedback keeps the card, pressed; less-like-this feedback then takes it out.
   const first = shown(win, '.pcard').first()
-  await rowAction(first, '更多类似')
-  await expect(first.locator('[aria-label="更多类似"]')).toHaveAttribute('aria-pressed', 'true')
-
-  const before = (await discoveryFromCore(win)).length
-  await rowAction(first, '减少类似')
-  await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
+  await expect(first.locator('.item-actions [aria-label]')).toHaveCount(4)
+  expect(await first.locator('.item-actions [aria-label]').evaluateAll((actions) => actions.map((action) => action.getAttribute('aria-label'))))
+    .toEqual(['已经了解', '下载并入库', '稍后阅读', '忽略'])
 })
 
-test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
+test('发现的卡片能忽略;忽略和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
   await openInbox(win, 'discovery')
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
@@ -182,7 +178,7 @@ test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾�
   await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
   const title = (await cardTitles(win))[0]!
 
-  for (const label of ['忽略', '减少类似', '已经了解']) {
+  for (const label of ['忽略', '已经了解']) {
     await openInbox(win, 'discovery')
     await rowAction(shown(win, '.pcard').filter({ hasText: title }), label)
     await expect(shown(win, '.pcard')).toHaveCount(delivered.length - 1)
