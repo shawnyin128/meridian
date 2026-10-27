@@ -14,14 +14,17 @@ import type { CliChatResult, CliChatRunner } from './cli/chat-turn.js'
 import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
 import type { CliUsage } from './cli/runner.js'
-import { apiRunLimits } from './cost-gate.js'
+import { answerTokens, apiRunLimits, cliRunLimits } from './cost-gate.js'
 import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 import { citablePages } from './paper-wiki.js'
 import { launchHarnessProcess } from './process.js'
 import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcError } from './rpc.js'
 
 const MAX_MODEL_CONNECTION_DETAIL = 500
-const MAX_ANSWER_TOKENS = 2_000
+/** The longest answer a chat turn gives, in characters. */
+const MAX_ANSWER_CHARACTERS = 20_000
+/** The output cap of a chat turn before it held its longest answer, which every model takes and Harness never clamps below. */
+const MIN_ANSWER_TOKENS = 2_000
 /** What leads the parts of a chat's context a resumed Codex session has not been given. */
 const CONTEXT_CHANGES = 'These parts of the conversation context changed since your last answer and now read:\n'
 const MODEL_CONNECTION_REDACTIONS = [
@@ -35,7 +38,7 @@ const ChatContextParamsSchema = z.object({
   id: z.string().min(1),
   currentText: z.string().min(1).max(20_000),
 }).strict()
-const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000) }).strict()
+const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(MAX_ANSWER_CHARACTERS) }).strict()
 /** The model IDs a provider's model-list call answered with, as Harness hands them over. */
 const ModelListSchema = z.object({ models: z.array(z.string().trim().min(1).max(200)).max(1_000) }).strict()
 /** How long one model-list read may take, Harness's own provider timeout included. */
@@ -509,12 +512,14 @@ export function createChatHarnessRunner(options: {
         const turn = 'source' in model
           ? cliTurn(id, text, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }, progress)
           : null
-        const { maxOutputTokens, timeoutSeconds, requestTimeoutMs } = apiRunLimits('source' in model ? undefined : model.effort, MAX_ANSWER_TOKENS)
+        const { maxOutputTokens, minOutputTokens, timeoutSeconds, requestTimeoutMs } = 'source' in model
+          ? cliRunLimits(MIN_ANSWER_TOKENS)
+          : apiRunLimits(model.effort, answerTokens(MAX_ANSWER_CHARACTERS), MIN_ANSWER_TOKENS)
         const result = ChatAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,
           model,
-          limits: { maxOutputTokens, maxModelCalls: 1, timeoutSeconds },
+          limits: { maxOutputTokens, minOutputTokens, maxModelCalls: 1, timeoutSeconds },
         }, {
           signal,
           ...(turn === null ? { timeoutMs: requestTimeoutMs } : {

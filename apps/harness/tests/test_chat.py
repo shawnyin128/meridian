@@ -175,6 +175,23 @@ class ChatWorkflowTests(unittest.TestCase):
                 self.assertEqual(raised.exception.detail, "structured_output")
                 self.assertEqual(len(service.requests), 1)
 
+    def test_an_api_answer_failing_its_schema_logs_the_output_cap_and_model_limit(self) -> None:
+        method = build_chat_method(_answering("unused", ProviderStandIn(text="A plain answer")))
+        params = {
+            **_params("openai-compatible", "chat-completions"),
+            "limits": {"maxOutputTokens": 40_000, "minOutputTokens": 2_000, "maxModelCalls": 1},
+        }
+
+        with self.assertLogs("meridian_harness", "WARNING") as logged, \
+                self.assertRaises(HarnessFailure) as raised:
+            method(RequestContext(9, Event(), _read), params)
+
+        self.assertEqual(raised.exception.detail, "structured_output")
+        self.assertEqual(logged.output, [
+            "WARNING:meridian_harness.models:the output of paper-model did not validate; "
+            "its output cap was 8192 tokens, the model takes at most 8192",
+        ])
+
     def test_output_a_provider_parser_cannot_read_is_a_structured_output_failure(self) -> None:
         method = build_chat_method(lambda _model, _limits: _UnreadableOutputModel())
 

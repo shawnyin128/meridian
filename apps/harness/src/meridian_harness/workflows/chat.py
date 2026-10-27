@@ -22,6 +22,7 @@ from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
     create_chat_model,
+    log_output_cap,
     runs_on_cli,
     structured_output_method,
 )
@@ -362,6 +363,8 @@ def build_chat_method(
         except ModelInvocationError as cause:
             from meridian_harness.server import HarnessFailure
 
+            if cause.detail == "structured_output" and model is not None:
+                log_output_cap(chat_model, limits)
             raise HarnessFailure("model_error", str(cause), cause.detail) from cause
         return ChatAnswer(answer=result["answer"]).model_dump(mode="json")
 

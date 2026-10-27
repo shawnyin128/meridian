@@ -690,9 +690,10 @@ describe('a chat turn on a subscription CLI', () => {
   })
 
   it.each([
-    ['at the provider\'s own default', undefined, { maxOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 120 }],
-    ['at the high effort', 'high', { maxOutputTokens: 34_000, maxModelCalls: 1, timeoutSeconds: 600 }],
-  ])('sends a turn on an API model %s the output cap and timeout its effort gives', async (_, effort, limits) => {
+    ['at the provider\'s own default', undefined, { maxOutputTokens: 40_000, minOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+    ['at the high effort', 'high', { maxOutputTokens: 52_000, minOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 600 }],
+    ['at the none effort', 'none', { maxOutputTokens: 20_000, minOutputTokens: 2_000, maxModelCalls: 1, timeoutSeconds: 120 }],
+  ])('sends a turn on an API model %s a cap that holds its longest answer at a token a character, its reasoning, and today\'s cap as the floor', async (_, effort, limits) => {
     const model: HarnessRuntimeModel = {
       provider: 'anthropic', protocol: 'messages', baseUrl: 'https://api.anthropic.com', model: 'claude-opus-5-5',
       authentication: 'api-key', apiKey: 'sk-ant-test', ...(effort === undefined ? {} : { effort }),
