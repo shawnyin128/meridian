@@ -19,10 +19,12 @@ import { MessagesProvider } from './messages/useMessages.js'
 import { AppShell } from './shell/AppShell.js'
 import { initializeAppearance } from './shell/appearance.js'
 import { initializeLanguage } from './shell/language.js'
+import { initializeScrollbars } from './shell/scrollbars.js'
 import './shell/tokens.css'
 
 initializeAppearance()
 initializeLanguage()
+initializeScrollbars()
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
