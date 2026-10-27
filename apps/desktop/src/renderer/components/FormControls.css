@@ -65,7 +65,21 @@
   padding:var(--sp-2) var(--sp-6);
   line-height:inherit;
 }
-/* An in-place field that hides text past an end fades there as a scroll area does; it has no scrollbar strip to keep. */
+/*
+ * A one-line in-place field draws only its text; the box after it, anchored to it, draws its frame and
+ * fill underneath, so a fade masks the text and never the frame. Its focus border and refused outline
+ * are the frame's, as every field's are its own box's.
+ */
+/* Three classes outrank the focus rule in tokens.css, which would draw the text box's own border. */
+.form-control.form-input.form-control-inline{anchor-name:var(--frame-anchor);position:relative;z-index:1;border-color:transparent;background:transparent;transition:none}
+.form-inline-frame{position:absolute;position-anchor:var(--frame-anchor);top:anchor(top);right:anchor(right);bottom:anchor(bottom);left:anchor(left);
+  box-sizing:border-box;border:1px solid var(--sep2);border-radius:var(--r-control);background:var(--field);pointer-events:none;
+  transition:border-color var(--t-fast) var(--e-out)}
+.form-input.form-control-inline:focus+.form-inline-frame{border-color:var(--sep-strong)}
+.form-input.form-control-inline[aria-invalid="true"]{outline:0!important}
+.form-input.form-control-inline[aria-invalid="true"]+.form-inline-frame{outline:1px solid var(--bad);outline-offset:-1px;animation:form-control-refused var(--t-shake) var(--e-inout)}
+@media (prefers-reduced-motion:reduce){.form-input.form-control-inline[aria-invalid="true"]+.form-inline-frame{animation:none}}
+/* An in-place field that hides text past an end fades it there as a scroll area does; it has no scrollbar strip to keep. */
 .form-input.form-control-inline[data-fade]{--fade-bar-x:0px;--fade-bar-y:0px}
 /* A native select insets its text and a date input pads its fields; either would move the text. */
 .form-select.form-control-inline{appearance:none}

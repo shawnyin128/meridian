@@ -340,6 +340,25 @@ test('改名打开时整个名字选中、从头显示,放不下的那一端渐�
     }
   })
   expect(look).toEqual({ selected: [0, name.length, 'backward'], scrollLeft: 0, fade: 'right', mask: true, left: '0px', right: expect.not.stringMatching(/^0px$/) })
+  // The fade hides only text: the field's frame, drawn by the element after the text box, is never masked
+  // and keeps its 1px border on every side at its own colour, and the text box draws no frame of its own.
+  const frame = await input.evaluate((el: HTMLInputElement) => {
+    const box = el.nextElementSibling
+    if (box === null) return null
+    const style = getComputedStyle(box)
+    const own = getComputedStyle(el)
+    return {
+      mask: style.maskImage, borders: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
+      colours: new Set([style.borderTopColor, style.borderRightColor, style.borderBottomColor, style.borderLeftColor]).size,
+      colour: style.borderRightColor, fill: style.backgroundColor,
+      covers: (['top', 'right', 'bottom', 'left'] as const).every((edge) => Math.abs(box.getBoundingClientRect()[edge] - el.getBoundingClientRect()[edge]) < 0.5),
+      textFrame: [own.borderRightColor, own.backgroundColor],
+    }
+  })
+  expect(frame).toEqual({
+    mask: 'none', borders: ['1px', '1px', '1px', '1px'], colours: 1, colour: expect.stringMatching(/^rgb/), fill: expect.stringMatching(/^rgb\(/),
+    covers: true, textFrame: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'],
+  })
   // Moving the caret to the end scrolls the field there: now only its start is hidden, so only the left end fades.
   await input.press(process.platform === 'darwin' ? 'Meta+ArrowRight' : 'End')
   await expect.poll(() => input.evaluate((el: HTMLInputElement) => el.dataset['fade'])).toBe('left')

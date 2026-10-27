@@ -1,5 +1,6 @@
 import {
   type ButtonHTMLAttributes,
+  type CSSProperties,
   createContext,
   forwardRef,
   type InputHTMLAttributes,
@@ -45,7 +46,8 @@ const FieldRowId = createContext<string | undefined>(undefined)
  * appearance sets the box, font and focus, so entering edit mode never makes the field taller,
  * shifts it down, or shows the browser's own blue frame. Inside a FieldRow it takes the id the
  * row's label names, unless it has an id of its own. An `inline` field whose text does not fit fades
- * at the end that hides text, as a scroll area does (useScrollFade).
+ * its text at the end that hides it, as a scroll area does (useScrollFade); its frame, drawn by a box
+ * after the input and anchored to it, never fades.
  */
 export const FormInput = forwardRef<
   HTMLInputElement,
@@ -54,12 +56,22 @@ export const FormInput = forwardRef<
   function FormInput({ appearance = 'field', className, id, ...props }, ref) {
     const rowId = useContext(FieldRowId)
     const fade = useScrollFade<HTMLInputElement>('x')
+    const frame = `--frame${useId().replace(/[^\w-]/g, '-')}`
     const attach = useCallback((input: HTMLInputElement | null) => {
       if (appearance === 'inline') fade(input)
       if (typeof ref === 'function') ref(input)
       else if (ref !== null) ref.current = input
     }, [appearance, fade, ref])
-    return <input ref={attach} id={id ?? rowId} className={classes('form-input', className, appearance)} {...props} />
+    if (appearance !== 'inline') {
+      return <input ref={attach} id={id ?? rowId} className={classes('form-input', className, appearance)} {...props} />
+    }
+    const anchored = { '--frame-anchor': frame } as CSSProperties
+    return (
+      <>
+        <input ref={attach} id={id ?? rowId} className={classes('form-input', className, appearance)} {...props} style={{ ...props.style, ...anchored }} />
+        <span className="form-inline-frame" aria-hidden="true" style={anchored} />
+      </>
+    )
   },
 )
 
