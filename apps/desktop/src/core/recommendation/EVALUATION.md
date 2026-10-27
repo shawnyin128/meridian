@@ -94,7 +94,8 @@ distillation direction (two seeds); 15 retrieved candidates with titles and abst
 later added as held-out relevance labels (Osprey, DistillSpec, Online Speculative Decoding, EAGLE,
 GKD, MiniLLM, DistiLLM); 4 more on the project's subjects the user left; and off-topic retrieved
 papers (Meltdown, two entanglement-distillation papers). Random negatives come from a quantization
-project and a generative-models watch.
+project and a generative-models watch. Every arXiv id and title was checked against the arXiv API on
+2026-10-27.
 
 Each path is scored once: the API path with every paper's vector, the fallback with no key. The
 gate fails when:
@@ -108,16 +109,19 @@ gate fails when:
 | Spearman's ρ of the paths | 0.5 | 0 for unrelated scores. |
 
 The baselines are computed in the test itself. On stub vectors the API path reaches precision@5
-0.6 and nDCG@10 0.92, the fallback 1.0 and 0.995; the gap is overlap@10 0.9 and 0.8, nDCG@10 0.89
-and 0.83, ρ 0.72 and 0.68.
+0.6 and nDCG@10 0.92, the fallback 1.0 and 0.995; the gap is overlap@10 0.9 and 0.8, nDCG@10 0.85
+and 0.83, ρ 0.69 and 0.68. Off-topic candidates score 0.19–0.27 on the API path and 0.37 on the
+fallback; Osprey scores 0.88 and 0.77.
 
 The gate also requires that off-topic retrieved candidates score below 0.5 on both paths, in this
 refresh and in one where the distillation direction retrieved GKD and three off-topic papers, and
 that every added paper scores 0.5 or more. Without a key, Osprey is delivered through the service.
 
-**Known limit.** Spectre shares only the word "speculative" with the Draft-OPD seed, as Osprey does,
-and TF-IDF gives it the higher score, so no calibration can drop Spectre below 0.5 on the fallback
-while delivering Osprey. The gate checks it on the API path only.
+**Known gap.** Spectre shares only the word "speculative" with the Draft-OPD seed, as Osprey does,
+and TF-IDF gives it the higher score (0.81 against 0.77), so no calibration can drop Spectre below 0.5
+on the fallback while delivering Osprey. The gate checks it on the API path only. Off-topic papers
+that share a word with a seed can therefore reach a keyless feed; the live measures track it as the
+fallback path's dismiss rate and its gap to the API.
 
 **Vectors.** `fixtures/feed-gate-vectors.ts` holds stub SPECTER2-shaped vectors (768 numbers, a
 shared offset plus subject directions) until `FROZEN_SPECTER2` is filled from one capture run

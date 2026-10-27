@@ -74,7 +74,7 @@ export const FEED_GATE = {
     },
     {
       retrievedBy: 'kd', arxiv: '2306.08543',
-      title: 'MiniLLM: Knowledge Distillation of Large Language Models',
+      title: 'MiniLLM: On-Policy Distillation of Large Language Models',
       abstract: 'Replacing the forward Kullback-Leibler divergence with the reverse divergence keeps the student language model from overestimating low-probability regions of the teacher distribution in knowledge distillation.',
     },
     {
