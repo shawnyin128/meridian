@@ -1866,6 +1866,7 @@ export function createFixtureStore(
         return [{
           paperIds: [...entry.vault.arxiv === '' ? [] : [`ARXIV:${entry.vault.arxiv}`], ...entry.semanticId === '' ? [] : [entry.semanticId]],
           gone: left !== undefined,
+          downloaded: entry.downloaded,
           ...(left === undefined ? {} : { left }),
           ...(entry.feedback === undefined ? {} : { feedback: entry.feedback }),
           reasons: stream.reasons.map(({ kind: reason, label }) => ({ kind: reason, label })),

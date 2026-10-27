@@ -30,11 +30,11 @@ type Tally = { positive: number; negative: number; disliked: boolean }
 
 /**
  * The actions on `card` that still stand: a stored `more`, and while the card is gone, why it left,
- * or for a card stored before `left` was, its feedback.
+ * or for a card stored before `left` was, its feedback and whether it was downloaded into the vault.
  */
 const actionsOf = (card: ScopeCard): string[] => [
   ...(card.feedback === 'more' ? ['more'] : []),
-  ...(card.gone ? [card.left ?? card.feedback ?? ''] : []),
+  ...(!card.gone ? [] : card.left !== undefined ? [card.left] : [card.feedback ?? '', card.downloaded ? 'library' : '']),
 ]
 
 /** The direction of `directions` that `card` counts for: the first one its reasons name, else the core one. */
@@ -51,11 +51,11 @@ function directionOf(card: ScopeCard, directions: RecommendationIntent[]): Recom
  * The weighted training examples of `scope`, read from `store`, one per paper. A direction learns
  * from its seeds and from the cards of its project that name it, or name no direction its project
  * holds when it is the core one; a watch learns from its cards. A seed and a card added to the vault
- * count 1, a library rating of 4–5 counts 1.5, a card read later and an old `more` 0.5 and a card
- * marked known 0.3; a dismissed card is a negative of 0.3 and an old `less` one of 0.5. A paper with
- * any positive is a positive of its strongest weight, unless it was rated 1–2, which makes it a
- * negative of 0.5. A card restored to the feed, a card folded away and a card still in the feed count
- * for nothing.
+ * count 1, as does a card an older version stored as downloaded without why it left; a library
+ * rating of 4–5 counts 1.5, a card read later and an old `more` 0.5 and a card marked known 0.3; a
+ * dismissed card is a negative of 0.3 and an old `less` one of 0.5. A paper with any positive is a
+ * positive of its strongest weight, unless it was rated 1–2, which makes it a negative of 0.5. A card
+ * restored to the feed, a card folded away and a card still in the feed count for nothing.
  * Returns the seeds first, then the cards in vault order, and no examples for a direction the
  * project does not hold.
  */

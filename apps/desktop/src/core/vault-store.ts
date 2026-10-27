@@ -2657,6 +2657,7 @@ export function createVaultStore(
         return [{
           paperIds: [...entry.arxiv === '' ? [] : [`ARXIV:${entry.arxiv}`], ...entry.semanticId === '' ? [] : [entry.semanticId]],
           gone: entry.gone,
+          downloaded: entry.downloaded,
           ...(entry.left === undefined ? {} : { left: entry.left }),
           ...(entry.feedback === undefined ? {} : { feedback: entry.feedback }),
           reasons: stream.reasons.map(({ kind: reason, label }) => ({ kind: reason, label })),

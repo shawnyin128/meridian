@@ -16,7 +16,7 @@ const direction = (id: string, label: string, core: boolean, seeds: string[]): R
 
 /** A card of the scope that left the feed for `left`, its paper known as `ARXIV:<arxiv>`. */
 const card = (arxiv: string, fields: Partial<ScopeCard> = {}): ScopeCard => ({
-  paperIds: [`ARXIV:${arxiv}`], gone: true, reasons: [], ...fields,
+  paperIds: [`ARXIV:${arxiv}`], gone: true, downloaded: false, reasons: [], ...fields,
 })
 
 /** A store whose project `p` holds `directions` and whose scopes hold `signals`. */
@@ -81,7 +81,7 @@ describe('trainingExamples', () => {
     ])
   })
 
-  it('旧版本存下的更多类似是 0.5 的正例,卡片还在推送里或折叠了都算;旧的减少类似是 0.5 的负例,有没有离开原因都算', () => {
+  it('旧版本存下的更多类似是 0.5 的正例,卡片还在推送里或折叠了都算;旧的减少类似是 0.5 的负例,有没有离开原因都算;没记离开原因的已下载卡片算入库', () => {
     const store = storeOf([core], {
       cards: [
         card('1001', { gone: false, feedback: 'more' }),
@@ -89,6 +89,9 @@ describe('trainingExamples', () => {
         card('1003', { left: 'less', feedback: 'less' }),
         card('1004', { feedback: 'less' }),
         card('1005', { feedback: 'known' }),
+        card('1006', { downloaded: true }),
+        card('1007', { gone: false, downloaded: true }),
+        card('1008', { left: 'later', downloaded: true }),
       ],
       ratings: {},
     })
@@ -98,6 +101,8 @@ describe('trainingExamples', () => {
       { paperId: 'ARXIV:1003', weight: 0.5, positive: false },
       { paperId: 'ARXIV:1004', weight: 0.5, positive: false },
       { paperId: 'ARXIV:1005', weight: 0.3, positive: true },
+      { paperId: 'ARXIV:1006', weight: 1, positive: true },
+      { paperId: 'ARXIV:1008', weight: 0.5, positive: true },
     ])
   })
 
@@ -138,7 +143,7 @@ describe('trainingExamples', () => {
     const store = storeOf([core], {
       cards: [
         card('0001', { left: 'later' }),
-        { paperIds: ['ARXIV:2001', 'semantic-2001'], gone: true, left: 'known', reasons: [] },
+        { paperIds: ['ARXIV:2001', 'semantic-2001'], gone: true, downloaded: false, left: 'known', reasons: [] },
       ],
       ratings: {},
     })
@@ -243,7 +248,7 @@ describe('trainingExamples 读库里真实的动作和评分', () => {
     })
   }
 
-  it('真实实现:旧版本存下的更多类似和减少类似照样读成正例和负例,旧版本恢复时留下的离开原因不算', async () => {
+  it('真实实现:旧版本存下的更多类似和减少类似照样读成正例和负例,没记离开原因的已下载卡片算入库,旧版本恢复时留下的离开原因不算', async () => {
     const { project, scope } = await seededProject(store, 3)
     const record = (arxiv: string, fields: Record<string, unknown>) => ({
       id: `inbox-${arxiv}`, kind: 'discovery', watch: '', project, source: '项目 · 学习信号', title: `Found ${arxiv}`,
@@ -259,6 +264,7 @@ describe('trainingExamples 读库里真实的动作和评分', () => {
       record('2609.42003', { feedback: 'less', gone: true }),
       record('2609.42004', { feedback: 'less', gone: true, left: 'less' }),
       record('2609.42005', { left: 'dismissed' }),
+      record('2609.42006', { gone: true, downloaded: true, paper: 'sources/papers/gone-source' }),
     ]), 'utf8')
     const reported = vi.spyOn(console, 'error')
     const reopened = createVaultStore(vault)
@@ -269,6 +275,7 @@ describe('trainingExamples 读库里真实的动作和评分', () => {
       { paperId: 'ARXIV:2609.42002', weight: 0.5, positive: true },
       { paperId: 'ARXIV:2609.42003', weight: 0.5, positive: false },
       { paperId: 'ARXIV:2609.42004', weight: 0.5, positive: false },
+      { paperId: 'ARXIV:2609.42006', weight: 1, positive: true },
     ])
   })
 })
