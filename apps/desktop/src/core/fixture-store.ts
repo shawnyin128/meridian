@@ -524,7 +524,8 @@ export function createFixtureStore(
    * Delivers the papers a stream found that no stream delivered before, at most `limit` and each once,
    * as the records `make` builds, which `place` puts among the entries held; and lists the stream, by
    * `listed`, on each live card it found again. The scope's cards and these papers are cut by
-   * `ranking` when given, which also rescores the cards it scored, else by recommendation score.
+   * `ranking` when given, which also rescores the cards it scored, else by recommendation score; a card
+   * that misses the cut leaves this scope, and folds only when no other scope lists it.
    * Papers the vault holds are skipped. Returns the records delivered.
    */
   const deliver = <P extends RemotePaper & { semanticId?: string }>(
@@ -551,8 +552,14 @@ export function createFixtureStore(
         capped, (paper) => batchIdOf(paper.semanticId, paper.id), ranking,
       )
     const added = kept.map(make)
-    for (const id of folded) gone.set(id, 'folded')
-    inbox = place(added, held)
+    // A card another scope still lists leaves only this scope; it folds once no scope lists it.
+    const cut = held.map((entry) => {
+      if (!folded.has(entry.id)) return entry
+      const rest = withoutStreams(entry, (stream) => stream.kind === scope.kind && stream.id === scope.id)
+      if (rest === null) gone.set(entry.id, 'folded')
+      return rest ?? entry
+    })
+    inbox = place(added, cut)
     delivered.push(...added.map(entryIdentity))
     return added
   }

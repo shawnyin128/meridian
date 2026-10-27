@@ -224,6 +224,27 @@ describe('vault store', () => {
     }
 
     for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:两个项目共有一张卡片,一个项目把它排到线下只拿掉自己那一档,另一个项目照样显示;没人再列着它才折叠`, () => {
+        const s = make()
+        const keeps = s.createProject('留着它的项目')
+        const cuts = s.createProject('排到线下的项目')
+        const shared = Object.assign(found('2609.29101'), {
+          semanticId: 'semantic-2609.29101',
+          ranking: { relevance: 0, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2026-09-01' },
+        })
+        expect(s.addDiscoveryEntries(keeps, [shared], undefined, fixedRanking())).toBe(1)
+        expect(s.addDiscoveryEntries(cuts, [shared], undefined, fixedRanking({ score: () => 0.3 }))).toBe(0)
+        const listed = (project: string) => titles(s.listInbox({ kind: 'discovery', project }))
+        expect(listed(keeps)).toContain('Shared 2609.29101')
+        expect(listed(cuts)).not.toContain('Shared 2609.29101')
+        expect(s.scopeSignals({ kind: 'project', id: cuts }).cards).toEqual([])
+        expect(s.addDiscoveryEntries(keeps, [], 0, fixedRanking({ score: () => 0.3 }))).toBe(0)
+        expect(titles(s.listInbox())).not.toContain('Shared 2609.29101')
+        expect(s.undelivered([shared])).toEqual([])
+      })
+    }
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
       it(`${name}:范围的卡片信号带上打分路径、是否还在显示、库里是否已有这篇`, () => {
         const s = make()
         const project = s.createProject('信号项目')
