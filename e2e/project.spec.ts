@@ -263,6 +263,8 @@ test('1700px 宽的窗口里,时间线、需要注意和下方两栏区块的左
     return { left: box.x, right: box.x + box.width }
   }
   const plan = await edges('.project-detail-page')
+  const pagew = await win.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pagew')))
+  expect(Math.abs(plan.right - plan.left - pagew), '两栏区块的宽度等于 --pagew').toBeLessThanOrEqual(1)
   for (const [name, selector] of [['时间线', '.project-detail-body > .gantt'], ['需要注意', '.project-detail-body > .attn']]) {
     const block = await edges(selector!)
     expect(Math.abs(block.left - plan.left), `${name}的左边缘`).toBeLessThanOrEqual(1)
