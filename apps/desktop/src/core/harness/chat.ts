@@ -44,6 +44,8 @@ const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000)
 const MENTIONED_WIKI_PAGES = 5
 const MENTIONED_WIKI_CLAIMS = 40
 const MENTIONED_CLAIM_CHARACTERS = 1_000
+/** How many claims of each mentioned page a context keeps when its claims must shrink to fit. */
+const MENTIONED_CLAIMS_KEPT = MENTIONED_WIKI_CLAIMS / MENTIONED_WIKI_PAGES
 /** The model IDs a provider's model-list call answered with, as Harness hands them over. */
 const ModelListSchema = z.object({ models: z.array(z.string().trim().min(1).max(200)).max(1_000) }).strict()
 /** How long one model-list read may take, Harness's own provider timeout included. */
@@ -76,6 +78,8 @@ export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   abstractCharacters: 8_000,
   authors: 50,
   authorCharacters: 200,
+  /** The characters of a whole context the Harness takes. */
+  contextCharacters: 140_000,
 })
 
 type StoredChatMessage = ReturnType<VaultStore['chatMessages']>[number]
@@ -170,6 +174,11 @@ function failedConnectionCheck(
     maxOutputTokens: 1 as const,
   }
 }
+
+type WikiClaim = { ref: string; page: string; text: string }
+/** The characters the Harness counts of `claims`. */
+const claimCharacters = (claims: readonly WikiClaim[]) =>
+  claims.reduce((sum, claim) => sum + claim.page.length + claim.text.length, 0)
 
 /** Preserve the newest whole turns and a bounded tail of the oldest included turn. */
 export function packChatHistory(messages: readonly StoredChatMessage[]) {
@@ -307,21 +316,59 @@ export function createChatHarnessRunner(options: {
 
   /**
    * The claims of the aggregation pages chat `chatId` mentioned, the latest mentioned first, at most
-   * MENTIONED_WIKI_PAGES pages and MENTIONED_WIKI_CLAIMS claims, each with its ref and its page's title.
+   * MENTIONED_WIKI_PAGES pages and MENTIONED_WIKI_CLAIMS claims, each with its ref and its page's title,
+   * in `room` characters as the Harness counts them. Claims that do not fit leave in this order: the
+   * pages mentioned first, down to the latest one; then each page's claims past its first
+   * MENTIONED_CLAIMS_KEPT; then the last claims left.
    */
-  const mentionedClaims = async (chatId: string) => {
+  const mentionedClaims = async (chatId: string, room: number) => {
     const cards = new Map(options.store.wikiCards().map((card) => [card.id, card]))
     const pages = [...new Set(options.store.chatMessages(chatId).flatMap((message) => message.runs)
       .flatMap((run) => (run.target?.kind === 'page' && cards.has(run.target.id) ? [run.target.id] : []))
       .reverse())].slice(0, MENTIONED_WIKI_PAGES)
-    const claims: Array<{ ref: string; page: string; text: string }> = []
+    let byPage: WikiClaim[][] = []
+    let held = 0
     for (const id of pages) {
       const page = await options.store.wikiAggregation(id)
-      for (const claim of page.claims) {
-        claims.push({ ref: `${id}#${claim.id}`, page: page.title, text: clipMiddle(claim.text, MENTIONED_CLAIM_CHARACTERS) })
-      }
+      const claims = page.claims.slice(0, MENTIONED_WIKI_CLAIMS - held).map((claim) => ({
+        ref: `${id}#${claim.id}`, page: page.title, text: clipMiddle(claim.text, MENTIONED_CLAIM_CHARACTERS),
+      }))
+      held += claims.length
+      if (claims.length > 0) byPage.push(claims)
     }
-    return claims.slice(0, MENTIONED_WIKI_CLAIMS)
+    while (byPage.length > 1 && claimCharacters(byPage.flat()) > room) byPage.pop()
+    if (claimCharacters(byPage.flat()) > room) byPage = byPage.map((claims) => claims.slice(0, MENTIONED_CLAIMS_KEPT))
+    const claims = byPage.flat()
+    while (claims.length > 0 && claimCharacters(claims) > room) claims.pop()
+    return claims
+  }
+
+  /** The context of paper `paperId` a turn of its chat reads: its metadata, source pages and reading state, each within its budget. */
+  const paperContext = async (paperId: string) => {
+    const paper = options.store.getPaper(paperId)
+    const reading = options.store.paperReading(paperId)
+    let pages: Array<{ number: number; text: string }> = []
+    let pageCount = paper.pageCount
+    try {
+      pages = await paperPages(paperId)
+      pageCount = await citablePages(paper, () => options.store.paperSource(paperId))
+    } catch {
+      // Metadata and personal reading state remain useful when the source PDF is unavailable.
+    }
+    return {
+      id: paper.id,
+      title: paper.title,
+      authors: (paper.authors ?? [])
+        .slice(0, CHAT_CONTEXT_BUDGETS.authors)
+        .map((author) => clipMiddle(author, CHAT_CONTEXT_BUDGETS.authorCharacters)),
+      ...(paper.year === undefined ? {} : { year: paper.year }),
+      ...(paper.abstract === undefined ? {} : {
+        abstract: clipMiddle(paper.abstract, CHAT_CONTEXT_BUDGETS.abstractCharacters),
+      }),
+      pages,
+      pageCount,
+      reading: packPaperReading(reading),
+    }
   }
 
   const rpc = createHarnessRpc({
@@ -333,38 +380,14 @@ export function createChatHarnessRunner(options: {
         const { id, currentText } = ChatContextParamsSchema.parse(params)
         const session = options.store.chatSession(id)
         const history = packChatHistory(messagesBefore(options.store.chatMessages(id), currentText))
-        const wiki = await mentionedClaims(id)
-        if (session.paperId === undefined) return { title: session.title, history, wiki }
-        const paper = options.store.getPaper(session.paperId)
-        const reading = options.store.paperReading(session.paperId)
-        let pages: Array<{ number: number; text: string }> = []
-        let pageCount = paper.pageCount
-        try {
-          const paperId = session.paperId
-          pages = await paperPages(paperId)
-          pageCount = await citablePages(paper, () => options.store.paperSource(paperId))
-        } catch {
-          // Metadata and personal reading state remain useful when the source PDF is unavailable.
-        }
-        return {
-          title: session.title,
-          history,
-          paper: {
-            id: paper.id,
-            title: paper.title,
-            authors: (paper.authors ?? [])
-              .slice(0, CHAT_CONTEXT_BUDGETS.authors)
-              .map((author) => clipMiddle(author, CHAT_CONTEXT_BUDGETS.authorCharacters)),
-            ...(paper.year === undefined ? {} : { year: paper.year }),
-            ...(paper.abstract === undefined ? {} : {
-              abstract: clipMiddle(paper.abstract, CHAT_CONTEXT_BUDGETS.abstractCharacters),
-            }),
-            pages,
-            pageCount,
-            reading: packPaperReading(reading),
-          },
-          wiki,
-        }
+        const paper = session.paperId === undefined ? undefined : await paperContext(session.paperId)
+        const used = session.title.length + history.reduce((sum, turn) => sum + turn.text.length, 0) + (paper === undefined ? 0 : (
+          paper.title.length + paper.authors.join('').length + (paper.abstract?.length ?? 0)
+          + paper.pages.reduce((sum, page) => sum + page.text.length, 0) + paper.reading.remark.length
+          + paper.reading.highlights.reduce((sum, item) => sum + item.quote.length + item.note.length, 0)
+          + paper.reading.notes.reduce((sum, note) => sum + note.text.length, 0)))
+        const wiki = await mentionedClaims(id, CHAT_CONTEXT_BUDGETS.contextCharacters - used)
+        return { title: session.title, history, ...(paper === undefined ? {} : { paper }), wiki }
       },
     },
   })

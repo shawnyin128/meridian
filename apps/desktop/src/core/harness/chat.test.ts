@@ -977,6 +977,103 @@ describe('a chat turn on an API model', () => {
   })
 })
 
+describe('the claims of mentioned Wiki pages in a full context', () => {
+  /** The characters the Harness takes in one chat context, and the claims of a page kept when they must shrink. */
+  const BUDGET = 140_000
+  const KEPT = 8
+  type Context = {
+    title: string
+    history: Array<{ text: string }>
+    paper: { title: string; authors: string[]; abstract: string; reading: { remark: string; notes: Array<{ text: string }> } }
+    wiki: Array<{ ref: string; page: string; text: string }>
+  }
+  /** The characters of `context` the Harness counts against its context budget. */
+  const counted = ({ title, history, paper, wiki }: Context) => title.length
+    + history.reduce((sum, turn) => sum + turn.text.length, 0)
+    + paper.title.length + paper.authors.join('').length + paper.abstract.length + paper.reading.remark.length
+    + paper.reading.notes.reduce((sum, note) => sum + note.text.length, 0)
+    + wiki.reduce((sum, claim) => sum + claim.page.length + claim.text.length, 0)
+
+  /**
+   * The context of a paper chat whose history, abstract, authors and notes fill their budgets and
+   * whose last message mentions pages `a`, `b` and `c`, the first mentioned last; page `x` holds
+   * `claims[x]` claims of 1,000 characters under a title of 2,000.
+   */
+  const contextOf = async (claims: Record<'a' | 'b' | 'c', number>) => {
+    const base = createFixtureStore()
+    const paper = base.listPapers({ page: 1, size: 1 }).rows[0]!
+    const page = (id: 'a' | 'b' | 'c') => ({
+      id: `topics/${id}`, title: id.repeat(2_000),
+      claims: Array.from({ length: claims[id] }, (_, n) => ({ id: `${id}-${n}`, text: `${n}`.padEnd(1_000, id) })),
+    })
+    const mention = (id: string) => ({ kind: 'mention' as const, text: `@${id}`, target: { kind: 'page', id: `topics/${id}` } })
+    const messages = [
+      message('old', 'ai', 'x'.repeat(CHAT_CONTEXT_BUDGETS.historyCharacters)),
+      { id: 'asked', role: 'you' as const, actions: [], runs: [mention('c'), mention('b'), mention('a')] },
+    ]
+    const store = {
+      ...base,
+      chatSession: () => ({ id: 'chat', title: 'Paper chat', paperId: paper.id }),
+      chatMessages: () => messages,
+      getPaper: () => ({
+        ...paper, title: 'Paper', abstract: 'b'.repeat(CHAT_CONTEXT_BUDGETS.abstractCharacters),
+        authors: Array.from({ length: CHAT_CONTEXT_BUDGETS.authors }, () => 'n'.repeat(CHAT_CONTEXT_BUDGETS.authorCharacters)),
+      }),
+      paperReading: () => reading({
+        remark: 'r'.repeat(CHAT_CONTEXT_BUDGETS.readingRemarkCharacters),
+        notes: [1, 2, 3].map((n) => ({
+          id: `note-${n}`, page: n, text: 'n'.repeat(CHAT_CONTEXT_BUDGETS.readingItemCharacters), created: '2026-10-27', updated: '2026-10-27',
+        })),
+      }),
+      paperSource: () => { throw new CallError('not-found', 'no source') },
+      wikiCards: () => ['a', 'b', 'c'].map((id) => ({ id: `topics/${id}` })),
+      wikiAggregation: async (id: string) => page(id.slice('topics/'.length) as 'a' | 'b' | 'c'),
+    } as unknown as VaultStore
+    const child = new FakeHarness()
+    const runner = createChatHarnessRunner({
+      store,
+      model: { runtime: async () => ({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }) } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+    const answering = runner.answer('chat', 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const replied = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: 'chat', currentText: 'Why?' } })
+    const context = (await replied)['result'] as Context
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
+    await answering
+    runner.close()
+    return context
+  }
+  const refs = (context: Context) => context.wiki.map((claim) => claim.ref)
+  const claimsOf = (id: string, count: number) => Array.from({ length: count }, (_, n) => `topics/${id}#${id}-${n}`)
+
+  it('leaves out the first-mentioned pages\' claims first, and never trims the paper or the history', async () => {
+    const context = await contextOf({ a: 12, b: 12, c: 12 })
+    expect(counted({ ...context, wiki: [] })).toBeGreaterThan(BUDGET - 3 * 12 * 3_000)
+
+    expect(refs(context)).toEqual([...claimsOf('a', 12), ...claimsOf('b', 12)])
+    expect(counted(context)).toBeLessThanOrEqual(BUDGET)
+    expect(context.history.reduce((sum, turn) => sum + turn.text.length, 0)).toBe(CHAT_CONTEXT_BUDGETS.historyCharacters)
+    expect(context.paper.abstract.length).toBe(CHAT_CONTEXT_BUDGETS.abstractCharacters)
+  })
+
+  it('then keeps only the first claims of the latest-mentioned page', async () => {
+    const context = await contextOf({ a: 34, b: 6, c: 0 })
+
+    expect(refs(context)).toEqual(claimsOf('a', KEPT))
+    expect(counted(context)).toBeLessThanOrEqual(BUDGET)
+  })
+
+  it('keeps every claim of the mentioned pages while they fit', async () => {
+    expect(refs(await contextOf({ a: 3, b: 2, c: 1 }))).toEqual([...claimsOf('a', 3), ...claimsOf('b', 2), ...claimsOf('c', 1)])
+  })
+})
+
 describe('a message at the length limit', () => {
   it('reaches the model whole with its mentions\' kinds and ids on top of the 20,000 characters the user typed', async () => {
     const mention = { kind: 'mention' as const, text: '@KV cache quantization', target: { kind: 'page', id: 'topics/kv-cache-quantization' } }
