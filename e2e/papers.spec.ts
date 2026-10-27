@@ -412,8 +412,7 @@ test('按项目分组时筛选在读:分组留着,索引只列还有在读论文
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.filters .segmented-control>button', { hasText: '项目' }).click()
-  const projectGroups = await win.locator('.gxrow').count()
-  expect(projectGroups).toBeGreaterThan(expected.size)
+  await expect.poll(() => win.locator('.gxrow').count()).toBeGreaterThan(expected.size)
   await win.locator('.filters .read-state-filter').click()
   await win.locator('.ctxmenu .mi', { hasText: READING_PAPER }).click()
 
