@@ -111,7 +111,7 @@ describe('createBackground', () => {
     const stop = background.armSchedule()
     await vi.advanceTimersByTimeAsync(FIRST_TICK_MS)
     await vi.waitFor(() => expect(store.listInbox({ kind: 'discovery', project: 'draft' })).toHaveLength(2))
-    expect(store.listFeed().map((entry) => entry.body)).toContainEqual(expect.objectContaining({
+    expect((await store.listFeed()).map((entry) => entry.body)).toContainEqual(expect.objectContaining({
       runs: expect.arrayContaining([{ kind: 'text', text: '发现：' }]),
     }))
     stop()
@@ -144,7 +144,7 @@ describe('createBackground', () => {
     })
     const rows = store.listInbox({ kind: 'discovery', project: 'draft' })
     expect(rows).toHaveLength(2)
-    expect(store.listFeed()[0]).toMatchObject({
+    expect((await store.listFeed())[0]).toMatchObject({
       source: 'inbox',
       body: { runs: [{ text: '发现：' }, { text: '2 篇新论文推荐' }, { text: '（1 个项目）。' }] },
     })

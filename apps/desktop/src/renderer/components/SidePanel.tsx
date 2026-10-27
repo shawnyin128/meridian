@@ -4,6 +4,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { IconButton } from './IconButton.js'
 import { IconCross } from './icons.js'
 import { ScrollArea } from './ScrollArea.js'
+import { TitleField, type TitleKeep } from './TitleField.js'
 import './SidePanel.css'
 
 /** `card` lies inside a page body beside its content; `edge` lies against the window's edge, a rule on its inner side. */
@@ -42,17 +43,21 @@ export function SidePanel({ surface, label, className, children }: {
  * The head of a SidePanel: its buttons on a row of their own at the top right, the panel's `actions`
  * and then the close button, and under them its `title`, which spans the head and wraps. The title
  * comes first in the markup, so Tab reaches a title that is a control before the buttons. Its buttons
- * are compact; `onClose` folds the panel away.
+ * are compact; `onClose` folds the panel away. With `rename`, a click on the title renames the
+ * panel's item in place through TitleField, from `rename.value`, and the title still wraps.
  */
-export function PanelHead({ title, actions, onClose }: {
+export function PanelHead({ title, actions, onClose, rename }: {
   title: ReactNode
   actions?: ReactNode
   onClose: () => void
+  rename?: { label: string; value: string; onSave: (title: string) => boolean | Promise<boolean>; keep: TitleKeep } | undefined
 }) {
   const m = useMessages()
   return (
     <header className="panel-head">
-      <div className="panel-head-title" id={useContext(TitleId)}>{title}</div>
+      <div className="panel-head-title" id={useContext(TitleId)}>
+        {rename === undefined ? title : <TitleField {...rename} wrap>{title}</TitleField>}
+      </div>
       <div className="panel-head-actions">
         {actions}
         <IconButton label={m.common.panel.close} size="nested" className="panel-close" onClick={onClose}>

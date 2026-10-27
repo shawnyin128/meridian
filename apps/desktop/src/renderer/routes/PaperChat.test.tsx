@@ -353,7 +353,8 @@ describe('PaperChat', () => {
     expect(document.activeElement).toBe(draft.querySelector('input'))
     act(() => {
       setValue(draft.querySelector('input')!, '可验证的新方向')
-      setValue(draft.querySelector('textarea')!, '把讨论后的机制和实验假设明确写下来')
+      const body = EditorView.findFromDOM(draft.querySelector<HTMLElement>('.form-markdown .cm-editor')!)!
+      body.dispatch({ changes: { from: 0, insert: '把讨论后的机制和实验假设明确写下来' }, userEvent: 'input.type' })
     })
     await act(async () => {
       draft.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))

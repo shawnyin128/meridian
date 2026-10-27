@@ -1,0 +1,6 @@
+/*
+ * A group's switch is taller than its heading's line: the heading takes the switch's height, so its
+ * panel starts --item-gap under the switch, as stacked controls do.
+ */
+.tabbed-section-heading.section-heading--group{margin-bottom:var(--item-gap)}
+.tabbed-section-heading.section-heading--group>.section-heading-actions{height:auto}

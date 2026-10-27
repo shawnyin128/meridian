@@ -10,8 +10,6 @@
   .project-idea-row>.item-trailing{grid-column:1/-1}
 }
 
-/* The project timeline and the details below share one content width; an open node's panel only narrows the left column. */
-.desk .desk-body>.wkpage.project-detail-page{max-width:var(--pagew)}
 .project-detail-page{display:flex;gap:var(--sp-32);align-items:flex-start}
 /* Node panel: the Markdown document, branch results and progress records an agent maintains; the App only reads them. */
 .wkpage.node-reading{gap:var(--sp-24)}
@@ -24,7 +22,7 @@
 /* The Workspace is a connection, not core metadata: its path is truncated, and a dot names its state, in words when it is not connected. */
 .workspace-field{display:flex;align-items:center;gap:var(--sp-4);min-width:0}
 .workspace-root{display:flex;align-items:center;gap:var(--sp-6);min-width:0;flex:1;border:0;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;padding:0}
-.workspace-kinds{margin-bottom:var(--sp-16)}
+.workspace-kinds{margin-bottom:var(--item-gap)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
 .workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
 

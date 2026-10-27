@@ -4,6 +4,7 @@ import { homedir } from 'node:os'
 import { dirname, join } from 'node:path'
 import { z } from 'zod'
 import { type HarnessCli, type HarnessCliModel, HarnessCliSchema } from '../../../shared/contract.js'
+import type { CoreLogLevel } from '../../core-log.js'
 import { writeJson } from '../../vault/writer.js'
 import { cliEnvironment, inTemporaryFolder, runChild, stderrExcerpt } from './child.js'
 import { resolveCliBinary } from './discovery.js'
@@ -60,7 +61,7 @@ export function openCliChatSessions(options: {
   environment?: NodeJS.ProcessEnv
   home?: string
   binary?: (cli: HarnessCli) => Promise<string | null>
-  onLog?: (line: string) => void
+  onLog?: (level: CoreLogLevel, line: string) => void
 }) {
   const file = join(options.root, 'sessions.json')
   const environment = options.environment ?? process.env
@@ -76,12 +77,12 @@ export function openCliChatSessions(options: {
     } catch {
       // Reported below, like a file of another shape.
     }
-    options.onLog?.(`${file} cannot be read; the chats' CLI sessions start again`)
+    options.onLog?.('warn', `${file} cannot be read; the chats' CLI sessions start again`)
     return []
   }
   let stored = read()
   const unreadable = stored.filter((record) => !CliChatRecordSchema.safeParse(record).success).length
-  if (unreadable > 0) options.onLog?.(`${file}: ${unreadable} chat records cannot be read and are skipped`)
+  if (unreadable > 0) options.onLog?.('warn', `${file}: ${unreadable} chat records cannot be read and are skipped`)
 
   const indexOf = (chat: string) => stored.findIndex((record) => {
     const parsed = CliChatRecordSchema.safeParse(record)
@@ -109,7 +110,7 @@ export function openCliChatSessions(options: {
       : { ...record, sessions: [...record.sessions, { cli, id }] }
   const validId = (id: string) => {
     if (SessionIdSchema.safeParse(id).success) return true
-    options.onLog?.(`a CLI session id that is not a UUID is not kept: ${JSON.stringify(id.slice(0, 80))}`)
+    options.onLog?.('warn', `a CLI session id that is not a UUID is not kept: ${JSON.stringify(id.slice(0, 80))}`)
     return false
   }
   /**
@@ -132,7 +133,7 @@ export function openCliChatSessions(options: {
       const { code, stderr } = await inTemporaryFolder((folder) => runChild(binary, ['delete', '--force', id], {
         cwd: folder, env: cliEnvironment(environment, binary), timeoutMs: DELETE_TIMEOUT_MS,
       }))
-      if (code !== 0) options.onLog?.(`codex delete ${id} exited with ${String(code)}: ${stderrExcerpt(stderr)}`)
+      if (code !== 0) options.onLog?.('error', `codex delete ${id} exited with ${String(code)}: ${stderrExcerpt(stderr)}`)
     }
     const sessions = join(codexHome, 'sessions')
     for (const path of globSync(`**/*${id}*.jsonl`, { cwd: sessions })) rmSync(join(sessions, path), { force: true })
@@ -162,7 +163,7 @@ export function openCliChatSessions(options: {
             : !sessionKept(kept.cli, kept.id) ? 'the session is gone'
               : null
       if (reason === null) return kept
-      options.onLog?.(`chat ${chat}: a new ${model.cli} session, ${reason}`)
+      options.onLog?.('info', `chat ${chat}: a new ${model.cli} session, ${reason}`)
       return null
     },
     /**
@@ -212,13 +213,13 @@ export function openCliChatSessions(options: {
           for (const session of record.sessions) await deleteSession(session.cli, session.id)
           rmSync(join(options.root, folderName(options.vault, record.chat)), { recursive: true, force: true })
         } catch (cause) {
-          options.onLog?.(`chat ${record.chat}: its CLI sessions could not be deleted: ${cause instanceof Error ? cause.message : String(cause)}`)
+          options.onLog?.('error', `chat ${record.chat}: its CLI sessions could not be deleted: ${cause instanceof Error ? cause.message : String(cause)}`)
           continue
         }
         const at = indexOf(record.chat)
         stored = stored.filter((_, index) => index !== at)
         save()
-        options.onLog?.(`chat ${record.chat}: deleted its ${record.sessions.length} CLI sessions`)
+        options.onLog?.('info', `chat ${record.chat}: deleted its ${record.sessions.length} CLI sessions`)
       }
     },
   }

@@ -59,8 +59,8 @@ describe.each([
     expect(thrownFailure(() => store.removeLater('no-such-entry'))).toBe('not-found')
   })
 
-  it('已经关联过的论文再关联一次:refused', () => {
-    store.addPaper(project, paper)
+  it('已经关联过的论文再关联一次:refused', async () => {
+    await store.addPaper(project, paper)
     expect(thrownFailure(() => store.addPaper(project, paper))).toBe('refused')
   })
 

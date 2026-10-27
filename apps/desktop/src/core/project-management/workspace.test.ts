@@ -76,9 +76,9 @@ afterEach(() => {
 })
 
 describe('project workspace protocol', () => {
-  it('materializes only the App-owned manifest and planning surface', () => {
+  it('materializes only the App-owned manifest and planning surface', async () => {
     const root = temporary()
-    const revision = writeProjectWorkspace(project(root))
+    const revision = await writeProjectWorkspace(project(root))
     const manifest = JSON.parse(readFileSync(join(root, '.meridian/workspace.json'), 'utf8')) as {
       schema_version: string
       surfaces: {
@@ -115,13 +115,13 @@ describe('project workspace protocol', () => {
     })
   })
 
-  it('手动设的任务节点写在计划面的那条任务上;0.0.15.3 的 App 与 0.0.4 插件的 Python 照样读这份计划', () => {
+  it('手动设的任务节点写在计划面的那条任务上;0.0.15.3 的 App 与 0.0.4 插件的 Python 照样读这份计划', async () => {
     const root = temporary()
     const held = { ...project(root), taskNodes: { 'task-1': 'direction.B', 'task-gone': 'direction.A' } }
-    const revision = writeProjectWorkspace(held)
+    const revision = await writeProjectWorkspace(held)
     const plan = JSON.parse(readFileSync(join(root, '.meridian/control/plan.json'), 'utf8')) as { tasks: unknown[] }
     expect(plan.tasks).toEqual([{ ...held.tasks[0], node: 'direction.B' }])
-    expect(readProjectWorkspace(held)?.planRevision).toBe(revision)
+    expect((await readProjectWorkspace(held))?.planRevision).toBe(revision)
 
     const script = [
       'import json, sys',
@@ -137,17 +137,17 @@ describe('project workspace protocol', () => {
     expect(JSON.parse(output)).toEqual(['ready', ['task-1']])
   })
 
-  it('项目有几个领域时计划面的项目带上全部领域,插件的 Python 读得出;只有一个时计划面与原来一样,不记一条变动', () => {
+  it('项目有几个主题时计划面的项目带上全部主题,插件的 Python 读得出;只有一个时计划面与原来一样,不记一条变动', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     const planFile = join(root, '.meridian/control/plan.json')
     const single = JSON.parse(readFileSync(planFile, 'utf8')) as { revision: string; project: Record<string, unknown> }
     expect('topics' in single.project).toBe(false)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     expect((JSON.parse(readFileSync(planFile, 'utf8')) as { revision: string }).revision).toBe(single.revision)
 
-    writeProjectWorkspace({ ...held, topics: ['speculative decoding', 'KV cache'] })
+    await writeProjectWorkspace({ ...held, topics: ['speculative decoding', 'KV cache'] })
     const script = [
       'import json, sys',
       'from pathlib import Path',
@@ -163,7 +163,7 @@ describe('project workspace protocol', () => {
     expect(changes.changes.map((change) => change.kind)).toEqual(['project.snapshot', 'project.updated'])
   })
 
-  it('keeps current linked ideas and records only incremental association changes', () => {
+  it('keeps current linked ideas and records only incremental association changes', async () => {
     const root = temporary()
     const held = project(root)
     const base: ResearchIdea = {
@@ -171,8 +171,8 @@ describe('project workspace protocol', () => {
       source: { chatId: 'chat-1', chatTitle: 'Threshold discussion' },
       project: held.id, archived: false, created: '2026-09-16', updated: '2026-09-16',
     }
-    writeProjectWorkspaceState(held, [base])
-    writeProjectWorkspaceState(held, [{ ...base, node: 'direction.B', updated: '2026-09-18' }])
+    await writeProjectWorkspaceState(held, [base])
+    await writeProjectWorkspaceState(held, [{ ...base, node: 'direction.B', updated: '2026-09-18' }])
 
     const changes = JSON.parse(readFileSync(join(root, '.meridian/control/changes.json'), 'utf8')) as {
       ideas: { id: string; node?: string }[]
@@ -185,10 +185,10 @@ describe('project workspace protocol', () => {
     expect(changes.changes.at(-1)?.refs).toContainEqual({ kind: 'node', id: 'direction.B' })
   })
 
-  it('reads generated Lab graph and workspace events without rewriting either', () => {
+  it('reads generated Lab graph and workspace events without rewriting either', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     mkdirSync(join(root, '.meridian/graph'), { recursive: true })
     writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
       schema: 'meridian.lab.graph.v1',
@@ -221,7 +221,7 @@ describe('project workspace protocol', () => {
       }],
     }), 'utf8')
 
-    expect(readProjectWorkspace(held)).toMatchObject({
+    expect(await readProjectWorkspace(held)).toMatchObject({
       state: 'ready',
       graphGeneratedAt: '2026-09-15T18:00:00Z',
       graphHealth: 'ok',
@@ -245,10 +245,10 @@ describe('project workspace protocol', () => {
     })
   })
 
-  it('读出节点关联的任务和结论,证据按实验标题显示;0.0.14 导出的节点两样都没有', () => {
+  it('读出节点关联的任务和结论,证据按实验标题显示;0.0.14 导出的节点两样都没有', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     mkdirSync(join(root, '.meridian/graph'), { recursive: true })
     const node = (id: string, state: string) => ({ id, title: id, state, markdown: '' })
     writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
@@ -267,7 +267,7 @@ describe('project workspace protocol', () => {
       },
     }), 'utf8')
 
-    const [concluded, open] = readProjectWorkspace(held)!.graph!.nodes
+    const [concluded, open] = (await readProjectWorkspace(held))!.graph!.nodes
     expect(concluded).toMatchObject({
       tasks: ['task-1'],
       conclusion: {
@@ -280,10 +280,10 @@ describe('project workspace protocol', () => {
     expect(open).not.toHaveProperty('conclusion')
   })
 
-  it('新版本写进清单与科研记录的新增字段被忽略,科研图与记录照常显示', () => {
+  it('新版本写进清单与科研记录的新增字段被忽略,科研图与记录照常显示', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     const manifestFile = join(root, '.meridian/workspace.json')
     const manifest = JSON.parse(readFileSync(manifestFile, 'utf8')) as { surfaces: Record<string, unknown> }
     manifest.surfaces['notebooks'] = { path: '.meridian/notebooks/index.json', writer: 'workspace' }
@@ -303,17 +303,17 @@ describe('project workspace protocol', () => {
       }],
     }), 'utf8')
 
-    const workspace = readProjectWorkspace(held)
+    const workspace = await readProjectWorkspace(held)
     expect(workspace).toMatchObject({
       state: 'ready', graph: { nodes: [{ id: 'thread.A' }] }, events: [{ text: 'Probe passed' }],
     })
     expect(workspace?.issue).toBeUndefined()
   })
 
-  it('科研记录文件整份读不了时,科研图照常显示,并写明哪个文件读不了、为什么', () => {
+  it('科研记录文件整份读不了时,科研图照常显示,并写明哪个文件读不了、为什么', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     mkdirSync(join(root, '.meridian/graph'), { recursive: true })
     writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
       schema: 'meridian.lab.graph.v1',
@@ -328,15 +328,15 @@ describe('project workspace protocol', () => {
       events: [{ id: 'event-1', when: '2026-09-15T10:00:00Z', text: 'Probe passed' }],
     }), 'utf8')
 
-    const workspace = readProjectWorkspace(held)
+    const workspace = await readProjectWorkspace(held)
     expect(workspace).toMatchObject({ state: 'ready', events: [], graph: { nodes: [{ id: 'thread.A' }] } })
     expect(workspace?.issue).toBe('科研记录读不了：格式是这个版本的 Meridian 不认识的，请更新 App')
   })
 
-  it('科研记录里一条读不了时,其余照常显示,写明第几条读不了、为什么,文件一字不改', () => {
+  it('科研记录里一条读不了时,其余照常显示,写明第几条读不了、为什么,文件一字不改', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     mkdirSync(join(root, '.meridian/events'), { recursive: true })
     const file = join(root, '.meridian/events/events.json')
     const text = JSON.stringify({
@@ -348,16 +348,16 @@ describe('project workspace protocol', () => {
     })
     writeFileSync(file, text, 'utf8')
 
-    const workspace = readProjectWorkspace(held)
+    const workspace = await readProjectWorkspace(held)
     expect(workspace?.events.map((event) => event.text)).toEqual(['Probe passed'])
     expect(workspace?.issue).toBe('科研记录第 2 条读不了：格式是这个版本的 Meridian 不认识的，请更新 App')
     expect(readFileSync(file, 'utf8')).toBe(text)
   })
 
-  it('科研图里读不了的节点和端点不在图里的关系不显示,逐条写明第几个、为什么;上级不在图里的节点照常显示,文件一字不改', () => {
+  it('科研图里读不了的节点和端点不在图里的关系不显示,逐条写明第几个、为什么;上级不在图里的节点照常显示,文件一字不改', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     mkdirSync(join(root, '.meridian/graph'), { recursive: true })
     const file = join(root, '.meridian/graph/graph.json')
     const text = JSON.stringify({
@@ -379,7 +379,7 @@ describe('project workspace protocol', () => {
     })
     writeFileSync(file, text, 'utf8')
 
-    const workspace = readProjectWorkspace(held)
+    const workspace = await readProjectWorkspace(held)
     expect(workspace?.graph?.nodes.map((node) => [node.id, node.label, node.x])).toEqual([
       ['t.A', 'Root', 20], ['t.B', 'Child', 240], ['t.C', 'Parent missing', 20],
     ])
@@ -393,10 +393,10 @@ describe('project workspace protocol', () => {
     expect(readFileSync(file, 'utf8')).toBe(text)
   })
 
-  it('reads active_nodes directly, marking every listed id act and leaving ancestors and other repairable nodes idle', () => {
+  it('reads active_nodes directly, marking every listed id act and leaving ancestors and other repairable nodes idle', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     mkdirSync(join(root, '.meridian/graph'), { recursive: true })
     writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
       schema: 'meridian.lab.graph.v1',
@@ -415,7 +415,7 @@ describe('project workspace protocol', () => {
 
     // thread.A is the shared ancestor and is itself `repairable`, but it is not in active_nodes,
     // so it must stay idle: being on the route, and being repairable, no longer imply act.
-    expect(readProjectWorkspace(held)).toMatchObject({
+    expect(await readProjectWorkspace(held)).toMatchObject({
       graph: {
         activeNodes: ['thread.B', 'thread.C'],
         nodes: [
@@ -427,10 +427,10 @@ describe('project workspace protocol', () => {
     })
   })
 
-  it('lays out parent branches as siblings and does not turn semantic relations into parent edges', () => {
+  it('lays out parent branches as siblings and does not turn semantic relations into parent edges', async () => {
     const root = temporary()
     const held = project(root)
-    writeProjectWorkspace(held)
+    await writeProjectWorkspace(held)
     mkdirSync(join(root, '.meridian/graph'), { recursive: true })
     writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({
       schema: 'meridian.lab.graph.v1',
@@ -448,7 +448,7 @@ describe('project workspace protocol', () => {
       ],
     }), 'utf8')
 
-    const workspace = readProjectWorkspace(held)
+    const workspace = await readProjectWorkspace(held)
     expect(workspace).toBeDefined()
     const graph = workspace!.graph!
     expect(graph.edges).toEqual([
@@ -461,12 +461,12 @@ describe('project workspace protocol', () => {
     expect(byId.get('thread.C')!.y).not.toBe(byId.get('thread.D')!.y)
   })
 
-  it('does not replace an unknown workspace manifest', () => {
+  it('does not replace an unknown workspace manifest', async () => {
     const root = temporary()
     mkdirSync(join(root, '.meridian'), { recursive: true })
     const manifest = join(root, '.meridian/workspace.json')
     writeFileSync(manifest, '{"schema_version":"someone.else.v1"}\n', 'utf8')
-    expect(() => writeProjectWorkspace(project(root))).toThrow()
+    await expect(writeProjectWorkspace(project(root))).rejects.toThrow()
     expect(readFileSync(manifest, 'utf8')).toBe('{"schema_version":"someone.else.v1"}\n')
   })
 
@@ -486,13 +486,13 @@ describe('project workspace protocol', () => {
       .toThrow('绝对路径')
   })
 
-  it('materializes the same protocol over SSH with one staged App-owned transaction', () => {
+  it('materializes the same protocol over SSH with one staged App-owned transaction', async () => {
     const calls: { command: string; input?: Buffer }[] = []
-    const ssh: SshExecutor = (_target, command, input) => {
+    const ssh: SshExecutor = async (_target, command, input) => {
       calls.push({ command, ...(input === undefined ? {} : { input }) })
       return calls.length === 1 ? remotePayload({}) : Buffer.alloc(0)
     }
-    const revision = writeProjectWorkspace(sshProject(), ssh)
+    const revision = await writeProjectWorkspace(sshProject(), ssh)
     expect(revision).toHaveLength(16)
     expect(calls).toHaveLength(2)
     expect(calls[0]!.command).toContain('wc -c')
@@ -504,7 +504,7 @@ describe('project workspace protocol', () => {
     expect(calls[1]!.input?.toString('utf8')).toContain(`"schema_version": "${WORKSPACE_CHANGES_SCHEMA}"`)
   })
 
-  it('reads graph and source-backed events over one SSH connection', () => {
+  it('reads graph and source-backed events over one SSH connection', async () => {
     const manifest = JSON.stringify({
       schema_version: WORKSPACE_SCHEMA,
       project: { id: 'project-1', name: 'Shared research' },
@@ -528,7 +528,7 @@ describe('project workspace protocol', () => {
       }),
     })
     let calls = 0
-    const workspace = readProjectWorkspace(sshProject(), () => { calls += 1; return payload })
+    const workspace = await readProjectWorkspace(sshProject(), async () => { calls += 1; return payload })
     expect(calls).toBe(1)
     expect(workspace).toMatchObject({
       kind: 'ssh', host: 'gpu-lab', port: 2222, root: '/srv/research/shared',

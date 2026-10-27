@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import re
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlparse
 
 from langchain_core.messages import HumanMessage
@@ -141,6 +141,19 @@ def _runtime_model(value: object) -> dict[str, object]:
 def runs_on_cli(model: object) -> bool:
     """Whether a runtime model is the user's subscription CLI, whose model call Core runs."""
     return isinstance(model, dict) and model.get("source") == "cli"
+
+
+def structured_output_method(model: object) -> Literal["json_schema", "function_calling"]:
+    """Return how runtime model `model` takes a closed output schema through LangChain.
+
+    An OpenAI-compatible service gets the schema as the one tool it must call; every other provider
+    gets it as a JSON schema response format. Raises ModelConfigurationError for a model
+    configuration create_chat_model would refuse.
+    """
+
+    if _runtime_model(model)["provider"] == "openai-compatible":
+        return "function_calling"
+    return "json_schema"
 
 
 def _output_limit(value: object) -> int:

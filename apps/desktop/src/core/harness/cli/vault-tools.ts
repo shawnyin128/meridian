@@ -1,5 +1,5 @@
 import { z } from 'zod'
-import { projectAreas, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
+import { projectTopics, sortRecordsNewestFirst } from '../../../shared/project-signals.js'
 import { PAPER_PAGE } from '../../../shared/vocabulary.js'
 import { callFailure } from '../../call-error.js'
 import { extractPdfPages } from '../../paper-library/index.js'
@@ -172,7 +172,7 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
     }),
     tool('wiki_page', 'Read a Wiki page', 'Read one Wiki page of the vault: an aggregation page such as a topic or a '
       + 'method, or a paper\'s page (papers/<id>).', WikiPageArgs,
-    ({ id }) => {
+    async ({ id }) => {
       if (id.startsWith(PAPER_PAGE)) {
         if (!store.hasPaper(id.slice(PAPER_PAGE.length))) return refuse(`The vault has no Wiki page ${id}.`)
         const page = store.wikiPaper(id)
@@ -182,23 +182,23 @@ export function vaultTools(store: VaultStore, scope: VaultToolScope) {
         })
       }
       if (!store.wikiCards().some((card) => card.id === id)) return refuse(`The vault has no Wiki page ${id}.`)
-      const page = store.wikiAggregation(id)
+      const page = await store.wikiAggregation(id)
       return answer({
         id, kind: page.kindLabel, title: page.title, summary: clip(page.summary, ITEM_CHARS),
         claims: page.claims.slice(0, 20).map((claim) => clip(claim.text, ITEM_CHARS)), body: clip(page.body, BODY_CHARS),
       })
     }),
     tool('project_summary', 'Read a project summary', 'Read the summary of one project in the vault: its state, focus, '
-      + 'milestones, conclusions, newest research records and papers.', ProjectSummaryArgs,
-    ({ id }) => {
+      + 'milestones, experiment conclusions, newest research records and papers.', ProjectSummaryArgs,
+    async ({ id }) => {
       if (!store.hasProject(id)) return refuse(`The vault has no project ${id}.`)
-      const project = store.getProject(id)
+      const project = await store.getProject(id)
       return answer({
-        id, name: project.name, status: project.status, priority: project.priority, areas: projectAreas(project),
+        id, name: project.name, status: project.status, priority: project.priority, topics: projectTopics(project),
         focus: clip(project.focus, ITEM_CHARS), ...(project.block === undefined ? {} : { block: clip(project.block, ITEM_CHARS) }),
         start: project.start, due: project.due, ...(project.lastProgress === undefined ? {} : { lastProgress: project.lastProgress }),
         milestones: project.milestones.slice(0, 20).map(({ title, date, done }) => ({ title: clip(title, ITEM_CHARS), date, done })),
-        conclusions: (project.projectConclusions ?? []).slice(0, 10).map(({ text, state }) => ({ text: clip(text, ITEM_CHARS), state })),
+        experimentConclusions: (project.projectConclusions ?? []).slice(0, 10).map(({ text, state }) => ({ text: clip(text, ITEM_CHARS), state })),
         recentRecords: sortRecordsNewestFirst(project.events).slice(0, 5).map(({ date, text }) => ({ date, text: clip(text, ITEM_CHARS) })),
         papers: Object.entries(project.paperTitles).slice(0, 20).map(([paper, title]) => ({ id: PAPER_PAGE + paper, title })),
       })

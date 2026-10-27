@@ -46,7 +46,8 @@ function seed(store: VaultStore) {
   store.createProject('另一个')
   store.createProject('写库失败')
   const project = store.listProjects().find((row) => row.name === '写库失败')!.id
-  const node = store.createNode(project, '节点', null).graph.nodes[0]!.id
+  void store.createNode(project, '节点', null)
+  const node = store.heldProject(project).graph.nodes[0]!.id
   const chat = store.createChat('会话', true).id
   store.appendChatMessages(chat, [{
     role: 'ai', runs: [{ kind: 'text', text: '已引用项目' }],
@@ -163,7 +164,8 @@ const trashed = (store: VaultStore, trash: () => unknown): string => {
  */
 const WHOLE: [string, (store: VaultStore, world: World, repo: string) => () => unknown, boolean][] = [
   ['删掉附件', (s, w) => {
-    const { id } = s.createAttachment(w.project, { name: '数据.csv', size: '1 KB', path: '/tmp/数据.csv' }).attachments[0]!
+    void s.createAttachment(w.project, { name: '数据.csv', size: '1 KB', path: '/tmp/数据.csv' })
+    const { id } = s.heldProject(w.project).attachments[0]!
     return () => s.deleteAttachment(w.project, id)
   }, true],
   ['删掉记过笔记的论文', (s, w) => {
@@ -183,7 +185,8 @@ const WHOLE: [string, (store: VaultStore, world: World, repo: string) => () => u
     name: '改过的名字', focus: '新目标', priority: 'p0', block: '等数据', memo: '随笔',
   }), true],
   ['一次改任务的名字和备注', (s, w) => {
-    const task = s.createTask(w.project, { title: '任务', start: '2026-09-10', end: '2026-09-11', state: 'plan', priority: 'p1' }).tasks[0]!.id
+    void s.createTask(w.project, { title: '任务', start: '2026-09-10', end: '2026-09-11', state: 'plan', priority: 'p1' })
+    const task = s.heldProject(w.project).tasks[0]!.id
     return () => s.updateTask(w.project, task, { title: '改过的任务', note: '备注' })
   }, true],
   ['一条提案写好几页', (s) => () => s.applyProposal(TWO_TOPICS), true],
@@ -201,7 +204,8 @@ const WHOLE: [string, (store: VaultStore, world: World, repo: string) => () => u
     return () => s.restoreTrash(id)
   }, false],
   ['从垃圾桶恢复附件', (s, w) => {
-    const { id } = s.createAttachment(w.project, { name: '数据.csv', size: '1 KB', path: '/tmp/数据.csv' }).attachments[0]!
+    void s.createAttachment(w.project, { name: '数据.csv', size: '1 KB', path: '/tmp/数据.csv' })
+    const { id } = s.heldProject(w.project).attachments[0]!
     const entry = trashed(s, () => s.deleteAttachment(w.project, id))
     return () => s.restoreTrash(entry)
   }, false],
@@ -292,16 +296,16 @@ describe('a vault write that fails', () => {
       .filter((file) => statSync(file).isFile() && !file.startsWith(join(vault, '.meridian', 'tmp', sep)))
       .map((file) => [file, readFileSync(file, 'utf8')])))
   /** Everything the store answers about what the WHOLE cases write. */
-  const view = (store: VaultStore) => {
+  const view = async (store: VaultStore) => {
     const projects = store.listProjects()
     const papers = store.listPapers({ page: 1, size: 100 }).rows
     return {
-      projects, details: projects.map((project) => store.getProject(project.id)), overview: store.overviewProjects(),
+      projects, details: await Promise.all(projects.map((project) => store.getProject(project.id))), overview: store.overviewProjects(),
       papers, readings: papers.map((paper) => store.paperReading(paper.id)),
-      pages: store.wikiCards().map((card) => store.wikiAggregation(card.id)), signals: store.wikiSignals(),
+      pages: await Promise.all(store.wikiCards().map((card) => store.wikiAggregation(card.id))), signals: store.wikiSignals(),
       inbox: store.listInbox(), later: store.listLater(), trash: store.listTrash(), ideas: store.listIdeas(),
       chats: store.listChats().map((chat) => ({ ...chat, messages: store.chatMessages(chat.id) })),
-      feed: store.listFeed(), changes: store.listChanges(),
+      feed: await store.listFeed(), changes: store.listChanges(),
     }
   }
   /**
@@ -335,13 +339,13 @@ describe('a vault write that fails', () => {
    * failure that every file and what `read` answers are as they were before. Returns the number of vault
    * writes `write` made once it runs through.
    */
-  const everyStep = (write: () => unknown, read: () => unknown): number => {
-    const shown = read()
+  const everyStep = async (write: () => unknown, read: () => unknown): Promise<number> => {
+    const shown = await read()
     const files = filesOf()
     for (let step = 1; ; step += 1) {
       const reached = failWrite(step)
       try {
-        write()
+        await write()
         return step - 1
       } catch (error) {
         if (!reached()) throw error
@@ -350,7 +354,7 @@ describe('a vault write that fails', () => {
         vi.mocked(linkSync).mockImplementation(link)
       }
       expect(filesOf(), `第 ${step} 次写没写成`).toEqual(files)
-      expect(read(), `第 ${step} 次写没写成`).toEqual(shown)
+      expect(await read(), `第 ${step} 次写没写成`).toEqual(shown)
     }
   }
 
@@ -367,25 +371,25 @@ describe('a vault write that fails', () => {
   })
 
   for (const [write, arrange, logged] of WHOLE) {
-    it(`${write}时哪一次写没写成，库和内存都回到写之前；写成时整个落盘${logged ? '，最近变动记下一条' : ''}`, () => {
+    it(`${write}时哪一次写没写成，库和内存都回到写之前；写成时整个落盘${logged ? '，最近变动记下一条' : ''}`, async () => {
       const store = open()
       const world = seed(store)
-      store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
+      await store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
       const act = arrange(store, world, repo)
       const changes = store.listChanges().length
-      expect(everyStep(act, () => view(store))).toBeGreaterThan(1)
+      expect(await everyStep(act, () => view(store))).toBeGreaterThan(1)
       expect(store.listChanges()).toHaveLength(changes + (logged ? 1 : 0))
-      expect(view(open())).toEqual(view(store))
+      expect(await view(open())).toEqual(await view(store))
     })
   }
 
-  it('agent 在工作区记下的想法和科研记录，收进来时哪一次写没写成都不落地，收成之后各只有一份', () => {
+  it('agent 在工作区记下的想法和科研记录，收进来时哪一次写没写成都不落地，收成之后各只有一份', async () => {
     let clock = Date.parse('2026-09-10T08:00:00Z')
     // A minute passes between reads, so the once-a-minute limit on reading workspace events never skips one.
     const store = createVaultStore(vault, () => '2026-09-10', () => new Date(clock += 61_000))
     const world = seed(store)
-    store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
-    store.listFeed()
+    await store.bindProjectWorkspace(world.project, { kind: 'local', root: repo })
+    await store.listFeed()
     plant(repo, '.meridian/ideas/ideas.json', {
       schema_version: 'meridian.workspace-agent-ideas.v1',
       ideas: [1, 2].map((n) => ({ id: `agent-idea-${n}`, date: '2026-09-10', title: `agent 的方向 ${n}`, body: '验证这一步' })),
@@ -394,20 +398,20 @@ describe('a vault write that fails', () => {
       schema_version: 'meridian.workspace-events.v1',
       events: [1, 2].map((n) => ({ id: `agent-event-${n}`, date: '2026-09-10', text: `agent 跑完了第 ${n} 组`, source: 'agent' })),
     })
-    expect(everyStep(() => store.listIdeas(), () => null)).toBeGreaterThan(1)
-    expect(everyStep(() => store.listFeed(), () => null)).toBeGreaterThan(1)
+    expect(await everyStep(() => store.listIdeas(), () => null)).toBeGreaterThan(1)
+    expect(await everyStep(() => store.listFeed(), () => null)).toBeGreaterThan(1)
     expect(store.listIdeas().filter((idea) => idea.title.startsWith('agent 的方向'))).toHaveLength(2)
-    expect(store.listFeed().filter((entry) => JSON.stringify(entry).includes('agent 跑完了'))).toHaveLength(2)
-    expect(view(open())).toEqual(view(store))
+    expect((await store.listFeed()).filter((entry) => JSON.stringify(entry).includes('agent 跑完了'))).toHaveLength(2)
+    expect(await view(open())).toEqual(await view(store))
   })
 
-  it('想法转成项目时哪一次写没写成，库和内存都回到写之前；重来一次写成了，也只多出一个项目', () => {
+  it('想法转成项目时哪一次写没写成，库和内存都回到写之前；重来一次写成了，也只多出一个项目', async () => {
     const store = open()
     const world = seed(store)
     const idea = store.createIdea(world.chat, '转成项目的方向', '项目从这里开始').id
     const projects = store.listProjects().length
     const changes = store.listChanges().length
-    expect(everyStep(() => promoteResearchIdea(store, idea), () => view(store))).toBeGreaterThan(1)
+    expect(await everyStep(() => promoteResearchIdea(store, idea), () => view(store))).toBeGreaterThan(1)
     expect(store.listChanges()).toHaveLength(changes + 2)
     for (const read of [store, open()]) {
       const made = read.listProjects().filter((project) => project.name === '转成项目的方向')
@@ -417,15 +421,15 @@ describe('a vault write that fails', () => {
     }
   })
 
-  it('把想法放到新建的科研节点上时哪一次写没写成，库和内存都回到写之前；重来一次写成了，也只多出一个节点', () => {
+  it('把想法放到新建的科研节点上时哪一次写没写成，库和内存都回到写之前；重来一次写成了，也只多出一个节点', async () => {
     const store = open()
     const world = seed(store)
-    const nodes = store.getProject(world.project).graph.nodes.length
-    expect(everyStep(() => placeResearchIdeaOnGraph(store, world.idea, {
+    const nodes = (await store.getProject(world.project)).graph.nodes.length
+    expect(await everyStep(() => placeResearchIdeaOnGraph(store, world.idea, {
       kind: 'create', label: '新的节点', after: world.node,
     }), () => view(store))).toBeGreaterThan(1)
     for (const read of [store, open()]) {
-      const { graph } = read.getProject(world.project)
+      const { graph } = await read.getProject(world.project)
       const made = graph.nodes.filter((node) => node.label === '新的节点')
       expect(made).toHaveLength(1)
       expect(graph.nodes).toHaveLength(nodes + 1)
@@ -433,17 +437,17 @@ describe('a vault write that fails', () => {
     }
   })
 
-  it('几次写合成一次写，后面一步没写成时，项目、它的最新进展和最近变动都回到写之前', () => {
+  it('几次写合成一次写，后面一步没写成时，项目、它的最新进展和最近变动都回到写之前', async () => {
     let day = '2026-09-10'
     const store = createVaultStore(vault, () => day)
     const id = store.createProject('合成一次写')
     day = '2026-09-11'
-    const [project, changes, files] = [store.getProject(id), store.listChanges(), filesOf()]
+    const [project, changes, files] = [await store.getProject(id), store.listChanges(), filesOf()]
     expect(() => store.atomically(() => {
-      store.updateProject(id, { focus: '没落地的目标' })
+      void store.updateProject(id, { focus: '没落地的目标' })
       throw new Error('后一步没写成')
     })).toThrow('后一步没写成')
-    expect(store.getProject(id)).toEqual(project)
+    expect(await store.getProject(id)).toEqual(project)
     expect(store.listChanges()).toEqual(changes)
     expect(filesOf()).toEqual(files)
   })
@@ -460,15 +464,15 @@ describe('a vault write that fails', () => {
     expect(open().listIdeas().filter((idea) => idea.title === '删掉的方向')).toHaveLength(1)
   })
 
-  it('项目页没写成时，项目仍是写之前的样子，与重开库读到的一样', () => {
+  it('项目页没写成时，项目仍是写之前的样子，与重开库读到的一样', async () => {
     const store = open()
     store.createProject('写不进去')
     const id = projectNamed(store, '写不进去')
-    const before = store.getProject(id).focus
+    const before = (await store.getProject(id)).focus
     lock('wiki/projects')
     expect(() => store.updateProject(id, { focus: '没写进磁盘的目标' })).toThrow()
-    expect(store.getProject(id).focus).toBe(before)
-    expect(store.getProject(id)).toEqual(open().getProject(id))
+    expect((await store.getProject(id)).focus).toBe(before)
+    expect(await store.getProject(id)).toEqual(await open().getProject(id))
   })
 
   it('论文页没写成时，论文仍是写之前的样子', () => {
@@ -489,29 +493,29 @@ describe('a vault write that fails', () => {
     expect(store.listChanges().map((change) => change.title)).toEqual(['项目「先有的」· 新建'])
   })
 
-  it('项目页没写成时，项目没有完成，它的想法没归档，它连着的计划面也没刷新', () => {
+  it('项目页没写成时，项目没有完成，它的想法没归档，它连着的计划面也没刷新', async () => {
     const store = open()
     store.createProject('收尾')
     const id = projectNamed(store, '收尾')
     const repo = join(vault, 'bound-repo')
     mkdirSync(repo)
-    store.bindProjectWorkspace(id, { kind: 'local', root: repo })
+    await store.bindProjectWorkspace(id, { kind: 'local', root: repo })
     const idea = store.createIdea(store.createChat('想法来源', true).id, '一个方向', '验证这个方向')
     store.updateIdea(idea.id, { project: id })
     const ideas = store.listIdeas()
     const plan = readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')
     lock('wiki/projects')
     expect(() => store.updateProject(id, { status: '已完成' })).toThrow()
-    expect(store.getProject(id).status).toBe('进行中')
+    expect((await store.getProject(id)).status).toBe('进行中')
     expect(store.listIdeas()).toEqual(ideas)
     expect(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')).toBe(plan)
   })
 
-  it('项目页没写成时，最近变动不多一条，之前记下的那一条照样撤得回去', () => {
+  it('项目页没写成时，最近变动不多一条，之前记下的那一条照样撤得回去', async () => {
     const store = open()
     store.createProject('撤得回去')
     const id = projectNamed(store, '撤得回去')
-    store.updateProject(id, { focus: '落了盘的目标' })
+    await store.updateProject(id, { focus: '落了盘的目标' })
     const changes = store.listChanges()
     const log = readFileSync(join(vault, '.meridian', 'changelog.json'), 'utf8')
     lock('wiki/projects')
@@ -520,33 +524,33 @@ describe('a vault write that fails', () => {
     expect(readFileSync(join(vault, '.meridian', 'changelog.json'), 'utf8')).toBe(log)
     unlock()
     store.undoChange(changes[0]!.id)
-    expect(open().getProject(id).focus).toBe('定义第一步')
+    expect((await open().getProject(id)).focus).toBe('定义第一步')
   })
 
-  it('没写成的改动重来一次写成了，最近变动就记下它，撤销回到最初的样子', () => {
+  it('没写成的改动重来一次写成了，最近变动就记下它，撤销回到最初的样子', async () => {
     const store = open()
     store.createProject('重来一次')
     const id = projectNamed(store, '重来一次')
     lock('wiki/projects')
     expect(() => store.updateProject(id, { focus: '第二次才写成' })).toThrow()
     unlock()
-    store.updateProject(id, { focus: '第二次才写成' })
+    await store.updateProject(id, { focus: '第二次才写成' })
     const [change] = store.listChanges()
     expect(change!.diff).toEqual(['- 当前目标：定义第一步', '+ 当前目标：第二次才写成'])
     store.undoChange(change!.id)
-    expect(open().getProject(id).focus).toBe('定义第一步')
+    expect((await open().getProject(id)).focus).toBe('定义第一步')
   })
 
   for (const [file, write, act, read] of REFUSED) {
-    it(`${file} 写不进去时${write}，内存里仍是盘上那一份`, () => {
+    it(`${file} 写不进去时${write}，内存里仍是盘上那一份`, async () => {
       const store = open()
       const world = seed(store)
       const stored = join(vault, '.meridian', file)
       const disk = (): string | null => (existsSync(stored) ? readFileSync(stored, 'utf8') : null)
-      const [before, written] = [read(store, world), disk()]
+      const [before, written] = [await read(store, world), disk()]
       refuse(file)
       expect(() => act(store, world)).toThrow()
-      expect(read(store, world)).toEqual(before)
+      expect(await read(store, world)).toEqual(before)
       expect(disk()).toBe(written)
     })
   }
@@ -588,16 +592,16 @@ describe('a vault write that fails', () => {
     expect(existsSync(page)).toBe(false)
   })
 
-  it('changelog.json 写不进去时落了盘的改动仍在最近变动里、撤得回去，下一次写进去时一起落盘', () => {
+  it('changelog.json 写不进去时落了盘的改动仍在最近变动里、撤得回去，下一次写进去时一起落盘', async () => {
     const store = open()
     store.createProject('记得住')
     const id = projectNamed(store, '记得住')
     refuse('changelog.json')
     expect(() => store.updateProject(id, { focus: '落了盘的目标' })).toThrow()
-    expect(store.getProject(id).focus).toBe('落了盘的目标')
+    expect((await store.getProject(id)).focus).toBe('落了盘的目标')
     expect(store.listChanges()[0]).toMatchObject({ title: '项目「记得住」· 改了字段', undoable: true })
     allow('changelog.json')
-    store.updateProject(id, { priority: 'p0' })
+    await store.updateProject(id, { priority: 'p0' })
     expect(open().listChanges().map((change) => change.diff)).toEqual([
       ['- 优先级：常规', '+ 优先级：紧急'],
       ['- 当前目标：定义第一步', '+ 当前目标：落了盘的目标'],

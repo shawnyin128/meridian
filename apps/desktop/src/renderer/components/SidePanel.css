@@ -17,9 +17,13 @@
   to{opacity:1;transform:none}
 }
 
-/* The buttons take a row of their own at the head's right end, above the title, which comes first in the markup. */
-.panel-head{display:flex;flex:none;flex-direction:column;gap:var(--sp-4);padding:var(--side-panel-block) var(--side-panel-inline)}
-.panel-head-actions{order:-1;display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-8)}
+/*
+ * The buttons take a row of their own at the head's right end, above the title, which comes first in the markup.
+ * That row sits up in the top inset, so it adds no band of its own above the title, and reaches as far right as
+ * it sits down, so its last button lies on the diagonal of the panel's top-right corner.
+ */
+.panel-head{display:flex;flex:none;flex-direction:column;gap:var(--sp-4);padding:var(--sp-8) var(--side-panel-inline) var(--side-panel-block)}
+.panel-head-actions{order:-1;display:flex;align-items:center;justify-content:flex-end;gap:var(--sp-8);margin-right:calc(var(--sp-8) - var(--side-panel-inline))}
 .panel-head-title{font-size:var(--fs-section);font-weight:var(--fw-title);line-height:var(--lh-ui);color:var(--ink);overflow-wrap:anywhere}
 
 .panel-body{flex:1 1 auto;min-height:0;padding:var(--side-panel-block) var(--side-panel-inline)}

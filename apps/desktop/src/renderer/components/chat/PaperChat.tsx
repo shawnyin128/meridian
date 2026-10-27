@@ -156,7 +156,7 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
             : (
               <div className="mwrap" ref={ideaSlot.slot}>
                 <IdeaDraft
-                  source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
+                  key={session.id} source={`${plainTitle(paper.title)} · ${plainTitle(session.title)}`} draft={ideaDraft}
                   onChange={(next) => ideaDrafts.set('chat-idea', next)} onCancel={() => ideaDrafts.drop('chat-idea')}
                   onSave={(title, body) => write(ideaApi.create(session.id, title, body), {
                     note: m.chat.ideaSavedNote,

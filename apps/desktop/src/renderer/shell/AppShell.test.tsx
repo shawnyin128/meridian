@@ -1,9 +1,10 @@
 // @vitest-environment jsdom
-import { act, useEffect, useRef, useState, type ReactNode } from 'react'
+import { act, useEffect, useState, type ReactNode } from 'react'
 import { createRoot, type Root } from 'react-dom/client'
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { TrashEntry } from '../../shared/contract.js'
-import { MarkdownBox } from '../components/Markdown.js'
+import { MarkdownSection } from '../components/Markdown.js'
+import { DraftsProvider, editText, useDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { LANGUAGE_STORAGE_KEY } from './language.js'
 import { SHELL_STATE_STORAGE_KEY } from './shell-state.js'
@@ -17,7 +18,8 @@ const fixture = vi.hoisted(() => ({
   projects: [{ id: 'p1', name: '推理项目', status: '进行中' }],
   discovery: [{ id: 'e1', kind: 'discovery', watch: '', project: 'p1', source: '推理项目' }],
   delivered: [] as { id: string; kind: 'watch'; watch: string; title: string; also?: { kind: string; id: string; source: string }[] }[],
-  chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }],
+  chats: [{ id: 'c1', title: '讨论', archived: false, messageCount: 1 }] as { id: string; title: string; archived: boolean; messageCount: number; paperId?: string }[],
+  renameChat: vi.fn(async (id: string, title: string) => ({ id, title, archived: false, messageCount: 1 })),
   deleteChat: vi.fn(async () => ({ trash: 'trash-9' })),
   restoreTrash: vi.fn(async () => {}),
   trash: [] as TrashEntry[],
@@ -64,7 +66,7 @@ vi.mock('../ipc.js', () => ({
   colourThemes: { list: none },
   chat: {
     list: () => Promise.resolve(fixture.chats), create: fixture.createChat, setArchived: vi.fn(),
-    delete: fixture.deleteChat,
+    delete: fixture.deleteChat, rename: fixture.renameChat,
   },
   extensions: { checkLatest: vi.fn() },
   harness: { modelSettings: () => new Promise(() => {}) },
@@ -72,6 +74,7 @@ vi.mock('../ipc.js', () => ({
   inbox: { list: ({ kind }: { kind: string }) => Promise.resolve(kind === 'discovery' ? fixture.discovery : fixture.delivered) },
   jobs: { status: () => new Promise(() => {}) },
   later: { list: none },
+  library: { location: () => new Promise(() => {}) },
   papers: { list: () => Promise.resolve({ rows: [], total: 0 }), get: (id: string) => fixture.getPaper(id) },
   project: { list: () => Promise.resolve(fixture.projects) },
   search: { query: none },
@@ -116,7 +119,9 @@ let root: Root | null = null
 let host: HTMLDivElement
 
 /** Mounts the shell with `feed` as the content of its first screen and `more` as other screens' content. */
-async function mount(feed: ReactNode = <PaperChatState />, more: Partial<Record<keyof typeof SCREENS, ReactNode>> = {}): Promise<void> {
+async function mount(
+  feed: ReactNode = <PaperChatState />, more: Partial<Record<keyof typeof SCREENS, ReactNode>> = {}, { drafts = false } = {},
+): Promise<void> {
   globalThis.IS_REACT_ACT_ENVIRONMENT = true
   // The breadcrumb's segments measure whether they fit, and jsdom has no ResizeObserver.
   vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
@@ -126,7 +131,9 @@ async function mount(feed: ReactNode = <PaperChatState />, more: Partial<Record<
   document.body.append(host)
   root = createRoot(host)
   await act(async () => {
-    root!.render(<MessagesProvider><AppShell screens={{ ...SCREENS, ...more, feed }} settings={null} /></MessagesProvider>)
+    const shell = <AppShell screens={{ ...SCREENS, ...more, feed }} settings={null} />
+    // The App keeps every draft in one store, which a rename opened from a menu needs to reach its field.
+    root!.render(<MessagesProvider>{drafts ? <DraftsProvider>{shell}</DraftsProvider> : shell}</MessagesProvider>)
     await Promise.resolve()
   })
 }
@@ -139,10 +146,11 @@ function Panel({ onClose }: { onClose: () => void }) {
 
 /** A screen with a Markdown editor being edited, a select, and a button. */
 function Editors() {
-  const box = useRef<HTMLDivElement>(null)
+  const edit = editText(useDrafts<EditDraft>(['probe']), 'body', 'a')
+  useEffect(() => { edit.start() }, [])
   return (
     <>
-      <MarkdownBox text="a" editing box={box} onCancel={() => {}} onSave={() => {}} empty={null} />
+      <MarkdownSection title="随笔" edit={edit} onSave={() => {}} />
       <select><option>a</option></select>
       <button type="button">b</button>
     </>
@@ -717,7 +725,7 @@ describe('AppShell "/" shortcut', () => {
   beforeEach(async () => { await mount(<Editors />) })
 
   it('在 Markdown 编辑框和下拉框里按「/」照常输入，焦点不跳到搜索框', () => {
-    const box = host.querySelector<HTMLElement>('.screenslot .md.src')!
+    const box = host.querySelector<HTMLElement>('.screenslot .md.src .cm-content')!
     const select = host.querySelector<HTMLSelectElement>('.screenslot select')!
     for (const editable of [box, select]) {
       editable.focus()
@@ -778,7 +786,7 @@ describe('AppShell command palette', () => {
   beforeEach(() => { HTMLElement.prototype.scrollIntoView = () => {} })
   afterEach(() => { delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView })
 
-  it('opens over the current screen from the native menu\'s 命令面板…, and ⌘K or Ctrl+K opens nothing', async () => {
+  it('opens over the current screen from the native menu\'s 命令面板, and ⌘K or Ctrl+K opens nothing', async () => {
     await mount()
     press('k', { metaKey: true })
     press('k', { ctrlKey: true })
@@ -788,7 +796,7 @@ describe('AppShell command palette', () => {
     expect(document.activeElement?.id).toBe('cmdkq')
   })
 
-  it('lists 命令面板… after 设置… in the App menu with ⇧⌘P on macOS and Ctrl+Shift+P elsewhere, and opens the palette from it', async () => {
+  it('lists 命令面板 after 设置 in the App menu with ⇧⌘P on macOS and Ctrl+Shift+P elsewhere, and opens the palette from it', async () => {
     /** Opens the title bar's App menu and returns each item's label and shortcut. */
     const openMenu = () => {
       act(() => {
@@ -797,7 +805,7 @@ describe('AppShell command palette', () => {
       return [...document.querySelectorAll('[data-appmenu] .mi')].map((item) => item.textContent)
     }
     await mount()
-    expect(openMenu().slice(0, 2)).toEqual(['设置…⌘,', '命令面板…⇧⌘P'])
+    expect(openMenu().slice(0, 2)).toEqual(['设置⌘,', '命令面板⇧⌘P'])
     const item = [...document.querySelectorAll<HTMLElement>('[data-appmenu] .mi')].find((mi) => mi.textContent?.startsWith('命令面板'))!
     await act(async () => {
       item.click()
@@ -809,7 +817,7 @@ describe('AppShell command palette', () => {
     act(() => root!.unmount())
     fixture.platform = 'win32'
     await mount()
-    expect(openMenu().slice(0, 2)).toEqual(['设置…Ctrl+,', '命令面板…Ctrl+Shift+P'])
+    expect(openMenu().slice(0, 2)).toEqual(['设置Ctrl+,', '命令面板Ctrl+Shift+P'])
     fixture.platform = 'darwin'
   })
 
@@ -835,11 +843,11 @@ describe('AppShell command palette', () => {
     expect(shown()).toBe('{"importPdf":true}')
     run('想法')
     expect(shown()).toBe('ideas')
-    run('设置…')
+    run('设置')
     expect(document.querySelector('#settingsProbe')!.textContent).toBe('default')
   })
 
-  it('lists 设置 · <pane> right after 设置…, one per pane in the Settings side list\'s order, each opening Settings on its pane', async () => {
+  it('lists 设置 · <pane> right after 设置, one per pane in the Settings side list\'s order, each opening Settings on its pane', async () => {
     const panes = [
       ['外观', 'appearance'], ['存储', 'storage'], ['第三方服务', 'api'], ['模型', 'model'], ['科研', 'research'],
       ['Agent 扩展', 'extensions'], ['论文推送', 'delivery'], ['关注', 'delivery-watch'], ['发现', 'delivery-discovery'],
@@ -848,7 +856,7 @@ describe('AppShell command palette', () => {
     await mount(<SettingsProbe />)
     act(() => fixture.openPalette!())
     const labels = [...document.querySelectorAll('.cmdk .rrow')].map((row) => row.textContent)
-    const settings = labels.indexOf('设置…⌘,')
+    const settings = labels.indexOf('设置⌘,')
     expect(labels.slice(settings + 1, settings + 1 + panes.length)).toEqual(panes.map(([name]) => `设置 · ${name}`))
     for (const [name, pane] of panes) {
       run(`设置 · ${name}`)
@@ -869,7 +877,7 @@ describe('AppShell 菜单栏命令', () => {
   const shown = () => document.querySelector('.screenslot:not([hidden])')!.textContent
   const command = (name: string) => act(() => fixture.appCommand!(name))
 
-  it('文件菜单的新建项目、新建想法、导入 PDF… 和命令面板走同一个落点,新对话新建一段对话', async () => {
+  it('文件菜单的新建项目、新建想法、导入 PDF 和命令面板走同一个落点,新对话新建一段对话', async () => {
     await mount(undefined, {
       project: <JumpProbe id="projectJump" />, papers: <JumpProbe id="papersJump" />, ideas: <JumpProbe id="ideasJump" />,
     })
@@ -884,7 +892,7 @@ describe('AppShell 菜单栏命令', () => {
     expect(fixture.createChat).toHaveBeenCalledTimes(1)
   })
 
-  it('编辑 › 查找… 像「/」一样跳到搜索框,在文本框里也一样', async () => {
+  it('编辑 › 查找 像「/」一样跳到搜索框,在文本框里也一样', async () => {
     await mount(<input aria-label="名称" />)
     const field = document.querySelector<HTMLInputElement>('[aria-label="名称"]')!
     field.focus()
@@ -1178,7 +1186,7 @@ function OpenReader() {
   return <button type="button" id="openReader" onClick={() => open('reader', 'paper-1')}>阅读</button>
 }
 
-describe('侧栏对话行的删除', () => {
+describe('侧栏对话行的改名与删除', () => {
   /** Opens the More menu of chat `id`'s sidebar row and returns its items. */
   async function chatMenu(id: string): Promise<HTMLElement[]> {
     await act(async () => {
@@ -1193,11 +1201,11 @@ describe('侧栏对话行的删除', () => {
     fixture.restoreTrash.mockClear()
   })
 
-  it('更多菜单里归档之后是标红的删除；删除不弹确认，提示已移入垃圾桶，撤销把垃圾桶里那一条放回', async () => {
+  it('更多菜单里重命名、归档之后是标红的删除；删除不弹确认，提示已移入垃圾桶，撤销把垃圾桶里那一条放回', async () => {
     await mount()
     const items = await chatMenu('c1')
-    expect(items.map((item) => [item.textContent, item.classList.contains('danger')])).toEqual([['归档', false], ['删除', true]])
-    await act(async () => { items[1]!.click() })
+    expect(items.map((item) => [item.textContent, item.classList.contains('danger')])).toEqual([['重命名', false], ['归档', false], ['删除', true]])
+    await act(async () => { items[2]!.click() })
     expect(fixture.deleteChat).toHaveBeenCalledExactlyOnceWith('c1')
     expect(document.querySelector('[role="alertdialog"]')).toBeNull()
     expect(document.querySelector('#notice .notice-text')!.textContent).toBe('已移入垃圾桶')
@@ -1207,10 +1215,52 @@ describe('侧栏对话行的删除', () => {
     expect(fixture.restoreTrash).toHaveBeenCalledExactlyOnceWith('trash-9')
   })
 
+  it('选重命名,行里的名字就地成输入框:回车经 chat.rename 存下去掉首尾空白的新名字,Esc 什么也不改', async () => {
+    fixture.renameChat.mockClear()
+    await mount(undefined, {}, { drafts: true })
+    await act(async () => { (await chatMenu('c1'))[0]!.click() })
+    const field = () => {
+      const found = document.querySelector<HTMLInputElement>('#chatList [data-chat="c1"] input')
+      if (found === null) throw new Error('the row has no field yet')
+      return found
+    }
+    const input = await vi.waitFor(field)
+    expect([input.value, input.classList.contains('form-control-inline'), document.activeElement === input]).toEqual(['讨论', true, true])
+    const type = (field: HTMLInputElement, text: string) => act(() => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(field, text)
+      field.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const press = (field: HTMLInputElement, key: string) => act(async () => {
+      field.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    })
+    type(input, '  共享前缀的摊薄 ')
+    await press(input, 'Enter')
+    expect(fixture.renameChat).toHaveBeenCalledExactlyOnceWith('c1', '共享前缀的摊薄')
+
+    const reopened = await chatMenu('c1')
+    await act(async () => { reopened[0]!.click() })
+    const again = await vi.waitFor(field)
+    type(again, '不要的名字')
+    await press(again, 'Escape')
+    expect(document.querySelector('#chatList [data-chat="c1"] input')).toBeNull()
+    expect(fixture.renameChat).toHaveBeenCalledOnce()
+  })
+
+  it('论文的阅读对话的更多菜单没有重命名,只有归档和删除', async () => {
+    const chats = fixture.chats
+    fixture.chats = [...chats, { id: 'c2', title: 'EAGLE', archived: false, messageCount: 1, paperId: 'paper-1' }]
+    try {
+      await mount()
+      expect((await chatMenu('c2')).map((item) => item.textContent)).toEqual(['归档', '删除'])
+    } finally {
+      fixture.chats = chats
+    }
+  })
+
   it('删掉的对话也能按 ⌘Z 放回', async () => {
     await mount()
     const items = await chatMenu('c1')
-    await act(async () => { items[1]!.click() })
+    await act(async () => { items.find((item) => item.textContent === '删除')!.click() })
     await act(async () => {
       document.body.dispatchEvent(new KeyboardEvent('keydown', { key: 'z', metaKey: true, bubbles: true, cancelable: true }))
     })
@@ -1252,7 +1302,7 @@ describe('垃圾桶的分组顺序', () => {
   /** The sidebar row each trash kind's group stands for; null for a kind the sidebar has no row for. */
   const SIDEBAR_ROW: Record<TrashEntry['kind'], string | null> = {
     attachment: null, chat: '[data-sect="chats"]', idea: '[data-desk="ideas"]', inbox: '#rowInboxAll',
-    later: '[data-desk="later"]', paper: '[data-desk="papers"]', project: '[data-desk="resproj"]',
+    later: '[data-desk="later"]', page: '[data-desk="wiki"]', paper: '[data-desk="papers"]', project: '[data-desk="resproj"]',
   }
 
   afterEach(() => { fixture.trash = [] })

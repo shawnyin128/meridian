@@ -15,7 +15,7 @@ const settingsOf = (platform: NodeJS.Platform, onSettings = () => {}) =>
   flatten(menuTemplate(platform, onSettings, MAIN_COPY.zh.menu)).find((item) => item.id === 'settings')
 
 describe('menuTemplate', () => {
-  it('macOS 把「设置…」放进应用名菜单,Windows 与 Linux 放进工具菜单', () => {
+  it('macOS 把「设置」放进应用名菜单,Windows 与 Linux 放进工具菜单', () => {
     const submenuOf = (platform: NodeJS.Platform) => menuTemplate(platform, () => {}, MAIN_COPY.zh.menu)
       .find((item) => Array.isArray(item.submenu)
         && item.submenu.some((sub) => sub.id === 'settings'))
@@ -25,18 +25,18 @@ describe('menuTemplate', () => {
     expect(submenuOf('linux')?.label).toBe('工具')
   })
 
-  it('三个平台的「设置…」是同一项:同一个标签、同一个快捷键、同一个动作', () => {
+  it('三个平台的「设置」是同一项:同一个标签、同一个快捷键、同一个动作', () => {
     const clicked = vi.fn()
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const settings = settingsOf(platform, clicked)
-      expect(settings?.label).toBe('设置…')
+      expect(settings?.label).toBe('设置')
       expect(settings?.accelerator).toBe('CmdOrCtrl+,')
       settings?.click?.(null as never, undefined, null as never)
     }
     expect(clicked).toHaveBeenCalledTimes(3)
   })
 
-  it('三个平台都在「设置…」之后列出「命令面板…」:同一个标签、同一个 CmdOrCtrl+Shift+P、同一个动作', () => {
+  it('三个平台都在「设置」之后列出「命令面板」:同一个标签、同一个 CmdOrCtrl+Shift+P、同一个动作', () => {
     const opened = vi.fn()
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const menu = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu, () => {}, opened)
@@ -45,20 +45,20 @@ describe('menuTemplate', () => {
       expect(ids[ids.indexOf('settings') + 1]).toBe('palette')
       // Electron reads CmdOrCtrl as ⌘ on macOS and Ctrl elsewhere: ⇧⌘P and Ctrl+Shift+P.
       const palette = flatten([menu]).find((item) => item.id === 'palette')
-      expect(palette?.label).toBe('命令面板…')
+      expect(palette?.label).toBe('命令面板')
       expect(palette?.accelerator).toBe('CmdOrCtrl+Shift+P')
       palette?.click?.(null as never, undefined, null as never)
     }
     expect(opened).toHaveBeenCalledTimes(3)
     expect(flatten(menuTemplate('darwin', () => {}, MAIN_COPY.en.menu)).find((item) => item.id === 'palette')?.label)
-      .toBe('Command Palette…')
+      .toBe('Command Palette')
   })
 
   it('英文菜单使用自然的 Settings 和 Tools 标签', () => {
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const settings = flatten(menuTemplate(platform, () => {}, MAIN_COPY.en.menu))
         .find((item) => item.id === 'settings')
-      expect(settings?.label).toBe('Settings…')
+      expect(settings?.label).toBe('Settings')
     }
     expect(menuTemplate('win32', () => {}, MAIN_COPY.en.menu)[3]?.label).toBe('Tools')
   })
@@ -73,7 +73,7 @@ describe('menuTemplate', () => {
     }
   })
 
-  it('Windows 与 Linux 上「工具」菜单排在视图之后、窗口之前,只装「设置…」与「命令面板…」两项', () => {
+  it('Windows 与 Linux 上「工具」菜单排在视图之后、窗口之前,只装「设置」与「命令面板」两项', () => {
     for (const platform of ['win32', 'linux'] as const) {
       const template = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu)
       expect(template.map((item) => item.label ?? item.role))
@@ -155,10 +155,19 @@ describe('menuTemplate', () => {
       const tutorial = flatten(menuTemplate(
         platform, () => {}, MAIN_COPY.en.menu, openTutorial,
       )).find((item) => item.id === 'agent-tutorial')
-      expect(tutorial?.label).toBe('Using Skills and MCP…')
+      expect(tutorial?.label).toBe('Using Skills and MCP')
       tutorial?.click?.(null as never, undefined, null as never)
     }
     expect(openTutorial).toHaveBeenCalledTimes(3)
+  })
+
+  it('三个平台、两种语言的菜单项都不以省略号结尾,打开对话框的也不', () => {
+    for (const platform of ['darwin', 'win32', 'linux'] as const) {
+      for (const copy of [MAIN_COPY.zh.menu, MAIN_COPY.en.menu]) {
+        const labels = flatten(menuTemplate(platform, () => {}, copy)).map((item) => item.label ?? '')
+        expect(labels.filter((label) => /(…|\.\.\.)$/.test(label)), platform).toEqual([])
+      }
+    }
   })
 
   it('macOS 的应用名菜单保留 appMenu 角色默认的每一项,退出仍在文件菜单', () => {
@@ -187,25 +196,25 @@ describe('menuTemplate', () => {
     flatten(menuTemplate(platform, () => {}, copy, () => {}, () => {}, app))
   const click = (item: MenuItemConstructorOptions | undefined) => item?.click?.(null as never, undefined, null as never)
 
-  it('三个平台的文件菜单先列新建项目、新建想法、新对话,再列导入 PDF…,各自交给页面去做', () => {
+  it('三个平台的文件菜单先列新建项目、新建想法、新对话,再列导入 PDF,各自交给页面去做', () => {
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const { commands, app } = appOf()
       const template = menuTemplate(platform, () => {}, MAIN_COPY.zh.menu, () => {}, () => {}, app)
       const file = template.find((top) => top.label === '文件')!.submenu as MenuItemConstructorOptions[]
       expect(file.slice(0, 6).map((item) => (item.type === 'separator' ? '—' : item.label)))
-        .toEqual(['新建项目', '新建想法', '新对话', '—', '导入 PDF…', '—'])
+        .toEqual(['新建项目', '新建想法', '新对话', '—', '导入 PDF', '—'])
       file.slice(0, 6).forEach(click)
       expect(commands).toEqual(['newProject', 'newIdea', 'newChat', 'importPdf'])
     }
     expect(itemsOf('darwin', MAIN_COPY.en.menu, appOf().app).filter((item) => ['newProject', 'newIdea', 'newChat', 'importPdf']
-      .includes(item.id ?? '')).map((item) => item.label)).toEqual(['New Project', 'New Idea', 'New Chat', 'Import PDF…'])
+      .includes(item.id ?? '')).map((item) => item.label)).toEqual(['New Project', 'New Idea', 'New Chat', 'Import PDF'])
   })
 
-  it('编辑菜单最后有「查找…」,快捷键 CmdOrCtrl+F,交给页面去做', () => {
+  it('编辑菜单最后有「查找」,快捷键 CmdOrCtrl+F,交给页面去做', () => {
     for (const platform of ['darwin', 'win32', 'linux'] as const) {
       const { commands, app } = appOf()
       const find = itemsOf(platform, MAIN_COPY.zh.menu, app).find((item) => item.id === 'find')
-      expect([find?.label, find?.accelerator]).toEqual(['查找…', 'CmdOrCtrl+F'])
+      expect([find?.label, find?.accelerator]).toEqual(['查找', 'CmdOrCtrl+F'])
       click(find)
       expect(commands).toEqual(['find'])
     }

@@ -1,5 +1,6 @@
 // @vitest-environment jsdom
 import { act, Profiler, type ReactNode } from 'react'
+import { EditorView } from '@codemirror/view'
 import { createRoot } from 'react-dom/client'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -9,10 +10,12 @@ import type {
 import {
   idleNote, projectDecisionItems as attnItems, projectPulseSignal,
 } from '../../shared/project-signals.js'
+import { DraftsProvider, keptDraftsKey } from '../hooks/useDrafts.js'
 import { en } from '../messages/en/index.js'
 import { MessagesProvider } from '../messages/useMessages.js'
 import { zh } from '../messages/zh/index.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
+import { takeUndoOffers } from '../shell/undo-offers.js'
 import { ProjectTaskPanel } from '../components/project/ProjectPlan.js'
 import { ProjectDetail as ProjectScreen, ProjectIdeaList, ProjectIdeaPanel, WorkspaceRoot } from './ProjectDetail.js'
 
@@ -496,10 +499,11 @@ describe('project idea panel', () => {
     }
     act(() => {
       type(draft.querySelector('input')!, '项目页写下的想法')
-      type(draft.querySelector('textarea')!, '先记下来。')
+      EditorView.findFromDOM(draft.querySelector<HTMLElement>('.form-markdown .cm-editor')!)!
+        .dispatch({ changes: { from: 0, insert: '先记下来。' }, userEvent: 'input.type' })
     })
     await act(async () => {
-      draft.querySelector('textarea')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
+      draft.querySelector('.form-markdown .cm-content')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true, cancelable: true }))
       await Promise.resolve()
     })
     expect(onCreate).toHaveBeenCalledWith('项目页写下的想法', '先记下来。')
@@ -709,5 +713,208 @@ describe('项目的起止日期', () => {
     const start = await days('开始')
     await act(async () => { start[19]!.click() })
     expect(updates.at(-1)).toEqual({ start: '2026-09-20', due: '2026-09-20' })
+  })
+})
+
+describe('再点选中的计划或记录标签', () => {
+  let unmount = () => {}
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    shell.shown = true
+    const held = project({
+      tasks: [{ id: 't1', title: '画路由热力图', start: '2026-08-20', end: '2026-08-28', state: 'act', priority: 'p1' }],
+      projectConclusions: [{ id: 'c1', text: '宽树在 B≥8 时更快', state: 'pending', tasks: [], experiments: [], wiki: [] }],
+    })
+    vi.stubGlobal('meridian', {
+      call: (method: string) => {
+        if (method === 'project.get') return Promise.resolve(structuredClone(held))
+        if (method === 'idea.list' || method === 'chat.list') return Promise.resolve([])
+        return new Promise(() => {})
+      },
+    })
+  })
+
+  afterEach(() => {
+    unmount()
+    vi.unstubAllGlobals()
+  })
+
+  it('开着任务或结论的详情时再点它所在的选中标签，详情关上回到列表；没开着时再点什么也不变', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(withMessages(
+        <ProjectScreen projectId="draft" onBack={() => {}} onReturn={() => {}} tab="task" onTab={() => {}} record="concl" onRecord={() => {}} />,
+      ))
+    })
+    unmount = () => { act(() => root.unmount()); host.remove() }
+    await vi.waitFor(() => expect(host.querySelector('[data-row="t1"]')).not.toBeNull())
+    const segment = (switchLabel: string, name: string) => [
+      ...host.querySelectorAll<HTMLButtonElement>(`.segmented-control[aria-label="${switchLabel}"] > button`),
+    ].find((button) => button.textContent === name)!
+    const panel = () => host.querySelector('.project-detail-panel')
+
+    await act(async () => { host.querySelector<HTMLElement>('[data-row="t1"]')!.click() })
+    expect(panel()).not.toBeNull()
+    await act(async () => { segment('计划视图', '任务').click() })
+    expect(panel()).toBeNull()
+    await act(async () => { segment('计划视图', '任务').click() })
+    expect(panel()).toBeNull()
+    expect(segment('计划视图', '任务').getAttribute('aria-checked')).toBe('true')
+
+    await act(async () => { host.querySelector<HTMLElement>('.conclusion-row')!.click() })
+    expect(panel()).not.toBeNull()
+    await act(async () => { segment('科研记录视图', '实验结论').click() })
+    expect(panel()).toBeNull()
+  })
+})
+
+describe('项目页上点标题就地改名', () => {
+  const IDEA: ResearchIdea = {
+    id: 'idea-1', title: '用动态预算控制校准成本', body: '先做一个最小探针。',
+    source: { chatId: 'chat-1', chatTitle: '论文讨论' }, project: 'draft',
+    archived: false, created: '2026-09-17', updated: '2026-09-18',
+  }
+  /** Every call the screen made to Core, in order, with its params. */
+  let calls: [string, Record<string, unknown>][] = []
+  let unmount = () => {}
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.clear()
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    shell.shown = true
+    calls = []
+    let held = project({})
+    vi.stubGlobal('meridian', {
+      platform: 'darwin',
+      call: (method: string, params: Record<string, unknown>) => {
+        calls.push([method, params])
+        if (method === 'project.get') return Promise.resolve(structuredClone(held))
+        if (method === 'project.update') {
+          held = { ...held, ...params.patch as Partial<ProjectDetail> }
+          return Promise.resolve({ project: structuredClone(held), change: 'change-1' })
+        }
+        if (method === 'idea.list') return Promise.resolve([structuredClone(IDEA)])
+        if (method === 'idea.update') return Promise.resolve({ ...IDEA, ...params.patch as Partial<ResearchIdea> })
+        if (method === 'chat.list') return Promise.resolve([])
+        if (method === 'library.location') return Promise.resolve({ root: '/vaults/project-test' })
+        return new Promise(() => {})
+      },
+    })
+  })
+
+  afterEach(() => {
+    unmount()
+    window.localStorage.clear()
+    vi.unstubAllGlobals()
+  })
+
+  const mount = async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(withMessages(
+        <DraftsProvider>
+          <ProjectScreen projectId="draft" onBack={() => {}} onReturn={() => {}} tab="task" onTab={() => {}} record="tl" onRecord={() => {}} />
+        </DraftsProvider>,
+      ))
+    })
+    unmount = () => { act(() => root.unmount()); host.remove() }
+    await vi.waitFor(() => expect(host.querySelector('.desk-head .page-title-field')).not.toBeNull())
+    return host
+  }
+  /** Sets a field's value the way typing does, so React sees the change. */
+  const type = (field: HTMLInputElement | HTMLTextAreaElement, value: string) => act(() => {
+    const proto = field instanceof window.HTMLInputElement ? window.HTMLInputElement.prototype : window.HTMLTextAreaElement.prototype
+    Object.getOwnPropertyDescriptor(proto, 'value')!.set!.call(field, value)
+    field.dispatchEvent(new Event('input', { bubbles: true }))
+  })
+  const press = (field: Element, key: string) => act(async () => {
+    field.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    await Promise.resolve()
+  })
+  const kept = () => (JSON.parse(window.localStorage.getItem(keptDraftsKey('/vaults/project-test')) ?? '{"drafts":[]}') as { drafts: unknown[] }).drafts
+  const writes = (method: string) => calls.filter(([called]) => called === method).map(([, params]) => params)
+
+  it('点项目页的标题就地改名:框里是原名,打的字留成草稿,回车经 project.update 只写名字,标题和属性里的名称都换成新名字,⌘Z 撤销这次改名', async () => {
+    const offers: (() => void)[] = []
+    const release = takeUndoOffers((run) => { offers.push(run) })
+    const host = await mount()
+    const title = () => host.querySelector<HTMLElement>('.desk-head .page-title-field')!
+    expect(title().getAttribute('role')).toBe('heading')
+    // The title is the page's one place to rename the project: the rail's name is text, not a field.
+    const railName = [...host.querySelectorAll('.property-list .property')]
+      .find((row) => row.querySelector('.property-label')!.textContent === '名称')!.querySelector('.property-value')!
+    expect([railName.querySelector('.metadata-field'), railName.querySelector('button')]).toEqual([null, null])
+    act(() => title().querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    const input = title().querySelector('input')!
+    expect([input.value, input.classList.contains('form-control-inline')]).toEqual(['draft 效率', true])
+    await type(input, '宽树 draft 效率')
+    await vi.waitFor(() => expect(kept()).toContainEqual([['project', 'draft'], 'title-rename', '宽树 draft 效率']))
+    await press(input, 'Enter')
+    await vi.waitFor(() => expect(title().querySelector('input')).toBeNull())
+    expect(writes('project.update')).toEqual([{ id: 'draft', patch: { name: '宽树 draft 效率' } }])
+    expect(title().textContent).toBe('宽树 draft 效率')
+    expect(railName.textContent).toBe('宽树 draft 效率')
+    expect(kept()).not.toContainEqual(expect.arrayContaining(['title-rename']))
+    expect(offers).toHaveLength(1)
+    act(() => offers[0]!())
+    expect(writes('changelog.undo')).toEqual([{ id: 'change-1' }])
+    release()
+  })
+
+  it('旧版右栏名称格留下的改名草稿,打开项目页时出现在标题的改名框里,只留一份;Esc 之后不再回来', async () => {
+    // The draft as 0.0.21.5 kept it: the rail's name field under target `name` of ['project', id].
+    window.localStorage.setItem(keptDraftsKey('/vaults/project-test'), JSON.stringify({
+      format: 1, drafts: [[['project', 'draft'], 'name', '旧版打到一半的名字']],
+    }))
+    const host = await mount()
+    const title = () => host.querySelector<HTMLElement>('.desk-head .page-title-field')!
+    await vi.waitFor(() => expect(title().querySelector('input')?.value).toBe('旧版打到一半的名字'))
+    expect(kept()).toEqual([[['project', 'draft'], 'title-rename', '旧版打到一半的名字']])
+    await press(title().querySelector('input')!, 'Escape')
+    expect(title().querySelector('input')).toBeNull()
+    expect(kept()).toEqual([])
+    unmount()
+    const again = await mount()
+    expect(again.querySelector('.desk-head .page-title-field input')).toBeNull()
+    expect(writes('project.update')).toEqual([])
+  })
+
+  it('项目页标题改到一半按 Esc 什么也不写;清空了回车也不写,框留着标成不合法', async () => {
+    const host = await mount()
+    const title = () => host.querySelector<HTMLElement>('.desk-head .page-title-field')!
+    act(() => title().querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    await type(title().querySelector('input')!, '不要的名字')
+    await press(title().querySelector('input')!, 'Escape')
+    expect([title().querySelector('input'), title().textContent]).toEqual([null, 'draft 效率'])
+
+    act(() => title().querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    await type(title().querySelector('input')!, '   ')
+    await press(title().querySelector('input')!, 'Enter')
+    expect(title().querySelector('input')!.getAttribute('aria-invalid')).toBe('true')
+    expect(writes('project.update')).toEqual([])
+  })
+
+  it('项目页里打开的想法详情,点头上的标题就地改想法的名字,经 idea.update 只写标题', async () => {
+    const host = await mount()
+    await vi.waitFor(() => expect(host.querySelector('.project-idea-row[data-idea="idea-1"]')).not.toBeNull())
+    await act(async () => { host.querySelector<HTMLElement>('.project-idea-row[data-idea="idea-1"]')!.click() })
+    const head = () => host.querySelector<HTMLElement>('.project-detail-panel .panel-head-title')!
+    act(() => head().querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    const field = head().querySelector('textarea')!
+    expect(field.value).toBe('用动态预算控制校准成本')
+    await type(field, '动态预算校准')
+    await vi.waitFor(() => expect(kept()).toContainEqual([['idea', 'idea-1'], 'title-rename', '动态预算校准']))
+    await press(field, 'Enter')
+    await vi.waitFor(() => expect(head().querySelector('textarea')).toBeNull())
+    expect(writes('idea.update')).toEqual([{ id: 'idea-1', patch: { title: '动态预算校准' } }])
   })
 })

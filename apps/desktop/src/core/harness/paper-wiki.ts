@@ -6,6 +6,7 @@ import type {
   HarnessCliModel, HarnessPaperWikiQuality, HarnessPaperWikiReview, PaperRow,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import type { CoreLogLevel } from '../core-log.js'
 import type { VaultStore } from '../vault.js'
 import { extractPdfPages, probePdf } from '../paper-library/index.js'
 import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
@@ -392,7 +393,7 @@ export function createPaperWikiHarnessRunner(options: {
   model: HarnessModelConfig
   cli: CliRunner
   launch?: () => HarnessChild
-  onLog?: (line: string) => void
+  onLog?: (level: CoreLogLevel, line: string) => void
 }) {
   const rpc = createHarnessRpc({
     launch: options.launch ?? launchHarnessProcess,
@@ -453,7 +454,7 @@ export function createPaperWikiHarnessRunner(options: {
         if (cause instanceof CliRunError) onFailure(cause)
         throw cliCallError(model.cli, cause, options.onLog)
       }
-      options.onLog?.(cliUsageLine(model.cli, result))
+      options.onLog?.('info', cliUsageLine(model.cli, result))
       return { output: result.output }
     }
   }
@@ -481,7 +482,7 @@ export function createPaperWikiHarnessRunner(options: {
         } : { timeoutMs: execution.requestTimeoutMs }),
       }))
     } catch (cause) {
-      options.onLog?.(failureLine(`Paper Wiki run of ${execution.plan.targetId}`, failureDetail(failure ?? cause)))
+      options.onLog?.('error', failureLine(`Paper Wiki run of ${execution.plan.targetId}`, failureDetail(failure ?? cause)))
       throw failure === undefined
         ? paperWikiHarnessError(cause)
         : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })

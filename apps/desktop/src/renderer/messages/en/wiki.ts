@@ -8,6 +8,8 @@ export const wiki = {
   paperKind: 'Paper',
   autoColumn: 'Automatic',
   columnSettings: 'Column settings',
+  mergeInto: 'Merge into',
+  merge: { done: 'Merged' },
   aggregation: {
     parentCount: (n: number) => `${n} ${pluralEn(n, { one: 'parent', other: 'parents' })}`,
     cardFooter: (children: number | null, members: number, updated: string) =>
@@ -29,6 +31,7 @@ export const wiki = {
     addPaper: (paper: string, parent: string) => `Add ${paper} to ${parent}`,
     moveOutPaper: (paper: string, parent: string) => `Remove ${paper} from ${parent}`,
     editMetadata: (title: string) => `Edit ${title}'s metadata`,
+    rename: (from: string, to: string) => `Rename ${from} to ${to}`,
   },
   title: 'Wiki',
   subdivisionsHeading: (kind: string) => `${kind} subpages`,
@@ -37,7 +40,6 @@ export const wiki = {
   addPaperTitle: 'Add paper',
   kindNamePlaceholder: (kind: string) => `${kind} name`,
   nameFieldLabel: 'Wiki name',
-  nameRequired: "Wiki name can't be empty.",
   scaleLabel: 'Scale',
   scaleSummary: (members: number, children: number) =>
     `${members} ${pluralEn(members, { one: 'paper', other: 'papers' })}`
@@ -47,7 +49,6 @@ export const wiki = {
   belongsTo: 'Belongs to',
   internalizedContent: 'Page content',
   titleLabel: 'Title',
-  titleRequired: "Title can't be empty.",
   shortTitleLabel: 'Short title',
   authorsLabel: 'Authors',
   yearLabel: 'Year',
@@ -249,8 +250,8 @@ export const wiki = {
     experiment: 'Experiment',
     conflict: 'Conflict',
     actionsLabel: (text: string) => `Actions for the finding “${text}”`,
-    revise: 'Revise…',
-    markConflict: 'Mark conflict…',
+    revise: 'Revise',
+    markConflict: 'Mark conflict',
     resolve: 'Resolve conflict',
     retract: 'Retract',
     done: { retract: 'Retracted' },

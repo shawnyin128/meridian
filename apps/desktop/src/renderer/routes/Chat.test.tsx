@@ -32,13 +32,14 @@ const api = vi.hoisted(() => ({
   failure: vi.fn<(id: string) => Promise<HarnessFailureDetail | null>>(() => Promise.resolve(null)),
   create: vi.fn<(title: string, named: boolean) => Promise<ChatSession>>(),
   recordAction: vi.fn<() => Promise<{ id: string; name: string }>>(),
+  rename: vi.fn((id: string, title: string): Promise<ChatSession> => Promise.resolve({ id, title, archived: false, messageCount: 0 })),
   feedAppend: vi.fn(() => Promise.resolve()),
   createIdea: vi.fn(() => Promise.resolve({ id: 'idea-1' })),
   /** Whether the model settings set up a model. */
   configured: true,
 }))
 
-const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0 }))
+const session = vi.hoisted(() => ({ id: 'chat-1', revision: 0, paper: false }))
 const settings = vi.hoisted(() => ({ openCategory: vi.fn() }))
 /** The jump useJump hands the Chat screen. */
 const nav = vi.hoisted(() => ({ jump: null as ScreenJump | null, returnTo: vi.fn(), entry: 0 }))
@@ -50,6 +51,7 @@ vi.mock('../ipc.js', () => ({
   appMenu: { platform: () => 'darwin' },
   chat: {
     send: api.send, retry: api.retry, messages: api.messages, cancel: api.cancel, create: api.create, recordAction: api.recordAction,
+    rename: api.rename,
     writing: api.writing, failure: api.failure,
     model: () => Promise.resolve({ source: 'model-1' }), setModel: () => Promise.resolve({ source: 'model-1' }),
   },
@@ -79,7 +81,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useCrumbTail: () => {},
   useJump: () => ({ jump: nav.jump, open: vi.fn(), returnTo: nav.returnTo }),
   useScreenEntry: () => nav.entry,
-  useChatSession: () => ({ id: session.id, title: '讨论', archived: false, select: vi.fn() }),
+  useChatSession: () => ({ id: session.id, title: '讨论', archived: false, paper: session.paper, select: vi.fn() }),
   useVaultRevision: () => ({ revision: session.revision, bump: vi.fn() }),
   useSettingsOpen: () => ({ open: false, openCategory: settings.openCategory }),
 }))
@@ -133,6 +135,7 @@ describe('Chat composer', () => {
     api.writing.mockResolvedValue(null)
     api.configured = true
     session.id = 'chat-1'
+    session.paper = false
     session.revision = 0
     const host = document.createElement('div')
     document.body.append(host)
@@ -204,7 +207,7 @@ describe('Chat composer', () => {
     expect(back()).toBeNull()
     nav.jump = { screen: 'chat', target: 'chat-2', from: 'wiki', seq: 7 }
     await openChat('chat-2')
-    expect([...document.querySelector('.desk-head')!.children].map((child) => child.className.split(' ')[0])).toEqual(['icbtn', 'fade-text'])
+    expect([...document.querySelector('.desk-head')!.children].map((child) => child.className.split(' ')[0])).toEqual(['icbtn', 't'])
     expect(back()?.getAttribute('aria-label')).toBe('返回')
     act(() => back()!.click())
     expect(nav.returnTo).toHaveBeenCalledWith('wiki')
@@ -228,6 +231,48 @@ describe('Chat composer', () => {
     })
     expect(api.create).toHaveBeenCalledWith('结论冲突', true)
     expect(api.send).toHaveBeenCalledWith('chat-9', [{ kind: 'text', text: '为什么说这两条结论冲突？' }])
+  })
+
+  /** The chat page's title as a rename field, null when the title does not rename. */
+  const titleField = () => document.querySelector<HTMLElement>('.desk-head .page-title-field')
+  /** Presses `key` in the title's open field. */
+  const pressInTitle = (key: string) => act(() => {
+    titleField()!.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+  })
+
+  it('点对话页的标题就地改名:框里是原来的名字,回车经 chat.rename 存下新名字,Esc 什么也不改', async () => {
+    act(() => titleField()!.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    const input = titleField()!.querySelector('input')!
+    expect([input.value, input.classList.contains('form-control-inline')]).toEqual(['讨论', true])
+    act(() => setValue(input, '共享前缀的摊薄'))
+    pressInTitle('Enter')
+    await settle()
+    expect(api.rename).toHaveBeenCalledExactlyOnceWith('chat-1', '共享前缀的摊薄')
+
+    act(() => titleField()!.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    act(() => setValue(titleField()!.querySelector('input')!, '不要的名字'))
+    pressInTitle('Escape')
+    await settle()
+    expect(titleField()!.querySelector('input')).toBeNull()
+    expect(api.rename).toHaveBeenCalledOnce()
+  })
+
+  it('标题清空了回车不改名:框留着、标成不合法,再打字就不再标', async () => {
+    act(() => titleField()!.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    act(() => setValue(titleField()!.querySelector('input')!, '   '))
+    pressInTitle('Enter')
+    await settle()
+    const input = titleField()!.querySelector('input')!
+    expect([input.getAttribute('aria-invalid'), api.rename.mock.calls.length]).toEqual(['true', 0])
+    act(() => setValue(input, '新名字'))
+    expect(titleField()!.querySelector('input')!.hasAttribute('aria-invalid')).toBe(false)
+  })
+
+  it('论文的阅读对话打开在对话页时,标题不能点着改名', async () => {
+    session.paper = true
+    await openChat('chat-1')
+    expect(titleField()).toBeNull()
+    expect(document.querySelector('.desk-head .metadata-editable')).toBeNull()
   })
 
   it('回车发送，Shift+回车换行，输入法组字时的回车不发送', async () => {
@@ -656,10 +701,12 @@ describe('Chat composer', () => {
     await showChat('chat-1')
     act(() => document.querySelector<HTMLButtonElement>('#qaIdea')!.click())
     act(() => setValue(ideaDraft()!.querySelector('input')!, '批大小拐点'))
-    act(() => setValue(ideaDraft()!.querySelector('textarea')!, '验证最优批大小是否随推理深度稳定迁移。'))
-    keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter')
+    const body = () => EditorView.findFromDOM(ideaDraft()!.querySelector<HTMLElement>('.form-markdown .cm-editor')!)!
+    act(() => body().dispatch({ changes: { from: 0, insert: '验证最优批大小是否随推理深度稳定迁移。' }, userEvent: 'input.type' }))
+    keyIn(body().contentDOM, 'Enter')
     expect(api.createIdea).not.toHaveBeenCalled()
-    await act(async () => { keyIn(ideaDraft()!.querySelector('textarea')!, 'Enter', { metaKey: true }); await Promise.resolve() })
+    expect(body().state.doc.lines).toBe(2)
+    await act(async () => { keyIn(body().contentDOM, 'Enter', { metaKey: true }); await Promise.resolve() })
     expect(api.createIdea).toHaveBeenCalledWith('chat-1', '批大小拐点', '验证最优批大小是否随推理深度稳定迁移。')
     expect(ideaDraft()).toBeNull()
 

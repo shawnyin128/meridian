@@ -40,6 +40,7 @@ chat.defaultMark state
 chat.modelSettings action
 chat.effortPicker aria
 chat.effortDefault state
+chat.nameFieldLabel aria
 chat.thinking state
 chat.newChat state
 chat.paperChatLabel aria
@@ -151,8 +152,6 @@ common.open action
 common.overdue state
 common.pager.next action
 common.pager.page aria
-common.pager.perPage aria
-common.pager.perPageOption label
 common.pager.previous action
 common.pager.total state
 common.panel.close action
@@ -167,6 +166,7 @@ common.retry action
 common.save action
 common.saved state
 common.saving aria
+common.sshFolders.choose action
 common.sshFolders.path aria
 common.sshFolders.up action
 common.table.resize action
@@ -377,6 +377,10 @@ papers.understanding.page state
 papers.understanding.remarkLabel label
 papers.understanding.updated state
 papers.upload.alreadyInLibrary notice
+papers.publication.fill action
+papers.publication.filled notice
+papers.publication.filling aria
+papers.publication.none notice
 papers.upload.importAction action
 papers.upload.importing aria
 papers.upload.tooLarge failure
@@ -435,14 +439,11 @@ project.idea.createNode action
 project.idea.kind state
 project.idea.openIdea action
 project.idea.sourceTag state
-project.identity.addArea action
-project.identity.allAreas label
-project.identity.areaSeparator state
+project.identity.allTopics label
 project.identity.changeWorkspace action
 project.identity.disconnectWorkspace action
 project.identity.dueLabel label
-project.identity.existingAreas label
-project.identity.filterArea aria
+project.identity.filterTopic aria
 project.identity.focusLabel.currentGoal label
 project.identity.focusLabel.outcome label
 project.identity.focusLabel.restartCondition label
@@ -451,15 +452,14 @@ project.identity.focusWithLabel state
 project.identity.heading label
 project.identity.nameFieldLabel placeholder
 project.identity.nameLabel label
-project.identity.nameRequired failure
-project.identity.noArea state
+project.identity.noTopic state
 project.identity.paperCount state
 project.identity.priorityLabel label
 project.identity.refreshWorkspace action
-project.identity.removeArea action
 project.identity.startLabel label
 project.identity.statusLabel label
 project.identity.topic label
+project.identity.topicSeparator state
 project.identity.topicUpdated notice
 project.identity.typeLabel label
 project.identity.workspaceLabel label
@@ -543,11 +543,8 @@ project.signals.reason.pathBroken state
 project.signals.reason.pathMissing state
 project.workspace.add action
 project.workspace.adding aria
-project.workspace.choose action
 project.workspace.chooseLocal action
-project.workspace.choosing aria
 project.workspace.connect action
-project.workspace.connecting aria
 project.workspace.dialogTitle label
 project.workspace.hostLabel label
 project.workspace.hostPlaceholder placeholder
@@ -556,6 +553,7 @@ project.workspace.local label
 project.workspace.localPlaceholder placeholder
 project.workspace.pathLabel label
 project.workspace.portLabel label
+project.workspace.remotePlaceholder placeholder
 project.workspace.state.invalid state
 project.workspace.state.missing state
 project.workspace.state.ready state
@@ -977,6 +975,7 @@ trash.kinds.idea label
 trash.kinds.inbox label
 trash.kinds.later label
 trash.kinds.paper label
+trash.kinds.page label
 trash.kinds.project label
 trash.paperTaken tooltip
 trash.projectGone tooltip
@@ -1071,6 +1070,8 @@ wiki.claims.resolve action
 wiki.claims.retract action
 wiki.claims.revise action
 wiki.columnSettings label
+wiki.merge.done notice
+wiki.mergeInto action
 wiki.groundsLabel label
 wiki.harness.billableNote state
 wiki.harness.confirmTitle label
@@ -1125,7 +1126,6 @@ wiki.kindNamePlaceholder placeholder
 wiki.membershipHeading label
 wiki.nameFieldLabel aria
 wiki.nameNeedsChar failure
-wiki.nameRequired failure
 wiki.originalLabel label
 wiki.paperCardFooter state
 wiki.paperComparisonHeading label
@@ -1134,6 +1134,7 @@ wiki.proposals.addPaper content
 wiki.proposals.changeColumns notice
 wiki.proposals.createUnder content
 wiki.proposals.editMetadata content
+wiki.proposals.rename content
 wiki.proposals.moveOut notice
 wiki.proposals.moveOutPaper notice
 wiki.proposals.placeUnder content
@@ -1294,7 +1295,6 @@ wiki.tidy.kinds.unfiled-paper state
 wiki.tidy.pointsTo state
 wiki.title label
 wiki.titleLabel label
-wiki.titleRequired failure
 wiki.toc label
 wiki.updatedLabel label
 wiki.venueLabel label

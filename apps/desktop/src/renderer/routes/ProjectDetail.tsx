@@ -8,7 +8,7 @@ import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
 import { withTaskNodes } from '../../shared/task-nodes.js'
 import {
-  FOCUS_KEY, projectAreas, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
+  FOCUS_KEY, projectTopics, projectDecisionItems, recordKind, recordOrigin, sortRecordsNewestFirst,
 } from '../../shared/project-signals.js'
 import { PROJECT_STATUSES } from '../../shared/vocabulary.js'
 import { appMenu, files, idea as ideaApi, papers, project as projectApi, wiki } from '../ipc.js'
@@ -41,7 +41,7 @@ import { ProjectIdentityFields, ProjectPriorityTag } from '../components/project
 import { Property, PropertyList } from '../components/PropertyList.js'
 import {
   attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
-  ProjectAreasField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
+  ProjectTopicsField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
 import { NodeAssignment } from '../components/project/NodeAssignment.js'
 import { EntityLink } from '../components/EntityLink.js'
@@ -58,7 +58,7 @@ import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FieldRow, FieldRows, FormInput } from '../components/FormControls.js'
 import { InlineMessage } from '../components/InlineMessage.js'
-import { SshFolderBrowser, SshHostField, useSshFolders } from '../components/SshFolderPicker.js'
+import { SshFolderPicker, SshHostField, useSshReach } from '../components/SshFolderPicker.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -70,6 +70,7 @@ import { Tooltip } from '../components/Tooltip.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
+import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useScreenPoll } from '../hooks/useScreenPoll.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -110,11 +111,12 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
  * unless the workspace manages the graph, drafts a new node in place, titled as the idea and after a
  * node or as a root, which `onCreateNode` creates and links, resolving whether it did. A `related`
  * idea, one that relates to the project but is not carried out in it, has no research-node section.
- * `sourceChatDeleted` says the chat the idea came from is deleted.
+ * `sourceChatDeleted` says the chat the idea came from is deleted. `onRename` saves the title
+ * renamed in the panel's head.
  */
 export function ProjectIdeaPanel({
   idea, graph, workspaceManaged, related = false, sourceChatDeleted = false,
-  onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
+  onClose, onRename, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
@@ -122,6 +124,7 @@ export function ProjectIdeaPanel({
   related?: boolean
   sourceChatDeleted?: boolean
   onClose: () => void
+  onRename?: (title: string) => boolean | Promise<boolean>
   onOpenIdea: () => void
   onOpenPaper: (paperId: string) => void
   onCreateNode: (label: string, after: string | null) => Promise<boolean>
@@ -136,7 +139,7 @@ export function ProjectIdeaPanel({
   const nodeDraft = useDraftSlot<HTMLDivElement>(draft !== null, () => setDraft({ label: idea.title, after: '' }))
   return (
     <IdeaPanel
-      idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
+      idea={idea} onClose={onClose} onRename={onRename} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
       actions={(
         <IconButton label={m.project.idea.openIdea} size="nested" className="project-idea-open-idea" onClick={onOpenIdea}>
           <IconOpen />
@@ -180,6 +183,12 @@ export function ProjectIdeaPanel({
     </IdeaPanel>
   )
 }
+
+/** The draft a project's rename from its page title is kept under, with its project, so it reopens where it was typed. */
+const TITLE_RENAME = 'title-rename'
+
+/** The draft older Apps kept a project's name under while it was typed in the rail's name field. */
+const RAIL_NAME = 'name'
 
 /** Newest first, by creation day, then by id, which later ideas take higher numbers in. */
 const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
@@ -261,7 +270,7 @@ export function ProjectIdeaList({ projectId, ideas, error, graph, selectedId, on
             {draft === null ? null : (
               <DraftSlot className="project-idea-draft" slot={ideaDraft.slot}>
                 <IdeaDraft
-                  draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
+                  key={projectId} draft={draft} triggers={triggers} onChange={setDraft} onCancel={() => setDraft(null)}
                   onSave={(title, body) => onCreate(title, body).then((created) => { if (created) setDraft(null) })}
                 />
               </DraftSlot>
@@ -316,6 +325,14 @@ export function ProjectDetail({
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
   const edits = useDrafts<EditDraft>(['project', projectId])
+  const names = useDrafts<string>(['project', projectId])
+  const railName = names.get(RAIL_NAME)
+  // A name an older App kept from the rail's name field reopens as the title's rename it now is.
+  useEffect(() => {
+    if (railName === undefined) return
+    if (names.get(TITLE_RENAME) === undefined) names.set(TITLE_RENAME, railName)
+    names.drop(RAIL_NAME)
+  }, [railName, names])
   const [creating, setCreating] = useDraft<PlanCreating>(['project', projectId], 'new-row')
   const shownProject = project?.id === projectId ? project : null
   usePruneDrafts(['project', projectId, 'task'], shownProject === null ? null : shownProject.tasks.map((task) => task.id))
@@ -332,7 +349,8 @@ export function ProjectDetail({
   const [localPath, setLocalPath] = useState('')
   const [sshHost, setSshHost] = useState('')
   const [sshPort, setSshPort] = useState('')
-  const remote = useSshFolders()
+  const [sshPath, setSshPath] = useState('')
+  const [pickingSsh, setPickingSsh] = useState(false)
   const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
   const planDraft = useRef<HTMLElement>(null)
@@ -384,6 +402,12 @@ export function ProjectDetail({
   const clearIdea = useCallback(() => setSelectedIdeaId(null), [])
   const clearTask = useCallback(() => setSelectedTaskId(null), [])
   const clearConclusion = useCallback(() => setSelectedConclusion(null), [])
+  // Picking the current plan or record tab again closes the detail opened from that tab.
+  const toPlanTop = useTopLevel(selectedTaskId !== null, clearTask)
+  const toRecordTop = useTopLevel(
+    record === 'graph' ? selectedNode !== null : record === 'concl' && selectedConclusion !== null,
+    record === 'graph' ? clearNode : clearConclusion,
+  )
   /** The task panel shares the right-side slot with the node/idea/conclusion panels: opening a task
    * is the only place that sets it, so every other opener needs no change of its own to give it up
    * -- the effect below clears it back out whenever one of those three becomes selected instead. */
@@ -567,20 +591,18 @@ export function ProjectDetail({
     setLocalPath(workspace?.kind === 'local' ? workspace.root : '')
     setSshHost(ssh ? workspace.host ?? '' : '')
     setSshPort(ssh && workspace.port !== undefined ? String(workspace.port) : '')
-    remote.reset()
+    setSshPath(ssh ? workspace.root : '')
+    setPickingSsh(false)
     setWorkspaceOpen(true)
   }
 
-  /** Connects to the host typed and shows its home; once connected, binds the folder shown. */
-  const submitSshWorkspace = async () => {
-    const port = sshPort.trim() === '' ? undefined : Number(sshPort)
-    const target = { host: sshHost.trim(), ...(port === undefined ? {} : { port }) }
-    if (remote.folder === null) {
-      remote.connect(target)
-      return
-    }
+  const sshPortNumber = sshPort.trim() === '' ? undefined : Number(sshPort)
+  const sshTarget = { host: sshHost.trim(), ...(sshPortNumber === undefined ? {} : { port: sshPortNumber }) }
+  const reach = useSshReach(workspaceOpen && workspaceMode === 'ssh' ? sshTarget : null)
+
+  const connectSshWorkspace = async () => {
     setBinding('ssh')
-    const connected = await writeProject(projectApi.bindWorkspace(projectId, { kind: 'ssh', ...target, path: remote.folder.path }))
+    const connected = await writeProject(projectApi.bindWorkspace(projectId, { kind: 'ssh', ...sshTarget, path: sshPath.trim() }))
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
@@ -629,7 +651,7 @@ export function ProjectDetail({
           <PageTitle>{m.project.loadingTitle}</PageTitle>
         </PageHeader>
         <PageError error={error} />
-        <PageBody column="prose">{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
+        <PageBody>{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
       </PageShell>
     )
   }
@@ -753,7 +775,15 @@ export function ProjectDetail({
     <PageShell>
       <PageHeader>
         <BackButton onClick={onReturn} />
-        <PageTitle>{project.name}</PageTitle>
+        <PageTitle rename={{
+          label: m.project.identity.nameFieldLabel, value: project.name, keep: { scope: ['project', projectId], target: TITLE_RENAME },
+          onSave: (name) => write(projectApi.update(projectId, { name }).then((renamed) => {
+            setProject(renamed.project)
+            return renamed
+          })),
+        }}
+        >{project.name}
+        </PageTitle>
       </PageHeader>
       <PageError error={error} />
 
@@ -763,13 +793,11 @@ export function ProjectDetail({
         actions={(
           <CommitActions
             place="foot" onCancel={() => setWorkspaceOpen(false)}
-            saving={binding !== null || (workspaceMode === 'ssh' && remote.folder === null && remote.opening)}
-            canSave={workspaceMode === 'local' || remote.folder === null || (!remote.opening && !remote.edited)}
+            saving={binding !== null}
+            canSave={workspaceMode === 'local' || (reach.state === 'ready' && sshPath.trim() !== '')}
             {...workspaceMode === 'local'
               ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
-              : remote.folder === null
-                ? { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }
-                : { form: 'workspaceSsh', saveLabel: m.project.workspace.choose, busyLabel: m.project.workspace.choosing }}
+              : { form: 'workspaceSsh', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }}
           />
         )}
       >
@@ -804,31 +832,51 @@ export function ProjectDetail({
               : (
                 <form
                   id="workspaceSsh" className="workspace-form"
-                  onSubmit={(event) => { event.preventDefault(); void submitSshWorkspace() }}
+                  onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
                 >
                   <FieldRows>
                     <FieldRow label={m.project.workspace.hostLabel}>
                       <SshHostField
                         value={sshHost} autoFocus required placeholder={m.project.workspace.hostPlaceholder}
-                        onValue={(host) => { setSshHost(host); remote.reset() }} onError={report}
+                        onValue={setSshHost} onError={report} onBlur={reach.settle}
                       />
                     </FieldRow>
                     <FieldRow label={m.project.workspace.portLabel}>
                       <FormInput
                         appearance="field" value={sshPort} type="number" min={1} max={65_535}
                         placeholder={m.project.workspace.portLabel}
-                        onChange={(event) => { setSshPort(event.target.value); remote.reset() }}
+                        onChange={(event) => setSshPort(event.target.value)} onBlur={reach.settle}
                       />
                     </FieldRow>
-                    {remote.folder === null
-                      ? remote.issue === null ? null : <InlineMessage tone="error" variant="line">{remote.issue}</InlineMessage>
-                      : <SshFolderBrowser choice={remote} />}
+                    <FieldRow label={m.project.workspace.pathLabel}>
+                      {reach.state === 'failed'
+                        ? <InlineMessage tone="error" variant="field">{reach.issue}</InlineMessage>
+                        : reach.state === 'checking'
+                          ? <LoadingPlaceholder shape="ring" holds="field" />
+                          : (
+                            <DirectoryField
+                              value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
+                              chooseLabel={m.project.workspace.chooseLocal} disabled={reach.state === 'idle'}
+                              onChoose={() => setPickingSsh(true)}
+                              onChange={(event) => setSshPath(event.target.value)}
+                            />
+                          )}
+                    </FieldRow>
                   </FieldRows>
                 </form>
               )}
       </ModalDialog>
+      <SshFolderPicker
+        target={workspaceOpen && workspaceMode === 'ssh' && pickingSsh ? sshTarget : null}
+        start={sshPath.trim() === '' ? null : sshPath.trim()}
+        onChoose={(path) => {
+          setSshPath(path)
+          setPickingSsh(false)
+        }}
+        onClose={() => setPickingSsh(false)}
+      />
 
-      <PageBody className="project-detail-body" column="prose">
+      <PageBody className="project-detail-body">
         <ProjectTimeline
           project={project} hoverMilestone={hoverMilestone} onHoverMilestone={setHoverMilestone}
           onLocateTask={locateTask}
@@ -867,7 +915,7 @@ export function ProjectDetail({
               projectId={projectId} project={project} tab={tab} today={today} creating={creating}
               flashId={flash?.id ?? null} selectedTaskId={selectedTaskId}
               listRef={planList} draftRef={planDraft} addRef={planAdd} timelineAddRef={ganttAdd}
-              onTab={onTab} onDiscardOpenEdits={discardOpenEdits}
+              onTab={onTab} onReselectTab={toPlanTop} onDiscardOpenEdits={discardOpenEdits}
               onStartTask={() => startTask()} onStartMilestone={startMilestone}
               onCreating={setCreating} onCancelCreate={() => setCreating(null)} onHoverMilestone={setHoverMilestone}
               onCreateTask={({ window, ...draft }) => writeProject(
@@ -890,7 +938,7 @@ export function ProjectDetail({
 
             <TabbedSection
               heading={m.project.sections.records} label={m.project.recordViewLabel} value={record}
-              headingRef={recordHeading} panelClassName="record-view" error={project.workspace?.issue}
+              headingRef={recordHeading} panelClassName="record-view" error={project.workspace?.issue} onReselect={toRecordTop}
               onChange={(value) => {
                 holdRecordHeading()
                 onRecord(value)
@@ -973,7 +1021,7 @@ export function ProjectDetail({
             />
 
             <ProjectMemo
-              edit={editText(edits, 'memo', project.memo)} onOpen={openWikiPage}
+              key={projectId} edit={editText(edits, 'memo', project.memo)} onOpen={openWikiPage}
               onSave={(memo) => applyWrite(updateProject({ memo }))}
             />
           </div>
@@ -997,6 +1045,7 @@ export function ProjectDetail({
                 workspaceManaged={project.workspace !== undefined}
                 related={selectedIdea.project !== projectId} sourceChatDeleted={chatDeleted(selectedIdea)}
                 onClose={clearIdea}
+                onRename={(title) => write(ideaApi.update(selectedIdea.id, { title }))}
                 onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
                 onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                 onCreateNode={(label, after) => placeIdeaOnGraph(selectedIdea, { kind: 'create', label, after })}
@@ -1039,16 +1088,6 @@ export function ProjectDetail({
                   <ProjectIdentityFields
                     project={project}
                     fields={{
-                      name: (
-                        <InlineMetadataField
-                          label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', projectId], target: 'name' }}
-                          onSave={(name) => {
-                            const next = name.trim()
-                            if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
-                            return writeProject(updateProject({ name: next }))
-                          }}
-                        />
-                      ),
                       status: (
                         <ChoicePicker
                           value={project.status} options={PROJECT_STATUSES}
@@ -1062,8 +1101,8 @@ export function ProjectDetail({
                         ><ProjectPriorityTag priority={project.priority} /></PriorityPicker>
                       ),
                       topic: (
-                        <ProjectAreasField
-                          projectId={projectId} areas={projectAreas(project)} onError={report}
+                        <ProjectTopicsField
+                          projectId={projectId} topics={projectTopics(project)} onError={report}
                           onSave={(topics) => writeProject(updateProject({ topics }))}
                           onRemove={(topics) => writeRemoval(
                             projectApi.update(projectId, { topics }), m.project.identity.topicUpdated,

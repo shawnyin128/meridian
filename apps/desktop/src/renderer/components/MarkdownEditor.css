@@ -1,6 +1,6 @@
 /*
  * CodeMirror's base theme brings its own font, line height, padding, caret and focus outline; the editor takes the field's.
- * As a MarkdownBox source editor it shows focus as .md.src does: no ring, and tokens.css's text-editor rule on its content.
+ * As a MarkdownSection source editor it shows focus as .md.src does: no ring, and tokens.css's text-editor rule on its content.
  */
 .md.src .md-editor .cm-editor.cm-focused{outline:none}
 .md-editor .cm-editor .cm-scroller{font-family:inherit;line-height:inherit}
@@ -8,3 +8,14 @@
 .md-editor .cm-editor .cm-line{padding:0}
 /* A rendered block keeps its margins inside, so the editor measures the height it shows, and lays out its text as the rendered result does. */
 .md-editor .md-block{display:flow-root;white-space:normal;cursor:text}
+/*
+ * Blocks stand as far apart as the read view's block margins (.md in routes/shell.css) set them, whether they show rendered or as source,
+ * so a rendered block drops its own outer margins and a blank line the cursor is not on takes no height.
+ */
+.md-editor .md-block>:first-child{margin-top:0}
+.md-editor .md-block>:last-child{margin-bottom:0}
+.md-editor .cm-content [data-space=tight]{padding-top:var(--sp-6)}
+.md-editor .cm-content [data-space=block]{padding-top:var(--sp-10)}
+.md-editor .cm-content [data-space=wide]{padding-top:var(--sp-16)}
+.md-editor .cm-editor .cm-line.md-gap{height:0;overflow:hidden}
+.md-editor .cm-editor .cm-placeholder{color:var(--ter)}

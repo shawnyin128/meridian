@@ -27,9 +27,9 @@ describe('Pager', () => {
     host.remove()
   })
 
-  const show = (onPage = vi.fn()) => act(() => root.render(
+  const show = (onPage = vi.fn(), total = 100, size = 20) => act(() => root.render(
     <MessagesProvider>
-      <Pager total={100} page={2} size={20} sizes={[20, 30, 50]} onPage={onPage} onSize={vi.fn()} />
+      <Pager total={total} page={2} size={size} onPage={onPage} />
     </MessagesProvider>,
   ))
 
@@ -57,5 +57,24 @@ describe('Pager', () => {
       .toEqual([[true, true, ''], [true, true, '']])
     act(() => next!.click())
     expect(onPage).toHaveBeenCalledWith(3)
+  })
+
+  it('一页装得下全部条目时不出现，多出一条就出现，且没有每页条数的选择', () => {
+    show(vi.fn(), 25, 25)
+    expect(host.querySelector('.pagebar')).toBeNull()
+    show(vi.fn(), 26, 25)
+    expect(host.querySelector('.pagebar')).not.toBeNull()
+    expect(host.querySelector('.pagebar .segmented-control')).toBeNull()
+    expect([...host.querySelectorAll('.pager .pgbtn')].map((button) => button.textContent)).toEqual(['1', '2'])
+  })
+
+  it('放在一节里时紧跟在该节列表后，不进页脚', () => {
+    act(() => root.render(
+      <MessagesProvider>
+        <Pager placement="section" total={30} page={1} size={10} onPage={vi.fn()} />
+      </MessagesProvider>,
+    ))
+    expect(host.firstElementChild!.className).toBe('pagebar')
+    expect(host.querySelector('.desk-foot')).toBeNull()
   })
 })

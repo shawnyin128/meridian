@@ -3,7 +3,10 @@ import type { PaperCell, PaperColumns } from '../apps/desktop/src/shared/contrac
 import {
   DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
 } from '../apps/desktop/src/shared/vocabulary.js'
-import { expect, gotoPapers, panelHead, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
+import {
+  expect, expectChipHoverInPlace, expectChipsHug, fittedPage, gotoPapers, panelHead, parkPointer, settle, test, uniqueHeights,
+  type MeridianWindow,
+} from './app.js'
 
 /** The reading statuses as the status menu names them, the read-later state by its shown name. */
 const READ_STATE_NAMES = READ_STATES.map((state) => (state === LATER_PAPER ? '待读' : state))
@@ -22,14 +25,13 @@ const ADDED_TOPIC = 'kv cache 压缩'
 const MULTI_COLUMN = '标签'
 const PICKED = ['综述', '必读'] as const
 
-/** Papers in the fixture, pages at 20 per page, and papers left after filtering by "attention". */
+/** Papers in the fixture, and papers left after filtering by "attention". */
 const PAPERS_TOTAL = 291
-const PAPER_PAGES = 15
 const PAPERS_UNDER_FILTER = 44
 
-/** Left edge, rounded to two decimals, of the first page-size option on the pagination bar. */
-const sizeButtonLeft = (win: Page) => win.locator('.pagebar .segmented-control>button').first()
-  .evaluate((el) => +el.getBoundingClientRect().left.toFixed(2))
+/** Right edge, rounded to two decimals, of the page numbers on the pagination bar. */
+const pagesRight = (win: Page) => win.locator('.pagebar .pager')
+  .evaluate((el) => +el.getBoundingClientRect().right.toFixed(2))
 
 /** Visited screens stay mounted; scope selectors every screen has (e.g. its header) to the shown one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -55,8 +57,8 @@ const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
   [method, params] as const,
 )
 
-/** Waits until the first page renders all 20 rows, so later measurements run on a populated table. */
-const firstPage = (win: Page) => expect(win.locator('.ptable tbody tr')).toHaveCount(20)
+/** Waits until the first page renders all the rows that fit, so later measurements run on a populated table. */
+const firstPage = fittedPage
 
 /** Clicks the action `sel` of a row or card; its actions show only while it is hovered. */
 async function rowAction(row: Locator, sel: string): Promise<void> {
@@ -518,7 +520,7 @@ test('删一篇论文后,总数减一且它不在结果里了', async ({ win }) 
 
 test('标签浮层:Escape 关层不冒到屏上,输入框里打的字不留', async ({ win }) => {
   await gotoPapers(win)
-  await firstPage(win)
+  const rows = await firstPage(win)
   const cell = win.locator('.ptable tbody tr').first().locator('td:nth-child(7)')
   const add = cell.locator('.tagadd')
 
@@ -531,7 +533,7 @@ test('标签浮层:Escape 关层不冒到屏上,输入框里打的字不留', as
   await expect(win.locator('.tagin')).toHaveCount(0)
   // The popover consumed Escape: the details panel did not open and the table is unchanged.
   await expect(win.locator('.pdetail')).toHaveCount(0)
-  await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
+  await expect(win.locator('.ptable tbody tr')).toHaveCount(rows)
 
   await cell.hover()
   await add.click()
@@ -662,6 +664,21 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   await expect(newRow).toHaveCount(1)
 })
 
+test('主题列的 chip 静止时贴着文字,左右留同样的内边距;悬停一个 chip 才在它末端显出 ×,不挪动任何 chip', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await parkPointer(win)
+  const cells = win.locator('.ptable tbody tr td:nth-child(7)')
+  const chips = await expectChipsHug(cells)
+  // The short topics of the fixture fit their cells whole, so the room after the name is measured on them.
+  expect(chips.filter((chip) => !chip.cut).length).toBeGreaterThan(5)
+
+  const row = win.locator('.ptable tbody tr').first()
+  await row.locator('.pt-title').hover()
+  await expect(row.locator('td:nth-child(7) .tagchip > .row-actions').first()).toHaveCSS('opacity', '0')
+  await expectChipHoverInPlace(cells.locator('.tagchip[data-row-actions]'), row.locator('td:nth-child(7) .tagchip[data-row-actions]').first())
+})
+
 test('标签添加框:空着焦点移走只收起;打了新主题再移走,像回车一样加上', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
@@ -775,7 +792,7 @@ test('文本格开着时按住表格自己的滚动条,不算点到格外:格子
   await expect(input).toHaveValue('按滚动条也不丢')
 })
 
-test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:格子与字都还在', async ({ win }) => {
+test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:格子与字都还在', async ({ win, app }) => {
   await gotoPapers(win)
   await firstPage(win)
   await win.locator('.ptable thead').hover()
@@ -784,14 +801,16 @@ test('文本格开着时按住表格自己的竖直滚动条,不算点到格外:
   await win.locator('.ptable thead th.th-new input').press('Enter')
   await expect(win.locator('.ptable thead th.th-new')).toHaveCount(0)
 
-  // At 50 per page the body is far taller than the viewport, so the table's scroll box really scrolls vertically
-  // and the check is not vacuous.
-  await win.locator('.pagebar .segmented-control>button', { hasText: '50 / 页' }).click()
-  await expect(win.locator('.ptable tbody tr')).toHaveCount(50)
-
+  // A page holds the rows that fit, so the box scrolls vertically only once the window is too short for
+  // the header and one row. Shorten the window until it does, so the check is not vacuous.
   const wrap = win.locator('.table-scroll:has(> .ptable)')
-  const overflowsVertically = await wrap.evaluate((el) => el.scrollHeight > el.clientHeight)
-  expect(overflowsVertically).toBe(true)
+  const overflows = () => wrap.evaluate((el) => el.scrollHeight > el.clientHeight)
+  for (let height = 420; !(await overflows()); height -= 10) {
+    expect(height, '窗口矮到只剩一行也没出现竖直滚动条').toBeGreaterThan(200)
+    await app.evaluate(({ BrowserWindow }, h) => BrowserWindow.getAllWindows()[0]!.setContentSize(1440, h), height)
+    await fittedPage(win)
+  }
+  expect(await overflows()).toBe(true)
 
   const cell = win.locator('.ptable tbody tr').first().locator('td.pt-cust')
   const input = cell.locator('input.celledit')
@@ -1096,23 +1115,23 @@ test('列类型:建单选列、格子里建选项、按它分组、改名与撤�
   expect(left.groups).toEqual([...DEFAULT_PAPER_GROUPS])
 })
 
-test('筛选改了总条数,每页档位按钮的左边缘不动', async ({ win }) => {
+test('筛选改了总条数,页码条的右端不动', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
 
   const full = await win.locator('.pginfo').innerText()
-  const before = await sizeButtonLeft(win)
+  const before = await pagesRight(win)
 
   await win.locator('#libq').fill('attention')
   await expect(win.locator('.pginfo')).toHaveText(`共 ${PAPERS_UNDER_FILTER} 条`)
-  const after = await sizeButtonLeft(win)
+  const after = await pagesRight(win)
 
-  console.log(`每页档位左边缘:${full} → ${before}px,共 ${PAPERS_UNDER_FILTER} 条 → ${after}px`)
+  console.log(`页码条右端:${full} → ${before}px,共 ${PAPERS_UNDER_FILTER} 条 → ${after}px`)
   expect(full, '两次的位数一样,这条用例证不了任何事').toBe(`共 ${PAPERS_TOTAL} 条`)
   expect(after).toBe(before)
 })
 
-test('翻页改了页码的个数,页码条与每页档位的边缘不动', async ({ win }) => {
+test('翻页改了页码的个数,页码条的边缘不动', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
 
@@ -1122,7 +1141,6 @@ test('翻页改了页码的个数,页码条与每页档位的边缘不动', asyn
   }
   const edges = async () => ({
     shape: (await win.locator('.pager').innerText()).replace(/\s+/g, ''),
-    seg: await sizeButtonLeft(win),
     pager: await win.locator('.pager').evaluate((el) => {
       const box = el.getBoundingClientRect()
       return [+box.left.toFixed(2), +box.right.toFixed(2)]
@@ -1130,35 +1148,34 @@ test('翻页改了页码的个数,页码条与每页档位的边缘不动', asyn
   })
 
   const first = await edges()
+  const lastPage = Number(await win.locator('.pager .pgbtn').last().innerText())
   // Page 1 has one ellipsis, page 4 one on each side and the last page one again, so the three
   // pagers differ in length.
   for (const n of [2, 3, 4]) await goPage(n)
   const middle = await edges()
-  await goPage(PAPER_PAGES)
+  await goPage(lastPage)
   const last = await edges()
 
   for (const [label, e] of [['首页', first], ['中间页', middle], ['末页', last]] as const) {
-    console.log(`${label} 页码条「${e.shape}」:每页档位左 ${e.seg}px,页码条 [${e.pager.join(', ')}]px`)
+    console.log(`${label} 页码条「${e.shape}」:页码条 [${e.pager.join(', ')}]px`)
   }
   expect(new Set([first.shape, middle.shape, last.shape]).size,
     '三页的页码条长得一样,这条用例证不了任何事').toBe(3)
-  expect(middle.seg).toBe(first.seg)
-  expect(last.seg).toBe(first.seg)
   expect(middle.pager).toEqual(first.pager)
   expect(last.pager).toEqual(first.pager)
 })
 
-test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘', async ({ win }) => {
+test('分页条两端对齐:条数贴左缘,页码贴右缘,没有每页条数的选择', async ({ win }) => {
   await gotoPapers(win)
   await firstPage(win)
 
+  await expect(win.locator('.pagebar .segmented-control')).toHaveCount(0)
   const laid = await win.locator('.pagebar').evaluate((bar) => {
     const bx = bar.getBoundingClientRect()
     // Measure the count text, not the .pginfo box: a stretched box starts at the left edge even
     // when its text does not, so only the text shows whether the count the user sees is flush left.
     const count = document.createRange()
     count.selectNodeContents(bar.querySelector('.pginfo')!)
-    const seg = bar.querySelector('.segmented-control')!.getBoundingClientRect()
     const tail = bar.querySelector('.pager')!.lastElementChild!.getBoundingClientRect()
     // Children of one line share a vertical center up to layout rounding, which can straddle a half
     // pixel; a wrapped child sits a whole line lower.
@@ -1168,19 +1185,60 @@ test('分页条两端对齐:条数贴左缘,页码与每页档位挨着贴右缘
     })
     return {
       countInset: +(count.getBoundingClientRect().left - bx.left).toFixed(2),
-      segInset: +(bx.right - seg.right).toFixed(2),
-      pageToSeg: +(seg.left - tail.right).toFixed(2),
-      gap: parseFloat(getComputedStyle(bar).columnGap),
+      pagesInset: +(bx.right - tail.right).toFixed(2),
       centerSpread: Math.max(...centers) - Math.min(...centers),
     }
   })
 
-  console.log(`分页条版式:条数离左缘 ${laid.countInset}px,每页档位离右缘 ${laid.segInset}px,`
-    + `页码条末端与每页档位相距 ${laid.pageToSeg}px(分页条的 gap 是 ${laid.gap}px)`)
+  console.log(`分页条版式:条数离左缘 ${laid.countInset}px,页码条末端离右缘 ${laid.pagesInset}px`)
   expect(laid.centerSpread, '分页条已经换行,量到的不是同一行上的版式').toBeLessThan(1)
   expect(laid.countInset).toBe(0)
-  expect(laid.segInset).toBe(0)
-  expect(laid.pageToSeg).toBe(laid.gap)
+  expect(laid.pagesInset).toBe(0)
+})
+
+test.describe('窗口改变高度时的论文表', () => {
+  // The rows refit only after the resized window repaints, so the window shows; see `showWindow` in app.ts.
+  test.use({ showWindow: true })
+
+  test('一页的行数填满表格框:最后一行在框里,再多一行就放不下;窗口变高变矮时重算,所选那页的第一篇论文留在显示的页上', async ({ win, app }) => {
+    await gotoPapers(win)
+    const box = win.locator('.screenslot:not([hidden]) .table-scroll:has(> .ptable)')
+    const fill = () => box.evaluate((el) => {
+      const table = el.querySelector('table')!
+      const rows = [...table.tBodies[0]!.rows]
+      const row = rows[0]!.getBoundingClientRect().height
+      return {
+        rows: rows.length,
+        scrolls: el.scrollHeight > el.clientHeight,
+        // What the box shows below the last row, which must be less than one more row.
+        left: el.getBoundingClientRect().top + el.clientHeight - rows.at(-1)!.getBoundingClientRect().bottom,
+        row,
+      }
+    })
+    const resize = (height: number) => app.evaluate(({ BrowserWindow }, h) => BrowserWindow.getAllWindows()[0]!.setContentSize(1440, h), height)
+
+    await resize(900)
+    const tall = await fittedPage(win)
+    const atTall = await fill()
+    expect(atTall.scrolls).toBe(false)
+    expect(atTall.left).toBeLessThan(atTall.row + 16)
+
+    for (let turn = 0; turn < 2; turn++) await win.locator('.pager [aria-label="下一页"]').click()
+    await expect(win.locator('.pager .pgbtn.on')).toHaveText('3')
+    const first = await box.locator('tbody tr td.pt-title').first().innerText()
+
+    await resize(1200)
+    const taller = await fittedPage(win)
+    expect(taller).toBeGreaterThan(tall)
+    expect(await box.locator('tbody tr td.pt-title').allInnerTexts()).toContain(first)
+    await resize(700)
+    expect(await fittedPage(win)).toBeLessThan(tall)
+    expect(await box.locator('tbody tr td.pt-title').allInnerTexts()).toContain(first)
+    await resize(900)
+    expect(await fittedPage(win)).toBe(tall)
+    await expect(win.locator('.pager .pgbtn.on')).toHaveText('3')
+    expect(await box.locator('tbody tr td.pt-title').first().innerText()).toBe(first)
+  })
 })
 
 test('年份与发表分两列:年份只写年份、仍按它排序,发表只写出处、紧跟年份、可隐藏;详情里两行各写各的,详情开着时表只剩标题、作者与年份', async ({ win }) => {
@@ -1188,13 +1246,13 @@ test('年份与发表分两列:年份只写年份、仍按它排序,发表只写
   // see `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
-  await firstPage(win)
+  const size = await firstPage(win)
   // Header cells draw a sort arrow beside the label, which leaves a leading space; trim to the label.
   const head = async () => (await win.locator('.ptable thead th').allTextContents()).map((t) => t.trim())
   // After Title come Short title, Rating, Authors, Year, Venue, Topics and Status.
   expect((await head()).slice(0, 8)).toEqual(['标题', '短标题', '评分', '作者', '年份', '发表', '主题', '阅读状态'])
   const listed = (direction: 'asc' | 'desc') => call<{ rows: { year?: number; venue: string }[] }>(
-    win, 'papers.list', { page: 1, size: 20, sort: 'year', direction },
+    win, 'papers.list', { page: 1, size, sort: 'year', direction },
   ).then((r) => r.rows)
   const rows = win.locator('.ptable tbody tr')
   // The table sorts by date added by default, not year: click the year header once to make it the sort column, which defaults to descending.
@@ -1318,12 +1376,18 @@ test('详情面板头部的打开和收起在标题上方单独一行靠右,长�
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
   await expect(win.locator('.paper-detail-slot .panel-head-title')).toHaveText(title)
 
+  await settle(win.locator('.paper-detail-slot .side-panel-content'))
   const head = await panelHead(win.locator('.paper-detail-slot .panel-head'), '.panel-head-title', '.icbtn')
-  expect(head.actions.map(({ label, width, height }) => [label, width, height]))
+  expect(head.actions.map(({ label, width, height }) => [label, Math.round(width), Math.round(height)]))
     .toEqual([['开始阅读', 24, 24], ['收起详情', 24, 24]])
-  expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
   expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
   expect(head.actions.map((action) => action.top + action.height <= head.title.top)).toEqual([true, true])
+  // The buttons' row sits up in the panel's top inset, so it adds no band of its own above the title.
+  const panel = await win.locator('.paper-detail-slot').evaluate((el) => ({ top: el.getBoundingClientRect().top, right: el.getBoundingClientRect().right, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
+  expect(head.actions.map((action) => action.top - panel.top < panel.inset)).toEqual([true, true])
+  // The last button sits in the panel's top-right corner on its diagonal: as far from the top edge as from the right edge.
+  expect(Math.abs((panel.right - head.actions[1]!.right) - (head.actions[1]!.top - panel.top))).toBeLessThan(1)
+  expect(head.title.top - panel.top).toBeLessThanOrEqual(panel.inset + head.actions[0]!.height)
   expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
   expect(head.title.lines.length).toBeGreaterThanOrEqual(3)
   expect(head.title.lines.slice(0, -1).map((line) => ({

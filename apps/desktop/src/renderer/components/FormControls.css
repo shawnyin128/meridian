@@ -40,6 +40,10 @@
 .form-button.form-control-field{cursor:pointer;text-align:left}
 .form-select.form-control-field{padding-right:var(--sp-32)}
 .form-textarea.form-control-field{padding:var(--sp-8) var(--sp-10);line-height:var(--lh-ui);resize:vertical}
+/* A Markdown field (see MarkdownField) pads its text as a text area does and shows focus by its border while its editor holds it, with no ring. */
+.form-markdown.form-control-field{padding:var(--sp-8) var(--sp-10);cursor:text}
+.form-markdown.form-control-field:focus-within{border-color:var(--sep-strong)}
+.form-markdown.form-control-field .cm-editor.cm-focused{outline:none}
 .form-control-field:hover{border-color:var(--sep-strong)}
 .form-control-field:disabled{cursor:default;opacity:.55}
 /* A boxed field sets its own text, so its text reads the same in every form, whatever the text around it. */
@@ -61,6 +65,22 @@
   padding:var(--sp-2) var(--sp-6);
   line-height:inherit;
 }
+/*
+ * A one-line in-place field draws only its text; the box after it, anchored to it, draws its frame and
+ * fill underneath, so a fade masks the text and never the frame. Its focus border and refused outline
+ * are the frame's, as every field's are its own box's.
+ */
+/* Three classes outrank the focus rule in tokens.css, which would draw the text box's own border. */
+.form-control.form-input.form-control-inline{anchor-name:var(--frame-anchor);position:relative;z-index:1;border-color:transparent;background:transparent;transition:none}
+.form-inline-frame{position:absolute;position-anchor:var(--frame-anchor);top:anchor(top);right:anchor(right);bottom:anchor(bottom);left:anchor(left);
+  box-sizing:border-box;border:1px solid var(--sep2);border-radius:var(--r-control);background:var(--field);pointer-events:none;
+  transition:border-color var(--t-fast) var(--e-out)}
+.form-input.form-control-inline:focus+.form-inline-frame{border-color:var(--sep-strong)}
+.form-input.form-control-inline[aria-invalid="true"]{outline:0!important}
+.form-input.form-control-inline[aria-invalid="true"]+.form-inline-frame{outline:1px solid var(--bad);outline-offset:-1px;animation:form-control-refused var(--t-shake) var(--e-inout)}
+@media (prefers-reduced-motion:reduce){.form-input.form-control-inline[aria-invalid="true"]+.form-inline-frame{animation:none}}
+/* An in-place field that hides text past an end fades it there as a scroll area does; it has no scrollbar strip to keep. */
+.form-input.form-control-inline[data-fade]{--fade-bar-x:0px;--fade-bar-y:0px}
 /* A native select insets its text and a date input pads its fields; either would move the text. */
 .form-select.form-control-inline{appearance:none}
 .form-input.form-control-inline::-webkit-datetime-edit,
@@ -119,7 +139,7 @@
  * column of its own. A row without a label spans the label column too. Text in the field's place
  * reads as a property value.
  */
-.field-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-12);row-gap:var(--sp-12);min-width:0}
+.field-rows{display:grid;grid-template-columns:max-content minmax(0,1fr);column-gap:var(--sp-12);row-gap:var(--item-gap);min-width:0}
 .field-rows>*{grid-column:1/-1}
 .field-row{display:grid;grid-template-columns:max-content minmax(0,1fr);align-items:center;column-gap:var(--sp-12);min-width:0}
 .field-rows>.field-row{grid-template-columns:subgrid}

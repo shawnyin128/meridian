@@ -7,7 +7,7 @@ body:
     attributes:
       value: |
         One issue, one problem. Replace `module` in the title with the area, for example `[desktop]`.
-        Set the milestone to the target fix version, for example `v0.0.14.2`.
+        Leave the milestone empty: the owner sets it (see .github/MILESTONE_MANAGERS).
   - type: textarea
     id: happens
     attributes:

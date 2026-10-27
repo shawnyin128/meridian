@@ -77,7 +77,7 @@ describe('subscription status', () => {
     })
 
     expect(status).toEqual({ state: 'unsupported', version: '2.0.1' })
-    expect(onLog).toHaveBeenCalledWith(expect.stringMatching(/claude 2\.0\.1.*--json-schema, --strict-mcp-config/))
+    expect(onLog).toHaveBeenCalledWith('warn', expect.stringMatching(/claude 2\.0\.1.*--json-schema, --strict-mcp-config/))
     expect(listModels).not.toHaveBeenCalled()
   })
 })

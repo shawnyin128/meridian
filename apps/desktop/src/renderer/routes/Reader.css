@@ -66,7 +66,7 @@
  * The selection toolbar, on the shared menu surface of a toolbar: the AI mark and the highlight colours
  * in one row, the note box under them as wide as the row, which grows with its lines.
  */
-.selection-tools-body{display:flex;flex-direction:column;gap:var(--sp-8)}
+.selection-tools-body{display:flex;flex-direction:column;gap:var(--item-gap)}
 .selection-tools-row{display:flex;align-items:center;gap:var(--sp-10)}
 .selection-tools .form-textarea{width:100%;resize:none;field-sizing:content;max-height:calc(6lh + 2 * var(--sp-8) + 2px)}
 
@@ -85,7 +85,7 @@
 .reader-rail{width:42px;min-width:42px;border-left:1px solid var(--sep);background:var(--sidebar);display:flex;flex-direction:column;align-items:center;padding-top:var(--sp-8);box-sizing:border-box;gap:var(--sp-4);order:2}
 .reader-rail button{width:32px;height:32px;border:0;border-radius:var(--r-control);background:transparent;color:var(--ter);display:grid;place-items:center;cursor:pointer}
 .reader-rail button:hover{background:var(--hover);color:var(--ink)}
-.reader-rail button.on{background:var(--selected);color:var(--on-selected)}
+.reader-rail button.on{background:var(--selected);color:var(--accent-text)}
 .reader-rail svg{width:17px;height:17px;fill:none;stroke:currentColor;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
 
 

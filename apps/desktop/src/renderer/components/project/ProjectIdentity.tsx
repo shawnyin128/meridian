@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import type { ProjectStatus } from '../../../shared/contract.js'
-import { projectAreas } from '../../../shared/project-signals.js'
+import { projectTopics } from '../../../shared/project-signals.js'
 import type { Catalog } from '../../messages/catalog.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { FadeText } from '../FadeText.js'
@@ -24,10 +24,10 @@ export type ProjectIdentitySource = {
   topics?: readonly string[] | undefined
 }
 
-/** What a project's areas show as one text: every area in order, or no area when it has none. */
-function areasName(m: Catalog, project: { topic: string; topics?: readonly string[] | undefined }): string {
-  const areas = projectAreas(project)
-  return areas.length === 0 ? m.project.identity.noArea : areas.join(m.project.identity.areaSeparator)
+/** What a project's topics show as one text: every topic's title in order, or no topic when it has none. */
+function topicsName(m: Catalog, project: { topic: string; topics?: readonly string[] | undefined }): string {
+  const topics = projectTopics(project)
+  return topics.length === 0 ? m.project.identity.noTopic : topics.join(m.project.identity.topicSeparator)
 }
 
 export function ProjectStatusTag({ status }: { status: ProjectStatus }) {
@@ -65,7 +65,7 @@ export function ProjectIdentity({
   showTopic?: boolean
 }) {
   const m = useMessages()
-  const area = project.topic ? areasName(m, { ...project, topic: project.topic }) : undefined
+  const topics = project.topic ? topicsName(m, { ...project, topic: project.topic }) : undefined
   if (variant === 'progress') {
     return (
       <span className="project-identity progress">
@@ -76,8 +76,8 @@ export function ProjectIdentity({
           />
           <ProjectLabel name={project.name} />
           {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
-          {showTopic && area
-            ? <FadeText className="project-identity-topic" label={area}>{area}</FadeText>
+          {showTopic && topics
+            ? <FadeText className="project-identity-topic" label={topics}>{topics}</FadeText>
             : null}
         </span>
         {showStatus ? <FadeText className="project-identity-sub" label={project.status}>{project.status}</FadeText> : null}
@@ -89,8 +89,8 @@ export function ProjectIdentity({
       <FadeText className="project-identity-name" label={project.name}>{project.name}</FadeText>
       {showStatus ? <ProjectStatusTag status={project.status} /> : null}
       {showPriority ? <ProjectPriorityTag priority={project.priority} /> : null}
-      {showTopic && area
-        ? <FadeText className="project-identity-topic" label={area}>{area}</FadeText>
+      {showTopic && topics
+        ? <FadeText className="project-identity-topic" label={topics}>{topics}</FadeText>
         : null}
     </span>
   )
@@ -108,7 +108,7 @@ export function ProjectIdentityFields({ project, fields = {} }: {
       <Property label={m.project.identity.statusLabel}>{fields.status ?? <ProjectStatusTag status={project.status} />}</Property>
       <Property label={m.project.identity.priorityLabel}>{fields.priority ?? <ProjectPriorityTag priority={project.priority} />}</Property>
       <Property label={m.project.identity.topic}>
-        {fields.topic ?? (project.topic === undefined ? '—' : areasName(m, { ...project, topic: project.topic }))}
+        {fields.topic ?? (project.topic === undefined ? '—' : topicsName(m, { ...project, topic: project.topic }))}
       </Property>
     </>
   )

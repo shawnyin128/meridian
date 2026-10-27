@@ -1,4 +1,4 @@
-import { expect, gotoPapers, gotoProject, popupMenus, test, type MeridianWindow } from './app.js'
+import { expect, fittedPage, gotoPapers, gotoProject, popupMenus, test, type MeridianWindow } from './app.js'
 
 /** How far to drag the Title column wider than its default 300px. */
 const COLUMN_DRAG = 60
@@ -75,7 +75,7 @@ test('标题栏的品牌标记是应用菜单的入口,落在栏内', async ({ w
   // The mark is a button that opens the app menu; the bar no longer shows the app name a second time.
   await expect(win.locator('.titlebar .app-t')).toHaveCount(0)
   await win.locator('.titlebar .appbtn').click()
-  await expect(win.locator('[data-appmenu] .mi').first()).toContainText('设置…')
+  await expect(win.locator('[data-appmenu] .mi').first()).toContainText('设置')
   await win.keyboard.press('Escape')
   await expect(win.locator('[data-appmenu]')).toHaveCount(0)
   // Closing the menu and opening Settings share one callback; closing the menu with Esc must not also
@@ -177,7 +177,7 @@ test('切走再切回,分页页码、排序、列宽与详情面板都保持', a
   // `showWindow` in app.ts.
   test.slow()
   await gotoPapers(win)
-  await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
+  await fittedPage(win)
 
   const titles = () => win.locator('.ptable tbody tr td.pt-title').allInnerTexts()
   const byYear = await titles()

@@ -107,6 +107,8 @@ let bumps: number
 let crumbTail: { text: string }[]
 /** The screens the back control returned to, in order. */
 let returnedTo: string[]
+/** What useScreenReentry returns: how many times the sidebar chose the papers screen while it was shown. */
+let reentry: number
 
 vi.mock('../ipc.js', () => ({
   papers: {
@@ -159,7 +161,10 @@ vi.mock('../ipc.js', () => ({
       return c.promise.then(() => ({ change: 'change-type' }))
     },
   },
+  // A saved key must not bring a header menu back to the Papers screen.
+  delivery: { semanticKey: () => Promise.resolve({ configured: true, lastFour: 'abcd' }) },
   changelog: { undo: (id: string) => { undone.push(id); return Promise.resolve() } },
+  wiki: { cards: () => Promise.resolve([]) },
   project: {
     list: () => Promise.resolve([]),
     addPaper: () => Promise.resolve(),
@@ -170,7 +175,7 @@ vi.mock('../ipc.js', () => ({
 vi.mock('../shell/AppShell.js', () => ({
   useCrumbTail: (tail: { text: string }[]) => { crumbTail = tail },
   useEscapeLayer: () => {},
-  useScreenReentry: () => 0,
+  useScreenReentry: () => reentry,
   useJump: () => ({
     jump: jumpHere,
     open: (screen: string, id?: string) => { openedScreens.push([screen, id]) },
@@ -362,6 +367,15 @@ describe('PaperTable', () => {
     bumps = 0
     crumbTail = []
     returnedTo = []
+    reentry = 0
+  })
+
+  it('存了 Semantic Scholar key 时论文屏屏头也只有导入 PDF', async () => {
+    const host = mount()
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    expect([...host.querySelectorAll('.desk-head .page-actions button')].map((button) => button.textContent)).toEqual(['导入 PDF'])
   })
 
   it('从别的屏点链接打开一篇的详情时屏头左端有返回,按它回到来的那一屏;从论文屏自己的搜索打开时没有', async () => {
@@ -449,15 +463,114 @@ describe('PaperTable', () => {
     clicked.mockRestore()
   })
 
-  it('defaults to 20 papers and offers only the 20, 30, and 50 page sizes', async () => {
-    const host = mount()
-    columnsCall.resolve(EMPTY_COLUMNS)
-    listCall.resolve({ rows: [ROW], total: 51 })
-    await flush()
+  /**
+   * Lays the table out as a browser would for these tests: its scroll box `box.height` px high, its
+   * header 30 px and each body row `box.row` px, 38 at first. Resizing the box calls the box's resize
+   * observers.
+   */
+  function layOutTable() {
+    const box = { height: 0, row: 38 }
+    const observers: (() => void)[] = []
+    vi.stubGlobal('ResizeObserver', class {
+      constructor(private readonly callback: () => void) {}
+      observe() { observers.push(this.callback) }
+      disconnect() { observers.splice(observers.indexOf(this.callback), 1) }
+    })
+    const height = vi.spyOn(HTMLElement.prototype, 'clientHeight', 'get').mockImplementation(function (this: HTMLElement) {
+      return this.classList.contains('table-scroll') ? box.height : 0
+    })
+    const rect = vi.spyOn(Element.prototype, 'getBoundingClientRect').mockImplementation(function (this: Element) {
+      const tall = this.tagName === 'THEAD' ? 30 : this.tagName === 'TR' && this.parentElement?.tagName === 'TBODY' ? box.row : 0
+      return { x: 0, y: 0, top: 0, left: 0, right: 0, bottom: tall, width: 0, height: tall, toJSON: () => ({}) } as DOMRect
+    })
+    return {
+      box,
+      resize: async (to: number) => {
+        box.height = to
+        await act(async () => { for (const observer of [...observers]) observer() })
+        await flush()
+      },
+      restore: () => { height.mockRestore(); rect.mockRestore() },
+    }
+  }
 
-    expect(listParams[0]).toMatchObject({ page: 1, size: 20 })
-    expect([...host.querySelectorAll('.pagebar .segmented-control>button')].map((button) => button.textContent))
-      .toEqual(['20 / 页', '30 / 页', '50 / 页'])
+  it('一页的行数是表格框在表头下放得下的行数，没有每页条数的选择', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 15 * 38 + 10
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: [ROW], total: 200 })
+      await flush()
+
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 15 })
+      expect(host.querySelector('.pagebar .segmented-control')).toBeNull()
+      expect([...host.querySelectorAll('.pager .pgbtn')].map((button) => button.textContent)).toEqual(['1', '2', '14'])
+    } finally { layout.restore() }
+  })
+
+  it('窗口改变高度时重算每页行数，所选那页的第一篇论文一直留在显示的页上', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 15 * 38 + 10
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: [ROW], total: 200 })
+      await flush()
+      for (let turn = 0; turn < 2; turn++) {
+        await act(async () => { host.querySelector<HTMLButtonElement>('.pager [aria-label="下一页"]')!.click() })
+        await flush()
+      }
+      // Page 3 of 15 rows starts at the 31st paper.
+      expect(listParams.at(-1)).toMatchObject({ page: 3, size: 15 })
+
+      await layout.resize(30 + 10 * 38 + 5)
+      expect(listParams.at(-1)).toMatchObject({ page: 4, size: 10 })
+      await layout.resize(30 + 7 * 38)
+      expect(listParams.at(-1)).toMatchObject({ page: 5, size: 7 })
+      await layout.resize(30 + 15 * 38 + 10)
+      expect(listParams.at(-1)).toMatchObject({ page: 3, size: 15 })
+      expect(host.querySelector('.pager .pgbtn.on')!.textContent).toBe('3')
+    } finally { layout.restore() }
+  })
+
+  it('某一页的行高出零点几像素时那页让出最后一行，翻回别的页也不再变回去', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 24 * 38 + 1
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: Array.from({ length: 30 }, (_, at) => ({ ...ROW, id: `p${at}` })), total: 200 })
+      await flush()
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 24 })
+
+      // The next page lays its rows out 38.078 px high: 24 of them no longer fit the box.
+      layout.box.row = 38.078
+      await act(async () => { host.querySelector<HTMLButtonElement>('.pager [aria-label="下一页"]')!.click() })
+      await flush()
+      expect(listParams.at(-1)).toMatchObject({ size: 23 })
+
+      layout.box.row = 38
+      await act(async () => { host.querySelector<HTMLButtonElement>('.pager [aria-label="上一页"]')!.click() })
+      await flush()
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 23 })
+    } finally { layout.restore() }
+  })
+
+  it('一页放得下全部论文时不显示翻页条', async () => {
+    const layout = layOutTable()
+    layout.box.height = 30 + 25 * 38
+    try {
+      const host = mount()
+      columnsCall.resolve(EMPTY_COLUMNS)
+      listCall.resolve({ rows: [ROW], total: 22 })
+      await flush()
+
+      expect(listParams.at(-1)).toMatchObject({ page: 1, size: 25 })
+      expect(host.querySelector('.pagebar')).toBeNull()
+      await layout.resize(30 + 21 * 38)
+      expect(host.querySelector('.pagebar')).not.toBeNull()
+    } finally { layout.restore() }
   })
 
   it('视图切换、搜索、分组与阅读状态筛选同在页面工具栏里，和稍后阅读的分组一个位置', async () => {
@@ -497,6 +610,90 @@ describe('PaperTable', () => {
     expect(host.querySelector('.research-map-groups')?.textContent).toContain('Speculative decoding')
     expect(host.querySelector('.research-map-detail')?.textContent).toContain('主题：Speculative decoding')
     expect(host.querySelector('.pagebar')).toBeNull()
+  })
+
+  it('按项目分组打开一组后，再点选中的「项目」回到组索引；在组索引再点什么也不变', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics', 'projects'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    await flush()
+    const index = () => [...host.querySelectorAll('.gxrow .gx-t')].map((title) => title.textContent)
+    facetRows = [{ value: 'Kernel', count: 3, newestTitle: '一篇论文' }, { value: 'Wide', count: 2, newestTitle: '一篇论文' }]
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    await flush()
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目', 'Kernel'])
+
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    expect(checkedGroup(host)).toBe('项目')
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目'])
+    expect(index()).toEqual(['Kernel', 'Wide'])
+    expect(host.querySelector('#libList .ptable')).toBeNull()
+
+    const fetched = facetParams.length
+    const listed = listParams.length
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    expect([facetParams.length, listParams.length]).toEqual([fetched, listed])
+    expect(index()).toEqual(['Kernel', 'Wide'])
+  })
+
+  it('开着详情时再点选中的「列表」关上详情；研究地图点开别的组后再点「研究地图」回到第一组', async () => {
+    const host = mount()
+    const mappedRows = [
+      { ...ROW, id: 'p1', title: 'Fast speculative decoding', topics: ['Speculative decoding'] },
+      { ...ROW, id: 'p2', title: 'Reliable speculative decoding', topics: ['Speculative decoding'] },
+      { ...ROW, id: 'p3', title: 'Fast quantization', topics: ['Quantization'] },
+      { ...ROW, id: 'p4', title: 'Reliable quantization', topics: ['Quantization'] },
+    ]
+    columnsCall.resolve(EMPTY_COLUMNS)
+    listCall.resolve({ rows: mappedRows, total: 4 })
+    getCall.resolve(mappedRows[0]!)
+    await flush()
+    const viewButton = (name: string) => [...host.querySelectorAll<HTMLButtonElement>('.paper-view-toolbar .segmented-control button')]
+      .find((button) => button.textContent === name)!
+    await act(async () => { host.querySelector<HTMLElement>('.ptable tbody tr')!.click() })
+    await flush()
+    expect(host.querySelector('.paper-detail-slot')).not.toBeNull()
+    await act(async () => { viewButton('列表').click() })
+    expect(host.querySelector('.paper-detail-slot')).toBeNull()
+
+    await act(async () => { viewButton('研究地图').click() })
+    await flush()
+    const shownGroup = () => host.querySelector('.research-map-detail-name')?.textContent
+    const first = shownGroup()
+    const other = [...host.querySelectorAll<HTMLElement>('.research-map-group')]
+      .find((row) => row.querySelector('.research-map-group-name')?.textContent !== first)!
+    await act(async () => { other.click() })
+    expect(shownGroup()).not.toBe(first)
+    await act(async () => { viewButton('研究地图').click() })
+    expect(shownGroup()).toBe(first)
+    expect(host.querySelector('.research-map')).not.toBeNull()
+  })
+
+  it('侧栏再点论文时，开着的组回到组索引，开着的详情关上', async () => {
+    const host = mount()
+    columnsCall.resolve({ hidden: [], custom: [], groups: ['topics', 'projects'] })
+    listCall.resolve({ rows: [ROW], total: 1 })
+    getCall.resolve(ROW)
+    await flush()
+    facetRows = [{ value: 'Kernel', count: 1, newestTitle: '一篇论文' }]
+    await act(async () => { groupButton(host, '项目').click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.gxrow')!.click() })
+    await flush()
+    await act(async () => { host.querySelector<HTMLElement>('.ptable tbody tr')!.click() })
+    await flush()
+    expect(host.querySelector('.paper-detail-slot')).not.toBeNull()
+
+    reentry = 1
+    await act(async () => { mountedRoot!.render(<MessagesProvider><PaperTable /></MessagesProvider>) })
+    await flush()
+    expect(host.querySelector('.paper-detail-slot')).toBeNull()
+    expect(crumbTail.map((seg) => seg.text)).toEqual(['项目'])
+    expect(checkedGroup(host)).toBe('项目')
   })
 
   it('研究地图的论文行和论文表一样写出评分、短标题和阅读状态，星和状态是论文表的同一组控件，改了写回且不打开详情', async () => {
@@ -561,7 +758,7 @@ describe('PaperTable', () => {
     expect([...importCall.bytes]).toEqual([...bytes])
     const importing = host.querySelector<HTMLButtonElement>('.pdfupload')!
     expect([importing.disabled, importing.getAttribute('aria-busy'), importing.getAttribute('aria-label'), importing.textContent])
-      .toEqual([true, 'true', '正在导入…', '导入 PDF…'])
+      .toEqual([true, 'true', '正在导入…', '导入 PDF'])
 
     const paper = { ...ROW, id: 'uploaded', title: '新论文' }
     importCall.resolve({ kind: 'added', paper })

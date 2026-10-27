@@ -146,14 +146,14 @@ export const popupMenus = (app: ElectronApplication): Promise<string[][]> =>
   app.evaluate(() => (globalThis as unknown as { popupMenus: string[][] }).popupMenus)
 
 /**
- * Clicks the brand mark in the title bar to open the app menu, then "Settings…". Returns once the
+ * Clicks the brand mark in the title bar to open the app menu, then "Settings". Returns once the
  * Settings modal is on screen.
  */
 export async function openSettings(_app: ElectronApplication, win: Page): Promise<void> {
   // Settings opens from the brand mark at the top left of the title bar, the entry point for
   // app-level configuration; the app draws no menu bar.
   await win.locator('.titlebar .appbtn').click()
-  await win.locator('[data-appmenu] .mi', { hasText: '设置…' }).click()
+  await win.locator('[data-appmenu] .mi', { hasText: '设置' }).click()
   await win.locator('.setdlg').waitFor()
 }
 
@@ -163,6 +163,29 @@ export async function openSettings(_app: ElectronApplication, win: Page): Promis
  */
 export async function gotoPapers(win: Page): Promise<void> {
   await win.locator('[data-desk="papers"]').click()
+}
+
+/**
+ * Waits until the shown Papers table holds its page, and returns how many rows that is: the rows fit the
+ * room its scroll box shows below the header, and one more row would not, give or take the fraction of
+ * a pixel rows lay out apart; a box too short for one row still holds one.
+ */
+export async function fittedPage(win: Page): Promise<number> {
+  const box = win.locator('.screenslot:not([hidden]) .table-scroll:has(> .ptable)')
+  await expect(box.locator('tbody tr').first()).toBeVisible()
+  let rows = 0
+  await expect.poll(() => box.evaluate((el) => {
+    const table = el.querySelector('table')!
+    const heights = [...table.tBodies[0]!.rows].map((row) => row.getBoundingClientRect().height)
+    const room = el.clientHeight - table.tHead!.getBoundingClientRect().height - parseFloat(getComputedStyle(table).marginBottom)
+    const used = heights.reduce((sum, height) => sum + height, 0)
+    const fits = heights.length === 1 || (used <= room && room - used < Math.max(...heights) + 2)
+    return { shown: heights.length, fits }
+  }).then(({ shown, fits }) => {
+    rows = shown
+    return fits
+  })).toBe(true)
+  return rows
 }
 
 /** The distinct `offsetHeight` values of the elements, ascending; a single value means equal heights. */
@@ -295,6 +318,74 @@ export function unfitTags(scope: Locator): Promise<{ text: string; width: number
     })
     .filter((tag) => tag.hidden || (!tag.capped && tag.needs > tag.width + 0.5))
     .map(({ text, width, needs, hidden }) => ({ text, width, needs, hidden }))))
+}
+
+/**
+ * How each shown chip of a chip list inside `scope` sits around its name: the name's text, the room
+ * from the chip's left edge to where the name starts and from where the name ends, or is cut off, to
+ * the chip's right edge, the chip's left and right padding, whether the name is cut off and whether a
+ * cut name fades out. A chip that hugs its name leaves exactly its padding on either side.
+ */
+export function chipEdges(scope: Locator): Promise<{
+  text: string; left: number; right: number; padding: [number, number]; cut: boolean; fades: boolean
+}[]> {
+  return scope.evaluateAll((roots) => roots.flatMap((root) => [...root.querySelectorAll('.tagchip[data-row-actions]')]
+    .filter((chip) => chip.getClientRects().length > 0)
+    .map((chip) => {
+      const box = chip.getBoundingClientRect()
+      const style = getComputedStyle(chip)
+      const name = chip.querySelector(':scope > :not(.row-actions)')!
+      const text = name.querySelector('.tagchip-text') ?? name
+      const glyphs = document.createRange()
+      glyphs.selectNodeContents(name)
+      const shown = name.getBoundingClientRect()
+      const cut = text.scrollWidth > text.clientWidth + 0.5
+      const round = (px: number) => Math.round(px * 10) / 10
+      return {
+        text: chip.textContent!.trim(),
+        left: round(shown.left - box.left),
+        right: round(box.right - Math.min(glyphs.getBoundingClientRect().right, shown.right)),
+        padding: [parseFloat(style.paddingLeft), parseFloat(style.paddingRight)] as [number, number],
+        cut,
+        fades: getComputedStyle(text).maskImage !== 'none',
+      }
+    })))
+}
+
+/**
+ * Expects every chip of a chip list inside `scope`, at rest, to hug its name: the same padding on
+ * either side and no other room, a cut name fading out where the padding starts. Returns the chips
+ * measured, so a case can check its fixture holds the chips it is about.
+ */
+export async function expectChipsHug(scope: Locator): Promise<Awaited<ReturnType<typeof chipEdges>>> {
+  const chips = await chipEdges(scope)
+  expect(chips.map(({ text, left, right, padding, cut, fades }) => ({ text, left, right, padding: padding[1], fades: cut ? fades : true })))
+    .toEqual(chips.map(({ text, padding }) => ({ text, left: padding[0], right: padding[0], padding: padding[0], fades: true })))
+  return chips
+}
+
+/**
+ * Hovers `chip`, one of `chips`, and expects its actions to show inside the chip at its end, after its
+ * name, which fades out where they start, while no chip of `chips` moves or changes width.
+ */
+export async function expectChipHoverInPlace(chips: Locator, chip: Locator): Promise<void> {
+  const boxes = () => chips.evaluateAll((els) => els.map((el) => {
+    const box = el.getBoundingClientRect()
+    return [Math.round(box.left * 10) / 10, Math.round(box.top * 10) / 10, Math.round(box.width * 10) / 10]
+  }))
+  const actions = chip.locator(':scope > .row-actions')
+  await chip.scrollIntoViewIfNeeded()
+  const before = await boxes()
+  await chip.hover()
+  await settle(actions)
+  await expect(actions).toHaveCSS('opacity', '1')
+  await expect(chip.locator('.tagchip-text')).not.toHaveCSS('mask-image', 'none')
+  const [outer, name, inner] = await Promise.all([
+    chip.boundingBox(), chip.locator(':scope > :not(.row-actions)').boundingBox(), actions.boundingBox(),
+  ])
+  expect(inner!.x).toBeGreaterThanOrEqual(name!.x + name!.width - 0.5)
+  expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width)
+  expect(await boxes()).toEqual(before)
 }
 
 /**

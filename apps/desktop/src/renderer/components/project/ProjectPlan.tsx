@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react'
+import { useMemo, useState } from 'react'
 import type { ReactNode, RefObject } from 'react'
 import type {
   GraphNode,
@@ -12,16 +12,13 @@ import { dnum, isoOf } from '../../../shared/dates.js'
 import { AddAction } from '../AddAction.js'
 import { Group } from '../GroupedList.js'
 import { DateChip } from '../DateTimeDisplay.js'
-import { EmptyState } from '../EmptyState.js'
 import { MenuItem } from '../ActionMenu.js'
 import { ChoicePicker, DateButton, DotsMenu, PriorityPicker } from '../FieldPickers.js'
 import { InlineDraftInput } from '../InlineDraftInput.js'
 import { InlineField, type InlineFieldProps } from '../InlineField.js'
-import { EditActions } from '../EditActions.js'
-import { MarkdownBox } from '../Markdown.js'
+import { MarkdownSection } from '../Markdown.js'
 import { PanelBody, PanelHead } from '../SidePanel.js'
 import { TaskScheduleField } from '../TaskScheduleField.js'
-import { SectionHeading } from '../PageShell.js'
 import { DraftSlot } from '../DraftSlot.js'
 import { Item } from '../Item.js'
 import { List } from '../List.js'
@@ -172,7 +169,7 @@ function PlanNameCell({ value, label, keep, onSave, rest }: {
   return (
     <InlineField
       label={label} value={value} className="plan-name-cell" keep={keep}
-      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave} rest={rest}
+      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave} rest={rest} selectAll
     />
   )
 }
@@ -230,13 +227,6 @@ export function ProjectTaskPanel({
   const m = useMessages()
   const fmt = useFormat()
   const note = editText(useDrafts<EditDraft>(['project', projectId, 'task', task.id]), 'note', task.note ?? '')
-  const box = useRef<HTMLDivElement>(null)
-  const save = () => {
-    if (note.stale) return
-    const next = box.current?.innerText.trim() ?? ''
-    note.drop()
-    void onSaveNote(next)
-  }
   return (
     <>
       <PanelHead title={task.title} onClose={onClose} />
@@ -248,17 +238,12 @@ export function ProjectTaskPanel({
           {task.origin === 'agent' ? <AgentLabel /> : null}
         </div>
         <NodeAssignment node={node} nodes={nodes} canUnlink={handSet} onOpen={onOpenNode} onSet={onSetNode} />
-        <SectionHeading
-          level="group"
-          actions={(
-            <EditActions editing={note.editing} canSave={!note.stale} onEdit={note.start} onCancel={note.drop} onSave={save} />
-          )}
-        >{m.project.plan.noteHeading}
-        </SectionHeading>
-        <MarkdownBox
-          className="task-note" text={note.text} editing={note.editing} box={box}
-          onCancel={note.drop} onSave={save} onType={note.change}
-          empty={<EmptyState variant="section" />}
+        <MarkdownSection
+          key={task.id} title={m.project.plan.noteHeading} level="group" className="task-note" edit={note}
+          onSave={(next) => {
+            note.drop()
+            void onSaveNote(next)
+          }}
         />
       </PanelBody>
     </>
@@ -353,7 +338,7 @@ function MilestoneRow({ projectId, milestone, onHover, onSave, onDelete }: {
 export function ProjectPlan({
   projectId, project, tab, today, creating, flashId, selectedTaskId,
   listRef, draftRef, addRef, timelineAddRef,
-  onTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCreating, onCancelCreate,
+  onTab, onReselectTab, onDiscardOpenEdits, onStartTask, onStartMilestone, onCreating, onCancelCreate,
   onCreateTask, onCreateMilestone, onUpdateTask, onDeleteTask, onReorderTasks, onOpenTask,
   onUpdateMilestone, onDeleteMilestone, onHoverMilestone,
 }: {
@@ -373,6 +358,8 @@ export function ProjectPlan({
   addRef: RefObject<HTMLButtonElement | null>
   timelineAddRef: RefObject<HTMLButtonElement | null>
   onTab: (tab: PlanTab) => void
+  /** Called when the current tab is picked again. */
+  onReselectTab: () => void
   onDiscardOpenEdits: () => void
   onStartTask: () => void
   onStartMilestone: (date: string) => void
@@ -416,7 +403,7 @@ export function ProjectPlan({
     <section className="project-plan">
       <TabbedSection
         heading={m.project.sections.plan} label={m.project.plan.viewLabel} value={tab} panelRef={listRef}
-        onChange={(value) => { onTab(value); onDiscardOpenEdits() }}
+        onChange={(value) => { onTab(value); onDiscardOpenEdits() }} onReselect={onReselectTab}
         actions={(
           <AddAction
             size="compact" ref={addRef}

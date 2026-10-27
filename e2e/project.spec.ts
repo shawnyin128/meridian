@@ -2,8 +2,9 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  appSwitcher, dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, panelHead, railEdges, readDraft, test,
-  textBox, timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
+  appSwitcher, chipEdges, dshort, expect, expectChipHoverInPlace, expectChipsHug, expectWholeInRail, fixtureDay, gotoProject,
+  overlaps, panelHead, parkPointer, railEdges, readDraft, settle, test, textBox, timelinePeriod, uniqueHeights, vaultToday,
+  type MeridianWindow,
 } from './app.js'
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -131,7 +132,7 @@ test('在项目页的想法一节就地写下想法：存好就落在草稿那�
   expect(draftAt).toBeGreaterThan(-1)
   const draft = page.locator('.idea-draft')
   await draft.locator('.form-input').fill('项目页写下的想法')
-  await draft.locator('.form-textarea').fill('先在 draft 效率里记下来。')
+  await draft.locator('.form-markdown .cm-content').fill('先在 draft 效率里记下来。')
   await draft.getByRole('button', { name: '保存' }).click()
   await expect(draft).toHaveCount(0)
   const made = await call<{ id: string; title: string; sourceProject?: string; project?: string }[]>(win, 'idea.list', {})
@@ -250,6 +251,26 @@ test('需要注意的类型、日期和正文使用统一列宽与间隔', async
     const style = getComputedStyle(element)
     return [style.borderTopWidth, style.borderBottomWidth]
   })).toEqual(['0px', '0px'])
+})
+
+test('1700px 宽的窗口里,时间线、需要注意和下方两栏区块的左右边缘对齐', async ({ win, app }) => {
+  // From 1600px wide the page column and the prose column differ, so the window must be past that step.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1700, 1000))
+  await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(1700)
+  await gotoProject(win)
+  const page = win.locator('.screenslot:not([hidden])')
+  const edges = async (selector: string) => {
+    const box = (await page.locator(selector).boundingBox())!
+    return { left: box.x, right: box.x + box.width }
+  }
+  const plan = await edges('.project-detail-page')
+  const pagew = await win.evaluate(() => parseFloat(getComputedStyle(document.documentElement).getPropertyValue('--pagew')))
+  expect(Math.abs(plan.right - plan.left - pagew), '两栏区块的宽度等于 --pagew').toBeLessThanOrEqual(1)
+  for (const [name, selector] of [['时间线', '.project-detail-body > .gantt'], ['需要注意', '.project-detail-body > .attn']]) {
+    const block = await edges(selector!)
+    expect(Math.abs(block.left - plan.left), `${name}的左边缘`).toBeLessThanOrEqual(1)
+    expect(Math.abs(block.right - plan.right), `${name}的右边缘`).toBeLessThanOrEqual(1)
+  }
 })
 
 test('科研记录的正文紧跟日期、与需要注意的正文对齐,节点和 agent 各成一列,细节用小号次要字', async ({ win }) => {
@@ -851,14 +872,36 @@ test('删掉一个附件,提示里的撤销把它放回', async ({ win }) => {
   expect((await removable(win)).attachments).toEqual(before)
 })
 
-test('移除一个领域,提示里的撤销把它放回', async ({ win }) => {
+test('属性栏的 chip 静止时贴着文字,左右留同样的内边距:主题、Wiki、链接、论文都一样;放不下的论文名在末端淡出', async ({ win }) => {
+  await win.locator('[data-desk="resproj"]').waitFor()
+  await call(win, 'project.update', { id: 'draft', patch: { topics: ['推理加速'] } })
+  await call(win, 'project.createRelation', { projectId: 'draft', relation: { group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft' } })
+  await gotoProject(win)
+  await parkPointer(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const chips = await expectChipsHug(side)
+  const row = (label: string) => side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: label }) })
+  expect(await chipEdges(side.locator('.project-topics'))).toMatchObject([{ text: '推理加速', cut: false }])
+  expect((await chipEdges(row('Wiki'))).filter((chip) => !chip.cut).length).toBeGreaterThan(1)
+  expect(await chipEdges(row('链接'))).toMatchObject([{ text: '实验看板', cut: false }])
+  // The fixture's paper titles are longer than the rail, so these chips fade at their end.
+  expect((await chipEdges(row('论文'))).map((chip) => chip.cut)).toContain(true)
+  expect(chips.length).toBeGreaterThan(5)
+
+  const wikiChips = row('Wiki').locator('.tagchip[data-row-actions]')
+  await expectChipHoverInPlace(side.locator('.tagchip[data-row-actions]'), wikiChips.first())
+  await parkPointer(win)
+  await expectChipHoverInPlace(side.locator('.tagchip[data-row-actions]'), side.locator('.project-topics .tagchip[data-row-actions]'))
+})
+
+test('移除一个主题,提示里的撤销把它放回', async ({ win }) => {
   await win.locator('[data-desk="resproj"]').waitFor()
   await call(win, 'project.update', { id: 'draft', patch: { topics: ['speculative decoding', 'kv cache eviction'] } })
   await gotoProject(win)
-  const chips = win.locator('.screenslot:not([hidden]) .project-areas .tagchip:not(.tagadd)')
+  const chips = win.locator('.screenslot:not([hidden]) .project-topics .tagchip:not(.tagadd)')
   await expect(chips).toHaveCount(2)
   await rowAction(chips.first(), '.rx')
-  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新领域')
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已更新主题')
   await expect(chips).toHaveText(['kv cache eviction'])
 
   await undoFromNotice(win)
@@ -1026,11 +1069,17 @@ test('任务详情头部的收起钮在标题上方单独一行靠右,长标题�
   await expect(side.locator('.panel-head-title')).toHaveText(title)
 
   // The same head as the paper detail's: Han text breaks between any two characters, so every full line ends less than a character short.
+  await settle(side.locator('.side-panel-content'))
   const head = await panelHead(side.locator('.panel-head'), '.panel-head-title', '.icbtn')
-  expect(head.actions.map(({ label, width, height }) => [label, width, height])).toEqual([['收起详情', 24, 24]])
-  expect(Math.abs(head.actions[0]!.right - head.content.right)).toBeLessThan(1)
+  expect(head.actions.map(({ label, width, height }) => [label, Math.round(width), Math.round(height)])).toEqual([['收起详情', 24, 24]])
   expect(Math.round(head.actions[0]!.top - head.content.top)).toBe(0)
   expect(head.actions[0]!.top + head.actions[0]!.height).toBeLessThanOrEqual(head.title.top)
+  // The buttons' row sits up in the panel's top inset, so it adds no band of its own above the title.
+  const panel = await side.evaluate((el) => ({ top: el.getBoundingClientRect().top, right: el.getBoundingClientRect().right, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
+  expect(head.actions[0]!.top - panel.top).toBeLessThan(panel.inset)
+  // The close button sits in the panel's top-right corner on its diagonal: as far from the top edge as from the right edge.
+  expect(Math.abs((panel.right - head.actions[0]!.right) - (head.actions[0]!.top - panel.top))).toBeLessThan(1)
+  expect(head.title.top - panel.top).toBeLessThanOrEqual(panel.inset + head.actions[0]!.height)
   expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
   expect(head.title.lines.length).toBeGreaterThanOrEqual(2)
   expect(head.title.lines.slice(0, -1).map((line) => ({
@@ -1310,7 +1359,7 @@ test('关联:占位 chip 长在它将来待的那一组行首,切组跟着搬', 
   // Click outside the placeholder and remove it
   await side.locator('[aria-label="添加关联"]').click()
   await expect(side.locator('.wkrel .inedit')).toHaveCount(1)
-  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await win.locator('.screenslot:not([hidden]) .wkmain .section-heading', { hasText: '项目随笔' }).click()
   await expect(side.locator('.wkrel .inedit')).toHaveCount(0)
   await expect(pageRow.locator('.tagchip')).toHaveCount(pageChips + 1)
 })
@@ -1369,7 +1418,7 @@ test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里',
 
   // Leaving the edit without a change closes it and leaves the item as it was, page link included.
   await rowAction(chips.first(), '.tagchip-edit')
-  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await win.locator('.screenslot:not([hidden]) .wkmain .section-heading', { hasText: '项目随笔' }).click()
   await expect(wikiRow.locator('.reladd')).toHaveCount(0)
   await expect(chips).toHaveText(before)
   await expect(chips.first()).toHaveAttribute('data-wk', page)
@@ -1390,13 +1439,15 @@ test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里',
     .toEqual(['端到端改名', ...before.slice(1)])
 })
 
-test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', async ({ win }) => {
+test('项目页的标题点一下就地改名,页头和右栏都不变宽,字也不挪位;右栏的名称只是文字', async ({ win }) => {
   await gotoProject(win)
-  const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const props = side.locator('.property-list')
-  const field = props.locator('.property-label:text-is("名称") + .property-value > .metadata-field')
+  const shown = win.locator('.screenslot:not([hidden])')
+  const head = shown.locator('.desk-head')
+  const side = shown.locator('.wkside')
+  const field = head.locator('.page-title-field > .metadata-field')
   const name = field.locator('.metadata-editable')
-  const boxes = () => Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox()])
+  await expect(side.locator('.property-label:text-is("名称") + .property-value .metadata-field')).toHaveCount(0)
+  const boxes = () => Promise.all([head.boundingBox(), side.boundingBox()])
   const before = await boxes()
   const textBefore = await textBox(name)
 
@@ -1404,7 +1455,15 @@ test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', a
   const input = field.locator('.metadata-input')
   await expect(input).toBeVisible()
   expect(await boxes()).toEqual(before)
-  expect(await textBox(input)).toEqual(textBefore)
+  const textAfter = await textBox(input)
+  expect([textAfter.left, textAfter.top, textAfter.lineHeight]).toEqual([textBefore.left, textBefore.top, textBefore.lineHeight])
+  await input.fill('改过名字的 draft')
+  await input.press('Enter')
+  await expect(input).toHaveCount(0)
+  await expect(head.locator('.t')).toHaveText('改过名字的 draft')
+  await expect(side.locator('.property-label:text-is("名称") + .property-value')).toHaveText('改过名字的 draft')
+  await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '改过名字的 draft'])
+  expect((await call<{ name: string }>(win, 'project.get', { id: 'draft' })).name).toBe('改过名字的 draft')
 })
 
 test('属性栏多行的值(当前目标)进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
@@ -1420,10 +1479,10 @@ test('属性栏多行的值(当前目标)进入编辑时,编辑框整个露在�
   expect((await textBox(input)).left).toBe(before.left)
 })
 
-test('属性栏点一个领域就地改它:编辑框里是它的字,整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
+test('属性栏点一个主题就地改它:编辑框里是它的字,整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const field = side.locator('.property-label:text-is("领域") + .property-value > .project-areas')
+  const field = side.locator('.property-label:text-is("主题") + .property-value > .project-topics')
   const chip = field.locator('.tagchip-open').first()
   const text = await chip.innerText()
   const before = await textBox(chip.locator('.tagchip-text'))
@@ -1473,7 +1532,7 @@ test('属性栏焦点格:焦点移走或点到格外都像回车一样写回,Esc
   // Clicking outside the cell writes it too.
   await edit.click()
   await pin.fill('点外面也写回')
-  await win.locator('.screenslot:not([hidden]) .memo').click()
+  await win.locator('.screenslot:not([hidden]) .wkmain .section-heading', { hasText: '项目随笔' }).click()
   await expect(pin).toHaveCount(0)
   await expect(edit).toHaveText('点外面也写回')
   expect(await focusNow()).toBe('点外面也写回')
@@ -1575,22 +1634,23 @@ test('属性栏焦点格保存后,照旧收起其他正在编辑的东西(随笔
   const pin = side.locator('.metadata-input')
   const memoActions = main.locator('.section-heading', { hasText: '项目随笔' }).locator('button')
 
-  await memoActions.click()
+  await main.locator('.memo [data-line]').first().click({ position: { x: 2, y: 4 } })
   await expect(memoActions).toHaveText(['取消', '保存'])
 
   await edit.click()
   await pin.fill('保存焦点格顺带收起随笔')
   await pin.press('Enter')
-  await expect(memoActions).toHaveText(['编辑'])
+  await expect(memoActions).toHaveCount(0)
+  await expect(main.locator('.memo .cm-editor')).toHaveCount(0)
 })
 
 test('项目随笔边写边渲染:写完「# 标题」回车,标题马上渲染,光标回到那一行又是原文,⌘回车照常存下', async ({ win }) => {
   await gotoProject(win)
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   const memo = main.locator('.memo')
-  await main.locator('.section-heading', { hasText: '项目随笔' }).locator('button', { hasText: '编辑' }).click()
+  await memo.locator('[data-line]').first().click({ position: { x: 2, y: 4 } })
   await expect(memo.locator('.cm-content')).toBeFocused()
-  // The cursor starts in the first paragraph; the display formula further down already renders.
+  // The cursor starts in the first block, where the click landed; the display formula further down already renders.
   await expect(memo.locator('.md-block .katex-display')).toHaveCount(1)
 
   await win.keyboard.press('ControlOrMeta+End')
@@ -1616,7 +1676,7 @@ test('项目随笔里输入法组字时的回车和 ⌘回车归输入法:不换
   await gotoProject(win)
   const main = win.locator('.screenslot:not([hidden]) .wkmain')
   const memo = main.locator('.memo')
-  await main.locator('.section-heading', { hasText: '项目随笔' }).locator('button', { hasText: '编辑' }).click()
+  await memo.locator('[data-line]').first().click({ position: { x: 2, y: 4 } })
   await expect(memo.locator('.cm-content')).toBeFocused()
   await win.keyboard.press('ControlOrMeta+End')
   await win.keyboard.press('Enter')
@@ -1873,20 +1933,37 @@ test('节点面板开着时 Esc 先关全局搜索结果,再按一次才收面�
   await expect(head).toHaveText('属性')
 })
 
-test('SSH 工作区分两步:先连上测试主机,再从远端主目录点进文件夹,选择后项目连到这台主机的这个文件夹', async ({ win }) => {
+test('SSH 工作区连不上主机时写出原因,连上后文件夹按钮叠开测试主机的文件夹选择框,从远端主目录点进文件夹,选择填进项目路径,添加后项目连到这台主机的这个文件夹', async ({ win }) => {
   await gotoProject(win)
   await win.locator('.screenslot:not([hidden]) button.pv.metadata-editable', { hasText: '连接' }).click()
   const dialog = win.locator('.workspace-dialog')
   await dialog.locator('.workspace-kinds button', { hasText: 'SSH' }).click()
   const host = dialog.locator('#workspaceSsh input').first()
+  const geometry = async () => ({
+    hostLeft: (await host.boundingBox())!.x,
+    footTop: (await dialog.locator('.modal-actions').boundingBox())!.y,
+  })
+  await host.fill('nope')
+  await expect(dialog.locator('#workspaceSsh .field-row-field .loading-placeholder')).toHaveCount(1)
+  const checking = await geometry()
+  await expect(dialog.locator('#workspaceSsh .field-row-field [role="alert"]')).toContainText('Could not resolve hostname nope')
+  await expect(dialog.locator('#workspaceSsh .directory-field')).toHaveCount(0)
+  const failed = await geometry()
   await host.fill('gpu')
   await win.locator('.pickhits .rrow', { hasText: 'gpu-lab' }).click()
   await expect(host).toHaveValue('gpu-lab')
-  await dialog.locator('.modal-actions button[type="submit"]', { hasText: '连接' }).click()
-  await expect(dialog.locator('input.ssh-folders-path')).toHaveValue('/home/researcher')
-  await dialog.locator('.ssh-folder-row', { hasText: 'projects' }).click()
-  await expect(dialog.locator('input.ssh-folders-path')).toHaveValue('/home/researcher/projects')
-  await dialog.locator('.modal-actions button[type="submit"]', { hasText: '选择' }).click()
+  await expect(dialog.locator('#workspaceSsh .directory-field input')).toBeEnabled()
+  expect([failed, await geometry()]).toEqual([checking, checking])
+  await dialog.locator('#workspaceSsh .directory-field-action').click()
+  const picker = win.locator('.ssh-folder-picker')
+  await expect(picker.locator('.modal-title')).toHaveText('gpu-lab')
+  await expect(picker.locator('input.ssh-folders-path')).toHaveValue('/home/researcher')
+  await picker.locator('.ssh-folder-row', { hasText: 'projects' }).click()
+  await expect(picker.locator('input.ssh-folders-path')).toHaveValue('/home/researcher/projects')
+  await picker.locator('.modal-actions button', { hasText: '选择' }).click()
+  await expect(picker).toHaveCount(0)
+  await expect(dialog.locator('#workspaceSsh .directory-field input')).toHaveValue('/home/researcher/projects')
+  await dialog.locator('.modal-actions button[type="submit"]', { hasText: '添加' }).click()
   await expect(dialog).toHaveCount(0)
   const project = await call<{ workspace?: { kind: string; host?: string; root: string } }>(win, 'project.get', { id: 'draft' })
   expect(project.workspace).toMatchObject({ kind: 'ssh', host: 'gpu-lab', root: '/home/researcher/projects' })

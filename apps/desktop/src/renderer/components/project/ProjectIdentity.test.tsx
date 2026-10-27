@@ -31,21 +31,21 @@ describe('ProjectIdentity', () => {
     expect(html.indexOf('改名')).toBeLessThan(html.indexOf('状态'))
   })
 
-  it('领域是新项目存的默认值时写成未分领域,存的值不变', () => {
+  it('主题是新项目存的默认值时写成未分主题,存的值不变', () => {
     const unfiled = { ...project, topic: '未分主题' }
     const shown = [
       renderToStaticMarkup(<MessagesProvider><ProjectIdentity project={unfiled} showTopic /></MessagesProvider>),
       renderToStaticMarkup(<MessagesProvider><ProjectIdentityFields project={unfiled} /></MessagesProvider>),
     ]
     for (const html of shown) {
-      expect(html).toContain('未分领域')
-      expect(html).not.toContain('主题')
+      expect(html).toContain('未分主题')
+      expect(html).not.toContain('领域')
     }
-    expect(shown[1]).toContain('领域')
+    expect(shown[1]).toContain('>主题<')
     expect(unfiled.topic).toBe('未分主题')
   })
 
-  it('几个领域按次序全写出来,中文用顿号、英文用逗号连起来,放不下时渐隐', () => {
+  it('几个主题按次序全写出来,中文用顿号、英文用逗号连起来,放不下时渐隐', () => {
     const several = { ...project, topics: ['decoding', 'KV cache', '量化'] }
     const zhHtml = renderToStaticMarkup(<MessagesProvider><ProjectIdentity project={several} showTopic /></MessagesProvider>)
     expect(zhHtml).toMatch(/class="fade-text project-identity-topic"[^>]*>decoding、KV cache、量化</)

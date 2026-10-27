@@ -2,18 +2,21 @@ import type {
   AuthorCandidate, AuthorSearchFailed, DiscoveryFetchResult, InboxDownloadResult, JobsStatus, NetFailed, PaperImportResult,
   SemanticKeyCheckResult, WatchSuggestionResult,
 } from '../shared/contract.js'
+import { CallError } from './call-error.js'
 import { createInboxDownloads } from './inbox/download.js'
 import { createWatchFetcher } from './inbox/fetch.js'
 import { armDiscoverySchedule, armFetchSchedule } from './inbox/schedule.js'
 import { createArxiv } from './net/arxiv.js'
+import { createDblp } from './net/dblp.js'
 import type { HttpGet } from './net/http.js'
 import { createRateLimitedGet, netFailure } from './net/http.js'
 import { createSemanticAuthors } from './net/semantic-authors.js'
 import { createArxivSuggestionSource, createWatchSuggestions } from './net/watch-suggestions.js'
 import { createAuthorSearch, type ScholarSource } from './net/scholar-sources.js'
+import { createSemanticPublications } from './net/semantic-metadata.js'
 import { checkSemanticKey, createSemanticSearch } from './net/semantic-search.js'
 import { isUnopenedStore } from './unopened-store.js'
-import { createMetadataQueue, type PdfProbe } from './paper-library/index.js'
+import { createMetadataQueue, fillPublications, type PdfProbe } from './paper-library/index.js'
 import {
   createArxivRecommendations, createFallbackRecommendations, createRecommendationService,
   createSemanticRecommendations, createSemanticScholar,
@@ -24,6 +27,11 @@ export type Background = {
   importPaper(filename: string, bytes: Uint8Array): PaperImportResult
   /** Parses the metadata of paper `paperId` again (MetadataQueue retry). */
   retryMetadata(paperId: string): void
+  /**
+   * Fills the publication venue, with its year, of the vault's papers from Semantic Scholar and DBLP (fillPublications)
+   * and returns how many changed. Throws a `refused` CallError when no key is saved.
+   */
+  fillPublications(): Promise<number>
   downloadInbox(id: string): Promise<InboxDownloadResult>
   fetchWatches(watchIds?: string[]): Promise<void>
   searchAuthors(query: string): Promise<AuthorCandidate[] | AuthorSearchFailed>
@@ -90,7 +98,15 @@ export function createBackground(deps: {
       semanticKey() === undefined ? [arxivRecommendations] : [semanticRecommendations, arxivRecommendations]
     )),
   })
-  const metadata = createMetadataQueue({ store: deps.store, probe: deps.probe, provider: arxiv, onWrite })
+  const publications = createSemanticPublications({ get: semanticGet, sleep: deps.sleep })
+  const dblp = createDblp({
+    get: createRateLimitedGet(deps.get, { minIntervalMs: 1_000, sleep: deps.sleep, now: deps.now }), sleep: deps.sleep,
+  })
+  const metadata = createMetadataQueue({
+    store: deps.store, probe: deps.probe, provider: arxiv, onWrite,
+    publications: () => (semanticKey() === undefined ? undefined : publications),
+    dblp: () => dblp,
+  })
   const downloads = createInboxDownloads({ store: deps.store, get: deps.get, probe: deps.probe, onWrite })
   const fetcher = createWatchFetcher({
     store: deps.store, arxiv, scholar, now: deps.now, onWrite,
@@ -128,6 +144,12 @@ export function createBackground(deps: {
       return result
     },
     retryMetadata: (paperId) => metadata.retry(paperId),
+    async fillPublications() {
+      if (semanticKey() === undefined) throw new CallError('refused', '还没有保存 Semantic Scholar key')
+      const updated = await fillPublications(deps.store, publications, dblp)
+      if (updated > 0) onWrite()
+      return updated
+    },
     downloadInbox: (id) => downloads.download(id),
     fetchWatches: (watchIds) => fetcher.run(watchIds),
     async searchAuthors(query) {

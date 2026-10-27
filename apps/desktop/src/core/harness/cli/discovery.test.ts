@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { HarnessCli } from '../../../shared/contract.js'
+import type { CoreLogLevel } from '../../core-log.js'
 import { CliRunError, type CliFailureKind } from './child.js'
 import { checkCliConnection, type DiscoveryOptions, discoverCli, resolveCliBinary } from './discovery.js'
 import { chatTurnFlags } from './chat-turn.js'
@@ -88,7 +89,7 @@ function standInRunner(failure?: CliRunError) {
 }
 
 /** The connection check of `cli`, with `model` when given, its model call made through `run`. */
-const check = (cli: HarnessCli, options: DiscoveryOptions & { onLog?: (line: string) => void }, run = standInRunner().run, model?: string) =>
+const check = (cli: HarnessCli, options: DiscoveryOptions & { onLog?: (level: CoreLogLevel, line: string) => void }, run = standInRunner().run, model?: string) =>
   checkCliConnection({ source: 'cli', cli, ...(model === undefined ? {} : { model }) }, { ...options, run })
 
 describe('subscription CLI discovery', () => {
@@ -167,17 +168,17 @@ describe('subscription CLI discovery', () => {
     ] as const) {
       const unreadable = machine({ version: '9.9.9\n', status })
       executable(join(unreadable.home, '.local', 'bin', cli), STAND_IN)
-      results.push(await check(cli, { ...unreadable.options, onLog: (line) => logs.push(line) }))
+      results.push(await check(cli, { ...unreadable.options, onLog: (level, line) => logs.push(`${level} ${line}`) }))
     }
 
     expect(results).toEqual(['claude', 'claude', 'codex'].map((cli) => ({
       state: 'failed', reason: 'cli-sign-in-unknown', detail: `读不出 ${cli} 的登录状态`, version: '9.9.9', modelCalls: 0,
     })))
     expect(logs).toEqual([
-      'claude 9.9.9: its sign-in status is in no form Meridian reads: stdout 2 lines of text, stderr 0 lines, exit 0',
-      'claude 9.9.9: its sign-in status is in no form Meridian reads: '
+      'warn claude 9.9.9: its sign-in status is in no form Meridian reads: stdout 2 lines of text, stderr 0 lines, exit 0',
+      'warn claude 9.9.9: its sign-in status is in no form Meridian reads: '
         + 'stdout a JSON object of account: object, method: string, signedIn: boolean, stderr 0 lines, exit 0',
-      'codex 9.9.9: its sign-in status is in no form Meridian reads: stdout 0 lines of text, stderr 1 lines, exit 0',
+      'warn codex 9.9.9: its sign-in status is in no form Meridian reads: stdout 0 lines of text, stderr 1 lines, exit 0',
     ])
     expect(logs.join('\n')).not.toMatch(/researcher|sk-ant|secret|claude\.ai|Logged|ChatGPT as/)
   })
@@ -192,10 +193,10 @@ describe('subscription CLI discovery', () => {
     const logs: string[] = []
     const old = machine({ version: '2.0.9 (Claude Code)\n', help: FULL_HELP.replace(/^ {2}--json-schema .*$/m, '') })
     executable(join(old.home, '.local', 'bin', 'claude'), STAND_IN)
-    const unsupported = await check('claude', { ...old.options, onLog: (line) => logs.push(line) })
+    const unsupported = await check('claude', { ...old.options, onLog: (level, line) => logs.push(`${level} ${line}`) })
     expect(unsupported).toMatchObject({ state: 'failed', reason: 'cli-unsupported', version: '2.0.9', modelCalls: 0 })
     expect(JSON.stringify(unsupported)).not.toContain('json-schema')
-    expect(logs).toEqual([expect.stringContaining('--json-schema')])
+    expect(logs).toEqual([expect.stringMatching(/^warn .*--json-schema/)])
     const noStreaming = machine({ help: FULL_HELP.replace(/^ {2}--include-partial-messages .*$/m, '') })
     executable(join(noStreaming.home, '.local', 'bin', 'claude'), STAND_IN)
     await expect(check('claude', noStreaming.options)).resolves.toMatchObject({
@@ -237,7 +238,7 @@ describe('subscription CLI discovery', () => {
     const runner = standInRunner()
     const logs: string[] = []
 
-    await expect(check('claude', { ...signedIn.options, onLog: (line) => logs.push(line) }, runner.run)).resolves.toEqual({
+    await expect(check('claude', { ...signedIn.options, onLog: (level, line) => logs.push(`${level} ${line}`) }, runner.run)).resolves.toEqual({
       state: 'connected', version: '0.0.1', modelCalls: 1,
     })
     await check('claude', signedIn.options, runner.run, 'opus')
@@ -248,7 +249,7 @@ describe('subscription CLI discovery', () => {
     expect(runner.calls[0]!.schema).toEqual({
       type: 'object', properties: { word: { type: 'string', maxLength: 40 } }, required: ['word'], additionalProperties: false,
     })
-    expect(logs).toEqual(['claude: 4.2 s, 1 turns, 18204 input tokens (0 cached), 5 output tokens'])
+    expect(logs).toEqual(['info claude: 4.2 s, 1 turns, 18204 input tokens (0 cached), 5 output tokens'])
   })
 
   it('makes the check\'s model call at the CLI\'s own default effort, whatever effort the model is set to', async () => {

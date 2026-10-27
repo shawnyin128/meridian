@@ -5,7 +5,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type {
   ColourTheme, HarnessAddModelParams, HarnessCli, HarnessModelConnectionCheckResult, HarnessModelEntry, HarnessModelProfile,
   HarnessModelProvider, HarnessModelSettings, HarnessModelSource, HarnessSubscriptionStatus, HarnessUpdateModelParams,
-  LibraryBackup, LibraryLocation, SemanticKeyCheckResult, SemanticKeyStatus,
+  LibraryBackup, LibraryLocation, PublicationFillResult, SemanticKeyCheckResult, SemanticKeyStatus,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { DraftsProvider, keptDraftsKey } from '../hooks/useDrafts.js'
@@ -139,6 +139,7 @@ const api = vi.hoisted(() => ({
   semanticKey: vi.fn(async (): Promise<SemanticKeyStatus> => ({ configured: false })),
   setSemanticKey: vi.fn(async (): Promise<SemanticKeyStatus> => ({ configured: false })),
   checkSemanticKey: vi.fn(async (): Promise<SemanticKeyCheckResult> => ({ state: 'connected' as const })),
+  fillPublication: vi.fn(async (): Promise<PublicationFillResult> => ({ updated: 0 })),
   extensionStatus: vi.fn(async () => [{
     id: 'codex', name: 'Codex', state: 'installed', version: '0.8.1',
     installCommand: 'codex install command', updateCommand: 'codex update command',
@@ -159,6 +160,9 @@ const api = vi.hoisted(() => ({
   refreshThemes: vi.fn(async () => {}),
   restartApp: vi.fn(),
   success: vi.fn(),
+  refusal: vi.fn(),
+  enter: vi.fn(),
+  bump: vi.fn(),
   chatList: vi.fn(async () => [] as unknown[]),
   removeChat: vi.fn(),
   revision: 0,
@@ -193,16 +197,17 @@ vi.mock('../ipc.js', () => ({
     subscriptionStatus: api.subscriptionStatus,
   },
   extensions: { status: api.extensionStatus, pluginVersion: api.pluginVersion, checkLatest: api.checkLatest },
+  papers: { fillPublication: api.fillPublication },
   colourThemes: { save: vi.fn(async () => {}), delete: api.deleteTheme },
 }))
 vi.mock('../shell/AppShell.js', () => ({
-  useNotice: () => ({ success: api.success, refusal: vi.fn() }),
-  useJump: () => ({ open: vi.fn() }),
+  useNotice: () => ({ success: api.success, refusal: api.refusal }),
+  useJump: () => ({ open: vi.fn(), enter: api.enter }),
   useChatSession: () => ({ remove: api.removeChat }),
   useSettingsOpen: () => ({
     open: true, requestedCategory: api.requestedCategory, setOpen: api.setOpen, openCategory: vi.fn(),
   }),
-  useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
+  useVaultRevision: () => ({ revision: api.revision, bump: api.bump }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>) => { await work; return true },
@@ -291,6 +296,9 @@ describe('Settings', () => {
     api.setSemanticKey.mockResolvedValue({ configured: false })
     api.checkSemanticKey.mockClear()
     api.checkSemanticKey.mockResolvedValue({ state: 'connected' })
+    api.fillPublication.mockReset()
+    api.fillPublication.mockResolvedValue({ updated: 0 })
+    for (const call of [api.refusal, api.enter, api.bump, api.setOpen]) call.mockClear()
     api.extensionStatus.mockClear()
     api.libraryLocation.mockClear()
     api.libraryLocation.mockResolvedValue({
@@ -612,6 +620,65 @@ describe('Settings', () => {
     expect(status.textContent).toContain('HTTP 401')
   })
 
+  /** The card's button whose label reads `text`, or undefined. */
+  const cardButton = (text: string) => [...document.querySelectorAll<HTMLButtonElement>('.semantic-key-card .service-actions button')]
+    .find((button) => button.textContent === text)
+
+  it('已保存 key 时科研卡片能补全发表信息：跑时按钮忙，跑完提示补全了几篇，提示的打开关上设置去最近变动', async () => {
+    api.requestedCategory = 'research'
+    api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
+    let finish!: (result: PublicationFillResult) => void
+    api.fillPublication.mockReturnValueOnce(new Promise((resolve) => { finish = resolve }))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    const fill = cardButton('补全发表信息')!
+    await act(async () => { fill.click() })
+    expect(api.fillPublication).toHaveBeenCalledOnce()
+    expect([fill.getAttribute('aria-busy'), fill.disabled]).toEqual(['true', true])
+
+    await act(async () => { finish({ updated: 2 }) })
+    expect([fill.getAttribute('aria-busy'), fill.disabled]).toEqual([null, false])
+    expect(api.bump).toHaveBeenCalledOnce()
+    const [text, action] = api.success.mock.calls.at(-1) as [string, { label: string; onAction: () => void }]
+    expect([text, action.label]).toEqual(['补全了 2 篇的发表信息', '打开'])
+    await act(async () => { action.onAction() })
+    expect(api.enter).toHaveBeenCalledWith('changelog')
+    expect(api.setOpen).toHaveBeenCalledWith(false)
+
+    await act(async () => { fill.click() })
+    expect(api.success.mock.calls.at(-1)).toEqual(['没有查到新的发表信息'])
+  })
+
+  it('补全发表信息只在存了 key 时出现：保存 key 后出现，清除 key 后消失，不用重开设置', async () => {
+    api.requestedCategory = 'research'
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    expect(cardButton('补全发表信息')).toBeUndefined()
+
+    const input = document.querySelector<HTMLInputElement>('.setdlg [aria-label="Semantic Scholar API Key"]')!
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!.call(input, 'new-secret')
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    api.setSemanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'cret' })
+    await act(async () => { cardButton('保存配置')!.click() })
+    expect(cardButton('补全发表信息')).toBeDefined()
+
+    await act(async () => { cardButton('清除已保存的 Key')!.click() })
+    api.setSemanticKey.mockResolvedValueOnce({ configured: false })
+    await act(async () => { cardButton('保存配置')!.click() })
+    expect(cardButton('补全发表信息')).toBeUndefined()
+  })
+
+  it('补全发表信息失败时，原因和保存失败一样写在卡片里，不弹提示', async () => {
+    api.requestedCategory = 'research'
+    api.semanticKey.mockResolvedValueOnce({ configured: true, lastFour: 'ab12' })
+    api.fillPublication.mockRejectedValueOnce(new CallError('papers.fillPublication', 'refused'))
+    await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
+    await act(async () => { cardButton('补全发表信息')!.click() })
+    const error = document.querySelector('.semantic-key-card .service-error')
+    expect([error?.matches('.inline-message--line.inline-message--error'), error?.textContent]).toEqual([true, '现在不能这样做'])
+    expect([api.success, api.refusal, api.bump].map((call) => call.mock.calls.length)).toEqual([0, 0, 0])
+  })
+
   it('扩展设置显示 Core 检查结果:已安装的给更新命令,未安装的给安装命令;复制不再弹提示', async () => {
     const writeText = vi.fn(async () => {})
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
@@ -832,7 +899,7 @@ describe('Settings', () => {
       .querySelector('.row-actions button[aria-label="管理「青瓷」"]')).not.toBeNull()
 
     const items = await openThemeMenu(dialog, '青瓷')
-    expect(items.map((item) => item.textContent)).toEqual(['编辑…', '删除'])
+    expect(items.map((item) => item.textContent)).toEqual(['编辑', '删除'])
     await act(async () => { items[0]!.click() })
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="名称"]')!.value).toBe('青瓷')
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="色值"]')!.value).toBe(celadon.light.ground.toUpperCase())
@@ -972,7 +1039,7 @@ describe('Settings', () => {
     const directory = dialog.querySelector('.storage-root .directory-field')!
     expect(directory.querySelector<HTMLInputElement>('input')?.value).toBe('/tmp/meridian')
     expect(directory.querySelector('input')?.hasAttribute('readonly')).toBe(true)
-    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
+    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
       .toBe(true)
     expect(directory.querySelector('svg path')?.getAttribute('d')).toBe('M3 6h6l2 2h10v10H3z')
     expect(dialog.querySelector('.storage-root code')).toBeNull()
@@ -1031,7 +1098,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('.page-error')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
-    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
+    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
       .toBe(false)
     expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')?.disabled).toBe(false)
   })
@@ -1142,7 +1209,7 @@ describe('Settings', () => {
     expect([
       trigger.getAttribute('aria-label'), trigger.textContent, trigger.querySelector('.ring.spin') !== null, trigger.disabled,
       trigger.getAttribute('aria-busy'),
-    ]).toEqual(['正在重置…', '重置库…', true, true, 'true'])
+    ]).toEqual(['正在重置…', '重置库', true, true, 'true'])
     expect(api.restartApp).not.toHaveBeenCalled()
     await act(async () => { finish() })
     expect(api.restartApp).toHaveBeenCalledOnce()
@@ -1236,6 +1303,22 @@ describe('Settings', () => {
   /** The form's Cancel, which only editing a saved model shows. */
   const cancelButton = (dialog: Element) => [...dialog.querySelectorAll<HTMLButtonElement>('.model-settings-card .service-actions button')]
     .find((button) => button.textContent === '取消')
+
+  it('点开一个模型后再点选中的「模型」分类，表单回到添加新模型；没点开时再点什么也不变', async () => {
+    core.seed([officialProfile('openai', '1111'), officialProfile('anthropic', '2222')], [
+      apiModel('openai', 'gpt-a'), apiModel('anthropic', 'claude-b'),
+    ])
+    const dialog = await openModelPage()
+    const category = () => dialog.querySelector<HTMLElement>('[data-setcat="model"]')!
+    await editModel('api:openai')
+    expect([selectedRows(), modelName(dialog), cancelButton(dialog) !== undefined]).toEqual([['api:openai'], 'gpt-a', true])
+
+    await act(async () => { category().click() })
+    expect([selectedRows(), modelName(dialog), cancelButton(dialog)]).toEqual([[], '', undefined])
+    expect(category().classList.contains('on')).toBe(true)
+    await act(async () => { category().click() })
+    expect([selectedRows(), modelName(dialog), cancelButton(dialog)]).toEqual([[], '', undefined])
+  })
 
   it('模型页的右栏自己不滚：标题和表单留在上面，表单下的模型列表占满剩下的高度，放不下时只在列表里滚', async () => {
     core.seed([officialProfile('openai', '1111'), officialProfile('anthropic', '2222')], [

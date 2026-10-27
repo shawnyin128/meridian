@@ -61,12 +61,18 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   expect(await shown(win).locator('.section-heading').allTextContents())
     .toEqual([...kinds.map((k) => k.label), '论文'])
 
-  // One grid per aggregation kind, holding only its root pages, with footer counts from the contract.
-  for (const [at, kind] of kinds.entries()) {
-    const cards = shown(win).locator('.wkgrid').nth(at).locator('.wkcard')
+  // One grid per aggregation kind, holding only its root pages, the first page of them when it pages,
+  // with footer counts from the contract.
+  for (const kind of kinds) {
+    const grid = shown(win).locator(`.wkgrid[data-stack-section="${kind.key}"]`)
+    const cards = grid.locator('.wkcard')
     const roots = home.roots.filter((c) => c.kind === kind.key)
-    expect(await cards.locator('.tt').allTextContents()).toEqual(roots.map((c) => c.title))
-    expect(await cards.locator('.wf').allTextContents()).toEqual(roots.map(foot))
+    const count = await cards.count()
+    expect(count).toBeGreaterThan(0)
+    expect(await cards.locator('.tt').allTextContents()).toEqual(roots.slice(0, count).map((c) => c.title))
+    expect(await cards.locator('.wf').allTextContents()).toEqual(roots.slice(0, count).map(foot))
+    if (count < roots.length) await expect(grid.locator('+ .pagebar .pginfo')).toHaveText(`共 ${roots.length} 条`)
+    else await expect(grid.locator('+ .pagebar')).toHaveCount(0)
   }
 
   // The centering rule applies to direct children: the grid is centered, not flush against the padding.
@@ -74,8 +80,55 @@ test('侧栏「Wiki」进 wiki 屏:标题与角标都是聚合总数,分节只�
   const body = (await shown(win).locator('.desk-body').boundingBox())!
   expect(grid.x).toBeGreaterThan(body.x + 24)
 
-  // Papers are paginated, and the pager's total is the number of papers in the whole vault.
-  await expect(shown(win).locator('.pginfo')).toHaveText(`共 ${await paperTotal(win)} 条`)
+  // Papers page in their own section, and its pager's total is the number of papers in the whole vault.
+  await expect(shown(win).locator('.wkgrid[data-stack-section="papers"] + .pagebar .pginfo')).toHaveText(`共 ${await paperTotal(win)} 条`)
+  await expect(shown(win).locator('.desk-foot .pagebar')).toHaveCount(0)
+})
+
+test.describe('窗口改变高度时的 Wiki 首页', () => {
+  // The rows refit only after the resized window repaints, so the window shows; see `showWindow` in app.ts.
+  test.use({ showWindow: true })
+
+  test('首页的主题、方法与论文各自翻页,几节一起填满一屏;翻一节不动别的节,也不挪下面的节', async ({ win, app }) => {
+    await gotoWiki(win)
+    const body = shown(win).locator('.desk-body')
+    await shown(win).locator('.wkgrid[data-stack-section="papers"] .wkcard').first().waitFor()
+    const layout = () => body.evaluate((el) => {
+      const grids = [...el.querySelectorAll<HTMLElement>('.list[data-stack-section]')]
+      const end = (grid: HTMLElement) => (grid.nextElementSibling?.classList.contains('pagebar') ? grid.nextElementSibling : grid)
+      const card = grids.at(-1)!.querySelector('.item')!.getBoundingClientRect().height
+      const style = getComputedStyle(el)
+      return {
+        scrolls: el.scrollHeight > el.clientHeight,
+        // What the body shows below the last section, which must be less than one more row of cards.
+        left: el.getBoundingClientRect().top + el.clientHeight - parseFloat(style.paddingBottom) - end(grids.at(-1)!).getBoundingClientRect().bottom,
+        card,
+        tops: grids.map((grid) => Math.round(grid.getBoundingClientRect().top)),
+        firsts: grids.map((grid) => grid.querySelector('.item')?.getAttribute('data-wk')),
+      }
+    })
+    for (const height of [900, 1117]) {
+      await app.evaluate(({ BrowserWindow }, h) => BrowserWindow.getAllWindows()[0]!.setContentSize(1440, h), height)
+      await expect.poll(async () => (await layout()).scrolls).toBe(false)
+      const at = await layout()
+      console.log(`Wiki 首页 1440×${height}:各节卡片 ${JSON.stringify(at.firsts)},最后一节下面空 ${Math.round(at.left)}px`)
+      expect(at.left).toBeLessThan(at.card + 24)
+    }
+
+    // Page the uppermost section that pages: only its cards change, and no section below it moves,
+    // even when its last page holds fewer cards.
+    const paged = shown(win).locator('.list[data-stack-section]:has(+ .pagebar)').first()
+    const key = await paged.getAttribute('data-stack-section')
+    const before = await layout()
+    const at = (await shown(win).locator('.list[data-stack-section]').evaluateAll((grids) => grids.map((g) => g.getAttribute('data-stack-section')))).indexOf(key)
+    const last = Number(await paged.locator('+ .pagebar .pgbtn').last().innerText())
+    await paged.locator('+ .pagebar .pgbtn', { hasText: new RegExp(`^${last}$`) }).click()
+    await expect(paged.locator('+ .pagebar .pgbtn.on')).toHaveText(String(last))
+    const after = await layout()
+    expect(after.firsts.filter((_, i) => i !== at)).toEqual(before.firsts.filter((_, i) => i !== at))
+    expect(after.firsts[at]).not.toBe(before.firsts[at])
+    expect(after.tops).toEqual(before.tops)
+  })
 })
 
 test('实体类型标签是中性的标签底:聚合和论文同一种底色', async ({ win }) => {
@@ -210,9 +263,13 @@ test('首页论文卡进论文页;个人理解与 Wiki 内容分层,没内化的
   await expect(shown(win).locator('.desk-head .t')).toHaveText(paper.short)
   expect(paper.body).toBe('')
   await expect(shown(win).locator('.paper-understanding')).toBeVisible()
-  await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容编辑'])
-  await expect(shown(win).locator('.wkmain > .empty-state')).toHaveText('—')
-  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
+  await expect(shown(win).locator('.wkmain .section-heading')).toHaveText(['个人理解', 'Wiki 内化内容'])
+  await expect(shown(win).locator('.wkmain > .md > .empty-state')).toHaveText('—')
+  // An empty body is written by clicking its empty row, which opens the editor in its place.
+  await shown(win).locator('.wkmain > .md > .empty-state').click()
+  await expect(shown(win).locator('.wkmain .md.src .cm-content')).toBeFocused()
+  await win.keyboard.press('Escape')
+  await expect(shown(win).locator('.wkmain .md.src')).toHaveCount(0)
   await expect(shown(win).locator('.split-rail .empty-state')).toHaveText('—')
   // "View in the paper list" goes to Papers with the title in the filter box. In the fixture, QuaRot and
   // SpinQuant each have a same-named paper page copied from an old vault, so the filtered row count can
@@ -229,14 +286,21 @@ test('论文页的属性里年份与发表分两行,各写各的', async ({ win 
   await gotoWiki(win)
   const cards = shown(win).locator('.wkgrid').last().locator('.wkcard')
   await cards.first().waitFor()
-  // The home page shows 12 papers per page by default, sorted by title, and the arXiv-numbered fixtures
-  // with a year and venue are not on the first page; the largest page size is sure to include one.
-  await shown(win).locator('.pagebar .segmented-control>button', { hasText: '48 / 页' }).click()
-  await expect(cards).toHaveCount(48)
-  const ids = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-wk')!))
+  // The home page sorts papers by title, and the arXiv-numbered fixtures with a year and venue are not
+  // on the first page; turn the papers' pages until one shows.
   // arXiv-numbered papers come from fixtures with a year and venue, so both rows have a value to compare.
-  const id = ids.find((wk) => /^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length)))!
-  expect(id).toBeDefined()
+  const arxiv = (wk: string) => /^\d{4}\.\d{5}$/.test(wk.slice(PAPER_PAGE.length))
+  let id: string | undefined
+  for (let turn = 0; id === undefined; turn++) {
+    expect(turn, '翻完了论文的每一页也没有 arXiv 编号的论文').toBeLessThan(100)
+    const before = await cards.first().getAttribute('data-wk')
+    const ids = await cards.evaluateAll((els) => els.map((el) => el.getAttribute('data-wk')!))
+    id = ids.find(arxiv)
+    if (id === undefined) {
+      await shown(win).locator('.wkgrid[data-stack-section="papers"] + .pagebar [aria-label="下一页"]').click()
+      await expect(cards.first()).not.toHaveAttribute('data-wk', before!)
+    }
+  }
   const paper = await call<{ title: string; year?: number; venue: string }>(win, 'wiki.paper', { id })
   expect(paper.year).toBeDefined()
   expect(paper.venue).not.toBe('')
@@ -253,7 +317,7 @@ test('论文页右栏的多行和单行值进入编辑时,编辑框整个露在�
   await gotoWiki(win)
   await shown(win).locator('.wkgrid').last().locator('.wkcard').first().click()
   const side = shown(win).locator('.split-rail')
-  for (const key of ['标题', '年份']) {
+  for (const key of ['作者', '年份']) {
     const field = side.locator(`.property-label:text-is("${key}") + .property-value > .metadata-field`)
     const value = field.locator('.metadata-editable')
     const before = await textBox(value)
@@ -284,10 +348,6 @@ test('项目详情的关联 chip 也进对应的聚合页', async ({ win }) => {
 })
 
 test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win, app }) => {
-  // Lower the window so this page really scrolls. Set the content height, not the outer frame: in a
-  // frameless window the two differ only by a 1px border, and this test's premise, "the first heading is
-  // above the viewport", measures the content area, so setting it directly keeps it from drifting.
-  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1200, 340))
   const agg = await aggFromCore(win, 'topics/ptq-weight-only')
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
@@ -295,6 +355,11 @@ test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win,
   await shown(win).locator('[data-wk="topics/ptq-weight-only"]').click()
   // The page renders only after its data arrives; wait for it before reading the table of contents.
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
+  // Lower the window once on the page, so it really scrolls; on the way there, a window this low pages
+  // each subdivision grid down to one row. Set the content height, not the outer frame: in a frameless
+  // window the two differ only by a 1px border, and this test's premise, "the first heading is above the
+  // viewport", measures the content area, so setting it directly keeps it from drifting.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1200, 340))
 
   const heads = agg.body.split('\n').filter((l) => /^#{1,3}\s/.test(l)).map((l) => l.replace(/^#+\s+/, ''))
   expect(heads.length).toBeGreaterThan(1)
@@ -315,16 +380,17 @@ test('右栏目录列正文的标题,点一条把它滚进视口', async ({ win,
   expect(y).toBeLessThan(top + 60)
 })
 
-test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdown 渲染,目录跟着;撤销后恢复', async ({ win }) => {
+test('点正文就在原处换成实时编辑器,「保存」后按 markdown 渲染,目录跟着;撤销后恢复', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
-  const box = shown(win).locator('.md.src')
-  await expect(box).toBeFocused()
-  await expect(box).toHaveText(before)
-  await box.press('Control+End')
-  await box.pressSequentially('\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。')
+  const body = shown(win).locator('.wkmain > .md').last()
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(0)
+  await body.locator('p').first().click()
+  const editor = shown(win).locator('.md.src .cm-content')
+  await expect(editor).toBeFocused()
+  await win.keyboard.press('ControlOrMeta+End')
+  await win.keyboard.type('\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。')
   await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '保存' }).click()
 
   await expect(shown(win).locator('.wkmain .md h2', { hasText: '端到端加的一节' })).toHaveCount(1)
@@ -332,7 +398,7 @@ test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdo
   await expect(shown(win).locator('.wkmain .md .katex')).toHaveCount(1)
   await expect(shown(win).locator('.wktoc li', { hasText: '端到端加的一节' })).toHaveCount(1)
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
-  expect((await aggFromCore(win, 'topics/quantization')).body).toContain('## 端到端加的一节')
+  expect((await aggFromCore(win, 'topics/quantization')).body).toBe(`${before}\n\n## 端到端加的一节\n\n一句 **加粗** 的话,公式 $x^2$。`.trim())
 
   const changes = await call<{ id: string; title: string; undoable: boolean }[]>(win, 'changelog.list', {})
   expect(changes[0]).toMatchObject({ title: 'Wiki · 「Quantization」· 改了正文', undoable: true })
@@ -345,15 +411,35 @@ test('正文抬头的「编辑」把正文换成原文,「保存」后按 markdo
   expect((await aggFromCore(win, 'topics/quantization')).body).toBe(before)
 })
 
+test('点到正文外面就存下改动;没改就只收起,什么也不写', async ({ win }) => {
+  await gotoWiki(win)
+  await shown(win).locator('[data-wk="topics/quantization"]').click()
+  const before = (await aggFromCore(win, 'topics/quantization')).body
+  const changes = (await call<unknown[]>(win, 'changelog.list', {})).length
+  const body = shown(win).locator('.wkmain > .md').last()
+  await body.locator('p').first().click()
+  await shown(win).locator('.wkpage .section-heading--group', { hasText: '属性' }).click()
+  await expect(shown(win).locator('.md.src')).toHaveCount(0)
+  expect(await call<unknown[]>(win, 'changelog.list', {})).toHaveLength(changes)
+
+  await body.locator('p').first().click()
+  await win.keyboard.press('ControlOrMeta+End')
+  await win.keyboard.type('\n\n点外面存下的一句。')
+  await shown(win).locator('.wkpage .section-heading--group', { hasText: '属性' }).click()
+  await expect(shown(win).locator('.md.src')).toHaveCount(0)
+  await expect(body).toContainText('点外面存下的一句。')
+  expect((await aggFromCore(win, 'topics/quantization')).body).toBe(`${before}\n\n点外面存下的一句。`.trim())
+})
+
 test('Esc 放弃这一次编辑,正文照旧', async ({ win }) => {
   await gotoWiki(win)
   await shown(win).locator('[data-wk="topics/quantization"]').click()
   const before = (await aggFromCore(win, 'topics/quantization')).body
-  await shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' }).click()
-  await shown(win).locator('.md.src').pressSequentially('改了又不要')
+  await shown(win).locator('.wkmain > .md').last().locator('p').first().click()
+  await shown(win).locator('.md.src .cm-content').pressSequentially('改了又不要')
   await win.keyboard.press('Escape')
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
-  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '编辑' })).toHaveCount(1)
+  await expect(shown(win).locator('.wkmain .section-heading-actions > .btn:not(.add-action)', { hasText: '保存' })).toHaveCount(0)
   expect((await aggFromCore(win, 'topics/quantization')).body).toBe(before)
 })
 

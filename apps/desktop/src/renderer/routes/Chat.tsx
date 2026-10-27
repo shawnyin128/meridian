@@ -34,7 +34,7 @@ import { useModelStatus } from '../hooks/useModelStatus.js'
 import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
-import { CONFLICT_THREAD } from '../lib/chat.js'
+import { CHAT_TITLE_RENAME, CONFLICT_THREAD } from '../lib/chat.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { BackButton } from '../components/BackButton.js'
 import { FadeText } from '../components/FadeText.js'
@@ -88,7 +88,7 @@ function mentionsOf(
 export function Chat() {
   const fmt = useFormat()
   const m = useMessages()
-  const { id, title, archived, select } = useChatSession()
+  const { id, title, archived, paper, select } = useChatSession()
   const { jump, open } = useJump()
   const { origin, back } = useJumpOrigin()
   const { revision, bump } = useVaultRevision()
@@ -184,7 +184,13 @@ export function Chat() {
     <PageShell className="chatcol">
       <PageHeader>
         {origin === null ? null : <BackButton onClick={back} />}
-        <PageTitle label={title === null ? undefined : plainTitle(title)}>
+        <PageTitle
+          label={title === null ? undefined : plainTitle(title)}
+          rename={id === null || title === null || paper ? undefined : {
+            label: m.chat.nameFieldLabel, value: title, keep: { scope: ['chat', id], target: CHAT_TITLE_RENAME },
+            onSave: (next) => write(chat.rename(id, next)),
+          }}
+        >
           {title === null ? m.chat.newChat : <PaperText text={title} />}
         </PageTitle>
       </PageHeader>
@@ -215,7 +221,7 @@ export function Chat() {
               : (
                 <div className="mwrap" ref={ideaSlot.slot}>
                   <IdeaDraft
-                    source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
+                    key={id} source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
                     onChange={(next) => ideaDrafts.set('idea', next)} onCancel={() => ideaDrafts.drop('idea')}
                     onSave={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
                       note: m.chat.ideaSavedNote,

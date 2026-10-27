@@ -7,8 +7,18 @@ import type { Line, MarkdownConfig } from '@lezer/markdown'
 import { GFM, parser } from '@lezer/markdown'
 import type { WidgetSlots } from './widget-slots.js'
 
-/** One block of the source, line-aligned: `from` starts its first line and `to` ends its last. */
-export type MarkdownBlock = { from: number; to: number }
+/**
+ * The space the read view leaves above a block: `none` for the first block and between two items of
+ * one list, `tight` under a heading, `wide` above a heading or a rule and under a rule, and `block`
+ * between any other two blocks.
+ */
+export type BlockSpace = 'none' | 'tight' | 'block' | 'wide'
+
+/**
+ * One block of the source, line-aligned: `from` starts its first line and `to` ends its last.
+ * `space` is the space the read view leaves above it.
+ */
+export type MarkdownBlock = { from: number; to: number; space: BlockSpace }
 
 /**
  * The length of the `$` run that starts `line` when the line is a display-formula fence as
@@ -62,7 +72,17 @@ export function markdownBlocks(doc: Text): MarkdownBlock[] {
     if (node.name === 'BulletList' || node.name === 'OrderedList') nodes.push(...node.getChildren('ListItem'))
     else nodes.push(node)
   }
-  return nodes.map((node) => ({ from: doc.lineAt(node.from).from, to: doc.lineAt(node.to).to }))
+  const heading = (node: SyntaxNode) => /Heading\d$/.test(node.name)
+  const rule = (node: SyntaxNode) => node.name === 'HorizontalRule'
+  const spaceAbove = (node: SyntaxNode, before: SyntaxNode | undefined): BlockSpace => {
+    if (before === undefined) return 'none'
+    if (heading(node) || rule(node) || rule(before)) return 'wide'
+    if (heading(before)) return 'tight'
+    return node.name === 'ListItem' && before.parent?.from === node.parent?.from ? 'none' : 'block'
+  }
+  return nodes.map((node, at) => ({
+    from: doc.lineAt(node.from).from, to: doc.lineAt(node.to).to, space: spaceAbove(node, nodes[at - 1]),
+  }))
 }
 
 /** The blocks that render under `selection`: those no selection range touches. The rest show their source. */
@@ -70,15 +90,39 @@ export function renderedBlocks(blocks: readonly MarkdownBlock[], selection: Edit
   return blocks.filter((block) => !selection.ranges.some((range) => range.from <= block.to && range.to >= block.from))
 }
 
-/** A rendered block in the editor: an empty element that `slots` fills with the rendering of `source`. */
-class RenderedBlock extends WidgetType {
-  constructor(readonly source: string, readonly slots: WidgetSlots) { super() }
+/**
+ * The start of every blank line of `doc` that collapses under `selection`: a line holding only
+ * whitespace that lies in none of `blocks` and that no selection range touches.
+ */
+export function collapsedLines(doc: Text, blocks: readonly MarkdownBlock[], selection: EditorSelection): number[] {
+  const starts: number[] = []
+  for (let number = 1; number <= doc.lines; number += 1) {
+    const line = doc.line(number)
+    if (line.text.trim() !== '' || blocks.some((block) => block.from <= line.from && line.to <= block.to)) continue
+    if (!selection.ranges.some((range) => range.from <= line.to && range.to >= line.from)) starts.push(line.from)
+  }
+  return starts
+}
 
-  override eq(other: RenderedBlock): boolean { return other.source === this.source }
+/** The look of a collapsed blank line, which takes no height. */
+const collapsed = Decoration.line({ class: 'md-gap' })
+
+/** The look of the first line of a block that shows its source, which leaves the block's space above it. */
+const spaced = (space: BlockSpace) => Decoration.line({ attributes: { 'data-space': space } })
+
+/**
+ * A rendered block in the editor: an empty element that `slots` fills with the rendering of
+ * `source`, leaving `space` above it.
+ */
+class RenderedBlock extends WidgetType {
+  constructor(readonly source: string, readonly space: BlockSpace, readonly slots: WidgetSlots) { super() }
+
+  override eq(other: RenderedBlock): boolean { return other.source === this.source && other.space === this.space }
 
   toDOM(): HTMLElement {
     const dom = document.createElement('div')
     dom.className = 'md-block'
+    dom.dataset.space = this.space
     this.slots.add(dom, this.source)
     return dom
   }
@@ -115,7 +159,9 @@ function stepOntoBlock(blocks: StateField<MarkdownBlock[]>, forward: boolean): C
 
 /**
  * Live preview for a Markdown source editor: every block of `markdownBlocks` that `renderedBlocks`
- * keeps shows rendered in place of its lines, through an element handed to `slots`.
+ * keeps shows rendered in place of its lines, through an element handed to `slots`. Every block,
+ * rendered or not, leaves its `space` above it, and every blank line of `collapsedLines` takes no
+ * height, so the blocks stand as far apart as they do when read.
  */
 export function livePreview(slots: WidgetSlots): Extension {
   const blocks = StateField.define<MarkdownBlock[]>({
@@ -125,10 +171,17 @@ export function livePreview(slots: WidgetSlots): Extension {
   return [
     blocks,
     // Blocks that replace whole lines must come straight from the state, not from a view plugin.
-    EditorView.decorations.compute([blocks, 'selection'], (state) => Decoration.set(
-      renderedBlocks(state.field(blocks), state.selection).map(({ from, to }) =>
-        Decoration.replace({ widget: new RenderedBlock(state.sliceDoc(from, to), slots), block: true }).range(from, to)),
-    )),
+    EditorView.decorations.compute([blocks, 'selection'], (state) => {
+      const all = state.field(blocks)
+      const rendered = renderedBlocks(all, state.selection)
+      return Decoration.set([
+        ...all.map((block) => (rendered.includes(block)
+          ? Decoration.replace({ widget: new RenderedBlock(state.sliceDoc(block.from, block.to), block.space, slots), block: true })
+            .range(block.from, block.to)
+          : spaced(block.space).range(block.from))),
+        ...collapsedLines(state.doc, all, state.selection).map((from) => collapsed.range(from)),
+      ], true)
+    }),
     Prec.high(keymap.of([
       { key: 'ArrowUp', run: stepOntoBlock(blocks, false) },
       { key: 'ArrowDown', run: stepOntoBlock(blocks, true) },

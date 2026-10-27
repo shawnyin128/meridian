@@ -5,6 +5,8 @@ export const wiki = {
   paperKind: '论文',
   autoColumn: '自动',
   columnSettings: '列设置',
+  mergeInto: '合并到',
+  merge: { done: '已合并' },
   aggregation: {
     parentCount: (n: number) => `${n} 个上级`,
     cardFooter: (children: number | null, members: number, updated: string) =>
@@ -23,6 +25,7 @@ export const wiki = {
     addPaper: (paper: string, parent: string) => `把 ${paper} 加进 ${parent}`,
     moveOutPaper: (paper: string, parent: string) => `把 ${paper} 从 ${parent} 移出`,
     editMetadata: (title: string) => `修改 ${title} 的元数据`,
+    rename: (from: string, to: string) => `把 ${from} 改名为 ${to}`,
   },
   title: 'Wiki',
   subdivisionsHeading: (kind: string) => `细分${kind}`,
@@ -31,7 +34,6 @@ export const wiki = {
   addPaperTitle: '添加论文',
   kindNamePlaceholder: (kind: string) => `${kind}名称`,
   nameFieldLabel: 'Wiki 名称',
-  nameRequired: 'Wiki 名称不能为空',
   scaleLabel: '规模',
   scaleSummary: (members: number, children: number) =>
     `${members} 篇${children > 0 ? ` · ${children} 细分` : ''}`,
@@ -40,7 +42,6 @@ export const wiki = {
   belongsTo: '属于',
   internalizedContent: 'Wiki 内化内容',
   titleLabel: '标题',
-  titleRequired: '标题不能为空',
   shortTitleLabel: '短标题',
   authorsLabel: '作者',
   yearLabel: '年份',
@@ -212,8 +213,8 @@ export const wiki = {
     experiment: '实验',
     conflict: '冲突',
     actionsLabel: (text: string) => `结论「${text}」的操作`,
-    revise: '修订…',
-    markConflict: '标记冲突…',
+    revise: '修订',
+    markConflict: '标记冲突',
     resolve: '处理冲突',
     retract: '撤回',
     done: { retract: '已撤回' },

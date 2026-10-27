@@ -23,7 +23,7 @@ describe('TabbedSection', () => {
       />,
     )
     const [heading, panel] = [...host.children]
-    expect(heading!.className).toBe('section-heading section-heading--section')
+    expect(heading!.className).toBe('section-heading section-heading--section tabbed-section-heading')
     expect(heading!.firstChild!.textContent).toBe('科研记录')
     expect([...heading!.querySelector(':scope > .section-heading-actions')!.children].map((child) => child.className))
       .toEqual(['segmented-control segmented-control--sm', 'add-action'])

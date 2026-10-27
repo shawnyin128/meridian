@@ -9,7 +9,7 @@
 .author-search-error{flex:1}
 .author-resolver-actions{display:flex;justify-content:flex-end;padding:var(--sp-8) var(--sp-4) 1px;border-top:1px solid var(--sep2)}
 
-.watch-suggestion-source{margin-bottom:var(--sp-8)}
+.watch-suggestion-source{margin-bottom:var(--item-gap)}
 .af-in{display:flex;gap:var(--sp-8)}
 .af-in .form-control{flex:1;width:auto}
 .af-in>.btn{flex-shrink:0}

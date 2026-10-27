@@ -4,6 +4,7 @@ import { createServer, type Socket } from 'node:net'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { z } from 'zod'
+import type { CoreLogLevel } from '../../core-log.js'
 import type { VaultStore } from '../../vault.js'
 import { type VaultToolScope, type VaultTools, vaultTools } from './vault-tools.js'
 
@@ -44,7 +45,7 @@ type Reply = { jsonrpc: '2.0'; id: string | number | null } & ({ result: unknown
 const failure = (id: string | number | null, code: number, message: string): Reply => ({ jsonrpc: '2.0', id, error: { code, message } })
 
 /** Core's answer to one MCP message `line` from the run's CLI, null for a notification. */
-async function answer(tools: VaultTools, line: string, onLog?: (line: string) => void): Promise<Reply | null> {
+async function answer(tools: VaultTools, line: string, onLog?: (level: CoreLogLevel, line: string) => void): Promise<Reply | null> {
   let parsed: unknown
   try {
     parsed = JSON.parse(line)
@@ -73,10 +74,10 @@ async function answer(tools: VaultTools, line: string, onLog?: (line: string) =>
   if (call === null) return failure(id, -32602, `Unknown tool: ${String(name)}`)
   try {
     const done = await call
-    onLog?.(`vault ${String(name)}: ${done.isError ? 'refused' : 'answered'}, ${done.text.length} characters`)
+    onLog?.('info', `vault ${String(name)}: ${done.isError ? 'refused' : 'answered'}, ${done.text.length} characters`)
     return result({ content: [{ type: 'text', text: done.text }], isError: done.isError })
   } catch (cause) {
-    onLog?.(`vault ${String(name)} failed: ${cause instanceof Error ? cause.message : String(cause)}`)
+    onLog?.('error', `vault ${String(name)} failed: ${cause instanceof Error ? cause.message : String(cause)}`)
     return failure(id, -32603, 'Internal error')
   }
 }
@@ -155,7 +156,7 @@ export function createInternalMcp(deps: {
   store: VaultStore
   server?: InternalMcpServer
   platform?: NodeJS.Platform
-  onLog?: (line: string) => void
+  onLog?: (level: CoreLogLevel, line: string) => void
 }): InternalMcpOpener {
   const server = deps.server ?? {
     command: process.execPath,

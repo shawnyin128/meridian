@@ -41,17 +41,11 @@ components/chat/Chat.css:36: .chat-composer .cm-placeholder { overflow }
 components/chat/Chat.css:36: .chat-composer .cm-placeholder { text-overflow }
 components/ideas/IdeaDraft.css:1: .idea-draft-source { color }
 components/ideas/IdeaDraft.css:1: .idea-draft-source { font-size }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { margin }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { margin }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { color }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { color }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { font-size }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { font-size }
-components/ideas/IdeaPanel.css:3: .idea-panel-body { line-height }
 components/ideas/IdeaPanel.css:3: .idea-panel-source { line-height }
-components/ideas/IdeaPanel.css:4: .idea-panel-body { white-space }
 components/ideas/IdeaPanel.css:4: .idea-panel-source { white-space }
-components/ideas/IdeaPanel.css:4: .idea-panel-body { overflow-wrap }
 components/ideas/IdeaPanel.css:4: .idea-panel-source { overflow-wrap }
 components/ideas/IdeaPanel.css:5: .idea-panel-source { font-size }
 components/ideas/IdeaPanel.css:6: .idea-panel-source-gone { margin-left }
@@ -502,28 +496,26 @@ routes/Ideas.css:17: .idea-rows { grid-template-columns }
 routes/Ideas.css:19: .idea-row { display }
 routes/Ideas.css:19: .idea-row { grid-template-columns }
 routes/Ideas.css:19: .idea-row { align-items }
-routes/Ideas.css:31: .idea-detail-editor { margin-top }
-routes/Ideas.css:32: .idea-detail-editor .form-textarea { min-height }
-routes/Ideas.css:34: .idea-missing-project { margin-top }
+routes/Ideas.css:32: .idea-missing-project { margin-top }
 routes/ProjectDetail.css:4: .project-ideas { display }
 routes/ProjectDetail.css:5: .project-idea-row { display }
 routes/ProjectDetail.css:5: .project-idea-row { grid-template-columns }
 routes/ProjectDetail.css:5: .project-idea-row { align-items }
 routes/ProjectDetail.css:5: .project-idea-row { gap }
 routes/ProjectDetail.css:8: @media (max-width:900px) .project-idea-row { grid-template-columns }
-routes/ProjectDetail.css:17: .wkpage.node-reading { gap }
-routes/ProjectDetail.css:21: @media (max-width:1150px) .wkpage.node-reading { gap }
-routes/ProjectDetail.css:26: .workspace-root { border }
-routes/ProjectDetail.css:26: .workspace-root { background }
-routes/ProjectDetail.css:26: .workspace-root { color }
-routes/ProjectDetail.css:26: .workspace-root { font }
-routes/ProjectDetail.css:26: .workspace-root { text-align }
-routes/ProjectDetail.css:26: .workspace-root { cursor }
-routes/ProjectDetail.css:26: .workspace-root { padding }
-routes/ProjectDetail.css:27: .workspace-kinds { margin-bottom }
-routes/ProjectDetail.css:28: .workspace-form .form-input[type="number"] { -moz-appearance }
-routes/ProjectDetail.css:29: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
-routes/ProjectDetail.css:29: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
+routes/ProjectDetail.css:15: .wkpage.node-reading { gap }
+routes/ProjectDetail.css:19: @media (max-width:1150px) .wkpage.node-reading { gap }
+routes/ProjectDetail.css:24: .workspace-root { border }
+routes/ProjectDetail.css:24: .workspace-root { background }
+routes/ProjectDetail.css:24: .workspace-root { color }
+routes/ProjectDetail.css:24: .workspace-root { font }
+routes/ProjectDetail.css:24: .workspace-root { text-align }
+routes/ProjectDetail.css:24: .workspace-root { cursor }
+routes/ProjectDetail.css:24: .workspace-root { padding }
+routes/ProjectDetail.css:25: .workspace-kinds { margin-bottom }
+routes/ProjectDetail.css:26: .workspace-form .form-input[type="number"] { -moz-appearance }
+routes/ProjectDetail.css:27: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
+routes/ProjectDetail.css:27: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
 routes/Projects.css:12: .project-card-label { color }
 routes/Projects.css:12: .project-card-label { font-size }
 routes/Projects.css:12: .project-card-label { font-weight }

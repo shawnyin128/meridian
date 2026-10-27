@@ -65,14 +65,14 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         {
             "name": "meridian.read",
             "workflow": "Use Wiki",
-            "summary": "Read one wiki page: frontmatter (memberships, claims), body, and generated regions.",
+            "summary": "Read one wiki page: frontmatter (memberships, findings in `claims`), body, and generated regions.",
             "inputs": ["page", "wiki_root", "sections", "max_chars"],
             "outputs": ["frontmatter", "generated", "body", "version"],
         },
         {
             "name": "meridian.trace",
             "workflow": "Use Wiki",
-            "summary": "Trace a page's links: parents/children/members/memberships, claim evidence and conflicts.",
+            "summary": "Trace a page's links: parents/children/members/memberships, finding evidence and conflicts.",
             "inputs": ["page", "wiki_root", "max_chars"],
             "outputs": ["parents", "children", "members", "memberships", "claims", "version", "warnings"],
         },
@@ -80,7 +80,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "name": "meridian.wiki_propose",
             "workflow": "Update Wiki",
             "summary": (
-                "Propose a conclusion a project found and summarised, as claim ops. "
+                "Propose a finding from a project's experiment conclusion, as claim ops. "
                 "The user reviews it in the App; this tool never writes wiki content directly."
             ),
             "inputs": ["ops", "title", "trigger", "rationale", "wiki_root"],
@@ -96,7 +96,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
         {
             "name": "meridian.audit",
             "workflow": "Update Wiki",
-            "summary": "Read the App's deterministic wiki signals (lint findings), computed by Core.",
+            "summary": "Read the App's deterministic wiki signals (lint results), computed by Core.",
             "inputs": ["wiki_root", "scope"],
             "outputs": ["generated_at", "signals"],
         },
@@ -197,7 +197,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "workflows": ["Update Wiki", "Use Wiki", "Project Workspace", "Lab"],
             "source_of_truth": (
                 "The Meridian App owns paper ingest, aggregation structure, and every wiki write. "
-                "Coding agents only read the wiki and propose conclusions for review."
+                "Coding agents only read the wiki and propose findings for review."
             ),
         },
         "context_contract": CONTEXT_SCHEMA_VERSION,
@@ -595,7 +595,7 @@ def call_chain_error_payload(exc: Exception) -> dict[str, Any]:
             "status": "error",
             "error_code": "invalid_proposal",
             "message": str(exc),
-            "next_action": "Fix the claim op and resubmit; agents may only submit the six claim ops.",
+            "next_action": "Fix the proposed finding and resubmit; agents may only submit the six claim ops.",
         }
     if isinstance(exc, WorkspaceProtocolError):
         return {

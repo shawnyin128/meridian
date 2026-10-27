@@ -1,6 +1,7 @@
 /** chat screen copy. */
 export const chat = {
   newChat: '新对话',
+  nameFieldLabel: '对话名称',
   saveIdeaLabel: '保存为想法',
   mentionGroup: { project: '项目', paper: '论文', page: 'Wiki' },
   conflictTitle: '结论冲突',
@@ -17,7 +18,7 @@ export const chat = {
   sourcePicker: (source: string) => `服务来源：${source}`,
   defaultMark: '默认',
   modelPicker: (model: string) => `模型：${model}`,
-  modelSettings: '模型设置…',
+  modelSettings: '模型设置',
   effortPicker: (level: string) => `推理强度：${level}`,
   effortDefault: '默认',
   expandPaperChat: '展开论文对话',

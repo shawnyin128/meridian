@@ -10,9 +10,9 @@ A release raises exactly one position and resets every position to its right to 
 
 | Position | Name | Raise it when | Compatibility | Example |
 |---|---|---|---|---|
-| X | Major | The architecture is rebuilt, the core direction changes, or a change breaks backward compatibility. | Breaking | `v0.4.2.1` → `v1.0.0.0` |
-| Y | Minor (baseline) | A complete new module or feature lands. Every Y release is a baseline. | Compatible | `v0.1.3.2` → `v0.2.0.0` |
-| Z | Iteration | Everyday improvements: refinements, small adjustments, experience polish. | Compatible | `v0.1.3.2` → `v0.1.4.0` |
+| X | Major | Only a major change: the architecture is rebuilt, the core direction changes, or backward compatibility breaks. The first stable release, `v1.0.0.0`, is one. | Breaking | `v0.4.2.1` → `v1.0.0.0` |
+| Y | Feature bundle (baseline) | Many feature versions have accumulated and proven stable in use, with no open problems; a Y release bundles them. Every Y release is a baseline. | Compatible | `v1.0.3.2` → `v1.1.0.0` |
+| Z | Feature | A new feature or an improvement ships, small or large, a new module included. | Compatible | `v0.1.3.2` → `v0.1.4.0` |
 | F | Fix | Pure bug fixes, with no new functionality. At most two digits (0–99). | Compatible | `v0.1.3.2` → `v0.1.3.3` |
 
 Examples:
@@ -20,8 +20,8 @@ Examples:
 - Research records show the wrong order → a bug → `v0.0.14.1` becomes `v0.0.14.2`.
 - Tasks can be dragged to reorder → an improvement to an existing screen → `v0.0.14.2` becomes
   `v0.0.15.0`.
-- The Wiki gains structured conclusions with versions and conflicts, a complete new module → it
-  belongs to the next baseline, `v0.1.0.0`.
+- The Wiki gains structured conclusions with versions and conflicts, a new module → a feature →
+  the next Z version. It reaches a baseline with the next Y bundle once it has proven stable.
 
 ### How the number is stored
 
@@ -32,7 +32,7 @@ The app's updater and packager accept only three-part semver, so a release is st
 |---|---|
 | `v0.0.14.1` | `0.0.14001` (tag `v0.0.14001`) |
 | `v0.0.15.0` | `0.0.15000` (tag `v0.0.15000`) |
-| `v0.1.0.0` | `0.1.0` (tag `v0.1.0`) |
+| `v1.0.0.0` | `1.0.0` (tag `v1.0.0`) |
 
 The app, installer names, release titles and the release badge show the four-part version.
 Releases up to `v0.0.14` predate the scheme and keep their three-part numbers.
@@ -46,7 +46,7 @@ Releases up to `v0.0.14` predate the scheme and keep their three-part numbers.
 | Work on a fix | `fix/vX.Y.Z.F/<module>/<fix-name>` | `fix/v0.0.14.2/desktop/research-record-layout` |
 | Release of a feature version | `feature/vX.Y.Z.0/release` | `feature/v0.0.15.0/release` |
 | Release of a fix version | `fix/vX.Y.Z.F/release` | `fix/v0.0.14.2/release` |
-| Baseline | `baseline/vX.Y.0.0` | `baseline/v0.1.0.0` |
+| Baseline | `baseline/vX.Y.0.0` | `baseline/v1.0.0.0` |
 
 - `<module>` names the area of the codebase: `desktop`, `wiki`, `lab`, `harness`, `plugins`,
   `process` (versioning, CI, repository rules), and so on. `release` is reserved for release
@@ -82,8 +82,10 @@ v0.0.14001 (tag of v0.0.14.1)
 3. `master` always holds the latest baseline and moves only when a baseline is released. The agent
    plugins install from `master`, so they update with baselines.
 
-The first baseline, `v0.1.0.0`, is cut when the owner decides. Until then `master` follows every
-release: it moves to each `v0.0.x` release as soon as it is published.
+The first baseline is the first stable release, `v1.0.0.0`. It comes once the planned feature
+versions are done and the owner has used the App heavily with no major problem, and the release
+channels (section 5) are in place before it. Until then `master` follows every release: it moves to
+each `v0.0.x` release as soon as it is published.
 
 ## 5. Release channels
 

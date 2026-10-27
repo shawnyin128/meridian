@@ -4,6 +4,7 @@ import { z } from 'zod'
 import type { ChatModelChoice, HarnessSourceModels } from '../../shared/contract.js'
 import { HarnessEffortSchema, HarnessSubscriptionModelSchema } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
+import type { CoreLogLevel } from '../core-log.js'
 import { writeJson } from '../vault/writer.js'
 import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 
@@ -28,7 +29,7 @@ export function openChatModels(options: {
   vault: string
   models: Pick<HarnessModelConfig, 'accepts' | 'modelOf'>
   offers: (source: string) => Promise<HarnessSourceModels>
-  onLog?: (line: string) => void
+  onLog?: (level: CoreLogLevel, line: string) => void
 }) {
   const read = (): unknown[] => {
     if (!existsSync(options.file)) return []
@@ -38,12 +39,12 @@ export function openChatModels(options: {
     } catch {
       // Reported below, like a file of another shape.
     }
-    options.onLog?.(`${options.file} cannot be read; every chat runs the default model again`)
+    options.onLog?.('warn', `${options.file} cannot be read; every chat runs the default model again`)
     return []
   }
   let stored = read()
   const unreadable = stored.filter((record) => !ChoiceRecordSchema.safeParse(record).success).length
-  if (unreadable > 0) options.onLog?.(`${options.file}: ${unreadable} chat records cannot be read and are skipped`)
+  if (unreadable > 0) options.onLog?.('warn', `${options.file}: ${unreadable} chat records cannot be read and are skipped`)
 
   const indexOf = (chat: string) => stored.findIndex((record) => {
     const parsed = ChoiceRecordSchema.safeParse(record)

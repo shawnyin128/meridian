@@ -13,10 +13,10 @@
 .rgn-hover{rx:var(--r-card);fill:var(--hover);stroke:none;opacity:0;pointer-events:none}
 .rgn{cursor:pointer}
 :where(.rgn):hover .rgn-hover{opacity:1}
-.rgn.sel .rgn-box{fill:var(--selected)}
+.rgn.sel .rgn-box{fill:var(--accent-soft)}
 /* The label's box lies between the status dot and the node's right edge, and its text fades out when it does not fit. */
 .rgn-label{display:flex;align-items:center;height:100%;font-family:var(--sans);font-size:var(--fs-base);font-weight:var(--fw-medium);color:var(--ink)}
-.rgn.sel .rgn-label{color:var(--on-selected)}
+.rgn.sel .rgn-label{color:var(--accent-text)}
 .rgn .nd,.rgn.unresolved .nd{fill:var(--ter)}
 .rgn.repairable .nd{fill:var(--warn)}
 .rgn.supported .nd{fill:var(--good)}

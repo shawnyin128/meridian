@@ -12,6 +12,8 @@ import { NavSection } from '../components/NavSection.js'
 import { InlineMessage } from '../components/InlineMessage.js'
 import { StatusDot } from '../components/StatusDot.js'
 import { FadeText } from '../components/FadeText.js'
+import { InlineField } from '../components/InlineField.js'
+import { useDrafts } from '../hooks/useDrafts.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useNeighbourFocus } from '../hooks/useNeighbourFocus.js'
@@ -37,6 +39,9 @@ function WatchRow({ watch, count, on, onOpen }: {
   )
 }
 
+/** The draft a chat's rename from its row is kept under, with its chat, so it reopens where it was typed. */
+const ROW_RENAME = 'row-rename'
+
 /** The chat rows of the sidebar's chat list, in order. */
 const chatRows = (list: HTMLElement) => [...list.querySelectorAll<HTMLElement>('[data-chat]')]
 
@@ -46,21 +51,34 @@ function NewDot({ fresh }: { fresh: boolean }) {
 }
 
 /**
- * A chat's row in the sidebar. The "More" button at its end opens a menu with Archive and Delete:
- * the demo's menu also had pin and rename, which this app does not. Archived chats are not in this
- * list; unarchiving is in Settings.
+ * A chat's row in the sidebar. The "More" button at its end opens a menu with Rename, Archive and
+ * Delete; Rename turns the row's title into its inline field in place, saved through `onRename`. A
+ * paper's reading chat is named after its paper, so its menu has no Rename. Archived chats are not in
+ * this list; unarchiving is in Settings.
  */
-function ChatRow({ session, on, onOpen, onArchive, onDelete }: {
-  session: ChatSession; on: boolean; onOpen: () => void; onArchive: () => void; onDelete: () => void
+function ChatRow({ session, on, onOpen, onRename, onArchive, onDelete }: {
+  session: ChatSession; on: boolean; onOpen: () => void; onRename: (title: string) => Promise<boolean>
+  onArchive: () => void; onDelete: () => void
 }) {
   const m = useMessages()
+  const kept = useDrafts<string>(['chat', session.id])
+  const name = <FadeText label={plainTitle(session.title)}><PaperText text={session.title} /></FadeText>
   return (
     <NavRow
       className="chat-row" selected={on} data-chat={session.id} data-row-actions="" onActivate={onOpen}
       icon={<Icon><path d={CHAT_BUBBLE_PATH} /></Icon>}
+      editor={kept.get(ROW_RENAME) === undefined ? undefined : (
+        <InlineField
+          label={m.chat.nameFieldLabel} value={session.title} keep={{ scope: ['chat', session.id], target: ROW_RENAME }}
+          normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename} rest={name} selectAll
+        />
+      )}
       actions={(
         <RowActions>
-          <DotsMenu label={m.shell.sidebar.manageChat(plainTitle(session.title))} stopRowActivation>
+          <DotsMenu
+            label={m.shell.sidebar.manageChat(plainTitle(session.title))} stopRowActivation
+            {...(session.paperId === undefined ? { onRename: () => kept.set(ROW_RENAME, session.title) } : {})}
+          >
             <MenuItem onSelect={onArchive}>{m.shell.sidebar.archive}</MenuItem>
             <MenuSeparator />
             <MenuItem className="mi danger" onSelect={onDelete}>{m.common.delete}</MenuItem>
@@ -68,7 +86,7 @@ function ChatRow({ session, on, onOpen, onArchive, onDelete }: {
         </RowActions>
       )}
     >
-      <FadeText label={plainTitle(session.title)}><PaperText text={session.title} /></FadeText>
+      {name}
     </NavRow>
   )
 }
@@ -119,7 +137,7 @@ function UpdateRow() {
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
   inboxScope, inboxMode, onOpenInbox, watches, inboxWatches, discoveryCount, discoveryProjects, laterCount,
-  chats, chatId, onOpenChat, onNewChat, onArchiveChat, onDeleteChat, grip, collapsed, hidden,
+  chats, chatId, onOpenChat, onNewChat, onRenameChat, onArchiveChat, onDeleteChat, grip, collapsed, hidden,
 }: {
   screen: ScreenKey
   onNavigate: (next: ScreenKey) => void
@@ -142,6 +160,7 @@ export function Sidebar({
   chatId: string | null
   onOpenChat: (id: string) => void
   onNewChat: () => void
+  onRenameChat: (id: string, title: string) => Promise<boolean>
   onArchiveChat: (id: string) => void
   onDeleteChat: (id: string) => void
   grip: GripProps
@@ -268,6 +287,7 @@ export function Sidebar({
           {active.map((s) => (
             <ChatRow
               key={s.id} session={s} on={s.id === chatId} onOpen={() => onOpenChat(s.id)}
+              onRename={(title) => onRenameChat(s.id, title)}
               onArchive={() => onArchiveChat(s.id)} onDelete={() => onDeleteChat(s.id)}
             />
           ))}

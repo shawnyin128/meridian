@@ -16,10 +16,13 @@ export {
 } from './conclusions.js'
 export type { ProjectClaim, ProjectDispute } from './conclusions.js'
 export { overviewResearch, placeNode } from './research-graph.js'
+export { servedTopics, storedTopics, titledTopics, topicPinsOf, topicScopeOf } from './topics.js'
+export type { TopicPages, TopicPin } from './topics.js'
 export {
   PROJECT_PLAN_SCHEMA,
   projectWorkspaceRoot,
   projectWorkspaceSsh,
+  readLocalProjectWorkspace,
   readProjectWorkspace,
   readWorkspaceAgentIdeas,
   readWorkspaceAgentTasks,

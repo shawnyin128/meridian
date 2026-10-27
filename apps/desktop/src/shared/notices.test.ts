@@ -13,6 +13,7 @@ const SOURCES = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
 /** The success notices that may show without an action, each with why it is not a visible change. */
 const WITHOUT_ACTION: Record<string, string> = {
   'm.papers.upload.alreadyInLibrary': 'an import that added nothing changes nothing on screen',
+  'm.papers.publication.none': 'a publication fill that found nothing changes nothing on screen',
 }
 
 type Node = { type?: string; start?: number; end?: number; loc?: { start: { line: number } }; [key: string]: unknown }

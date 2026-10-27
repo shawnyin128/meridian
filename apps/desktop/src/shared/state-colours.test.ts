@@ -175,22 +175,34 @@ describe('强调色', () => {
   /**
    * The only rules that may read an accent token, by what the accent marks there: what to act on (the
    * primary and the send), what is selected (the current sidebar row, the picked segment, a checked
-   * menu item, an on chip toggle, a list's selected row or card and the selected highlight card),
-   * what is on or running (an on switch, the running ring, a progress fill) and today on the
-   * timeline. The focus ring reads --ring.
+   * menu item, an on chip toggle, a list's selected row or card, the selected highlight card, the
+   * reader's open panel tab, the picked calendar day, the selected research-graph node, the current
+   * theme card, the current page, an applied filter, the picked column type, a pressed toggle and the
+   * current Wiki contents entry), what is on or running (an on switch, the running ring, a progress
+   * fill and an in-progress timeline bar) and today on the timeline. The focus ring reads --ring.
    */
   const ACCENT = [
-    'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri',
-    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/ComposerBox.css  .send', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
+    'components/ActionMenu.css  .mi .ck', 'components/Button.css  .btn.pri', 'components/Button.css  .btn:not(.danger)[aria-pressed="true"]',
+    'components/ChipToggles.css  .chip-toggle[data-state="on"]', 'components/ComposerBox.css  .send',
+    'components/FieldPickers.css  .cd.sel', 'components/FilterMenu.css  .filter-menu.on',
+    'components/IconButton.css  .icbtn[aria-pressed="true"]', 'components/Item.css  .item--selected', 'components/NavRow.css  .nav-row.on',
+    'components/Pager.css  .pgbtn.on',
     'components/ProgressFill.css  .progress-fill>span', 'components/SegmentedControl.css  .segmented-control>button[data-state="on"]',
     'components/Switch.css  .switch[data-state="checked"]',
     'components/Table.css  .table-row--selected', 'components/Table.css  .table-row--selected>.table-cell--title',
     'components/icons.css  .ring',
+    'components/paper-table/PaperTable.css  .ctbtn.on',
+    'components/project/ResearchGraph.css  .rgn.sel .rgn-box', 'components/project/ResearchGraph.css  .rgn.sel .rgn-label',
+    'components/timeline/TimelineBoard.css  .gbar.active',
     'components/timeline/TimelineBoard.css  .gnow', 'components/timeline/TimelineBoard.css  .gnow::after',
     'components/timeline/TimelineBoard.css  .gtoday',
+    'routes/Reader.css  .reader-rail button.on',
+    'routes/Settings.css  .appearance-choice[aria-checked="true"] .appearance-label',
+    'routes/Settings.css  .appearance-choice[aria-checked="true"] .appearance-preview',
+    'routes/Wiki.css  .wktoc li.l3.on', 'routes/Wiki.css  .wktoc li.on',
   ]
 
-  it('强调色只标选中的和正在执行的:主操作、侧栏的当前行、选中的分段、勾上的菜单项、开着的标签开关、列表里选中的行和卡片、选中的高亮卡片、开着的开关、运行中的圈、进度和时间线的今天;链接、标签、计数和别的规则都不读', () => {
+  it('强调色只标选中的和正在执行的:主操作、侧栏的当前行、选中的分段、勾上的菜单项、开着的标签开关、列表里选中的行和卡片、选中的高亮卡片、阅读器开着的面板标签、选中的日子、选中的科研图节点、当前的主题卡、当前页、已应用的筛选、选中的列类型、按下的开关、Wiki 目录的当前项、开着的开关、运行中的圈、进度、进行中的任务条和时间线的今天;链接、标签、计数和别的规则都不读', () => {
     const readers = readdirSync(RENDERER, { recursive: true, encoding: 'utf8' })
       .filter((path) => /\.(css|tsx?)$/.test(path) && !/\.test\.tsx?$/.test(path))
       .flatMap((path) => (path.endsWith('.css')
@@ -213,6 +225,31 @@ describe('强调色', () => {
     for (const [path, selector] of [['components/ActionMenu.css', '.mi .ck'], ['components/icons.css', '.ring']] as const) {
       expect(tokens(bodyOf(path, selector)), selector).toEqual(['--accent-mark'])
     }
+  })
+
+  it('小控件选中时只把字或记号换成强调色、底仍是中性的选中底;整块的选中铺侧栏当前行的浅强调底配强调色的字', () => {
+    const small = [
+      ['components/FieldPickers.css', '.cd.sel', ['--selected', '--accent-text']],
+      ['routes/Reader.css', '.reader-rail button.on', ['--selected', '--accent-text']],
+      ['components/Button.css', '.btn:not(.danger)[aria-pressed="true"]', ['--selected', '--accent-text']],
+      ['components/IconButton.css', '.icbtn[aria-pressed="true"]', ['--selected', '--accent-text']],
+      ['components/Pager.css', '.pgbtn.on', ['--selected-strong', '--accent-text']],
+      ['components/FilterMenu.css', '.filter-menu.on', ['--selected-strong', '--accent-text']],
+      ['components/paper-table/PaperTable.css', '.ctbtn.on', ['--selected-strong', '--accent-text']],
+      ['routes/Wiki.css', '.wktoc li.on', ['--accent-text', '--accent-mark']],
+      ['routes/Wiki.css', '.wktoc li.l3.on', ['--accent-text']],
+    ] as const
+    expect(small.map(([path, selector]) => [selector, tokens(bodyOf(path, selector))]))
+      .toEqual(small.map(([, selector, looks]) => [selector, looks]))
+    const blocks = [
+      ['components/project/ResearchGraph.css', '.rgn.sel .rgn-box', ['--accent-soft']],
+      ['components/project/ResearchGraph.css', '.rgn.sel .rgn-label', ['--accent-text']],
+      ['components/timeline/TimelineBoard.css', '.gbar.active', ['--accent-mark', '--sep', '--accent-soft', '--accent-text']],
+      ['routes/Settings.css', '.appearance-choice[aria-checked="true"] .appearance-preview', ['--accent-soft']],
+      ['routes/Settings.css', '.appearance-choice[aria-checked="true"] .appearance-label', ['--accent-text']],
+    ] as const
+    expect(blocks.map(([path, selector]) => [selector, tokens(bodyOf(path, selector))]))
+      .toEqual(blocks.map(([, selector, looks]) => [selector, looks]))
   })
 
   it('链接、侧栏的图标、关注行的未读点和研究地图的阅读点都是中性的', () => {

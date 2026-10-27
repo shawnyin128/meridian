@@ -11,7 +11,7 @@ import { ProjectMemo } from './ProjectSections.js'
 describe('ProjectMemo', () => {
   afterEach(() => { vi.unstubAllGlobals() })
 
-  it('编辑的位置换成取消和保存:编辑器里是随笔原文,取消还原不写,再编辑从原文开始;⌘回车和保存写回编辑器里的原文', () => {
+  it('点随笔就地编辑,抬头只在编辑时有取消和保存:取消还原不写,再点从原文开始;⌘回车、保存和在外面按下都写回编辑器里的原文', () => {
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     vi.stubGlobal('meridian', { platform: 'darwin' })
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
@@ -25,13 +25,15 @@ describe('ProjectMemo', () => {
     act(() => root.render(<MessagesProvider><Memo /></MessagesProvider>))
     const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('.section-heading-actions > .btn')]
     const press = (text: string) => act(() => buttons().find((button) => button.textContent === text)!.click())
+    const open = () => act(() => { host.querySelector('.memo h1')!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     const editor = () => EditorView.findFromDOM(host.querySelector<HTMLElement>('.memo .cm-editor')!)!
     const type = (text: string) => act(() => {
       const view = editor()
       view.dispatch({ changes: { from: 0, to: view.state.doc.length, insert: text }, userEvent: 'input.type' })
     })
 
-    press('编辑')
+    expect(buttons()).toEqual([])
+    open()
     expect(buttons().map((button) => button.textContent)).toEqual(['取消', '保存'])
     expect(editor().state.doc.toString()).toBe('# 本周计划')
     expect(document.activeElement).toBe(editor().contentDOM)
@@ -41,20 +43,26 @@ describe('ProjectMemo', () => {
     expect(host.querySelector('.memo .cm-editor')).toBeNull()
     expect(host.querySelector('.memo h1')!.textContent).toBe('本周计划')
 
-    press('编辑')
+    open()
     expect(editor().state.doc.toString()).toBe('# 本周计划')
     press('保存')
-    expect(onSave).toHaveBeenLastCalledWith('# 本周计划')
-    press('编辑')
+    expect(onSave).not.toHaveBeenCalled()
+    expect(host.querySelector('.memo .cm-editor')).toBeNull()
+    open()
     type('改过的计划\n## 小结')
     act(() => {
       editor().contentDOM.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', metaKey: true, bubbles: true }))
     })
-    expect(onSave).toHaveBeenCalledWith('改过的计划\n## 小结')
-    press('编辑')
+    expect(onSave).toHaveBeenLastCalledWith('改过的计划\n## 小结')
+    open()
     type('再改一次')
     press('保存')
     expect(onSave).toHaveBeenLastCalledWith('再改一次')
+    open()
+    type('点到外面也存')
+    act(() => { document.body.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true, button: 0 })) })
+    expect(onSave).toHaveBeenLastCalledWith('点到外面也存')
+    expect(onSave).toHaveBeenCalledTimes(3)
     act(() => root.unmount())
     host.remove()
   })
@@ -76,7 +84,7 @@ describe('ProjectMemo', () => {
     const buttons = () => [...host.querySelectorAll<HTMLButtonElement>('.section-heading-actions > .btn')]
     const editor = () => EditorView.findFromDOM(host.querySelector<HTMLElement>('.memo .cm-editor')!)!
     show('# 原来的随笔')
-    act(() => buttons().find((button) => button.textContent === '编辑')!.click())
+    act(() => { host.querySelector('.memo h1')!.dispatchEvent(new MouseEvent('click', { bubbles: true })) })
     act(() => editor().dispatch({ changes: { from: 0, to: editor().state.doc.length, insert: '没存的随笔' }, userEvent: 'input.type' }))
     show('# 原来的随笔', false)
     show('# 原来的随笔')

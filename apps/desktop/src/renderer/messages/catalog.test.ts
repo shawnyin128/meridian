@@ -69,15 +69,18 @@ describe('确认框的文案', () => {
   }
 })
 
-describe('占位文字和要再问一步的命令', () => {
+describe('占位文字和命令的省略号', () => {
   const catalogs = { zh: texts(zh as unknown as Node), en: texts(en as unknown as Node) }
   /** Whether the key at `path` is a field's placeholder or a picker's empty value. */
   const placeholder = (path: string) => /(^|\.)(placeholder|[a-z]+Placeholder|[a-z]+Pick)$/.test(path)
-  // The commands that open a file dialog, a dialog or an editor before they act, as #500 lists them.
-  const ASKING = [
-    'papers.upload.importAction', 'common.field.chooseDirectory', 'settings.storage.chooseAction',
-    'project.identity.changeWorkspace', 'project.workspace.chooseLocal', 'project.attachments.addTitle',
-    'wiki.claims.revise', 'wiki.claims.markConflict', 'settings.appearance.editor.edit',
+  // The busy states shown while something runs, the only texts that still end in an ellipsis.
+  const BUSY = [
+    'common.loading', 'common.saving', 'chat.thinking', 'inbox.discovering', 'inbox.check.checking', 'papers.upload.importing', 'papers.publication.filling',
+    'project.workspace.adding', 'watches.suggesting',
+    'settings.storage.checkingDirectory', 'settings.storage.resetting', 'settings.storage.backupSwitching',
+    'settings.storage.backupDeleting', 'settings.model.saving', 'settings.model.connection.testing',
+    'settings.extensions.plugin.checking', 'settings.extensions.app.checking', 'settings.extensions.app.downloading',
+    'settings.delivery.saving', 'settings.discovery.refreshing', 'wiki.ingest.discarding', 'wiki.ingest.writing',
   ]
 
   it('每个占位文字只说出它那一栏的名字：不叫人输入、粘贴或选择，不举例，不写可选，不提问', () => {
@@ -88,9 +91,12 @@ describe('占位文字和要再问一步的命令', () => {
     expect([...off, ...offEn]).toEqual([])
   })
 
-  it('打开对话框、文件选择或编辑器才完成的命令以省略号结尾，两种语言都是', () => {
-    const at = (language: 'zh' | 'en') => new Map(catalogs[language])
-    expect(ASKING.filter((path) => !at('zh').get(path)?.endsWith('…') || !at('en').get(path)?.endsWith('…'))).toEqual([])
+  it('命令不以省略号结尾，打开对话框、文件选择或编辑器的也不；只有进行中的状态以省略号结尾，两种语言都是', () => {
+    for (const language of ['zh', 'en'] as const) {
+      const trailing = catalogs[language].filter(([, text]) => /(…|\.\.\.)$/.test(text)).map(([path]) => path)
+      expect(trailing.filter((path) => !BUSY.includes(path)), language).toEqual([])
+      expect(BUSY.filter((path) => !trailing.includes(path)), language).toEqual([])
+    }
   })
 })
 
@@ -161,7 +167,6 @@ describe('一个对象一个词', () => {
     finding: { zh: '结论', en: /finding/i },
     experimentConclusion: { zh: '实验结论', en: /experiment conclusion/i },
     keyword: { zh: '关键词', en: /keyword/i },
-    area: { zh: '领域', en: /\bareas?\b/i },
     toRead: { zh: '待读', en: /to read/i },
     readLater: { zh: '稍后阅读', en: /later/i },
     topic: { zh: '主题', en: /topic/i },
@@ -185,11 +190,6 @@ describe('一个对象一个词', () => {
     keyword: [
       'shell.nav.watchTopics', 'shell.watchKind.topic', 'watches.topicSuggestions', 'watches.addAllTopics',
     ],
-    area: [
-      'project.identity.topic', 'project.identity.topicUpdated', 'project.identity.noArea', 'project.identity.addArea',
-      'project.identity.existingAreas', 'project.identity.removeArea', 'project.identity.allAreas',
-      'project.identity.filterArea',
-    ],
     toRead: ['papers.readState.later'],
     readLater: [
       'shell.nav.later', 'shell.crumbs.later', 'later.title', 'later.removed', 'inbox.actions.readLater',
@@ -197,7 +197,8 @@ describe('一个对象一个词', () => {
     topic: [
       'papers.columns.topics', 'papers.groupNames.topics', 'papers.toolbar.searchPlaceholder', 'papers.tags.add',
       'papers.tags.existingTopics', 'papers.tags.remove', 'papers.notices.topicAdded', 'papers.metadata.fields.topics',
-      'papers.researchMap.reason.topic',
+      'papers.researchMap.reason.topic', 'project.identity.topic', 'project.identity.topicUpdated',
+      'project.identity.noTopic', 'project.identity.allTopics', 'project.identity.filterTopic',
     ],
   }
   /** Texts that name a project's experiment conclusion and the finding it becomes in the Wiki. */
@@ -249,8 +250,13 @@ describe('一个对象一个词', () => {
     }
   })
 
+  it('项目的主题和论文的主题是同一个词,哪里都不再说领域', () => {
+    expect([...catalogs.zh].filter(([, text]) => text.includes('领域'))).toEqual([])
+    expect([...catalogs.en].filter(([, text]) => /\bareas?\b/i.test(text))).toEqual([])
+  })
+
   it('新词只出现在它的对象的键上', () => {
-    for (const item of ['experimentConclusion', 'keyword', 'area', 'toRead'] as const) {
+    for (const item of ['experimentConclusion', 'keyword', 'toRead'] as const) {
       const holding = [...catalogs.zh].filter(([, text]) => text.includes(WORDS[item].zh)).map(([path]) => path)
       expect(holding.filter((path) => !KEYS[item].includes(path) && !BOTH.includes(path)), item).toEqual([])
     }

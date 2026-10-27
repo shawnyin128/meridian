@@ -8,6 +8,7 @@ import { FoldToggle } from './FoldToggle.js'
 import { HeadingCount, headingText } from './HeadingCount.js'
 import { InlineMessage } from './InlineMessage.js'
 import { ScrollArea } from './ScrollArea.js'
+import { TitleField, type TitleKeep } from './TitleField.js'
 import './PageShell.css'
 
 const classes = (base: string, className: string | undefined) =>
@@ -58,14 +59,23 @@ export const PageToolbar = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElem
 /**
  * The page's title on one line, the page's first-level heading: when it does not fit it fades out at
  * its end and the tooltip shows it whole. `label` is that whole text, for a title that is not a plain
- * string. `count` follows the title as ` · N`.
+ * string. `count` follows the title as ` · N`. With `rename`, a click on the title renames the page's
+ * entity in place through TitleField, from `rename.value`.
  */
-export function PageTitle({ children, label, count, className, ...props }: {
+export function PageTitle({ children, label, count, rename, className, ...props }: {
   children: ReactNode
   label?: string | undefined
   count?: number | undefined
+  rename?: { label: string; value: string; onSave: (title: string) => boolean | Promise<boolean>; keep: TitleKeep } | undefined
 } & Omit<HTMLAttributes<HTMLSpanElement>, 'children'>) {
   const whole = label ?? (typeof children === 'string' ? children : undefined)
+  if (rename !== undefined) {
+    return (
+      <span className={classes('t page-title-field', className)} role="heading" aria-level={1} {...props}>
+        <TitleField {...rename}>{children}</TitleField>
+      </span>
+    )
+  }
   return (
     <FadeText
       className={classes('t', className)} label={whole === undefined ? undefined : headingText(whole, count)}
@@ -79,7 +89,7 @@ export function PageTitle({ children, label, count, className, ...props }: {
 /**
  * The only main scrolling area of the page; its top and bottom fade while content is hidden past them.
  * Its content keeps to the page's column: `column: 'page'` for list screens, `prose` for pages that are
- * read, such as a Wiki page or a project. A `fill` body does not scroll: its content takes its height
+ * read, such as a Wiki page. A `fill` body does not scroll: its content takes its height
  * and scrolls inside, as a table does.
  */
 export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {

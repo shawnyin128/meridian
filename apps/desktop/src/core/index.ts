@@ -20,6 +20,7 @@ import {
   ChangelogArchiveParamsSchema,
   ChangelogDeleteParamsSchema,
   ChangelogUndoParamsSchema,
+  ChatRenameParamsSchema,
   ChatSetArchivedParamsSchema,
   ColourThemeDeleteParamsSchema,
   ColourThemeSaveParamsSchema,
@@ -114,15 +115,17 @@ import {
   WikiApplyParamsSchema,
   WikiBacklinksParamsSchema,
   WikiDecideParamsSchema,
+  WikiDeleteParamsSchema,
+  WikiMergeParamsSchema,
   WikiPaperParamsSchema,
   WikiProposalsParamsSchema,
   WikiProposeParamsSchema,
   WikiUpdateParamsSchema,
 } from '../shared/contract.js'
-import { projectAreas } from '../shared/project-signals.js'
+import { projectTopics } from '../shared/project-signals.js'
 import { DEFAULT_PROJECT_TOPIC } from '../shared/vocabulary.js'
 import { answerCall, CallError, callFailure } from './call-error.js'
-import { openCoreLog, teeConsole } from './core-log.js'
+import { harnessLog, openCoreLog, teeConsole } from './core-log.js'
 import { createFixtureStore } from './fixture-store.js'
 import { withUiSampleUpload } from './fixtures/ui-samples.js'
 import { createBackground } from './background.js'
@@ -155,6 +158,7 @@ import {
 } from './harness/index.js'
 import { placeResearchIdeaOnGraph, promoteResearchIdea } from './research-ideas/index.js'
 import { createWikiProposals, pdfPageText } from './wiki-proposals.js'
+import { experimentProjects } from './wiki/index.js'
 
 type Handler = (params: unknown) => unknown
 
@@ -256,37 +260,37 @@ const background = createBackground({
 const cliRunnerDeps = {
   // A run's own pre-call check decides at run time; what it finds corrects the status Settings and the pickers keep.
   discover: followCliState(
-    (cli: HarnessCli) => discoverCli(cli, { onLog: (line) => console.error(`[harness] ${line}`) }),
+    (cli: HarnessCli) => discoverCli(cli, { onLog: harnessLog }),
     (cli) => (harnessModel.accepts(`cli:${cli}`) ? sourceModels.status(cli) : null),
     (cli) => sourceModels.refresh(`cli:${cli}`),
   ),
   settingsRevision: () => harnessModel.revision(),
-  internalMcp: createInternalMcp({ store, onLog: (line) => console.error(`[harness] ${line}`) }),
+  internalMcp: createInternalMcp({ store, onLog: harnessLog }),
 }
 const cliRunner = createCliRunner(cliRunnerDeps)
 const paperWikiHarness = vaultRoot === undefined ? null : createPaperWikiHarnessRunner({
   store,
   model: harnessModel,
   cli: cliRunner,
-  onLog: (line) => console.error(`[harness] ${line}`),
+  onLog: harnessLog,
 })
 const chatSessions = openCliChatSessions({
-  root: join(userData, 'cli-chats'), vault: locationRoot, onLog: (line) => console.error(`[harness] ${line}`),
+  root: join(userData, 'cli-chats'), vault: locationRoot, onLog: harnessLog,
 })
 // The model lists are read once per session, at start and when a source's configuration changes.
 // In fixture and canned mode Core reaches no network, so an API source lists only its default model.
 const sourceModels = createSourceModels({
   sources: () => harnessModel.settings().models,
   readCli: (cli) => subscriptionStatus(cli, {
-    discover: (held) => discoverCli(held, { onLog: (line) => console.error(`[harness] ${line}`) }),
-    listModels: listCliModels, onLog: (line) => console.error(`[harness] ${line}`),
+    discover: (held) => discoverCli(held, { onLog: harnessLog }),
+    listModels: listCliModels, onLog: harnessLog,
   }),
   readApi: canned ? async () => [] : (id) => chatHarness.listModels(id),
-  onLog: (line) => console.error(`[harness] ${line}`),
+  onLog: harnessLog,
 })
 const chatModels = openChatModels({
   file: join(userData, 'chat-models', 'choices.json'), vault: locationRoot, models: harnessModel,
-  offers: (source) => sourceModels.models(source), onLog: (line) => console.error(`[harness] ${line}`),
+  offers: (source) => sourceModels.models(source), onLog: harnessLog,
 })
 /**
  * Deletes the CLI sessions and forgets the model choices of the chats the vault no longer keeps; the
@@ -305,11 +309,11 @@ pruneChatSessions()
 const chatHarness = createChatHarnessRunner({
   store,
   model: harnessModel,
-  checkCli: (model) => checkCliConnection(model, { onLog: (line) => console.error(`[harness] ${line}`), run: cliRunner }),
+  checkCli: (model) => checkCliConnection(model, { onLog: harnessLog, run: cliRunner }),
   cli: createCliChatRunner(cliRunnerDeps),
   sessions: chatSessions,
   choiceOf: chatModels.choiceOf,
-  onLog: (line) => console.error(`[harness] ${line}`),
+  onLog: harnessLog,
 })
 const chatService = createChatService({ store, model: harnessModel, runner: chatHarness, choiceOf: chatModels.choiceOf })
 sourceModels.start()
@@ -551,6 +555,10 @@ registerHandler('papers.import', (params) => {
 })
 registerHandler('papers.retryMetadata', (params) =>
   background.retryMetadata(PapersRetryMetadataParamsSchema.parse(params).id))
+registerHandler('papers.fillPublication', async (params) => {
+  EmptyParamsSchema.parse(params)
+  return { updated: await background.fillPublications() }
+})
 registerHandler('papers.reading', (params) =>
   store.paperReading(PapersReadingParamsSchema.parse(params).id))
 registerHandler('papers.mutateReading', (params) => {
@@ -673,10 +681,10 @@ registerHandler('ssh.folders', (params) => {
   const { path, ...target } = SshFoldersParamsSchema.parse(params)
   return vaultRoot === undefined ? sshFolders(target, path, fixtureSsh) : sshFolders(target, path)
 })
-registerHandler('project.update', (params) => {
+registerHandler('project.update', async (params) => {
   const { id, patch } = ProjectUpdateParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.updateProject(id, definedFields(patch)))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.delete', (params) => {
   const { id } = ProjectDeleteParamsSchema.parse(params)
@@ -691,10 +699,10 @@ registerHandler('project.updateTask', (params) => {
   const { projectId, taskId, patch } = ProjectUpdateTaskParamsSchema.parse(params)
   return store.updateTask(projectId, taskId, definedFields(patch))
 })
-registerHandler('project.deleteTask', (params) => {
+registerHandler('project.deleteTask', async (params) => {
   const { projectId, taskId } = ProjectDeleteTaskParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteTask(projectId, taskId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.reorderTasks', (params) => {
   const { projectId, order } = ProjectReorderTasksParamsSchema.parse(params)
@@ -712,19 +720,19 @@ registerHandler('project.updateMilestone', (params) => {
   const { projectId, milestoneId, patch } = ProjectUpdateMilestoneParamsSchema.parse(params)
   return store.updateMilestone(projectId, milestoneId, definedFields(patch))
 })
-registerHandler('project.deleteMilestone', (params) => {
+registerHandler('project.deleteMilestone', async (params) => {
   const { projectId, milestoneId } = ProjectDeleteMilestoneParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteMilestone(projectId, milestoneId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.createRelation', (params) => {
   const { projectId, relation } = ProjectCreateRelationParamsSchema.parse(params)
   return store.createRelation(projectId, relation)
 })
-registerHandler('project.deleteRelation', (params) => {
+registerHandler('project.deleteRelation', async (params) => {
   const { projectId, relationId } = ProjectDeleteRelationParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteRelation(projectId, relationId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.updateRelation', (params) => {
   const { projectId, relationId, relation } = ProjectUpdateRelationParamsSchema.parse(params)
@@ -734,10 +742,10 @@ registerHandler('project.addPaper', (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)
   return store.addPaper(projectId, paperId)
 })
-registerHandler('project.removePaper', (params) => {
+registerHandler('project.removePaper', async (params) => {
   const { projectId, paperId } = ProjectPaperParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.removePaper(projectId, paperId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.moveRelation', (params) => {
   const { projectId, id, index } = ProjectMoveRelationParamsSchema.parse(params)
@@ -749,10 +757,10 @@ registerHandler('project.createAttachment', (params) => {
   const { projectId, attachment } = ProjectCreateAttachmentParamsSchema.parse(params)
   return store.createAttachment(projectId, attachment)
 })
-registerHandler('project.deleteAttachment', (params) => {
+registerHandler('project.deleteAttachment', async (params) => {
   const { projectId, attachmentId } = ProjectDeleteAttachmentParamsSchema.parse(params)
   const { result, change } = recordChange(store, () => store.deleteAttachment(projectId, attachmentId))
-  return { project: result, change }
+  return { project: await result, change }
 })
 registerHandler('project.createConclusion', (params) => {
   const { projectId, text, chat, paper } = ProjectCreateConclusionParamsSchema.parse(params)
@@ -768,7 +776,7 @@ registerHandler('project.deleteConclusion', (params) => {
 })
 registerHandler('project.verifyConclusion', (params) => {
   const { projectId, node, fingerprint } = ProjectVerifyConclusionParamsSchema.parse(params)
-  return store.verifyConclusion(projectId, node, fingerprint)
+  return store.readWorkspaceGraphs([projectId]).then((graphs) => store.verifyConclusion(projectId, node, fingerprint, graphs))
 })
 registerHandler('project.unverifyConclusion', (params) => {
   const { projectId, node } = ProjectUnverifyConclusionParamsSchema.parse(params)
@@ -831,10 +839,10 @@ registerHandler('watch.list', (params) => {
 })
 registerHandler('author.search', (params) =>
   background.searchAuthors(AuthorSearchParamsSchema.parse(params).query))
-registerHandler('watch.suggest', (params) => {
+registerHandler('watch.suggest', async (params) => {
   const input = WatchSuggestionParamsSchema.parse(params)
   if (input.source === 'focus') return background.suggestWatches({ focus: input.focus })
-  const project = store.getProject(input.projectId)
+  const project = await store.getProject(input.projectId)
   const profile = store.discoveryProfile(input.projectId)
   const intentTopics = store.discoveryIntents(input.projectId)
     .filter((intent) => intent.enabled)
@@ -844,7 +852,7 @@ registerHandler('watch.suggest', (params) => {
     .map((terms) => [...new Set(terms)].slice(0, 6).join(' ')).find((terms) => terms.length >= 3) ?? profile.anchorText
   return background.suggestWatches({
     focus,
-    seedTopics: [...projectAreas(project), ...(profile.wikiTerms ?? []), ...intentTopics]
+    seedTopics: [...projectTopics(project), ...(profile.wikiTerms ?? []), ...intentTopics]
       .map((topic) => topic.trim()).filter((topic) => topic !== '' && topic !== DEFAULT_PROJECT_TOPIC),
   })
 })
@@ -882,7 +890,8 @@ registerHandler('wiki.cards', (params) => {
 registerHandler('wiki.apply', async (params) => {
   const { proposal } = WikiApplyParamsSchema.parse(params)
   await wikiProposals.checkHumanQuotes(proposal.ops)
-  const { change } = recordChange(store, () => store.applyProposal(proposal))
+  const graphs = await store.readWorkspaceGraphs(experimentProjects(proposal.ops))
+  const { change } = recordChange(store, () => store.applyProposal(proposal, undefined, graphs))
   return { change }
 })
 registerHandler('wiki.propose', (params) =>
@@ -902,6 +911,16 @@ registerHandler('wiki.backlinks', (params) =>
 registerHandler('wiki.update', (params) => {
   const { id, body } = WikiUpdateParamsSchema.parse(params)
   return store.updateWikiPage(id, body)
+})
+registerHandler('wiki.delete', (params) => {
+  const { id } = WikiDeleteParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.deleteWikiPage(id))
+  return { change }
+})
+registerHandler('wiki.merge', (params) => {
+  const { from, into, shown } = WikiMergeParamsSchema.parse(params)
+  const { change } = recordChange(store, () => store.mergeWikiPages(from, into, shown))
+  return { change }
 })
 registerHandler('trash.list', (params) => {
   EmptyParamsSchema.parse(params)
@@ -1010,6 +1029,10 @@ registerHandler('idea.reorder', (params) =>
 registerHandler('chat.recordAction', (params) => {
   const { id, messageId } = ChatRecordActionParamsSchema.parse(params)
   return store.recordAction(id, messageId)
+})
+registerHandler('chat.rename', (params) => {
+  const { id, title } = ChatRenameParamsSchema.parse(params)
+  return store.renameChat(id, title)
 })
 registerHandler('chat.setArchived', (params) => {
   const { id, archived } = ChatSetArchivedParamsSchema.parse(params)

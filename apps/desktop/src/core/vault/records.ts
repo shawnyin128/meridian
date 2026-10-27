@@ -85,14 +85,27 @@ export const ChatRecordSchema = ChatSessionSchema.omit({ messageCount: true }).e
 
 const TrashBase = TrashEntrySchema.omit({ kind: true, restorable: true })
 
+/**
+ * One `.meridian/metadata-fills.json` entry: the bibliographic fields of paper `paper` the App last
+ * filled from a metadata source, each with the value it wrote, so a later fill may replace those
+ * values and never one the user typed, and for a field a publication fill wrote, the service it came
+ * from (`semantic-scholar` or `dblp`).
+ */
+export const MetadataFillRecordSchema = z.object({
+  paper: z.string(), fields: z.record(z.string(), z.unknown()), sources: z.record(z.string(), z.string()).optional(),
+})
+
 /** One `.meridian/paper-readings.json` entry; highlights, notes, remarks, and progress are isolated by paper-page id. */
 export const PaperReadingRecordSchema = PaperReadingSchema
 export type PaperReadingRecord = z.infer<typeof PaperReadingRecordSchema>
 
 /**
  * Trash entry with everything required for restoration; `restorable` derives from destination
- * availability. Deleting a paper or project moves its page to `.meridian/trash/<id>.md`; `page` keeps
- * the original relative path for restoration. Paper entries also retain any reading record they had.
+ * availability. Deleting a paper, a project or a Wiki aggregation page moves its page to
+ * `.meridian/trash/<id>.md`; `page` keeps the original relative path for restoration. A Wiki page
+ * merged into another holds in `ideas` each idea whose relations the merge repointed, with its
+ * related pages `before` and `after` the merge; putting the page back returns an idea to `before`
+ * while it still relates to `after`. Paper entries also retain any reading record they had.
  * An inbox entry's `feedback` names the discovery feedback that removed it; restoring clears that
  * feedback from the entry. A read-later entry holds the removed item and its index in the queue, where
  * restoring puts it back; a chat entry holds the whole chat and its index in the chat list the same way,
@@ -104,6 +117,10 @@ export const TrashRecordSchema = z.discriminatedUnion('kind', [
     kind: z.literal('paper'), page: z.string(), reading: PaperReadingRecordSchema.optional(),
   }),
   TrashBase.extend({ kind: z.literal('project'), page: z.string() }),
+  TrashBase.extend({
+    kind: z.literal('page'), page: z.string(),
+    ideas: z.array(z.object({ id: z.string(), before: z.array(z.string()), after: z.array(z.string()) })).optional(),
+  }),
   TrashBase.extend({ kind: z.literal('idea'), idea: ResearchIdeaSchema }),
   TrashBase.extend({
     kind: z.literal('attachment'), projectId: z.string(), attachment: AttachmentSchema,

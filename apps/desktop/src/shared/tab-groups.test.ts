@@ -31,7 +31,6 @@ function elements(node: unknown, found: Node[] = []): Node[] {
  * with the reason it is not a tab group.
  */
 const NOT_TAB_GROUPS: Record<string, string> = {
-  'components/Pager.tsx m.common.pager.perPage': 'sets how many rows one page of the same list holds',
   'components/TaskScheduleField.tsx m.research.schedule.modeLabel': "a field's mode: a task takes all day or a time window",
   'components/settings/ThemeEditor.tsx t.mode': 'picks which palette, light or dark, the one editor edits',
   'components/wiki/WikiClaims.tsx f.basisLabel': "a draft's field: what the new claim rests on",

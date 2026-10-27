@@ -29,7 +29,7 @@ import './shell.css'
  * The order of the groups: the order of each kind's row in the sidebar, top to bottom. Attachments
  * have no row there and come last.
  */
-const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'chat', 'paper', 'project', 'idea', 'attachment']
+const KINDS: TrashEntry['kind'][] = ['inbox', 'later', 'chat', 'page', 'paper', 'project', 'idea', 'attachment']
 /** The kinds whose title is, or for a chat can be, a paper title. */
 const PAPER_KINDS: ReadonlySet<TrashEntry['kind']> = new Set(['inbox', 'later', 'paper', 'chat'])
 const plainOf = (entry: TrashEntry): string => (PAPER_KINDS.has(entry.kind) ? plainTitle(entry.title) : entry.title)

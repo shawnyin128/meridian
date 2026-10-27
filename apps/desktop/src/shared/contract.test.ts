@@ -27,6 +27,7 @@ import {
   ChatMessagesParamsSchema,
   ChatSendParamsSchema,
   ChatSessionSchema,
+  ChatRenameParamsSchema,
   ChatSetArchivedParamsSchema,
   DeliverySettingsSchema,
   FeedAppendParamsSchema,
@@ -562,7 +563,7 @@ describe('contract schemas', () => {
       .toThrow()
   })
 
-  it('改项目的领域一次给全部:去掉首尾空白,空串、重复的不收,不再单收 topic', () => {
+  it('改项目的主题一次给全部:去掉首尾空白,空串、重复的不收,不再单收 topic', () => {
     expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [' KV cache ', '量化'] } }).patch.topics)
       .toEqual(['KV cache', '量化'])
     expect(ProjectUpdateParamsSchema.parse({ id: 'draft', patch: { topics: [] } }).patch.topics).toEqual([])
@@ -596,7 +597,7 @@ describe('contract schemas', () => {
     })).toThrow()
   })
 
-  it('总览的一条项目带领域、计划、科研记录与紧凑科研图投影,其余详情不跨边界', () => {
+  it('总览的一条项目带主题、计划、科研记录与紧凑科研图投影,其余详情不跨边界', () => {
     const row = {
       id: 'draft', name: 'draft 效率', status: '进行中', priority: 'p0', topic: 'speculative decoding', focus: '宽树实验补 B≥8',
       start: '2026-06-02', due: '2026-09-15',
@@ -1213,7 +1214,7 @@ describe('contract schemas', () => {
     for (const row of papers) WikiPaperSchema.parse(wikiPaper(data, `papers/${row.id}`, version))
   })
 
-  it('项目里那几处 wiki 跳转的目标都指向真的聚合页', () => {
+  it('项目里那几处 wiki 跳转的目标都指向真的聚合页', async () => {
     const data = wikiFixture as WikiData
     const ids = new Set(wikiCards(data).map((card) => card.id))
     const targets = projects.flatMap((p) => [
@@ -1224,7 +1225,7 @@ describe('contract schemas', () => {
     expect(targets.length).toBeGreaterThan(0)
     for (const target of targets) expect(ids.has(target)).toBe(true)
     const store = createFixtureStore()
-    for (const project of projects) ProjectDetailSchema.parse(store.getProject(project.id))
+    for (const project of projects) ProjectDetailSchema.parse(await store.getProject(project.id))
   })
 
   it('发送收的是用户写下的各段：引用是 @ 加一行名字和它点名的项目、论文或 Wiki 页，整句不能只有空白，也不能超过两万字', () => {
@@ -1315,6 +1316,14 @@ describe('contract schemas', () => {
     expect(() => ChatSetArchivedParamsSchema.parse({ id: 'amortize' })).toThrow()
     expect(ChatDeleteParamsSchema.parse({ id: 'amortize' }).id).toBe('amortize')
     expect(() => ChatDeleteParamsSchema.parse({ id: 'amortize', archived: true })).toThrow()
+  })
+
+  it('改名的入参是去掉首尾空白后非空、最多 160 字的名字', () => {
+    expect(ChatRenameParamsSchema.parse({ id: 'amortize', title: '  共享前缀的摊薄  ' })).toEqual({ id: 'amortize', title: '共享前缀的摊薄' })
+    expect(() => ChatRenameParamsSchema.parse({ id: 'amortize', title: '   ' })).toThrow()
+    expect(ChatRenameParamsSchema.parse({ id: 'amortize', title: '长'.repeat(160) }).title).toHaveLength(160)
+    expect(() => ChatRenameParamsSchema.parse({ id: 'amortize', title: '长'.repeat(161) })).toThrow()
+    expect(() => ChatRenameParamsSchema.parse({ id: 'amortize', title: '名字', named: true })).toThrow()
   })
 
   it('追加消息的入参不收 id,id 由 core 指派', () => {

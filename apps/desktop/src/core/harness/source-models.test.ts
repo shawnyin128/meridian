@@ -74,7 +74,7 @@ describe('the models each configured source offers', () => {
     }
     expect((await lists.models('cli:claude')).error).toBeUndefined()
     expect(readApi).toHaveBeenCalledTimes(1)
-    expect(onLog).toHaveBeenCalledWith(expect.stringContaining('api:openai'))
+    expect(onLog).toHaveBeenCalledWith('warn', expect.stringContaining('api:openai'))
   })
 
   it('reads a CLI\'s status and models again at once when its configuration changes; an API source\'s list is dropped and read again only when next asked for', async () => {

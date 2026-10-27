@@ -50,6 +50,12 @@ export function openCoreLog({ dir, redact, maxBytes = 1_000_000, files = 3, now 
 
 export type CoreLog = ReturnType<typeof openCoreLog>
 
+/**
+ * Prints a Harness, CLI, internal-MCP, discovery or model-list note to the console method of its
+ * `level`, marked `[harness]`.
+ */
+export const harnessLog = (level: CoreLogLevel, line: string): void => console[level](`[harness] ${line}`)
+
 type Printer = (...args: unknown[]) => void
 
 /**

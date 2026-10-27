@@ -2,10 +2,12 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InputHTMLAttributes } from 'react'
 import type { SshFolders } from '../../shared/contract.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
+import { useDebounced } from '../hooks/useDebounced.js'
 import { ssh } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commitKeys } from '../lib/keyboard.js'
 import { useMessages } from '../messages/useMessages.js'
+import { CommitActions } from './CommitActions.js'
 import { EmptyState } from './EmptyState.js'
 import { FadeText } from './FadeText.js'
 import { FormInput } from './FormControls.js'
@@ -13,6 +15,7 @@ import { IconButton } from './IconButton.js'
 import { IconEnclosingFolder, IconFolder, IconNext } from './icons.js'
 import { InlineMessage } from './InlineMessage.js'
 import { LoadingPlaceholder } from './LoadingPlaceholder.js'
+import { ModalDialog } from './ModalDialog.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
 import { Item } from './Item.js'
 import { List } from './List.js'
@@ -38,8 +41,8 @@ export type SshFolderChoice = {
   edited: boolean
   /** Changes the path field's text. */
   type: (path: string) => void
-  /** Connects to `target` and lists its remote home. */
-  connect: (target: SshTarget) => void
+  /** Connects to `target` and lists `start`, or its remote home when there is no `start` or `start` cannot be listed. */
+  connect: (target: SshTarget, start?: string) => void
   /** Lists the folder at `path` of the host connected to: absolute, `~` or a path under `~/`. */
   open: (path: string) => void
   /** Drops the connection, the folder shown and any listing still on its way. */
@@ -61,7 +64,7 @@ export function useSshFolders(): SshFolderChoice {
   const connected = useRef<SshTarget | null>(null)
   const latest = useRef(0)
 
-  const list = useCallback((target: SshTarget, at?: string) => {
+  const list = useCallback((target: SshTarget, at?: string, orHome = false) => {
     const mine = ++latest.current
     setOpening(true)
     setIssue(null)
@@ -72,7 +75,8 @@ export function useSshFolders(): SshFolderChoice {
         connected.current = target
         setFolder(listed)
         type(listed.path)
-      } else setIssue(listed.issue)
+      } else if (orHome) list(target)
+      else setIssue(listed.issue)
     }, (error: unknown) => {
       if (mine !== latest.current) return
       setOpening(false)
@@ -93,8 +97,42 @@ export function useSshFolders(): SshFolderChoice {
     type('')
   }, [])
 
+  const connect = useCallback((target: SshTarget, start?: string) => {
+    list(target, start, start !== undefined)
+  }, [list])
+
   const edited = folder !== null && path !== folder.path
-  return { folder, opening, issue, path, edited, type, connect: list, open, reset }
+  return { folder, opening, issue, path, edited, type, connect, open, reset }
+}
+
+/** How long a host and port stay unchanged before they are checked. */
+const SETTLE_MS = 600
+
+/** Whether an SSH host was reached: nothing to check, checking, reached, or failed with Core's reason. */
+export type SshReach =
+  | { state: 'idle' | 'checking' | 'ready'; issue: null }
+  | { state: 'failed'; issue: string }
+
+/**
+ * Checks whether `target` can be reached by listing its remote home through Core, once it settles:
+ * `SETTLE_MS` after it last changed, or at `settle`, whichever comes first; a settled target is
+ * checked once. A null target or an empty host is not checked. A change of target drops the check
+ * before it, whose answer is then ignored, and goes back to checking.
+ */
+export function useSshReach(target: SshTarget | null): SshReach & { settle: () => void } {
+  const { folder, issue, connect, reset } = useSshFolders()
+  const host = target?.host ?? ''
+  const port = target?.port
+  const key = `${host}\n${port ?? ''}`
+  const [settledKey, settle] = useDebounced(key, SETTLE_MS)
+  useEffect(() => { reset() }, [key, reset])
+  useEffect(() => {
+    if (host !== '' && settledKey === key) connect({ host, ...(port === undefined ? {} : { port }) })
+  }, [settledKey, key, host, port, connect])
+
+  if (host === '') return { state: 'idle', issue: null, settle }
+  if (folder !== null) return { state: 'ready', issue: null, settle }
+  return issue === null ? { state: 'checking', issue: null, settle } : { state: 'failed', issue, settle }
 }
 
 /**
@@ -104,7 +142,7 @@ export function useSshFolders(): SshFolderChoice {
  * field, after which Enter submits the form it sits in. Esc or leaving the field hides them. A failed
  * read of the aliases goes to `onError`; other props go to the input.
  */
-export function SshHostField({ value, onValue, onError, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
+export function SshHostField({ value, onValue, onError, onBlur, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
   value: string
   onValue: (host: string) => void
   onError: (error: unknown) => void
@@ -137,7 +175,10 @@ export function SshHostField({ value, onValue, onError, ...props }: Omit<InputHT
             setShown(true)
           }}
           onClick={() => setShown(true)}
-          onBlur={() => setShown(false)}
+          onBlur={(event) => {
+            setShown(false)
+            onBlur?.(event)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') setShown(true)
             // Enter on an alias puts it in the field instead of submitting the form.
@@ -155,10 +196,11 @@ export function SshHostField({ value, onValue, onError, ...props }: Omit<InputHT
  * its path as a field, then its subfolders, each of which opens on a click. Enter in the field goes
  * to the path typed there and keeps focus in the field; while the field holds a path not gone to, Esc
  * puts back the folder shown instead of closing the dialog. The list keeps the height of five rows
- * and scrolls inside. While the next folder loads, the list shows the loading state; the choice's
- * issue shows under it. A folder opened from a subfolder or the enclosing-folder control while focus
- * is in the browser leaves focus on the first subfolder once its listing settles, or on the
- * enclosing-folder control when there is none. Renders nothing until the choice shows a folder.
+ * and scrolls inside. While a folder loads, the list shows the loading state; the choice's issue
+ * shows under it. A folder opened from a subfolder or the enclosing-folder control while focus is in
+ * the browser leaves focus on the first subfolder once its listing settles, or on the
+ * enclosing-folder control when there is none. Until the choice shows a folder, the enclosing-folder
+ * control is held and the list holds no rows.
  */
 export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
   const m = useMessages()
@@ -178,13 +220,12 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
     else up.current?.focus()
   }, [opening])
 
-  if (folder === null) return null
   return (
     <div ref={browser} className="ssh-folders" aria-busy={opening || undefined}>
       <div className="ssh-folders-head">
         <IconButton
-          ref={up} size="nested" label={m.common.sshFolders.up} disabled={folder.parent === null}
-          onClick={() => { if (folder.parent !== null) openFrom(folder.parent) }}
+          ref={up} size="nested" label={m.common.sshFolders.up} disabled={folder === null || folder.parent === null}
+          onClick={() => { if (folder !== null && folder.parent !== null) openFrom(folder.parent) }}
         ><IconEnclosingFolder /></IconButton>
         <FormInput
           className="ssh-folders-path" value={choice.path} aria-label={m.common.sshFolders.path}
@@ -195,28 +236,73 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
               refocus.current = false
               if (choice.path.trim() !== '') choice.open(choice.path.trim())
             },
-            ...(edited ? { onCancel: () => choice.type(folder.path) } : {}),
+            ...(edited && folder !== null ? { onCancel: () => choice.type(folder.path) } : {}),
           })}
         />
       </div>
       <div className="ssh-folders-list">
         {opening
           ? <LoadingPlaceholder shape="rows" />
-          : folder.folders.length === 0
-            ? <EmptyState variant="section" />
-            : (
-              <List variant="embedded" rows="fill" aria-label={folder.path}>
-                {folder.folders.map((child) => (
-                  <Item
-                    key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}
-                    leading={<IconFolder />} title={<FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>}
-                    trailing={<IconNext />}
-                  />
-                ))}
-              </List>
-            )}
+          : folder === null
+            ? null
+            : folder.folders.length === 0
+              ? <EmptyState variant="section" />
+              : (
+                <List variant="embedded" rows="fill" aria-label={folder.path}>
+                  {folder.folders.map((child) => (
+                    <Item
+                      key={child.path} className="ssh-folder-row" onActivate={() => openFrom(child.path)}
+                      leading={<IconFolder />} title={<FadeText className="ssh-folder-name" label={child.name}>{child.name}</FadeText>}
+                      trailing={<IconNext />}
+                    />
+                  ))}
+                </List>
+              )}
       </div>
       {issue === null ? null : <InlineMessage tone="error" variant="line">{issue}</InlineMessage>}
     </div>
+  )
+}
+
+/**
+ * The folder picker of an SSH host, a dialog stacked on whatever opened it and titled with the host.
+ * While `target` is not null it is open, connects to `target` and browses in a `SshFolderBrowser`
+ * from `start`, or from the remote home when `start` is null or cannot be listed.
+ * Choose hands the folder shown to `onChoose`; it is held until a folder is shown, while the next one
+ * lists and while the path field holds a path not gone to. Cancel, Esc and the scrim call `onClose`.
+ * Closing drops the connection and any listing still on its way.
+ */
+export function SshFolderPicker({ target, start, onChoose, onClose }: {
+  target: SshTarget | null
+  start: string | null
+  onChoose: (path: string) => void
+  onClose: () => void
+}) {
+  const m = useMessages()
+  const choice = useSshFolders()
+  const { connect, reset } = choice
+  const host = target?.host
+  const port = target?.port
+  useEffect(() => {
+    if (host === undefined) return
+    connect({ host, ...(port === undefined ? {} : { port }) }, start ?? undefined)
+    return reset
+  }, [host, port, start, connect, reset])
+
+  const { folder } = choice
+  return (
+    <ModalDialog
+      open={target !== null} onOpenChange={(open) => { if (!open) onClose() }} size="form" className="ssh-folder-picker"
+      title={host}
+      actions={(
+        <CommitActions
+          place="foot" onCancel={onClose} saveLabel={m.common.sshFolders.choose}
+          canSave={folder !== null && !choice.opening && !choice.edited}
+          onSave={() => { if (folder !== null) onChoose(folder.path) }}
+        />
+      )}
+    >
+      <SshFolderBrowser choice={choice} />
+    </ModalDialog>
   )
 }

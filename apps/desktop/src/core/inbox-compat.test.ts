@@ -127,9 +127,9 @@ describe('论文推送重做后要写的存储形状', () => {
     expect(read('trash')).toEqual([])
   })
 
-  it('state.json 里项目的推荐偏好多出确认方向和候选方向：照常读出，改启停后原样留着', () => {
+  it('state.json 里项目的推荐偏好多出确认方向和候选方向：照常读出，改启停后原样留着', async () => {
     store.updatePaper(SEED_PAPER, { identifier: 'arXiv:2211.17192' })
-    store.addPaper(project, SEED_PAPER)
+    await store.addPaper(project, SEED_PAPER)
     const directions = [{ id: 'direction-1', label: '推测解码', seeds: ['ARXIV:2211.17192'], weight: 1, confirmedAt: 1_792_000_000_000 }]
     const candidates = [{ id: 'direction-2', label: '树状验证', seeds: ['ARXIV:2401.15077'], foundAt: 1_792_000_000_000 }]
     const basis = { topic: '推测解码', goal: '', path: '' }
@@ -148,11 +148,11 @@ describe('论文推送重做后要写的存储形状', () => {
       .toMatchObject({ id: intent.id, enabled: false })
   })
 
-  it('state.json 里项目的推荐偏好缺键或值读不了：逐键报出来、按没有设置读，库照常打开，没改的值原样留着', () => {
+  it('state.json 里项目的推荐偏好缺键或值读不了：逐键报出来、按没有设置读，库照常打开，没改的值原样留着', async () => {
     store.updatePaper(SEED_PAPER, { identifier: 'arXiv:2211.17192' })
-    store.addPaper(project, SEED_PAPER)
+    await store.addPaper(project, SEED_PAPER)
     const other = store.createProject('另一个项目')
-    store.addPaper(other, SEED_PAPER)
+    await store.addPaper(other, SEED_PAPER)
     const intentOf = (s: VaultStore, id: string) => s.listDiscoveryProfiles().find((profile) => profile.id === id)!.intents[0]!
     const intent = intentOf(store, other).id
     const directions = [{ id: 'direction-1', label: '推测解码', seeds: ['ARXIV:2211.17192'] }]

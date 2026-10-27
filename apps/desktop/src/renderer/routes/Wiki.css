@@ -42,10 +42,10 @@
 /* The entry's button fills it and truncates itself, since an ellipsis never cuts into a button. */
 .wktoc li button{display:flex;width:100%;padding:0;border:0;background:none;color:inherit;font:inherit;text-align:left;cursor:inherit}
 .wktoc li:hover{color:var(--ink)}
-.wktoc li.on{color:var(--ink);font-weight:var(--fw-semibold);border-left-color:var(--ink)}
+.wktoc li.on{color:var(--accent-text);font-weight:var(--fw-semibold);border-left-color:var(--accent-mark)}
 .wktoc li.l2{padding-left:calc(2 * var(--sp-12));font-size:var(--fs-sm)}
 .wktoc li.l3{padding-left:calc(3 * var(--sp-12));font-size:var(--fs-sm);color:var(--ter)}
-.wktoc li.l3.on{color:var(--ink)}
+.wktoc li.l3.on{color:var(--accent-text)}
 
 /* The column editor */
 .coledit{margin:var(--sp-6) 0 var(--sp-12);display:grid;gap:var(--sp-6);max-width:420px}

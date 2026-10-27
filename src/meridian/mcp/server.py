@@ -124,7 +124,7 @@ class MeridianMCPServer:
                 "Meridian Paper Wiki exposes two workflows: Use Wiki through "
                 "context/read/trace, and Update Wiki through wiki_propose/wiki_proposal_status/audit. "
                 "The App owns paper ingest, aggregation structure, and body edits; an agent may only "
-                "propose a conclusion a project found and summarised, as claim ops with experiment "
+                "propose a finding from a project's experiment conclusion, as claim ops with experiment "
                 "evidence, and the user reviews it in the App. "
                 "Project Workspace exposes status/plan/event_add for App-agent coordination. "
                 "Coding context starts with read-only changes, then expands only referenced ideas or nodes. "
@@ -223,11 +223,11 @@ def tool_definitions() -> list[JsonDict]:
         {
             "name": "meridian.wiki_propose",
             "description": (
-                "Update Wiki: propose a conclusion a project found and summarised, as claim ops "
+                "Update Wiki: propose a finding from a project's experiment conclusion, as claim ops "
                 "(addClaim, reviseClaim, addEvidence, markConflict, resolveConflict, retractClaim). "
                 "Never import papers, restructure aggregations, or edit bodies; addClaim/reviseClaim "
                 "need at least one experiment evidence item, and a node named as evidence must have a "
-                "recorded conclusion (record_conclusion). The user reviews the proposal in the App; "
+                "recorded experiment conclusion (record_conclusion). The user reviews the proposal in the App; "
                 "this tool only writes to the review inbox."
             ),
             "inputSchema": _schema(
@@ -241,7 +241,7 @@ def tool_definitions() -> list[JsonDict]:
                     "title": {"type": "string", "description": "One sentence for the review list."},
                     "trigger": {
                         "type": "object",
-                        "description": "Where the conclusion came from.",
+                        "description": "Where the finding came from.",
                         "properties": {
                             "project": {"type": "string"},
                             "node": {"type": "string"},
@@ -267,7 +267,7 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.audit",
-            "description": "Update Wiki: read the App's deterministic wiki signals (lint findings); report if it has not run yet.",
+            "description": "Update Wiki: read the App's deterministic wiki signals (lint results); report if it has not run yet.",
             "inputSchema": _schema(
                 {
                     "wiki_root": {"type": "string", "description": "Canonical wiki root. Defaults to the active user Paper Wiki workspace."},
@@ -339,7 +339,7 @@ def tool_definitions() -> list[JsonDict]:
             "name": "meridian.workspace_event_add",
             "description": (
                 "Project Workspace: append one compact, structured event backed by an existing repository "
-                "evidence file. title = the conclusion in one line; detail = key numbers or parameters; "
+                "evidence file. title = the outcome in one line; detail = key numbers or parameters; "
                 "kind = start (began a node), reopen, result, decision, complete, or note."
             ),
             "inputSchema": _schema(
@@ -349,7 +349,7 @@ def tool_definitions() -> list[JsonDict]:
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
                     "event_id": {"type": "string", "description": "Stable idempotency key for the event."},
-                    "title": {"type": "string", "description": "The conclusion in one line, shown as the record title."},
+                    "title": {"type": "string", "description": "The outcome in one line, shown as the record title."},
                     "kind": {
                         "type": "string",
                         "enum": sorted(EVENT_KINDS),
@@ -453,7 +453,7 @@ def tool_definitions() -> list[JsonDict]:
                 "Lab: apply a strict meridian.lab.update.v1 packet through the Markdown control plane and "
                 "refresh the generated graph. link_task/unlink_task {node_id, task_id} tie a plan task to the "
                 "one node it belongs to; record_conclusion {node_id, text, evidence: [experiment ids]} writes "
-                "a supported or dead node's conclusion for the owner to verify. " + LAB_FOCUS_GUIDANCE
+                "a supported or dead node's experiment conclusion for the owner to verify. " + LAB_FOCUS_GUIDANCE
             ),
             "inputSchema": _schema(
                 {

@@ -1,6 +1,6 @@
 import type { Locator, Page } from '@playwright/test'
 import { TRASH_RETENTION_DAYS } from '../apps/desktop/src/shared/vocabulary.js'
-import { expect, gotoPapers, gotoProject, test, vaultToday, type MeridianWindow } from './app.js'
+import { expect, fittedPage, gotoPapers, gotoProject, test, vaultToday, type MeridianWindow } from './app.js'
 
 /** Visited screens stay mounted, so selectors every screen has, like the header, target the shown one. */
 const shown = (win: Page, sel: string) => win.locator(`.screenslot:not([hidden]) ${sel}`)
@@ -45,7 +45,7 @@ const paperTotal = (win: Page) => win.evaluate(async () => {
 
 test('删掉的论文进垃圾桶,恢复后回到列表且总数复原', async ({ win }) => {
   await gotoPapers(win)
-  await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
+  await fittedPage(win)
   const total = await paperTotal(win)
   const title = await win.locator('.ptable tbody tr').first().locator('.pt-title .table-text').innerText()
   // The fixture library has two papers sharing this exact title, so filtering by title alone cannot
@@ -211,7 +211,7 @@ test('原项目还在垃圾桶里时,那条附件恢复不回去,项目回来才
 
 test('清空垃圾桶要过二次确认,清掉的东西恢复不回来', async ({ win }) => {
   await gotoPapers(win)
-  await expect(win.locator('.ptable tbody tr')).toHaveCount(20)
+  await fittedPage(win)
   await win.locator('.ptable tbody tr').first().locator('td').last().hover()
   await win.locator('.ptable tbody tr').first().locator('.rowx').click()
   await gotoProject(win)

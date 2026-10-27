@@ -1,6 +1,6 @@
 /* The body of an idea's detail panel; its head is the shared PanelHead. */
 .idea-panel-meta{display:flex;align-items:center;gap:var(--sp-8)}
-.idea-panel-body,.idea-panel-source{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;
+.idea-panel-source{margin:0;color:var(--sec);font-size:var(--fs-base);line-height:1.65;
   white-space:pre-wrap;overflow-wrap:anywhere}
 .idea-panel-source{font-size:var(--fs-sm)}
 .idea-panel-source-gone{margin-left:var(--sp-6)}

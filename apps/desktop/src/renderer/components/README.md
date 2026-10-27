@@ -13,12 +13,17 @@ Current shared contracts:
   name a new milestone and a diamond to rename or delete one, at the click; Enter or Space on a lane
   opens it on today's date.
 - `InlineField`: the one in-place edit of a value, a name included: the rail values, the paper title and
-  metadata, the plan's task and milestone names, a project's name on its card or row, and, with `cell`, a
-  paper table text cell that its table opens. At rest the value's hover fill reaches past its text by the
+  metadata, the plan's task and milestone names, a project's name on its card or row, a chat's name on its
+  sidebar row, and, with `cell`, a paper table text cell that its table opens. At rest the value's hover fill reaches past its text by the
   inline field's padding, so the field's text starts where the value's was; Enter, focus leaving or a press
-  outside saves, Escape cancels, and what is typed is kept as a draft. A rename starts from a click on the
-  name, or, where the name's click opens its item, from the item's rename command (the … menu's 重命名, a
-  task's pencil); it never opens a popover.
+  outside saves, Escape cancels, a value its `validate` refuses keeps the field open and marked invalid, and
+  what is typed is kept as a draft. A rename starts from a click on the name, or, where the name's click
+  opens its item, from the item's rename command (the … menu's 重命名, a task's pencil); it never opens a
+  popover. The titles that rename by a click are the chat page's, the project page's and an idea
+  detail panel's head (`TitleField`).
+- `TitleField`: that click-to-rename title, an `InlineField` at the title's own size, on one line that
+  fades where it does not fit; `PageTitle` takes it through `rename`. `PanelHead` takes it through
+  `rename` too, with `wrap`: the title wraps as a panel head's does and is edited in a wrapping field.
 - `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
   `regular` (30px) in the page header bar and at dialog, popover and form feet and `compact` (24px) in
   section, group and panel headings, inside rows and cards, and in toolbars, with an optional glyph before
@@ -35,9 +40,10 @@ Current shared contracts:
 - `CommitActions`: the one Cancel and Save of a draft, Cancel first. Its `place` sets the size and the
   primary rule: at a dialog's, popover's or form's `foot` Save is the primary action at the regular
   size; in a `heading` and inside an `item` both are secondary at the compact size.
-- `EditActions`: the one edit contract of a long text: Edit in the heading's action slot, then Cancel and
-  Save (CommitActions) in that same place. Save or ⌘Enter commits (Enter in a one-line field), Cancel or
-  Escape restores.
+- `MarkdownSection`: the one long Markdown text edited in place (a memo, a task note, a Wiki body, an
+  idea): a click on the text opens the live `MarkdownEditor` where it landed, Cancel and Save sit in its
+  heading while it is open, leaving or ⌘Enter saves, and Escape or Cancel restores. `MarkdownField` is the
+  same editor as a boxed field inside a `DraftForm`.
 - `InlineDraftInput`: the shared input and lifecycle for placeholder/create rows. Hosts provide row
   layout, sibling controls, trigger refs, and persistence; trimming, validation, focus, Enter/Escape,
   outside cancellation, and async submission locking are implemented once.
@@ -112,9 +118,11 @@ Current shared contracts:
   `scripts/check-screen-elements.test.mjs` checks it.
 - `NavRow`: the one row of a navigation list, the sidebar's, the Settings categories' and the theme
   editor's modules, at one height: a glyph slot, the text, and a count or a state at its end. It is a
-  button, or, when it holds controls of its own or a fold caret, a div whose label is the button; a row that
-  opens nothing is the fold toggle of its group. `indent`, `sub` and `dim` are its looks under a group.
+  button, or, when it holds controls of its own or a fold caret, a div whose label is the button; while its
+  name is renamed, `editor`, the field, takes the label's place. A row that opens nothing is the fold toggle
+  of its group. `indent`, `sub` and `dim` are its looks under a group.
   While Meridian is not the active app, the current row's accent turns to the neutral selected look.
+  Activating the selected row again calls its `onReselect`.
 - `NavSection`: a titled section of a navigation list whose 24px heading folds the rows under it.
 - `NavPane`: the sidebar's pane: its surface, width, collapse, the rows that scroll and the rows pinned
   under them, which keep the same room for the scrollbar so every row ends at one edge.
@@ -123,7 +131,10 @@ Current shared contracts:
   `ScreenSlot` keeps a screen mounted while it is hidden.
 - `SegmentedControl`: the only switch between peer views in the app, including the timeline scale: a track of
   equal segments with a raised thumb that slides to the picked one, whose label is in `--accent-text`,
-  radio-group semantics, and one Tab stop with arrow keys inside. The `.fchip` and `.segbtn` pill rows are retired.
+  radio-group semantics, and one Tab stop with arrow keys inside. Picking the picked segment again calls its
+  `onReselect`, which `TabbedSection` passes on: with `useTopLevel` (`hooks/`), a switch chosen again takes a
+  view that was drilled into back to its top level, scrolled to the top, and does nothing otherwise. The
+  `.fchip` and `.segbtn` pill rows are retired.
 - `TabbedSection`: the one section whose content switches between peer tabs: its heading, its `SegmentedControl`
   first in the heading's actions slot and then the section's own actions, and the picked tab's panel. A tab with
   nothing shows its sentence as the section `EmptyState`; that state and every row of the list a tab shows are
@@ -241,8 +252,10 @@ Current shared contracts:
   `useSshFolders` connects through Core and lists one folder at a time, dropping answers that arrive late.
   `SshFolderBrowser` shows the folder: the enclosing-folder control and its path as a field, where Enter goes
   to a typed path (absolute or under `~`, hidden folders too), then its subfolders in a list five rows high,
-  the loading state while the next folder lists, and a failure under the list. The
-  project's workspace dialog uses all three, and any other choice of a remote folder reuses them.
+  the loading state while the next folder lists, and a failure under the list. `SshFolderPicker` is the
+  folder picker of a host: a dialog stacked on the one that opened it and titled with the host, holding a
+  `SshFolderBrowser` that starts at the folder asked for or the remote home, with Cancel and Choose. `useSshReach` checks a host once it settles. The project's workspace dialog puts the host
+  field, then, once the host is reached, a `DirectoryField` whose folder button opens the picker, and any other choice of a remote folder reuses them.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. `SearchField` is
   the one search, a `ClearableInput` with the search glyph at its start: the sidebar search, the command
   palette and the library search configure the same focus restoration, icon geometry, and accessible naming.
@@ -253,7 +266,7 @@ Current shared contracts:
   of chips ending with the send control, a GenerationControl. The chat screen and the reader's paper
   chat compose it through `chat/ChatComposer`.
 - `ModelChips`: the composer's three pickers for one chat, each ChoicePicker's `capsule` look: the source,
-  ending with 模型设置…, the model of that source, and the reasoning effort. A pick changes only that
+  ending with 模型设置, the model of that source, and the reasoning effort. A pick changes only that
   chat's own choice, which Core keeps. While no model is set up it is the shared "AI not connected" tag.
 - `ElapsedTime`: the one time since a moment, `12s` under a minute and `1m 05s` after, counting up each
   second in tabular numerals; a pending chat answer shows it after 思考中….
@@ -285,11 +298,17 @@ Current shared contracts:
   `SectionHeading` (and with it `Group`) and `CardTray` show it through their `count`; no message or screen
   writes `· N` itself.
 - `PickRow`, `Pager`, `Markdown`, `PaperMetadata`, `ParseProgress`: shared feature widgets.
-- `RatingStars`, `ReadStatePicker` (in `PaperMetadata`) and `PaperTopics`: the one rating, reading-status and
-  topic editor of a paper, used by both the paper table and the detail panel.
+- `PagedSection`: one section of a stack of card grids, each with its own `Pager`, that `useStackPaging`
+  sizes together to fill the area that scrolls them.
+- `RatingStars`, `ReadStatePicker` (in `PaperMetadata`): the one rating and reading-status editor of a
+  paper, used by both the paper table and the detail panel.
+- `TopicChips`: the one topic editor, offering the Wiki's topic pages, for a paper in the paper table and
+  the detail panel and for a project in its property rail.
 - `ChipList`: the one list of removable chips. Each chip's name opens what it names, and its pencil and
-  × sit in the chip's row-actions slot; the `+` after the chips is AddAction's chip-sized circle, in the
-  row's actions slot with `reveal="hover"`; with `label` the list is a relation row (`wkrel`). It draws a
+  × sit in the chip's row-actions slot, over the end of the name, which fades under them while the chip is
+  hovered or holds focus; at rest a chip is as wide as its name and padding. The `+` after the chips is
+  AddAction's chip-sized circle, in the row's actions slot with `reveal="hover"`; with `label` the list is a
+  relation row (`wkrel`). It draws a
   paper's topics and projects, a project's areas and relations, and an idea's relations. `ChipList.css`
   holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name button
   (`tagchip-open`) and the relation row with its label (`wkrel`).

@@ -14,12 +14,12 @@ import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
 import type {
   Attachment, ChangeEntry, ChatMessage, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry, InboxStream,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation,
-  ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch,
+  ProposalRecord, RelationFields, ResearchIdea, Task, TaskFields, TrashEntry, Watch, WikiAggregationCard,
 } from '../shared/contract.js'
 import { AgentProposalSchema, DEFAULT_DELIVERY_SETTINGS } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
-import { projectAreas, sortRecordsNewestFirst } from '../shared/project-signals.js'
-import { topicDir, topicProposal } from '../shared/topic-proposal.js'
+import { projectTopics, sortRecordsNewestFirst } from '../shared/project-signals.js'
+import { newTopicPages, topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR,
   TRASH_RETENTION_DAYS,
@@ -30,13 +30,14 @@ import type { ChangeRecord } from './changelog.js'
 import { lastProgressOf, PROJECT_FIELDS, withChangelog } from './changelog.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
-  emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, missingMetadata,
+  emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, missingMetadata, publicationFill,
   paperImportResult, parsePaperUpload, patchedCustom, readingNoteCount, remoteMetadata, renamedCell,
   renamedOptions, restoredColumn, retypedColumn,
 } from './paper-library/index.js'
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE,
-  overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, verifiedNodes, withProjectLinks,
+  overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, servedTopics, storedTopics, titledTopics,
+  topicScopeOf, verifiedNodes, withProjectLinks, type TopicPin,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
@@ -46,6 +47,7 @@ import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
 } from './inbox/identity.js'
 import type { RemotePaper } from './net/arxiv.js'
+import type { Publication } from './net/semantic-metadata.js'
 import {
   applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
   discoveryReasons, recommendationSeedIds,
@@ -53,13 +55,14 @@ import {
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
-import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
+import { NO_WORKSPACE_GRAPHS, type MetadataFill, type VaultOps, type VaultStore } from './vault.js'
 import { searchHits } from './search.js'
 import { digestOf } from './wiki-proposals.js'
 import {
-  applyProposal, checkBody, conclusionClaims, describeOp, projectClaims, projectDisputes, HUMAN, isPaper, pageVersion, recordText, touchedPages,
+  applyProposal, checkBody, conclusionClaims, describeOp, mergedMemberships, mergePlan, projectClaims, projectDisputes, HUMAN, isPaper,
+  pageVersion, recordText, topicPages, touchedPages,
   wikiAggregation, wikiBacklinks, wikiCards, wikiHome, wikiPaper, wikiSignals,
-  type ClaimWorld, type PointName, type WikiData, type WikiPaperRecord,
+  type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
 
 /** Trash entry with all content needed for restoration. `restorable` is derived from destination availability. */
@@ -74,6 +77,7 @@ type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | { kind: 'inbox'; entryId: string; feedback?: 'less' | 'known' }
   | { kind: 'later'; later: LaterRecord; position: number }
   | { kind: 'chat'; chat: ChatRecord; position: number }
+  | { kind: 'page'; pageId: string; page: WikiAggregationRecord; ideas?: { id: string; before: string[]; after: string[] }[] }
 )
 
 /** Seeded fixture change with cross-boundary fields but no undo/archive fields because it predates them. */
@@ -87,8 +91,8 @@ type PaperRecord = Omit<PaperRow, 'readState' | 'projects'> & { sourceId: string
 
 /** Fixture projects retain only fields that a project page can persist. */
 type FixtureProject = Omit<
-  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions'
->
+  ProjectDetail, 'paperCount' | 'paperTitles' | 'conclusions' | 'conclusionClaims' | 'projectConclusions' | 'topicPages'
+> & { topicPins?: TopicPin[] | undefined }
 
 /**
  * Stored inbox recommendation: cross-boundary fields plus topics written to the paper page on import.
@@ -273,6 +277,22 @@ export function createFixtureStore(
     project, project.graph, projectClaims(wiki, project.id), projectDisputes(wiki, project.id),
   )
 
+  /** Project `id` for its detail. Throws when there is none, or its research graph has an edge to a node it does not hold. */
+  const shownProject = (id: string): FixtureProject => {
+    const project = projectById.get(id)
+    if (!project) throw new CallError('not-found', `项目不存在：${id}`)
+    const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
+    for (const [from, to] of project.graph.edges) {
+      if (!nodeIds.has(from) || !nodeIds.has(to)) {
+        throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
+      }
+    }
+    return project
+  }
+
+  /** The detail of `project` as the store's project methods settle to. */
+  const shownDetail = (project: FixtureProject): Promise<ProjectDetail> => Promise.resolve(detailOf(project))
+
   const detailOf = (project: FixtureProject): ProjectDetail => {
     const paperTitles = Object.fromEntries(project.papers.flatMap((id) => {
       const paper = byId.get(id)
@@ -280,8 +300,12 @@ export function createFixtureStore(
     }))
     const claims = conclusionClaims(wiki, project.id)
     const conclusions = conclusionsOf(project)
+    const stored = structuredClone(project)
+    delete stored.topics
+    delete stored.topicPins
     return {
-      ...structuredClone(project),
+      ...stored,
+      ...served(project),
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(conclusions),
@@ -289,6 +313,16 @@ export function createFixtureStore(
       projectConclusions: conclusions,
       ...lastProgressOf(changelog, project.id, [...project.events, ...project.workspace?.events ?? []]),
     }
+  }
+
+  /** The topic fields served for `project`, as the fixture Wiki's topic pages stand now. */
+  const served = (project: FixtureProject) => servedTopics(project, topicPages(wiki))
+
+  /** The topic fields of `project` that list views add: the served ones and the topic scope. */
+  const listedTopics = (project: FixtureProject) => {
+    const fields = served(project)
+    const scope = topicScopeOf((fields.topicPages ?? []).flatMap((page) => (page === null ? [] : [page])), topicPages(wiki))
+    return { ...fields, ...(scope.length === 0 ? {} : { topicScope: scope }) }
   }
 
   /** Current paper-table rows overlaid with project-side relations and legacy conclusions. */
@@ -537,7 +571,7 @@ export function createFixtureStore(
       projectId: project.id,
       projectName: project.name,
       anchorText: [
-        project.name, ...projectAreas(project), project.focus,
+        project.name, ...projectTopics(served(project)), project.focus,
         ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
@@ -584,7 +618,7 @@ export function createFixtureStore(
     (item.chat.paperId === undefined ? undefined : chats.find((held) => held.paperId === item.chat.paperId))
 
   /** Append a research record dated with vault today, optionally linked to a research-graph node. */
-  const appendEvent = (projectId: string, text: string, node?: string): ProjectDetail => {
+  const appendEvent = (projectId: string, text: string, node?: string): Promise<ProjectDetail> => {
     const project = projectById.get(projectId)
     if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
     checkOneLine(text)
@@ -602,7 +636,7 @@ export function createFixtureStore(
       ],
     }
     projectById.set(projectId, nextProject)
-    return detailOf(nextProject)
+    return shownDetail(nextProject)
   }
 
   // Seeded fixture changes predate undo support and are historical records without restoration data.
@@ -613,25 +647,92 @@ export function createFixtureStore(
     at: Date.parse(`${relative(date, builtOn)}T00:00:00Z`), restore: null,
   }))
 
+  /** Sets each idea `moves` names, while it still relates to the pages `from`, to relate to the pages `to` instead. */
+  const relateIdeas = (moves: { id: string; from: string[]; to: string[] }[]): void => {
+    ideas = ideas.map((idea) => {
+      const move = moves.find((m) => m.id === idea.id)
+      if (move === undefined || JSON.stringify(idea.relations?.pages ?? []) !== JSON.stringify(move.from)) return idea
+      return { ...idea, relations: { projects: idea.relations?.projects ?? [], ...idea.relations, pages: move.to } }
+    })
+  }
+
+  /** Puts the ideas the merge that trashed page record `item` repointed back on the pages they related to before it. */
+  const putIdeasBack = (item: Extract<TrashRecord, { kind: 'page' }>): void =>
+    relateIdeas((item.ideas ?? []).map(({ id, before, after }) => ({ id, from: after, to: before })))
+
+  /** The id of every aggregation, in id order. */
+  const aggregationIds = (): string[] => Object.keys(wiki.pages).sort().filter((id) => !isPaper(wiki.pages[id]!))
+
+  /** The aggregations directly under aggregation `id`, in id order. */
+  const subpagesOf = (id: string): string[] => aggregationIds()
+    .filter((other) => ((wiki.pages[other] as WikiAggregationRecord).fm.parents ?? []).includes(id))
+
   /**
-   * Paper-table topics and methods derive from memberships and update when memberships change.
-   * `updated` always comes from the page's current `fm.updated`; other derived values recalculate only
-   * when membership changes.
+   * The Wiki and the projects as merging aggregation `from` into `into` leaves them (see mergePlan),
+   * and the id of every page that merge writes, `from` last.
+   */
+  const mergeOutcome = (from: string, into: string): {
+    next: WikiData; projects: FixtureProject[]; written: string[]
+  } => {
+    const plan = mergePlan(wiki, from, into)
+    const day = today()
+    const pages = { ...wiki.pages }
+    const target = pages[into] as WikiAggregationRecord
+    const { aliases, parents, columns, claims, body } = plan.intoFields
+    pages[into] = { ...target, fm: { ...target.fm, aliases, parents, columns, claims, updated: day }, body: body ?? target.body }
+    for (const { paper, cells } of plan.members) {
+      const held = pages[paper] as WikiPaperRecord
+      pages[paper] = { ...held, fm: { ...held.fm, memberships: mergedMemberships(held, plan, cells), updated: day } }
+    }
+    for (const { page, parents: next } of plan.children) {
+      const held = pages[page] as WikiAggregationRecord
+      pages[page] = { ...held, fm: { ...held.fm, parents: next, updated: day } }
+    }
+    for (const { page, claim } of plan.claims) {
+      const held = pages[page] as WikiAggregationRecord
+      pages[page] = { ...held, fm: { ...held.fm, claims: (held.fm.claims ?? []).map((c) => (c.id === claim.id ? claim : c)), updated: day } }
+    }
+    for (const id of new Set([into, ...plan.links])) {
+      const held = pages[id]!
+      pages[id] = { ...held, fm: { ...held.fm, updated: day }, body: held.body.split('\n').map(plan.rewriteLink).join('\n') } as typeof held
+    }
+    delete pages[from]
+    const projects = [...projectById.values()].flatMap((project) => {
+      if (!project.relations.some((g) => g.items.some((item) => item.page === from))) return []
+      return [{
+        ...project,
+        relations: project.relations.map((g) => ({ ...g, items: g.items.map((item) => (item.page === from ? { ...item, page: into } : item)) })),
+      }]
+    })
+    const written = [
+      ...Object.keys(pages).sort().filter((id) => pages[id] !== wiki.pages[id]),
+      ...projects.map((project) => `${PROJECT_PATH}${project.id}`),
+      from,
+    ]
+    return { next: { ...wiki, pages }, projects, written }
+  }
+
+  /**
+   * Paper-table topics and methods derive from memberships and the names of the aggregations they
+   * point at, and update when either changes. `updated` always comes from the page's current
+   * `fm.updated`; other derived values recalculate only when one of those changes.
    */
   const rederiveRows = (from: WikiData, to: WikiData): void => {
     for (const id of new Set([...Object.keys(from.pages), ...Object.keys(to.pages)])) {
       const page = to.pages[id]
-      if (page === undefined || page.kind !== 'paper' || page === from.pages[id]) continue
+      if (page === undefined || page.kind !== 'paper') continue
       const row = byId.get(id.slice(PAPER_PAGE.length))
       if (row === undefined) continue
-      const memberships = (p: WikiData['pages'][string] | undefined) =>
-        JSON.stringify((p as WikiPaperRecord | undefined)?.fm.memberships ?? [])
+      const memberships = (p: WikiData['pages'][string] | undefined, data = to) =>
+        JSON.stringify(((p as WikiPaperRecord | undefined)?.fm.memberships ?? [])
+          .map((m) => [m, data.pages[m.in]?.kind, data.pages[m.in]?.fm.title]))
+      if (page === from.pages[id] && memberships(page, from) === memberships(page)) continue
       const titles = (kind: string) => ((page as WikiPaperRecord).fm.memberships ?? [])
         .filter((m) => to.pages[m.in]?.kind === kind)
         .map((m) => (to.pages[m.in] as { fm: { title: string } }).fm.title)
       byId.set(row.id, {
         ...row,
-        ...(memberships(from.pages[id]) === memberships(page) ? {} : { topics: titles('topic'), methods: titles('method') }),
+        ...(memberships(from.pages[id], from) === memberships(page) ? {} : { topics: titles('topic'), methods: titles('method') }),
         updated: String(page.fm.updated),
       })
     }
@@ -682,6 +783,16 @@ export function createFixtureStore(
     return paperImportResult('added', paper)
   }
 
+  /** The bibliographic fields the App last filled into each paper, with the values it wrote, by paper id. */
+  const fills = new Map<string, Record<string, unknown>>()
+
+  /** What fillPaperPublication writes onto paper `id` for `publication`. Throws if there is no such paper. */
+  const publicationFillOf = (id: string, publication: Publication | undefined): MetadataFill => {
+    const paper = byId.get(id)
+    if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
+    return publicationFill(paper, fills.get(id), publication)
+  }
+
   /** Fills only missing bibliographic fields and updates queued copies of the same source. */
   const fillPaper = (id: string, fill: MetadataFill, replaceTitle: string | null): string[] => {
     const paper = byId.get(id)
@@ -691,6 +802,7 @@ export function createFixtureStore(
     if (written.length === 0) return []
     const filled: PaperRow = { ...paper, ...write, updated: today() }
     byId.set(id, filled)
+    fills.set(id, { ...fills.get(id), ...write })
     const source = sourceOf.get(id)
     later = later.map((entry) => (entry.paper === source
       ? laterWithMetadata(entry, filled, write.title !== undefined)
@@ -809,12 +921,23 @@ export function createFixtureStore(
       else stated.add(id)
     },
 
+    pinProjectTopics() {
+      // The fixture's projects are built in, and resolve their topics by title as they are served.
+      return { pages: [], projects: [] }
+    },
+
     putProject(project) {
       const held = projectById.get(project.id)
       if (!held) throw new CallError('not-found', `项目不存在：${project.id}`)
+      const titles = projectTopics(project)
+      const index = topicPages(wiki)
+      const chosen = project.topicPages === undefined
+        ? titledTopics(titles, index)
+        : titles.map((title, at) => ({ title, page: project.topicPages![at] ?? null }))
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, structuredClone(project[key])]))
-      projectById.set(project.id, { ...held, ...fields })
+      projectById.set(project.id, { ...held, ...fields, ...storedTopics(chosen, held, index) })
       if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
+      return Promise.resolve()
     },
 
     deletePaper(id) {
@@ -853,6 +976,16 @@ export function createFixtureStore(
     importPaper: storeUpload,
 
     fillPaperMetadata: fillPaper,
+
+    fillPaperPublication(id, publication) {
+      const write = publicationFillOf(id, publication)
+      if (Object.keys(write).length === 0) return []
+      byId.set(id, { ...byId.get(id)!, ...write, updated: today() })
+      fills.set(id, { ...fills.get(id), ...write })
+      return Object.keys(write)
+    },
+
+    publicationFillOf,
 
     paperReading(id) {
       if (!byId.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
@@ -926,8 +1059,7 @@ export function createFixtureStore(
         name: p.name,
         status: p.status,
         priority: p.priority,
-        topic: p.topic,
-        ...(p.topics === undefined ? {} : { topics: p.topics }),
+        ...listedTopics(p),
         focus: p.focus,
         ...(p.block === undefined ? {} : { block: p.block }),
         ...(p.conflictPage === undefined ? {} : { conflictPage: p.conflictPage }),
@@ -957,8 +1089,7 @@ export function createFixtureStore(
         name: p.name,
         status: p.status,
         priority: p.priority,
-        topic: p.topic,
-        ...(p.topics === undefined ? {} : { topics: p.topics }),
+        ...listedTopics(p),
         focus: p.focus,
         ...(p.block === undefined ? {} : { block: p.block }),
         start: p.start,
@@ -1005,15 +1136,11 @@ export function createFixtureStore(
     },
 
     getProject(id) {
-      const project = projectById.get(id)
-      if (!project) throw new CallError('not-found', `项目不存在：${id}`)
-      const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
-      for (const [from, to] of project.graph.edges) {
-        if (!nodeIds.has(from) || !nodeIds.has(to)) {
-          throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
-        }
-      }
-      return detailOf(project)
+      return shownDetail(shownProject(id))
+    },
+
+    heldProject(id) {
+      return detailOf(shownProject(id))
     },
 
     hasProject(id) {
@@ -1040,7 +1167,7 @@ export function createFixtureStore(
         }
       }
       projectById.set(id, next)
-      return detailOf(next)
+      return shownDetail(next)
     },
 
     updateProject(id, patch) {
@@ -1050,16 +1177,16 @@ export function createFixtureStore(
       const next: FixtureProject = { ...project, ...fields }
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
-      if (topics !== undefined) {
-        next.topic = topics[0] ?? DEFAULT_PROJECT_TOPIC
-        if (topics.length > 1) next.topics = topics
-        else delete next.topics
-      }
       // The contract guarantees fixed-width ISO dates, so lexical order equals chronological order.
       if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
+      if (topics !== undefined) {
+        const filing = newTopicPages(topics, wikiCards(wiki), () => topicDir(wikiHome(wiki)))
+        if (filing !== null) ops.applyProposal(filing)
+        Object.assign(next, storedTopics(titledTopics(topics, topicPages(wiki)), next, topicPages(wiki)))
+      }
       projectById.set(id, next)
       if (next.status === FINISHED_PROJECT) archiveIdeasForProject(id)
-      return detailOf(next)
+      return shownDetail(next)
     },
 
     deleteProject(id) {
@@ -1080,7 +1207,7 @@ export function createFixtureStore(
       const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
       const nextProject = { ...project, tasks: [made, ...project.tasks] }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     agentTaskRequests() {
@@ -1107,7 +1234,7 @@ export function createFixtureStore(
       checkSpan(nextTask)
       const nextProject = { ...project, tasks: project.tasks.map((t) => (t.id === taskId ? nextTask : t)) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteTask(projectId, taskId) {
@@ -1116,7 +1243,7 @@ export function createFixtureStore(
       if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
       const nextProject = { ...project, tasks: project.tasks.filter((t) => t.id !== taskId) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     reorderTasks(projectId, order) {
@@ -1128,10 +1255,10 @@ export function createFixtureStore(
       }
       const nextProject = { ...project, tasks: order.map((id) => byId.get(id)!) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
-    setTaskNode(projectId, taskId, nodeId) {
+    async setTaskNode(projectId, taskId, nodeId) {
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
@@ -1141,7 +1268,7 @@ export function createFixtureStore(
       const nextProject: FixtureProject = { ...project, taskNodes }
       if (Object.keys(taskNodes).length === 0) delete nextProject.taskNodes
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createMilestone(projectId, milestone) {
@@ -1152,7 +1279,7 @@ export function createFixtureStore(
         milestones: [{ ...milestone, id: nextId('ms') }, ...project.milestones],
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     updateMilestone(projectId, milestoneId, patch) {
@@ -1166,7 +1293,7 @@ export function createFixtureStore(
         milestones: project.milestones.map((m) => (m.id === milestoneId ? nextMilestone : m)),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteMilestone(projectId, milestoneId) {
@@ -1180,7 +1307,7 @@ export function createFixtureStore(
         milestones: project.milestones.filter((m) => m.id !== milestoneId),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createRelation(projectId, { group, ...fields }) {
@@ -1194,7 +1321,7 @@ export function createFixtureStore(
         : [...project.relations, { group, items: [item] }]
       const nextProject = { ...project, relations }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteRelation(projectId, relationId) {
@@ -1208,7 +1335,7 @@ export function createFixtureStore(
         relations: project.relations.map((r) => ({ ...r, items: r.items.filter((i) => i.id !== relationId) })),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     updateRelation(projectId, relationId, relation) {
@@ -1223,7 +1350,7 @@ export function createFixtureStore(
         relations: project.relations.map((r) => ({ ...r, items: r.items.map((i) => (i.id === relationId ? item : i)) })),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     addPaper(projectId, paperId) {
@@ -1233,7 +1360,7 @@ export function createFixtureStore(
       if (project.papers.includes(paperId)) throw new CallError('refused', `已经关联过这篇论文：${paperId}`)
       const nextProject = { ...project, papers: [paperId, ...project.papers] }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     removePaper(projectId, paperId) {
@@ -1242,7 +1369,7 @@ export function createFixtureStore(
       if (!project.papers.includes(paperId)) throw new CallError('not-found', `项目没有关联这篇论文：${paperId}`)
       const nextProject = { ...project, papers: project.papers.filter((id) => id !== paperId) }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     moveRelation(projectId, id, index) {
@@ -1250,7 +1377,7 @@ export function createFixtureStore(
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
       const commit = (nextProject: typeof project) => {
         projectById.set(projectId, nextProject)
-        return detailOf(nextProject)
+        return shownDetail(nextProject)
       }
       const moved = <T,>(list: T[], at: number): T[] => {
         const target = Math.max(0, Math.min(index, list.length - 1))
@@ -1277,7 +1404,7 @@ export function createFixtureStore(
         attachments: [{ ...attachment, id: nextId('att') }, ...project.attachments],
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteAttachment(projectId, attachmentId) {
@@ -1295,7 +1422,7 @@ export function createFixtureStore(
         id: nextId('trash'), kind: 'attachment', title: attachment.name,
         deletedAt: nowMs(), projectId, attachment, position,
       }, ...trash]
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createEvent(projectId, text, node) {
@@ -1319,7 +1446,7 @@ export function createFixtureStore(
         },
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     updateNode(projectId, nodeId, patch) {
@@ -1338,7 +1465,7 @@ export function createFixtureStore(
         },
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteNode(projectId, nodeId) {
@@ -1360,7 +1487,7 @@ export function createFixtureStore(
           ? updateResearchIdea(idea, { node: null }, today())
           : idea
       ))
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     createConclusion(projectId, text, { chat, paper }) {
@@ -1378,7 +1505,7 @@ export function createFixtureStore(
       }
       const nextProject = { ...project, conclusionList: [...project.conclusionList, item] }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     setConclusionState(projectId, conclusionId, state) {
@@ -1394,7 +1521,7 @@ export function createFixtureStore(
         )),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     verifyConclusion(projectId, node, fingerprint) {
@@ -1409,7 +1536,7 @@ export function createFixtureStore(
         verifiedConclusions: [...(project.verifiedConclusions ?? []).filter((v) => v.node !== node), entry],
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     unverifyConclusion(projectId, node) {
@@ -1420,7 +1547,7 @@ export function createFixtureStore(
       if (rest.length === 0) delete nextProject.verifiedConclusions
       else nextProject.verifiedConclusions = rest
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     deleteConclusion(projectId, conclusionId) {
@@ -1434,7 +1561,7 @@ export function createFixtureStore(
         conclusionList: project.conclusionList.filter((conclusion) => conclusion.id !== conclusionId),
       }
       projectById.set(projectId, nextProject)
-      return detailOf(nextProject)
+      return shownDetail(nextProject)
     },
 
     listInbox(params = {}) {
@@ -1771,8 +1898,12 @@ export function createFixtureStore(
       return wikiHome(wiki)
     },
 
-    wikiAggregation(id) {
+    async wikiAggregation(id) {
       return wikiAggregation(wiki, id, versionOf(id)!, projectNames(), pointName)
+    },
+
+    readWorkspaceGraphs() {
+      return Promise.resolve(NO_WORKSPACE_GRAPHS)
     },
 
     wikiPaper(id) {
@@ -1815,7 +1946,8 @@ export function createFixtureStore(
             ...p.graph.nodes.flatMap((n) => n.writebacks.map((w) => w.page)),
           ],
         })),
-        trashed: new Map(trash.flatMap((item) => (item.kind === 'paper' ? [[`${PAPER_PAGE}${item.paper.id}`, item.title] as const] : []))),
+        trashed: new Map(trash.flatMap((item) => (item.kind === 'paper' ? [[`${PAPER_PAGE}${item.paper.id}`, item.title] as const]
+          : item.kind === 'page' ? [[item.pageId, item.title] as const] : []))),
         missingRegions: [],
       })
     },
@@ -1865,6 +1997,55 @@ export function createFixtureStore(
       wiki = next
     },
 
+    deleteWikiPage(id) {
+      const page = wiki.pages[id]
+      if (page === undefined || isPaper(page)) throw new CallError('not-found', `wiki 聚合不存在：${id}`)
+      const pages = { ...wiki.pages }
+      for (const child of subpagesOf(id)) {
+        const held = pages[child] as WikiAggregationRecord
+        const parents = [...new Set((held.fm.parents ?? []).flatMap((p) => (p === id ? page.fm.parents ?? [] : [p])))]
+        pages[child] = { ...held, fm: { ...held.fm, parents: parents.filter((p) => p !== child), updated: today() } }
+      }
+      delete pages[id]
+      const next = { ...wiki, pages }
+      rederiveRows(wiki, next)
+      wiki = next
+      trash = [{ id: nextId('trash'), kind: 'page', title: page.fm.title, deletedAt: nowMs(), pageId: id, page }, ...trash]
+    },
+
+    wikiDeletePages(id) {
+      const children = subpagesOf(id)
+      return [id, ...children, ...aggregationIds().filter((other) => other !== id && !children.includes(other))]
+    },
+
+    mergeWikiPages(from, into, shown) {
+      const { next, projects } = mergeOutcome(from, into)
+      const cards = wikiCards(wiki)
+      const unchanged = (id: string, card: WikiAggregationCard): boolean =>
+        JSON.stringify(cards.find((c) => c.id === id)) === JSON.stringify(card)
+      if (!unchanged(from, shown.from) || !unchanged(into, shown.into)) {
+        throw new CallError('changed', `「${from}」或「${into}」在你挑合并目标之后改过，没有合并`)
+      }
+      const page = wiki.pages[from] as WikiAggregationRecord
+      rederiveRows(wiki, next)
+      wiki = next
+      for (const project of projects) projectById.set(project.id, project)
+      const repointed = ideas.flatMap((idea) => {
+        const before = idea.relations?.pages ?? []
+        return before.includes(from) ? [{ id: idea.id, before, after: [...new Set(before.map((p) => (p === from ? into : p)))] }] : []
+      })
+      relateIdeas(repointed.map(({ id, before, after }) => ({ id, from: before, to: after })))
+      trash = [{
+        id: nextId('trash'), kind: 'page', title: page.fm.title, deletedAt: nowMs(), pageId: from, page,
+        ...(repointed.length === 0 ? {} : { ideas: repointed }),
+      }, ...trash]
+    },
+
+    wikiMergePages(from, into) {
+      const { written } = mergeOutcome(from, into)
+      return [...written, ...aggregationIds().filter((id) => !written.includes(id))]
+    },
+
     applyPaperWikiDraft(id, body) {
       const page = wiki.pages[id]
       if (page === undefined) throw new CallError('not-found', `wiki 页不存在：${id}`)
@@ -1912,7 +2093,14 @@ export function createFixtureStore(
           continue
         }
         if (text === null) delete next[path]
-        else next[path] = JSON.parse(text) as WikiData['pages'][string]
+        else {
+          next[path] = JSON.parse(text) as WikiData['pages'][string]
+          const held = trash.find((item) => item.kind === 'page' && item.pageId === path)
+          if (held?.kind === 'page') {
+            trash = trash.filter((item) => item !== held)
+            putIdeasBack(held)
+          }
+        }
       }
       const nextWiki = { ...wiki, pages: next }
       rederiveRows(wiki, nextWiki)
@@ -1930,6 +2118,7 @@ export function createFixtureStore(
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
           : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
+          : item.kind === 'page' ? wiki.pages[item.pageId] === undefined
           : item.kind !== 'paper' || !byId.has(item.paper.id),
       }))
     },
@@ -1965,6 +2154,13 @@ export function createFixtureStore(
             return restored
           })
         }
+      }
+      else if (item.kind === 'page') {
+        if (wiki.pages[item.pageId] !== undefined) throw new CallError('refused', `原来的位置已经被另一页占了，恢复会盖掉它：${item.pageId}`)
+        const next = { ...wiki, pages: { ...wiki.pages, [item.pageId]: item.page } }
+        rederiveRows(wiki, next)
+        wiki = next
+        putIdeasBack(item)
       }
       else if (item.kind === 'later') later = [...later.slice(0, item.position), item.later, ...later.slice(item.position)]
       else if (item.kind === 'idea') ideas = [structuredClone(item.idea), ...ideas]
@@ -2018,7 +2214,7 @@ export function createFixtureStore(
         }
       }
       feedEvents = seen
-      return feedNewestFirst(feed, today())
+      return Promise.resolve(feedNewestFirst(feed, today()))
     },
 
     appendFeed({ source, body }) {
@@ -2182,6 +2378,14 @@ export function createFixtureStore(
     setChatArchived(id, archived) {
       const chat = chatOf(id)
       chats = chats.map((c) => (c === chat ? { ...c, archived } : c))
+    },
+
+    renameChat(id, title) {
+      const chat = chatOf(id)
+      if (chat.paperId !== undefined) throw new CallError('refused', '论文的阅读对话以论文命名，不能改名')
+      const renamed = { ...chat, title, named: true }
+      chats = chats.map((c) => (c.id === id ? renamed : c))
+      return chatSession(renamed)
     },
 
     chatIds() {

@@ -101,7 +101,7 @@ describe('Harness RPC', () => {
     await nextFrame(child.stdin)
     child.send({ type: 'callback', id: 1, callbackId: 'b', method: 'papers.get', params: {} })
     expect(await nextFrame(child.stdin)).toMatchObject({ error: { kind: 'internal', message: 'Core read callback failed' } })
-    expect(onLog.mock.calls).toEqual([['refused Harness callback wiki.write'], ['Harness callback papers.get failed: no paper p9']])
+    expect(onLog.mock.calls).toEqual([['error', 'refused Harness callback wiki.write'], ['error', 'Harness callback papers.get failed: no paper p9']])
     rpc.close()
   })
 

@@ -14,7 +14,7 @@ import type {
   HarnessPaperWikiRejectionFeedback, HarnessPendingPaperWikiResult, HarnessPlan,
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
-  MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow,
+  MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow, PublicationFillResult,
   Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation,
   OptionalRecordedChange, ReadingRecordedChange, RecordedChange,
   ResearchIdea,
@@ -155,6 +155,8 @@ export const papers = {
   import: (filename: string, bytes: Uint8Array) =>
     call<PaperImportResult>('papers.import', { filename, bytes }),
   /** Parses the metadata of an upload whose lookup failed again; progress shows in jobs.status. */
+  /** Fills the papers' publication venue and year from Semantic Scholar; how many papers changed. */
+  fillPublication: () => call<PublicationFillResult>('papers.fillPublication', {}),
   retryMetadata: (id: string) => call<void>('papers.retryMetadata', { id }),
   reading: (id: string) => call<PaperReading>('papers.reading', { id }),
   mutateReading: (id: string, mutation: ReadingMutation) =>
@@ -314,6 +316,8 @@ export const chat = {
     call<ProjectDetail>('chat.recordAction', { id, messageId }),
   setArchived: (id: string, archived: boolean) =>
     call<void>('chat.setArchived', { id, archived }),
+  /** Gives the chat the title `title`; the chat's first message no longer names it. */
+  rename: (id: string, title: string) => call<ChatSession>('chat.rename', { id, title }),
   delete: (id: string) => call<TrashedEntry>('chat.delete', { id }),
 }
 
@@ -408,6 +412,11 @@ export const wiki = {
   cards: () => call<WikiAggregationCard[]>('wiki.cards', {}),
   apply: (proposal: Proposal) => call<RecordedChange>('wiki.apply', { proposal }),
   update: (id: string, body: string) => call<void>('wiki.update', { id, body }),
+  /** Moves aggregation page `id` into the trash. */
+  delete: (id: string) => call<RecordedChange>('wiki.delete', { id }),
+  /** Merges aggregation `from` into `into`; `shown` holds the two pages' cards as the screen showed them. */
+  merge: (from: string, into: string, shown: { from: WikiAggregationCard; into: WikiAggregationCard }) =>
+    call<RecordedChange>('wiki.merge', { from, into, shown }),
   /** The review queue, newest first; every status when `status` is absent. */
   proposals: (status?: ProposalStatus) =>
     call<WikiProposal[]>('wiki.proposals', status === undefined ? {} : { status }),

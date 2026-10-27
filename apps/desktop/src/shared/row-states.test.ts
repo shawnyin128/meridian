@@ -73,20 +73,20 @@ describe('选中的样子只有一种', () => {
     expect(styleOf(TABLE_ROW('table-row--selected'), '.table-text', 'td').boxShadow).not.toContain('var(--accent)')
   })
 
-  it('选中的科研图节点铺选中色，标签用选中色上的强调色，不再描一圈墨色粗边', () => {
+  it('选中的科研图节点铺浅强调底，标签用强调色的字，不再描一圈墨色粗边', () => {
     const node = '<svg><g class="rgn supported sel"><rect class="rgn-box"></rect><foreignObject><div class="rgn-label"><span class="fade-text">宽树</span></div></foreignObject></g></svg>'
     const box = styleOf(node, '.rgn-box')
-    expect([box.fill, box.stroke]).toEqual(['var(--selected)', 'var(--sep)'])
-    expect(styleOf(node, '.rgn-label').color).toBe('var(--on-selected)')
+    expect([box.fill, box.stroke]).toEqual(['var(--accent-soft)', 'var(--sep)'])
+    expect(styleOf(node, '.rgn-label').color).toBe('var(--accent-text)')
   })
 
-  it('选中的外观选项铺选中色，名字用选中的字色，不再画强调色边框和光圈', () => {
+  it('选中的外观选项铺浅强调底，名字用强调色的字，不画强调色边框和光圈', () => {
     const choice = '<button class="appearance-choice" aria-checked="true"><span class="appearance-preview"></span><span class="appearance-label">浅色</span></button>'
     const preview = styleOf(choice, '.appearance-preview')
-    expect(preview.backgroundColor).toBe('var(--selected)')
+    expect(preview.backgroundColor).toBe('var(--accent-soft)')
     expect(preview.borderColor).not.toBe('var(--accent)')
     expect(preview.boxShadow).not.toContain('var(--accent')
-    expect(styleOf(choice, '.appearance-label').color).toBe('var(--on-selected)')
+    expect(styleOf(choice, '.appearance-label').color).toBe('var(--accent-text)')
   })
 })
 

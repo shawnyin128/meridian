@@ -1,19 +1,20 @@
-import { existsSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { basename, isAbsolute, join } from 'node:path'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
+import { basename, dirname, isAbsolute, join } from 'node:path'
 import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, InboxStream, PaperColumns, PaperImportResult,
   PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
   ResearchIdea, Task, TaskFields,
-  WikiSignal,
+  WikiAggregationCard, WikiSignal,
 } from '../shared/contract.js'
 import {
   DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
 import { projectControlState } from '../shared/project-control.js'
-import { projectAreas, sortRecordsNewestFirst } from '../shared/project-signals.js'
-import { topicDir, topicProposal } from '../shared/topic-proposal.js'
+import { projectTopics, sortRecordsNewestFirst } from '../shared/project-signals.js'
+import { slugOf } from '../shared/slug.js'
+import { newTopicPages, topicDir, topicProposal } from '../shared/topic-proposal.js'
 import {
   ACTIVE_PROJECT, CHAT_EVENT_PREFIX, DEFAULT_PROJECT_TOPIC, FINISHED_PROJECT, PAPER_PAGE, PROJECTS_DIR, READ_STATES,
   TRASH_RETENTION_DAYS, UNREAD_PAPER,
@@ -25,15 +26,15 @@ import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import {
   applyReadingMutation, checkColumns, checkCustom, checkGroupKey, columnCells, emptyColumns,
   emptyPaperReading, facetPapers, freePageStem, laterWithMetadata, listPapers, liveColumns,
-  missingMetadata, paperImportResult, parsePaperUpload, patchedCustom, readingNoteCount,
+  missingMetadata, paperImportResult, parsePaperUpload, patchedCustom, publicationFill, readingNoteCount,
   remoteMetadata, renamedCell, renamedOptions, restoredColumn, retypedColumn, writePaperFields,
   type PaperWrite,
 } from './paper-library/index.js'
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
-  readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
-  writeProjectWorkspaceState, type ProjectRecord,
+  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
+  writeProjectWorkspaceState, servedTopics, storedTopics, titledTopics, topicPinsOf, topicScopeOf, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
@@ -48,6 +49,7 @@ import {
   type DiscoveryPaper, type DiscoveryPreferences, type RefreshScope,
 } from './recommendation/index.js'
 import type { RemotePaper } from './net/arxiv.js'
+import type { Publication } from './net/semantic-metadata.js'
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
@@ -55,19 +57,19 @@ import type {
 } from './vault/records.js'
 import {
   ChatRecordSchema, DeliveredRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
-  PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
+  MetadataFillRecordSchema, PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
 import {
   movePage, removePage, replacePage, writeAtomically, writeImmutable, writeJson, writePage,
 } from './vault/writer.js'
-import type { MetadataFill, VaultOps, VaultStore } from './vault.js'
+import { NO_WORKSPACE_GRAPHS, type MetadataFill, type VaultOps, type VaultStore, type WorkspaceGraphs } from './vault.js'
 import {
-  appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp,
+  appendEntry, applyProposal, checkBody, checkGenerated, conclusionClaims, createAggregationPage, describeOp, experimentProjects,
   entryLine, fillGenerated, generatedChildren, generatedClaims, generatedMissing, generatedTable, HUMAN,
-  isClaimOp, isPaper, pageVersion, projectClaims, projectDisputes,
-  readWikiData, readWikiPage, removeClaim, removeMembership, setAggregationMetadata, setBody, setBodyAndTrust,
-  setClaim, setColumns, setMembership, setParents, setUpdated, touchedPages, wikiAggregation, wikiCards,
+  isClaimOp, isPaper, labelledLink, labelOf, mergePlan, moveMembership, pageVersion, projectClaims, projectDisputes,
+  readWikiData, readWikiPage, relabelled, removeClaim, removeMembership, rewriteLines, setAggregationMetadata, setAliases,
+  setBody, setBodyAndTrust, setClaim, setColumns, setMembership, setParents, setUpdated, topicPages, touchedPages, wikiAggregation, wikiCards,
   wikiBacklinks, wikiHome, wikiPaper, wikiSignals,
   type ClaimWorld, type PointName, type WikiAggregationRecord, type WikiData, type WikiPaperRecord,
 } from './wiki/index.js'
@@ -83,6 +85,9 @@ type Scanned = { id: string; file: string; front: Frontmatter; body: string }
 
 /** Vault ID prefix used by page readers and writers to recognize project pages. */
 const PROJECT_PATH = `${PROJECTS_DIR}/`
+
+/** The Wiki page id of `wiki/<id>.md`, the vault-relative path a page's trash record keeps. */
+const trashedPageId = (page: string): string => page.slice('wiki/'.length, -'.md'.length)
 
 /**
  * Stores the half of application state that is not compiled knowledge: chats,
@@ -456,6 +461,7 @@ export function createVaultStore(
   let trash = load('trash', TrashRecordSchema)
   let delivered = load('discovery/delivered', DeliveredRecordSchema)
   let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
+  let fills = load('metadata-fills', MetadataFillRecordSchema, 'paper')
   let progress: RefreshProgressRecord[] = load('discovery/progress', RefreshProgressRecordSchema)
 
   /** The identity of the paper a stored inbox entry delivers. */
@@ -490,7 +496,7 @@ export function createVaultStore(
     inbox = save('inbox', next)
     const ids = new Set(removed.map((entry) => entry.id))
     const kept = trash.filter((item) => item.kind !== 'inbox' || !ids.has(item.entryId))
-    if (kept.length !== trash.length) trash = save('trash', kept)
+    if (kept.length !== trash.length) trash = saveTrash(kept)
   }
   // Another App version may have written queue records this one cannot read; keep those as written.
   const heldProposals: unknown[] = existsSync(join(meridian, 'proposals.json'))
@@ -636,6 +642,101 @@ export function createVaultStore(
   }
 
   /**
+   * Refills the generated regions of each aggregation `ids` names from `data`. A page written before
+   * the claims region existed gains it only once it holds a claim.
+   */
+  const refill = (data: WikiData, ids: string[]): void => {
+    const names = projectNames()
+    for (const id of ids) {
+      const claims = (data.pages[id] as WikiAggregationRecord).fm.claims ?? []
+      fillGenerated(wikiFile(id), {
+        children: generatedChildren(data, id), table: generatedTable(data, id),
+        ...(claims.length === 0 && generatedMissing(wikiFile(id)).includes('claims')
+          ? {} : { claims: generatedClaims(data, id, names) }),
+      }, staging)
+    }
+  }
+
+  /** The id of every aggregation in the Wiki as it stands. */
+  const aggregationIds = (): string[] => Object.keys(wikiData.pages).filter((id) => !isPaper(wikiData.pages[id]!))
+
+  /** The page id of every paper with a membership in Wiki page `id`. */
+  const memberPapers = (id: string): string[] => Object.keys(wikiData.pages).filter((other) => {
+    const page = wikiData.pages[other]!
+    return isPaper(page) && (page.fm.memberships ?? []).some((m) => m.in === id)
+  })
+
+  /** The other aggregations directly under aggregation `id`, in id order. */
+  const subpagesOf = (id: string): string[] => aggregationIds().sort()
+    .filter((other) => ((wikiData.pages[other] as WikiAggregationRecord).fm.parents ?? []).includes(id))
+
+  /** The parents subpage `child` of aggregation `id` takes once `id` is deleted: `id` gives way to its own parents. */
+  const parentsAfterDelete = (id: string, child: string): string[] => {
+    const up = (wikiData.pages[id] as WikiAggregationRecord).fm.parents ?? []
+    const held = (wikiData.pages[child] as WikiAggregationRecord).fm.parents ?? []
+    return [...new Set(held.flatMap((p) => (p === id ? up : [p])))].filter((p) => p !== child)
+  }
+
+  /**
+   * What merging aggregation `from` into `into` writes: the text after the merge of every page it
+   * changes, worked out on copies in a scratch folder under the staging folder (which opening the
+   * vault clears). Writes nothing in the vault. Throws as mergeWikiPages does, but for `changed`.
+   */
+  const mergeOutcome = (from: string, into: string): { id: string; after: string }[] => {
+    checkReadable(from)
+    checkReadable(into)
+    const plan = mergePlan(wikiData, from, into)
+    for (const id of aggregationIds()) checkGenerated(wikiFile(id))
+    const day = today()
+    const escaped = from.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const relation = new RegExp(`^(\\s*(?:- )?page: )(["']?)${escaped}\\2(\\s*)$`)
+    const rewrite = (id: string) => (line: string, part: 'front' | 'body'): string => (part === 'body'
+      ? plan.rewriteLink(line)
+      : id.startsWith(PROJECT_PATH) ? line.replace(relation, (_, head: string, quote: string, tail: string) => `${head}${quote}${into}${quote}${tail}`) : line)
+    const projects = [...projectById.keys()].sort().map((pid) => `${PROJECT_PATH}${pid}`)
+      .filter((id) => readFileSync(wikiFile(id), 'utf8').split('\n').some((line) => {
+        const bare = line.replace(/\r$/, '')
+        return rewrite(id)(bare, 'front') !== bare || rewrite(id)(bare, 'body') !== bare
+      }))
+    const stamped = [into, ...plan.members.map((m) => m.paper), ...plan.children.map((c) => c.page), ...plan.claims.map((c) => c.page)]
+    const ids = [...new Set([...stamped, ...plan.links, ...projects])]
+    mkdirSync(staging, { recursive: true })
+    const scratch = mkdtempSync(join(staging, 'merge-'))
+    try {
+      const at = (id: string): string => join(scratch, `${id}.md`)
+      const work = join(scratch, '.staging')
+      for (const id of ids) {
+        mkdirSync(dirname(at(id)), { recursive: true })
+        copyFileSync(wikiFile(id), at(id))
+      }
+      const target = wikiData.pages[into] as WikiAggregationRecord
+      const same = (a: unknown, b: unknown): boolean => JSON.stringify(a) === JSON.stringify(b)
+      const fields = plan.intoFields
+      if (!same(target.fm.aliases ?? [], fields.aliases)) setAliases(at(into), fields.aliases, work)
+      if (!same(target.fm.parents ?? [], fields.parents)) setParents(at(into), fields.parents, work)
+      if (!same(target.fm.columns ?? [], fields.columns)) setColumns(at(into), fields.columns, work)
+      const held = new Map((target.fm.claims ?? []).map((c) => [c.id, c]))
+      for (const claim of fields.claims) if (!same(held.get(claim.id), claim)) setClaim(at(into), claim, work)
+      if (fields.body !== null) setBody(at(into), fields.body, work)
+      for (const { paper, cells } of plan.members) {
+        if (cells === null) moveMembership(at(paper), from, into, work)
+        else {
+          setMembership(at(paper), { in: into, cells }, work)
+          removeMembership(at(paper), from, work)
+        }
+      }
+      for (const { page, parents } of plan.children) setParents(at(page), parents, work)
+      for (const { page, claim } of plan.claims) setClaim(at(page), claim, work)
+      for (const id of ids) rewriteLines(at(id), rewrite(id), work)
+      for (const id of ids) if (!id.startsWith(PROJECT_PATH)) setUpdated(at(id), day, work)
+      return ids.map((id) => ({ id, after: readFileSync(at(id), 'utf8') }))
+        .filter((t) => t.after !== readFileSync(wikiFile(t.id), 'utf8'))
+    } finally {
+      rmSync(scratch, { recursive: true, force: true })
+    }
+  }
+
+  /**
    * Rereads wiki structure after a write, recomputes table rows for the affected paper pages, and
    * rewrites the Wiki signals file.
    */
@@ -667,22 +768,48 @@ export function createVaultStore(
   const projectNames = (): Record<string, string> =>
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
 
-  /** The label of a project's node (workspace nodes included) or the text of its legacy conclusion. */
-  const pointName: PointName = (id, point) => {
+  /**
+   * The research graph `project`'s workspace holds: a local workspace's as it stands, an SSH one's as
+   * `graphs` holds it. Throws when the workspace is an SSH one `graphs` does not hold.
+   */
+  const workspaceGraph = (project: ProjectRecord, graphs: WorkspaceGraphs): ResearchGraph | undefined => {
+    if (project.workspaceSsh === undefined) return readLocalProjectWorkspace(project)?.graph
+    if (!graphs.has(project.id)) throw new Error(`项目 ${project.id} 的 SSH 工作区没有先读`)
+    return graphs.get(project.id)
+  }
+
+  /** Reads afresh the SSH workspace of each of `ids` that has one; see VaultStore.readWorkspaceGraphs. */
+  const readWorkspaceGraphs = async (ids: readonly string[]): Promise<WorkspaceGraphs> => {
+    const bound = ids.flatMap((id) => {
+      const project = projectById.get(id)
+      return project?.workspaceSsh === undefined ? [] : [project]
+    })
+    return new Map(await Promise.all(bound.map(async (project) => {
+      const workspace = await readProjectWorkspace(project)
+      remoteRead.set(project.id, workspace)
+      return [project.id, workspace?.graph] as const
+    })))
+  }
+
+  /** The label of a project's node (workspace nodes included, SSH ones from `graphs`) or the text of its legacy conclusion. */
+  const pointName = (graphs: WorkspaceGraphs): PointName => (id, point) => {
     const project = projectById.get(id)
     if (project === undefined) return undefined
-    const nodes = [...project.graph.nodes, ...readProjectWorkspace(project)?.graph?.nodes ?? []]
+    const nodes = [...project.graph.nodes, ...workspaceGraph(project, graphs)?.nodes ?? []]
     return nodes.find((n) => n.id === point)?.label ?? project.conclusionList.find((c) => c.id === point)?.text
   }
 
-  /** The claim-validation world for producer `by`: the vault's projects (with workspace nodes) and reading records. */
-  const worldOf = (by: string, requireVerified = true): ClaimWorld => ({
+  /**
+   * The claim-validation world for producer `by`: the vault's projects (with workspace nodes, SSH ones
+   * from `graphs`) and reading records.
+   */
+  const worldOf = (by: string, graphs: WorkspaceGraphs, requireVerified = true): ClaimWorld => ({
     by,
     requireVerified,
     project: (id) => {
       const project = projectById.get(id)
       if (project === undefined) return undefined
-      const workspace = readProjectWorkspace(project)?.graph
+      const workspace = workspaceGraph(project, graphs)
       const graph = workspace ?? project.graph
       return {
         nodes: [...project.graph.nodes, ...workspace?.nodes ?? []].map((n) => n.id),
@@ -708,7 +835,8 @@ export function createVaultStore(
       ],
     })),
     trashed: new Map(trash.flatMap((item) => (item.kind === 'paper'
-      ? [[`${PAPER_PAGE}${basename(item.page, '.md')}`, item.title] as const] : []))),
+      ? [[`${PAPER_PAGE}${basename(item.page, '.md')}`, item.title] as const]
+      : item.kind === 'page' ? [[trashedPageId(item.page), item.title] as const] : []))),
     missingRegions: Object.keys(wikiData.pages).sort()
       .filter((id) => !isPaper(wikiData.pages[id]!) && generatedMissing(wikiFile(id)).some((name) => name !== 'claims')),
   })
@@ -836,22 +964,42 @@ export function createVaultStore(
   const conclusionsOf = (project: ProjectRecord, graph: ResearchGraph): ProjectConclusion[] =>
     projectConclusions(project, graph, projectClaims(wikiData, project.id), projectDisputes(wikiData, project.id))
 
-  /** Builds the cross-boundary project detail, deriving paper counts and titles from current vault state. */
-  const detailOf = (project: ProjectRecord): ProjectDetail => {
+  /** Project `id` for its detail. Throws when there is none, or its research graph has an edge to a node it does not hold. */
+  const shownProject = (id: string): ProjectRecord => {
+    const project = projectOf(id)
+    const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
+    for (const [from, to] of project.graph.edges) {
+      if (!nodeIds.has(from) || !nodeIds.has(to)) {
+        throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
+      }
+    }
+    return project
+  }
+
+  /** The events a project's workspace holds. */
+  type WorkspaceEvents = NonNullable<ProjectDetail['workspace']>['events']
+
+  /** Each SSH-bound project's workspace as its latest read found it, by project id. */
+  const remoteRead = new Map<string, ProjectDetail['workspace']>()
+
+  /** The cross-boundary project detail of `project` with `workspace`, deriving paper counts and titles from current vault state. */
+  const detailWith = (project: ProjectRecord, workspace: ProjectDetail['workspace']): ProjectDetail => {
     const stored: Omit<ProjectRecord, 'created'> & { created?: string } = structuredClone(project)
     delete stored.created
     delete stored.workspaceRoot
     delete stored.workspaceSsh
     delete stored.agentTasks
+    delete stored.topics
+    delete stored.topicPins
     const paperTitles = Object.fromEntries(stored.papers.flatMap((id) => {
       const paper = papers.get(id)
       return paper === undefined ? [] : [[id, paper.title]]
     }))
-    const workspace = readProjectWorkspace(project)
     const claims = conclusionClaims(wikiData, project.id)
     const conclusions = conclusionsOf(project, workspace?.graph ?? project.graph)
     return {
       ...stored,
+      ...served(project),
       paperTitles,
       paperCount: Object.keys(paperTitles).length,
       conclusions: conclusionCounts(conclusions),
@@ -862,8 +1010,37 @@ export function createVaultStore(
     }
   }
 
+  /** The project detail of `project`, reading its workspace afresh. */
+  const detailOf = async (project: ProjectRecord): Promise<ProjectDetail> => {
+    // Inside `atomically` a write queues its workspace sync only once all of it has landed, later in
+    // this turn; reading in a later turn keeps this read behind that sync.
+    if (syncing !== undefined) await Promise.resolve()
+    const workspace = await readProjectWorkspace(project)
+    if (project.workspaceSsh !== undefined) remoteRead.set(project.id, workspace)
+    return detailWith(project, workspace)
+  }
+
   /** Returns projects in canonical order rather than directory scan or trash-restoration order. */
   const projects = (): ProjectRecord[] => [...projectById.values()].sort(byCreated)
+
+  /** The topic fields Core serves for `project`, as the vault's topic pages stand now. */
+  const served = (project: ProjectRecord) => servedTopics(project, topicPages(wikiData))
+
+  /** The topic fields of `project` that list views add: the served ones and the topic scope. */
+  const listedTopics = (project: ProjectRecord) => {
+    const fields = served(project)
+    const scope = topicScopeOf((fields.topicPages ?? []).flatMap((page) => (page === null ? [] : [page])), topicPages(wikiData))
+    return { ...fields, ...(scope.length === 0 ? {} : { topicScope: scope }) }
+  }
+
+  /**
+   * Creates a top-level topic page for each of `titles` that no topic page carries, through the
+   * Wiki's own proposal path. Throws for a title with no letter or digit, or a Wiki without topics.
+   */
+  const fileTopics = (titles: readonly string[]): void => {
+    const filing = newTopicPages(titles, wikiCards(wikiData), () => topicDir(wikiHome(wikiData)))
+    if (filing !== null) ops.applyProposal(filing)
+  }
 
   /** Archives active linked ideas when a project finishes; reopening the project does not reverse this automatically. */
   const archiveIdeasForProject = (projectId: string): void => {
@@ -888,7 +1065,7 @@ export function createVaultStore(
    */
   const atomically = <T>(write: () => T): T => {
     if (syncing !== undefined) return write()
-    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, proposals, changes }
+    const held = { wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, fills, proposals, changes }
     const indexes = [papers, pagesOf, projectById].map((index: Map<string, unknown>) => ({ index, was: new Map(index) }))
     const synced = new Set<string>()
     syncing = synced
@@ -896,7 +1073,7 @@ export function createVaultStore(
     try {
       result = writeAtomically(staging, write)
     } catch (error) {
-      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, proposals, changes } = held)
+      ({ wikiData, state, inbox, later, watches, chats, ideas, feed, trash, delivered, readings, fills, proposals, changes } = held)
       for (const { index, was } of indexes) {
         index.clear()
         for (const [key, value] of was) index.set(key, value)
@@ -915,18 +1092,19 @@ export function createVaultStore(
   /** `op` made one write by atomically. */
   const atomic = <A extends unknown[], R>(op: (...args: A) => R) => (...args: A): R => atomically(() => op(...args))
 
-  /** Refreshes the App-owned workspace projection without making project edits depend on transport health. */
+  /**
+   * Refreshes the App-owned workspace projection without making project edits depend on transport
+   * health: a local workspace at once, an SSH one in the project's turn, after the call returns.
+   */
   const syncProjectWorkspace = (project: ProjectRecord): void => {
     if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) return
     if (syncing !== undefined) {
       syncing.add(project.id)
       return
     }
-    try {
-      writeProjectWorkspaceState(project, ideas)
-    } catch (error) {
+    writeProjectWorkspaceState(project, ideas).catch((error: unknown) => {
       console.warn(`[project] workspace sync failed: ${error instanceof Error ? error.message : String(error)}`)
-    }
+    })
   }
 
   /**
@@ -968,16 +1146,24 @@ export function createVaultStore(
    * entries, each once. The first pass only marks existing events as seen, so an existing history does
    * not flood the feed; workspaces are read at most once a minute because an SSH binding means a round trip.
    */
-  const absorbWorkspaceEvents = atomic((): void => {
+  const absorbWorkspaceEvents = async (): Promise<void> => {
     const at = now().getTime()
     if (at - eventsReadAt < WORKSPACE_EVENT_READ_MS) return
     eventsReadAt = at
+    const bound = projects().filter((project) => project.workspaceRoot !== undefined || project.workspaceSsh !== undefined)
+    takeWorkspaceEvents(await Promise.all(bound.map(async (project) => ({
+      project, events: (await readProjectWorkspace(project))?.events ?? [],
+    }))))
+  }
+
+  /** The Lab entries absorbWorkspaceEvents writes for `read`, each project's workspace events as read; a project gone meanwhile is left out. */
+  const takeWorkspaceEvents = atomic((read: { project: ProjectRecord; events: WorkspaceEvents }[]): void => {
     const first = state.feedEvents === undefined
     const seen = new Set(state.feedEvents ?? [])
     const fresh: { project: ProjectRecord; text: string }[] = []
-    for (const project of projects()) {
-      if (project.workspaceRoot === undefined && project.workspaceSsh === undefined) continue
-      for (const event of readProjectWorkspace(project)?.events ?? []) {
+    for (const { project, events } of read) {
+      if (!projectById.has(project.id)) continue
+      for (const event of events) {
         const key = `${project.id}:${event.date}:${event.text}`
         if (seen.has(key)) continue
         seen.add(key)
@@ -1002,28 +1188,41 @@ export function createVaultStore(
     return [...papers.values()].map((row) => withProjectLinks(row, held))
   }
 
-  /** The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask). */
-  const createTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectDetail => {
+  /**
+   * The one path that adds a task to a plan, for the user and for agents alike (see VaultOps.createTask):
+   * writes it at once and returns the project as written.
+   */
+  const addTask = (projectId: string, task: TaskFields, origin?: 'agent'): ProjectRecord => {
     const project = projectOf(projectId)
     checkSpan(task)
     const made = { ...task, id: nextId('task'), ...(origin === undefined ? {} : { origin }) }
-    return writeProject({ ...project, tasks: [made, ...project.tasks] }, ['tasks'])
+    const next = { ...project, tasks: [made, ...project.tasks] }
+    landProject(next, ['tasks'])
+    return next
   }
 
   /**
-   * Writes only the modified project fields to its page, archiving the project's ideas when it is
-   * finished, and returns the updated detail. Throws when any of it cannot be written, leaving the page,
-   * the ideas and the record held as they stood and the workspace unsynced.
+   * Writes only the modified project fields to its page and archives the project's ideas when it is
+   * finished, at once. Throws when any of it cannot be written, leaving the page, the ideas and the
+   * record held as they stood and the workspace unsynced.
    */
-  const writeProject = (
-    project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
-  ): ProjectDetail => {
+  const landProject = (project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true): void => {
     atomically(() => {
       writeProjectFields(projectFile(project.id), project, fields, staging)
       projectById.set(project.id, project)
       if (project.status === FINISHED_PROJECT) archiveIdeasForProject(project.id)
     })
     if (syncWorkspace) syncProjectWorkspace(project)
+  }
+
+  /**
+   * Writes the project as landProject does, at once, and returns the updated detail. Throws as
+   * landProject does.
+   */
+  const writeProject = (
+    project: ProjectRecord, fields: (keyof ProjectRecord)[], syncWorkspace = true,
+  ): Promise<ProjectDetail> => {
+    landProject(project, fields, syncWorkspace)
     return detailOf(project)
   }
 
@@ -1057,7 +1256,7 @@ export function createVaultStore(
   })
 
   /** Appends a dated project research-log entry, optionally linked to a research-graph node. */
-  const appendEvent = (projectId: string, text: string, node?: string): ProjectDetail => {
+  const appendEvent = (projectId: string, text: string, node?: string): Promise<ProjectDetail> => {
     const project = projectOf(projectId)
     checkOneLine(text)
     if (node !== undefined && !project.graph.nodes.some((item) => item.id === node)) {
@@ -1083,7 +1282,7 @@ export function createVaultStore(
    * Callers save the trash without the record first, so a record never outlives its page.
    */
   const discard = (item: TrashRecord): void => {
-    if (item.kind === 'paper' || item.kind === 'project') removePage(trashPage(item.id))
+    if (item.kind === 'paper' || item.kind === 'project' || item.kind === 'page') removePage(trashPage(item.id))
   }
 
   /** Permanently removes expired trash records and their stored content. */
@@ -1091,12 +1290,12 @@ export function createVaultStore(
     const cutoff = nowMs() - TRASH_RETENTION_DAYS * 86_400_000
     const expired = trash.filter((item) => item.deletedAt <= cutoff)
     if (expired.length === 0) return
-    trash = save('trash', trash.filter((item) => item.deletedAt > cutoff))
+    trash = saveTrash(trash.filter((item) => item.deletedAt > cutoff))
     for (const item of expired) discard(item)
   }
 
   /** Throws, before anything is written, when a page already stands where the page `item` holds goes back. */
-  const checkPlaceFree = (item: Extract<TrashRecord, { kind: 'paper' | 'project' }>): void => {
+  const checkPlaceFree = (item: Extract<TrashRecord, { kind: 'paper' | 'project' | 'page' }>): void => {
     if (existsSync(join(root, item.page))) throw new CallError('refused', `原来的位置已经被另一页占了，恢复会盖掉它：${item.page}`)
   }
 
@@ -1104,9 +1303,58 @@ export function createVaultStore(
   const paperChatNow = (item: Extract<TrashRecord, { kind: 'chat' }>): ChatRecord | undefined =>
     (item.chat.paperId === undefined ? undefined : chats.find((held) => held.paperId === item.chat.paperId))
 
+  /**
+   * Sets each idea `moves` names, while it still relates to the pages `from`, to relate to the pages
+   * `to` instead, its other fields untouched, and refreshes the workspace of each project those ideas
+   * are carried out in.
+   */
+  const relateIdeas = (moves: { id: string; from: string[]; to: string[] }[]): void => {
+    const changed = new Set<string>()
+    const next = ideas.map((idea) => {
+      const move = moves.find((m) => m.id === idea.id)
+      if (move === undefined || JSON.stringify(idea.relations?.pages ?? []) !== JSON.stringify(move.from)) return idea
+      changed.add(idea.id)
+      return { ...idea, relations: { projects: idea.relations?.projects ?? [], ...idea.relations, pages: move.to } }
+    })
+    if (changed.size === 0) return
+    ideas = save('ideas', next)
+    for (const idea of next) {
+      if (!changed.has(idea.id) || idea.project === undefined) continue
+      const project = projectById.get(idea.project)
+      if (project !== undefined) syncProjectWorkspace(project)
+    }
+  }
+
+  /** Puts the ideas the merge that trashed page record `item` repointed back on the pages they related to before it. */
+  const putIdeasBack = (item: Extract<TrashRecord, { kind: 'page' }>): void =>
+    relateIdeas((item.ideas ?? []).map(({ id, before, after }) => ({ id, from: after, to: before })))
+
+  /**
+   * Whether trash record `item` holds a Wiki page that is back where it was deleted from by some other
+   * way, such as an older App's undo: the page there carries the same version as the one the trash
+   * keeps, generated regions and `updated` aside.
+   */
+  const returned = (item: TrashRecord): boolean => {
+    if (item.kind !== 'page' || !existsSync(join(root, item.page)) || !existsSync(trashPage(item.id))) return false
+    const version = (file: string) => JSON.stringify(pageVersion(readFileSync(file, 'utf8')))
+    return version(join(root, item.page)) === version(trashPage(item.id))
+  }
+
+  /**
+   * Writes `rows` as the trash and returns them, leaving out each Wiki page record whose page is back
+   * (see returned), whose kept page it then removes. Throws, leaving the file as it stood, when it
+   * cannot be written.
+   */
+  const saveTrash = (rows: TrashRecord[]): TrashRecord[] => {
+    const back = rows.filter(returned)
+    const kept = save('trash', rows.filter((item) => !back.includes(item)))
+    for (const item of back) discard(item)
+    return kept
+  }
+
   /** Adds a record to trash with the most recently deleted item first. */
   const toTrash = (item: TrashRecord): void => {
-    trash = save('trash', [item, ...trash])
+    trash = saveTrash([item, ...trash])
   }
 
   const managed = isGitManaged(root)
@@ -1177,6 +1425,30 @@ export function createVaultStore(
   }
 
   /** Fills only missing bibliographic fields and updates queued copies of the same source. */
+  /**
+   * Records the fields `fill` names as the values the App last filled into paper `id`, each from the
+   * service `sources` names for it, if any.
+   */
+  const recordFill = (id: string, fill: MetadataFill, sources: Record<string, string> = {}): void => {
+    const held = fills.find((record) => record.paper === id)
+    const fields = { ...held?.fields, ...fill }
+    const named = {
+      ...Object.fromEntries(Object.entries(held?.sources ?? {}).filter(([field]) => !(field in fill))),
+      ...sources,
+    }
+    const next = { paper: id, fields, ...(Object.keys(named).length > 0 || held?.sources !== undefined ? { sources: named } : {}) }
+    fills = save('metadata-fills', held === undefined
+      ? [...fills, next]
+      : fills.map((record) => (record === held ? { ...record, ...next } : record)))
+  }
+
+  /** What fillPaperPublication writes onto paper `id` for `publication`. Throws if there is no such paper. */
+  const publicationFillOf = (id: string, publication: Publication | undefined): MetadataFill => {
+    const paper = papers.get(id)
+    if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
+    return publicationFill(paper, fills.find((record) => record.paper === id)?.fields, publication)
+  }
+
   const fillPaper = (id: string, fill: MetadataFill, replaceTitle: string | null): string[] => {
     const paper = papers.get(id)
     if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
@@ -1184,6 +1456,7 @@ export function createVaultStore(
     const written = Object.keys(write)
     if (written.length === 0) return []
     writePaper(id, { ...write, updated: today() })
+    recordFill(id, write)
     const filled = papers.get(id)!
     const source = sourceOf(id)
     later = save('later', later.map((entry) => (entry.paper === source
@@ -1214,7 +1487,7 @@ export function createVaultStore(
       projectId: project.id,
       projectName: project.name,
       anchorText: [
-        project.name, ...projectAreas(project), project.focus,
+        project.name, ...projectTopics(served(project)), project.focus,
         ...(project.graph.activeNodes ?? []).flatMap((id) => {
           const node = project.graph.nodes.find((held) => held.id === id)
           return node === undefined ? [] : [node.label, node.nextAction ?? '']
@@ -1422,6 +1695,16 @@ export function createVaultStore(
 
     fillPaperMetadata: atomic(fillPaper),
 
+    fillPaperPublication: atomic((id, publication) => {
+      const write = publicationFillOf(id, publication)
+      if (Object.keys(write).length === 0) return []
+      writePaper(id, { ...write, updated: today() })
+      recordFill(id, write, write.venue === undefined ? {} : { venue: publication?.source ?? 'semantic-scholar' })
+      return Object.keys(write)
+    }),
+
+    publicationFillOf,
+
     paperReading(id) {
       if (!papers.has(id)) throw new CallError('not-found', `论文不存在：${id}`)
       return readingOf(id)
@@ -1495,7 +1778,7 @@ export function createVaultStore(
 
     listProjects() {
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
-        const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
+        const workspace = readLocalProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
         const records = [...p.events, ...workspace?.events ?? []]
         return {
@@ -1503,8 +1786,7 @@ export function createVaultStore(
           name: p.name,
           status: p.status,
           priority: p.priority,
-          topic: p.topic,
-          ...(p.topics === undefined ? {} : { topics: p.topics }),
+          ...listedTopics(p),
           focus: p.focus,
           ...(p.block === undefined ? {} : { block: p.block }),
           ...(p.conflictPage === undefined ? {} : { conflictPage: p.conflictPage }),
@@ -1531,7 +1813,7 @@ export function createVaultStore(
     overviewProjects() {
       return applyOrder(projects(), state.projectOrder, (p) => p.id).map((p) => {
         // Overview never initiates SSH; reading graph and events from a local workspace is cheap enough to match the project page.
-        const workspace = p.workspaceRoot === undefined ? undefined : readProjectWorkspace(p)
+        const workspace = readLocalProjectWorkspace(p)
         const graph = workspace?.graph ?? p.graph
         const events = [...p.events, ...(workspace?.events ?? [])]
         return {
@@ -1539,8 +1821,7 @@ export function createVaultStore(
           name: p.name,
           status: p.status,
           priority: p.priority,
-          topic: p.topic,
-          ...(p.topics === undefined ? {} : { topics: p.topics }),
+          ...listedTopics(p),
           focus: p.focus,
           ...(p.block === undefined ? {} : { block: p.block }),
           start: p.start,
@@ -1589,20 +1870,55 @@ export function createVaultStore(
       return project.id
     }),
 
+    pinProjectTopics() {
+      const unpinned = (project: ProjectRecord) => {
+        const pins = topicPinsOf(project, topicPages(wikiData))
+        return {
+          pins,
+          changed: pins.some(({ page }) => page === null)
+            || JSON.stringify(pins.map(({ page, title }) => ({ page, title }))) !== JSON.stringify(project.topicPins ?? []),
+        }
+      }
+      const pending = projects().filter((project) => unpinned(project).changed)
+      const titles = pending.flatMap((project) => unpinned(project).pins.filter(({ page }) => page === null).map(({ title }) => title))
+      const nameable = titles.filter((title) => slugOf(title) !== '')
+      for (const title of titles.filter((held) => slugOf(held) === '')) {
+        console.error(`[project] 主题「${title}」没有字母或数字，建不了主题页，留作只有名字的主题`)
+      }
+      const before = new Set(wikiCards(wikiData).map((card) => card.id))
+      try {
+        fileTopics(nameable)
+      } catch (err) {
+        console.error(`[project] 项目的主题建不了主题页，留作只有名字的主题：${err instanceof Error ? err.message : String(err)}`)
+      }
+      const written = pending.flatMap((project) => {
+        const pins = unpinned(project).pins.flatMap(({ page, title }) => (page === null ? [] : [{ page, title }]))
+        if (JSON.stringify(pins) === JSON.stringify(project.topicPins ?? [])) return []
+        // A workspace never holds the pins, so pinning leaves bound workspaces as they are.
+        landProject({ ...project, topicPins: pins.length === 0 ? undefined : pins }, ['topicPins'], false)
+        return [project.id]
+      })
+      return { pages: wikiCards(wikiData).map((card) => card.id).filter((id) => !before.has(id)), projects: written }
+    },
+
     putProject(project) {
+      const held = projectOf(project.id)
+      const titles = projectTopics(project)
+      const index = topicPages(wikiData)
+      const chosen = project.topicPages === undefined
+        ? titledTopics(titles, index)
+        : titles.map((title, at) => ({ title, page: project.topicPages![at] ?? null }))
       const fields = Object.fromEntries(PROJECT_FIELDS.map((key) => [key, project[key]]))
-      writeProject({ ...projectOf(project.id), ...fields }, PROJECT_FIELDS)
+      return writeProject({ ...held, ...fields, ...storedTopics(chosen, held, index) }, [...PROJECT_FIELDS, 'topicPins']).then(() => {})
     },
 
     getProject(id) {
-      const project = projectOf(id)
-      const nodeIds = new Set(project.graph.nodes.map((n) => n.id))
-      for (const [from, to] of project.graph.edges) {
-        if (!nodeIds.has(from) || !nodeIds.has(to)) {
-          throw new CallError('invalid', `科研图的边指向不存在的节点：${from} → ${to}`)
-        }
-      }
-      return detailOf(project)
+      return detailOf(shownProject(id))
+    },
+
+    heldProject(id) {
+      const project = shownProject(id)
+      return detailWith(project, project.workspaceSsh === undefined ? readLocalProjectWorkspace(project) : remoteRead.get(id))
     },
 
     hasProject(id) {
@@ -1630,8 +1946,16 @@ export function createVaultStore(
         delete next.workspaceRoot
       }
       // The first connection must complete the protocol; do not persist a broken connection on failure.
-      writeProjectWorkspaceState(next, ideas)
-      return writeProject(next, ['workspaceRoot', 'workspaceSsh'], false)
+      return writeProjectWorkspaceState(next, ideas).then(() => {
+        const current = projectOf(id)
+        const bound: ProjectRecord = { ...current }
+        delete bound.workspaceRoot
+        delete bound.workspaceSsh
+        if (next.workspaceRoot !== undefined) bound.workspaceRoot = next.workspaceRoot
+        if (next.workspaceSsh !== undefined) bound.workspaceSsh = next.workspaceSsh
+        // A write that landed while the workspace was connected is synced again with the binding.
+        return writeProject(bound, ['workspaceRoot', 'workspaceSsh'], current !== project)
+      })
     },
 
     updateProject(id, patch) {
@@ -1639,14 +1963,13 @@ export function createVaultStore(
       const next: ProjectRecord = { ...projectOf(id), ...fields }
       if (block === null) delete next.block
       if (typeof block === 'string') next.block = block
-      if (topics !== undefined) {
-        next.topic = topics[0] ?? DEFAULT_PROJECT_TOPIC
-        if (topics.length > 1) next.topics = topics
-        else delete next.topics
-      }
       // The contract guarantees fixed-width ISO dates, so lexical order is chronological order.
       if (next.due < next.start) throw new CallError('invalid', `项目截止日期早于开始日期：${next.start} – ${next.due}`)
-      return writeProject(next, [...Object.keys(patch), ...(topics === undefined ? [] : ['topic'])] as (keyof ProjectRecord)[])
+      if (topics !== undefined) {
+        fileTopics(topics)
+        Object.assign(next, storedTopics(titledTopics(topics, topicPages(wikiData)), next, topicPages(wikiData)))
+      }
+      return writeProject(next, [...Object.keys(patch), ...(topics === undefined ? [] : ['topic', 'topicPins'])] as (keyof ProjectRecord)[])
     },
 
     deleteProject: atomic((id) => {
@@ -1661,7 +1984,9 @@ export function createVaultStore(
       })
     }),
 
-    createTask,
+    createTask(projectId, task, origin) {
+      return detailOf(addTask(projectId, task, origin))
+    },
 
     agentTaskRequests(projectId) {
       return projects().filter((project) => projectId === undefined || project.id === projectId).flatMap((project) => {
@@ -1674,12 +1999,11 @@ export function createVaultStore(
 
     addAgentTask: atomic((projectId, request) => {
       const had = new Set(projectOf(projectId).tasks.map((task) => task.id))
-      const made = createTask(projectId, {
+      const project = addTask(projectId, {
         title: request.title, start: request.date, end: request.date, state: 'plan', priority: 'p1',
         ...(request.note === undefined ? {} : { note: request.note }),
       }, 'agent')
-      const task = made.tasks.find((candidate) => !had.has(candidate.id))!.id
-      const project = projectOf(projectId)
+      const task = project.tasks.find((candidate) => !had.has(candidate.id))!.id
       return writeProject({ ...project, agentTasks: { ...project.agentTasks, [request.id]: task } }, ['agentTasks'])
     }),
 
@@ -1715,10 +2039,11 @@ export function createVaultStore(
       return writeProject({ ...project, tasks: order.map((id) => byId.get(id)!) }, ['tasks'])
     },
 
-    setTaskNode(projectId, taskId, nodeId) {
+    async setTaskNode(projectId, taskId, nodeId) {
+      const graphs = await readWorkspaceGraphs([projectId])
       const project = projectOf(projectId)
       if (!project.tasks.some((t) => t.id === taskId)) throw new CallError('not-found', `任务不存在：${taskId}`)
-      const graph = readProjectWorkspace(project)?.graph ?? project.graph
+      const graph = workspaceGraph(project, graphs) ?? project.graph
       if (nodeId !== null && !graph.nodes.some((n) => n.id === nodeId)) throw new CallError('not-found', `节点不存在：${nodeId}`)
       const taskNodes = Object.fromEntries(Object.entries(project.taskNodes ?? {}).filter(([task]) => task !== taskId))
       if (nodeId !== null) taskNodes[taskId] = nodeId
@@ -1944,9 +2269,9 @@ export function createVaultStore(
       }, ['conclusionList'])
     },
 
-    verifyConclusion(projectId, node, fingerprint) {
+    verifyConclusion(projectId, node, fingerprint, graphs = NO_WORKSPACE_GRAPHS) {
       const project = projectOf(projectId)
-      const held = concludedNodes(readProjectWorkspace(project)?.graph ?? project.graph).find((n) => n.id === node)
+      const held = concludedNodes(workspaceGraph(project, graphs) ?? project.graph).find((n) => n.id === node)
       if (held === undefined) throw new CallError('not-found', `节点没有可验证的结论：${node}`)
       if (conclusionFingerprint(held) !== fingerprint) throw new CallError('changed', CONCLUSION_CHANGED)
       const entry = { node, fingerprint, date: today() }
@@ -2338,9 +2663,15 @@ export function createVaultStore(
       return wikiHome(wikiData)
     },
 
-    wikiAggregation(id) {
+    async wikiAggregation(id) {
       checkReadable(id)
-      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames(), pointName)
+      let graphs: WorkspaceGraphs = NO_WORKSPACE_GRAPHS
+      const unread = () => experimentProjects(wikiData.pages[id])
+        .filter((project) => projectById.get(project)?.workspaceSsh !== undefined && !graphs.has(project))
+      // The page can change while the workspaces it cites are read; what it cites by then is read too.
+      for (let ids = unread(); ids.length > 0; ids = unread()) graphs = new Map([...graphs, ...await readWorkspaceGraphs(ids)])
+      checkReadable(id)
+      return wikiAggregation(wikiData, id, versionOf(id)!, projectNames(), pointName(graphs))
     },
 
     wikiPaper(id) {
@@ -2353,12 +2684,12 @@ export function createVaultStore(
       return wikiCards(wikiData)
     },
 
-    applyProposal: atomic((proposal, producer) => {
+    applyProposal: atomic((proposal, producer, graphs = NO_WORKSPACE_GRAPHS) => {
       const data = wikiData
       const day = today()
       for (const id of touchedPages(proposal, data)) checkReadable(id)
       // Validate the complete proposal first so an invalid step writes no bytes.
-      const next = applyProposal(data, proposal, day, worldOf(producer?.by ?? HUMAN))
+      const next = applyProposal(data, proposal, day, worldOf(producer?.by ?? HUMAN, graphs))
       // Refill requires generated-region markers. Newly proposed pages are not on disk yet, so skip them here.
       for (const id of refilled(proposal, data, next)) {
         if (existsSync(wikiFile(id))) checkGenerated(wikiFile(id))
@@ -2387,6 +2718,11 @@ export function createVaultStore(
           setParents(wikiFile(op.page), op.parents, staging)
           setUpdated(wikiFile(op.page), day, staging)
         } else if (op.op === 'setAggregationMetadata') {
+          const [from, to] = [labelledLink(op.page, data.pages[op.page]!.fm.title), labelledLink(op.page, op.title)]
+          for (const id of relabelled(data, op.page, op.title)) {
+            rewriteLines(wikiFile(id), (line, part) => (part === 'body' ? line.replaceAll(from, to) : line), staging)
+            setUpdated(wikiFile(id), day, staging)
+          }
           setAggregationMetadata(wikiFile(op.page), { title: op.title, splitOn: op.splitOn }, staging)
           setUpdated(wikiFile(op.page), day, staging)
         } else if (op.op === 'setColumns') {
@@ -2412,23 +2748,18 @@ export function createVaultStore(
         }
         if (changed) setUpdated(wikiFile(id), day, staging)
       }
-      const names = projectNames()
-      for (const id of refilled(proposal, data, next)) {
-        const claims = (next.pages[id] as WikiAggregationRecord).fm.claims ?? []
-        fillGenerated(wikiFile(id), {
-          children: generatedChildren(next, id), table: generatedTable(next, id),
-          // A page written before claims existed gains the claims region only once it holds a claim.
-          ...(claims.length === 0 && generatedMissing(wikiFile(id)).includes('claims')
-            ? {} : { claims: generatedClaims(next, id, names) }),
-        }, staging)
-      }
-      rereadWiki(touchedPages(proposal, data))
+      refill(next, refilled(proposal, data, next))
+      // A paper's row names the aggregations it belongs to, so a rename rereads every member.
+      const renamed = proposal.ops.flatMap((op) => (op.op === 'setAggregationMetadata' ? memberPapers(op.page) : []))
+      rereadWiki([...touchedPages(proposal, data), ...renamed])
     }),
 
-    checkProposal(ops, by) {
+    checkProposal(ops, by, graphs = NO_WORKSPACE_GRAPHS) {
       for (const id of touchedPages({ ops }, wikiData)) checkReadable(id)
-      applyProposal(wikiData, { ops }, today(), worldOf(by, by === HUMAN))
+      applyProposal(wikiData, { ops }, today(), worldOf(by, graphs, by === HUMAN))
     },
+
+    readWorkspaceGraphs,
 
     describeProposal(ops) {
       return ops.map((op) => describeOp(op, wikiData))
@@ -2496,6 +2827,65 @@ export function createVaultStore(
       rereadWiki([id])
     }),
 
+    deleteWikiPage: atomic((id) => {
+      checkReadable(id)
+      const page = wikiData.pages[id]
+      if (page === undefined || isPaper(page)) throw new CallError('not-found', `wiki 聚合不存在：${id}`)
+      const rest = aggregationIds().filter((other) => other !== id)
+      for (const other of rest) checkGenerated(wikiFile(other))
+      const day = today()
+      for (const child of subpagesOf(id)) {
+        setParents(wikiFile(child), parentsAfterDelete(id, child), staging)
+        setUpdated(wikiFile(child), day, staging)
+      }
+      const members = memberPapers(id)
+      const entry = nextId('trash')
+      movePage(wikiFile(id), trashPage(entry))
+      toTrash({ id: entry, kind: 'page', title: page.fm.title, deletedAt: nowMs(), page: `wiki/${id}.md` })
+      rereadWiki(members)
+      refill(wikiData, rest)
+    }),
+
+    wikiDeletePages(id) {
+      const children = subpagesOf(id)
+      return [id, ...children, ...aggregationIds().sort().filter((other) => other !== id && !children.includes(other))]
+    },
+
+    mergeWikiPages: atomic((from, into, shown) => {
+      const texts = mergeOutcome(from, into)
+      const repointed = ideas.flatMap((idea) => {
+        const before = idea.relations?.pages ?? []
+        if (!before.includes(from)) return []
+        return [{ id: idea.id, before, after: [...new Set(before.map((p) => (p === from ? into : p)))] }]
+      })
+      const cards = wikiCards(wikiData)
+      const unchanged = (id: string, card: WikiAggregationCard): boolean =>
+        JSON.stringify(cards.find((c) => c.id === id)) === JSON.stringify(card)
+      if (!unchanged(from, shown.from) || !unchanged(into, shown.into)) {
+        throw new CallError('changed', `「${labelOf(wikiData, from)}」或「${labelOf(wikiData, into)}」在你挑合并目标之后改过，没有合并。再挑一次`)
+      }
+      for (const { id, after } of texts) replacePage(wikiFile(id), after, staging)
+      const entry = nextId('trash')
+      movePage(wikiFile(from), trashPage(entry))
+      toTrash({
+        id: entry, kind: 'page', title: labelOf(wikiData, from), deletedAt: nowMs(), page: `wiki/${from}.md`,
+        ...(repointed.length === 0 ? {} : { ideas: repointed }),
+      })
+      relateIdeas(repointed.map(({ id, before, after }) => ({ id, from: before, to: after })))
+      for (const { id } of texts) {
+        if (!id.startsWith(PROJECT_PATH)) continue
+        const pid = id.slice(PROJECT_PATH.length)
+        projectById.set(pid, readProjectPage(projectFile(pid), pid))
+      }
+      rereadWiki(texts.map((t) => t.id))
+      refill(wikiData, aggregationIds())
+    }),
+
+    wikiMergePages(from, into) {
+      const written = [...mergeOutcome(from, into).map((t) => t.id), from]
+      return [...written, ...aggregationIds().sort().filter((id) => !written.includes(id))]
+    },
+
     applyPaperWikiDraft: atomic((id, body) => {
       checkBody(id, body)
       checkReadable(id)
@@ -2505,9 +2895,9 @@ export function createVaultStore(
       rereadWiki([id])
     }),
 
-    proposalPages(proposal, by = HUMAN) {
+    proposalPages(proposal, by = HUMAN, graphs = NO_WORKSPACE_GRAPHS) {
       const data = wikiData
-      const next = applyProposal(data, proposal, today(), worldOf(by))
+      const next = applyProposal(data, proposal, today(), worldOf(by, graphs))
       const named = touchedPages(proposal, data)
       return [...named, ...refilled(proposal, data, next).filter((id) => !named.includes(id))]
     },
@@ -2523,27 +2913,38 @@ export function createVaultStore(
       for (const { path, text } of pages) {
         const file = wikiFile(path)
         if (text === null) removePage(file)
-        else replacePage(file, text, staging)
+        else {
+          replacePage(file, text, staging)
+          // A page put back where it was deleted from no longer waits in the trash.
+          const held = trash.find((item) => item.kind === 'page' && item.page === `wiki/${path}.md`)
+          if (held !== undefined) {
+            trash = saveTrash(trash.filter((item) => item !== held))
+            discard(held)
+            if (held.kind === 'page') putIdeasBack(held)
+          }
+        }
         if (!path.startsWith(PROJECT_PATH)) continue
         const id = path.slice(PROJECT_PATH.length)
         if (text === null) projectById.delete(id)
         else projectById.set(id, readProjectPage(file, id))
       }
-      rereadWiki(pages.map((p) => p.path))
+      // A paper's row names the aggregations it belongs to, so each aggregation put back rereads its members.
+      const paths = pages.map((p) => p.path)
+      rereadWiki([...paths, ...paths.flatMap(memberPapers)])
     }),
 
     listTrash() {
       dropExpired()
       // An attachment cannot return after its project is deleted, nor a paper while another page stands where its page goes back,
       // nor a paper chat while its paper's chat holds messages.
-      return trash.map((item) => ({
+      return trash.filter((item) => !returned(item)).map((item) => ({
         id: item.id,
         kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)
           : item.kind === 'chat' ? (paperChatNow(item)?.messages.length ?? 0) === 0
-          : item.kind !== 'paper' || !existsSync(join(root, item.page)),
+          : (item.kind !== 'paper' && item.kind !== 'page') || !existsSync(join(root, item.page)),
       }))
     },
 
@@ -2574,6 +2975,12 @@ export function createVaultStore(
         const restored = readProjectPage(back, projectId)
         projectById.set(projectId, restored)
         if (restored.status === FINISHED_PROJECT) archiveIdeasForProject(projectId)
+      } else if (item.kind === 'page') {
+        checkPlaceFree(item)
+        movePage(trashPage(id), join(root, item.page))
+        rereadWiki(memberPapers(trashedPageId(item.page)))
+        refill(wikiData, aggregationIds())
+        putIdeasBack(item)
       } else if (item.kind === 'inbox') {
         inbox = save('inbox', inbox.map((entry) => {
           if (entry.id !== item.entryId) return entry
@@ -2607,30 +3014,30 @@ export function createVaultStore(
         if (!project) throw new CallError('not-found', `项目不存在：${item.projectId}`)
         const { attachments } = project
         const at = Math.min(item.position ?? attachments.length, attachments.length)
-        writeProject(
+        landProject(
           { ...project, attachments: [...attachments.slice(0, at), item.attachment, ...attachments.slice(at)] },
           ['attachments'],
         )
       }
-      trash = save('trash', trash.filter((entry) => entry !== item))
+      trash = saveTrash(trash.filter((entry) => entry !== item))
     }),
 
     purgeTrash(id) {
       dropExpired()
       const item = trash.find((entry) => entry.id === id)
       if (!item) throw new CallError('not-found', `垃圾桶里没有这一条：${id}`)
-      trash = save('trash', trash.filter((entry) => entry !== item))
+      trash = saveTrash(trash.filter((entry) => entry !== item))
       discard(item)
     },
 
     clearTrash() {
       const cleared = trash
-      trash = save('trash', [])
+      trash = saveTrash([])
       for (const item of cleared) discard(item)
     },
 
-    listFeed() {
-      absorbWorkspaceEvents()
+    async listFeed() {
+      await absorbWorkspaceEvents()
       return feedNewestFirst(feed, today())
     },
 
@@ -2795,6 +3202,14 @@ export function createVaultStore(
       chats = save('chats', chats.map((c) => (c === chat ? { ...c, archived } : c)))
     },
 
+    renameChat(id, title) {
+      const chat = chatOf(id)
+      if (chat.paperId !== undefined) throw new CallError('refused', '论文的阅读对话以论文命名，不能改名')
+      const renamed: ChatRecord = { ...chat, title, named: true }
+      chats = save('chats', chats.map((c) => (c.id === id ? renamed : c)))
+      return chatSession(renamed)
+    },
+
     chatIds() {
       dropExpired()
       return [...chats.map((chat) => chat.id), ...trash.flatMap((item) => (item.kind === 'chat' ? [item.chat.id] : []))]
@@ -2818,7 +3233,7 @@ export function createVaultStore(
     },
   }
 
-  return withChangelog(ops, {
+  const store = withChangelog(ops, {
     load: (): ChangeRecord[] => {
       const file = join(meridian, 'changelog.json')
       if (!existsSync(file)) return []
@@ -2834,4 +3249,10 @@ export function createVaultStore(
     nextId: () => nextId('change'),
     atomically,
   })
+  try {
+    store.pinProjectTopics()
+  } catch (err) {
+    console.error(`[project] 项目的主题没有对上主题页，照旧按名字显示：${err instanceof Error ? err.message : String(err)}`)
+  }
+  return store
 }

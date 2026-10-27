@@ -131,7 +131,7 @@ describe('滚动区和吸住的部分都淡出而不是硬切', () => {
 
   it('想法详情面板的高度取自页面主体内的可见高度,不论窗口多高都止于页面主体之内', () => {
     // The list and the panel are a split page's columns; a side panel there is at most its column's height.
-    expect(source('routes/Ideas.tsx')).toMatch(/<PageBody className="ideas-body">\s*<SplitPage columns="rail">/)
+    expect(source('routes/Ideas.tsx')).toMatch(/<PageBody ref={body} className="ideas-body">\s*<SplitPage columns="rail">/)
     const panel = RULES.filter((rule) => rule.path === 'components/SplitPage.css' && rule.selector === '.split-page>.side-panel')
       .map((rule) => rule.body).join(';')
     expect(panel).toMatch(/max-height:\s*100%/)

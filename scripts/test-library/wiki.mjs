@@ -9,7 +9,8 @@ const KV_METHOD = 'methods/kv-quantization'
  * Seeds the Wiki through `wiki.apply` and `wiki.update` as the user writes it: topics with a child
  * topic, methods with a derived column, comparison tables whose cells quote page 1, page bodies
  * linking papers by id, claims with source and personal evidence, an open conflict and appended
- * entries. Unfiled papers, thin pages and a link to a trashed paper raise Wiki signals.
+ * entries. Unfiled papers, thin pages and a link to a trashed paper raise Wiki signals. A duplicate
+ * of the speculative decoding topic waits to be merged into it, and an empty topic to be deleted.
  */
 export async function seedWiki(seed, call, files) {
   const paper = (key) => `papers/${seed.papers[key]}`
@@ -26,6 +27,8 @@ export async function seedWiki(seed, call, files) {
     aggregation('topic', KV, 'KV cache 压缩', [{ key: 'bits', label: '位宽' }],
       '长上下文推理里 KV cache 占满显存，要在精度几乎不掉的前提下把它压小。'),
     aggregation('topic', 'topics/mixture-of-experts', '混合专家', [], '每个 token 只激活少数专家，参数量和计算量解耦。'),
+    aggregation('topic', 'topics/speculative-sampling', '投机采样', [], '小模型先猜几个 token，大模型一次并行验证，和推测解码是同一件事。'),
+    aggregation('topic', 'topics/to-sort', '待归类', [], ''),
     aggregation('method', 'methods/draft-heads', '草稿头', [{ key: 'heads', label: '头的结构' }],
       '在目标模型上加轻量的头来出草稿，不需要单独的小模型。'),
     aggregation('method', KV_METHOD, 'KV 量化', [{ key: 'granularity', label: '量化粒度' }],
@@ -42,6 +45,8 @@ export async function seedWiki(seed, call, files) {
     await member('h2o', KV, { bits: await cell('h2o', null, '16，只淘汰不量化') }),
     await member('quip', KV, { bits: await cell('quip', null, '2') }),
     await member('switch', 'topics/mixture-of-experts', {}),
+    await member('specdec', 'topics/speculative-sampling', {}),
+    await member('medusa', 'topics/speculative-sampling', {}),
     await member('eagle', 'methods/draft-heads', { heads: await cell('eagle', /straightforward/, '单层 decoder') }),
     await member('medusa', 'methods/draft-heads', { heads: await cell('medusa', /decoding heads to predict/, '多个前馈头') }),
     await member('kivi', KV_METHOD, { granularity: await cell('kivi', /value cache should/, 'K 按通道，V 按 token') }),

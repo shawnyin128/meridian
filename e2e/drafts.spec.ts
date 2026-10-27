@@ -44,9 +44,9 @@ test('关掉 App 再打开,没存的阅读笔记和论文对话里没发出的�
 
 /** The project memo of the fixture's draft project, opened on the project page. */
 const memoOf = (win: Page) => win.locator('.screenslot:not([hidden]) .wkmain .memo')
-/** The heading button `label` of section `section` in the project page's main column. */
-const sectionButton = (win: Page, section: string, label: string) => win.locator('.screenslot:not([hidden]) .wkmain')
-  .locator('.section-heading', { hasText: section }).locator('button', { hasText: label })
+/** The heading buttons of section `section` in the project page's main column. */
+const sectionButtons = (win: Page, section: string) => win.locator('.screenslot:not([hidden]) .wkmain')
+  .locator('.section-heading', { hasText: section }).locator('button')
 
 /** Opens the Wiki page `id` from the Wiki home. */
 async function openWikiPage(win: Page, id: string): Promise<void> {
@@ -56,37 +56,46 @@ async function openWikiPage(win: Page, id: string): Promise<void> {
 const wikiButton = (win: Page, label: string) => shown(win, '.wkmain .section-heading-actions > .btn:not(.add-action)').filter({ hasText: label })
 
 test('关掉 App 再打开,项目随笔和 Wiki 正文没存的改动回到原处,还开在编辑里;取消或存下之后不再留着', async ({ app, win, configHome, profile }) => {
+  /** Every draft kept for the open vault, as one string. */
+  const keptOf = (page: Page) => page.evaluate(() => Object.keys(window.localStorage)
+    .filter((key) => key.startsWith('meridian.drafts:'))
+    .map((key) => window.localStorage.getItem(key)!).join(''))
+  // A click outside an open editor saves it, so each draft is left open by quitting.
   await gotoProject(win)
-  await sectionButton(win, '项目随笔', '编辑').click()
+  await memoOf(win).locator('[data-line]').first().click({ position: { x: 2, y: 4 } })
   await win.keyboard.press('ControlOrMeta+End')
   await win.keyboard.type(' 没存的随笔')
-  await openWikiPage(win, 'topics/quantization')
-  await wikiButton(win, '编辑').click()
-  await shown(win, '.md.src').press('ControlOrMeta+End')
-  await shown(win, '.md.src').pressSequentially('没存的正文')
 
-  const reopened = await relaunch(app, configHome, profile)
+  const first = await relaunch(app, configHome, profile)
+  let second: Awaited<ReturnType<typeof relaunch>> | null = null
   try {
-    const again = reopened.win
-    await gotoProject(again)
-    await expect(memoOf(again).locator('.cm-content')).toContainText('没存的随笔')
+    await gotoProject(first.win)
+    await expect(memoOf(first.win).locator('.cm-content')).toContainText('没存的随笔')
+    await expect(sectionButtons(first.win, '项目随笔')).toHaveText(['取消', '保存'])
+    const project = await first.win.evaluate(() => (window as unknown as MeridianWindow).meridian.call('project.get', { id: 'draft' }))
+    expect((project as { memo: string }).memo).not.toContain('没存的随笔')
+    await memoOf(first.win).locator('.cm-content').press('Escape')
+    await expect(memoOf(first.win).locator('.cm-editor')).toHaveCount(0)
+    expect(await keptOf(first.win)).not.toContain('没存的随笔')
+
+    await openWikiPage(first.win, 'topics/quantization')
+    await shown(first.win, '.wkmain > .md').last().locator('p').first().click()
+    await first.win.keyboard.press('ControlOrMeta+End')
+    await first.win.keyboard.type('没存的正文')
+
+    second = await relaunch(first.app, configHome, profile)
+    const again = second.win
     await openWikiPage(again, 'topics/quantization')
-    await expect(shown(again, '.md.src')).toContainText('没存的正文')
+    await expect(shown(again, '.md.src .cm-content')).toContainText('没存的正文')
     const before = await again.evaluate(() => (window as unknown as MeridianWindow).meridian.call('wiki.aggregation', { id: 'topics/quantization' }))
     expect((before as { body: string }).body).not.toContain('没存的正文')
-
     await wikiButton(again, '保存').click()
     await expect(shown(again, '.md.src')).toHaveCount(0)
-    await gotoProject(again)
-    await sectionButton(again, '项目随笔', '取消').click()
-    await expect(memoOf(again).locator('.cm-editor')).toHaveCount(0)
-    const kept = await again.evaluate(() => Object.keys(window.localStorage)
-      .filter((key) => key.startsWith('meridian.drafts:'))
-      .map((key) => window.localStorage.getItem(key)!).join(''))
-    expect(kept).not.toContain('没存的随笔')
-    expect(kept).not.toContain('没存的正文')
+    const after = await again.evaluate(() => (window as unknown as MeridianWindow).meridian.call('wiki.aggregation', { id: 'topics/quantization' }))
+    expect((after as { body: string }).body).toContain('没存的正文')
+    expect(await keptOf(again)).not.toContain('没存的正文')
   } finally {
-    await reopened.app.close()
+    await (second ?? first).app.close()
   }
 })
 

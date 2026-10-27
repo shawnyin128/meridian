@@ -3,6 +3,7 @@ import { chat as zh } from '../zh/chat.js'
 /** English counterpart of `zh/chat`. */
 export const chat = {
   newChat: 'New chat',
+  nameFieldLabel: 'Chat name',
   saveIdeaLabel: 'Save as idea',
   mentionGroup: { project: 'Projects', paper: 'Papers', page: 'Wiki' },
   conflictTitle: 'Conflicting findings',
@@ -19,7 +20,7 @@ export const chat = {
   sourcePicker: (source: string) => `Source: ${source}`,
   defaultMark: 'Default',
   modelPicker: (model: string) => `Model: ${model}`,
-  modelSettings: 'Model settings…',
+  modelSettings: 'Model settings',
   effortPicker: (level: string) => `Reasoning effort: ${level}`,
   effortDefault: 'Default',
   expandPaperChat: 'Expand the paper chat',

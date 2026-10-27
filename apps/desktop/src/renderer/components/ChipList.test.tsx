@@ -14,14 +14,15 @@ declare global {
 vi.mock('../ipc.js', () => ({
   project: { list: async () => [], removePaper: async () => ({ change: 'c' }), addPaper: async () => ({ change: 'c' }) },
   papers: { facets: async () => [] },
+  wiki: { cards: async () => [] },
   changelog: { undo: async () => {} },
 }))
 vi.mock('../shell/AppShell.js', () => ({ useJump: () => ({ jump: null, open: vi.fn() }) }))
 vi.mock('../hooks/useVaultWrite.js', () => ({ useVaultWrite: () => async () => true }))
 
-const { PaperTopics } = await import('./PaperTopics.js')
+const { TopicChips } = await import('./TopicChips.js')
 const { ProjectChips } = await import('./ProjectChips.js')
-const { ProjectAreasField, ProjectRelations } = await import('./project/ProjectSections.js')
+const { ProjectTopicsField, ProjectRelations } = await import('./project/ProjectSections.js')
 const { IdeaRelations } = await import('./ideas/IdeaRelations.js')
 
 const IDEA = {
@@ -65,9 +66,9 @@ describe('ChipList', () => {
 
   it('每个 chip 列表都一样移除:× 是 chip 自己操作槽里的同一个行内图标按钮,悬停或聚焦这个 chip 才显出', () => {
     const removals: unknown[] = []
-    render(<PaperTopics topics={['推理']} keep={['paper', 'p1']} onAdd={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} />)
+    render(<TopicChips topics={['推理']} keep={['paper', 'p1']} onAdd={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} />)
     removals.push(removal())
-    render(<ProjectAreasField projectId="draft" areas={['推理']} onSave={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} />)
+    render(<ProjectTopicsField projectId="draft" topics={['推理']} onSave={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} />)
     removals.push(removal())
     render(<ProjectChips paper={{ id: 'p1', projects: [{ id: 'draft', name: 'draft 效率' }] } as PaperRow} onError={vi.fn()} />)
     removals.push(removal())
@@ -93,9 +94,9 @@ describe('ChipList', () => {
       const add = host.querySelector('.tagadd')!
       return [add.className, add.parentElement!.classList.contains('row-actions')]
     }
-    render(<PaperTopics topics={[]} keep={['paper', 'p1']} onAdd={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} />)
+    render(<TopicChips topics={[]} keep={['paper', 'p1']} onAdd={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} />)
     const rest = plus()
-    render(<PaperTopics topics={[]} keep={['paper', 'p1']} onAdd={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} reveal="hover" />)
+    render(<TopicChips topics={[]} keep={['paper', 'p1']} onAdd={vi.fn()} onRemove={vi.fn()} onError={vi.fn()} reveal="hover" />)
     expect([rest, plus()]).toEqual([
       ['add-action add-action-icon add-action-chip tagchip tagadd', false],
       ['add-action add-action-icon add-action-chip tagchip tagadd', true],

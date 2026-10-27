@@ -1,6 +1,6 @@
 import { EditorSelection, EditorState } from '@codemirror/state'
 import { describe, expect, it } from 'vitest'
-import { markdownBlocks, renderedBlocks } from './markdown-preview.js'
+import { collapsedLines, markdownBlocks, renderedBlocks } from './markdown-preview.js'
 
 /**
  * The line numbers that render in `marked`, written as `n` or `n-m`: `‸` marks the cursor, and two
@@ -17,6 +17,16 @@ function renderedLines(marked: string): string[] {
     return first === last ? `${first}` : `${first}-${last}`
   })
 }
+
+/** The line numbers of the blank lines that collapse in `marked`, marked as for renderedLines. */
+function collapsedNumbers(marked: string): number[] {
+  const ends = [...marked.matchAll(/‸/g)].map((match, at) => match.index - at)
+  const state = EditorState.create({ doc: marked.replaceAll('‸', ''), selection: EditorSelection.single(ends[0]!, ends.at(-1)!) })
+  return collapsedLines(state.doc, markdownBlocks(state.doc), state.selection).map((from) => state.doc.lineAt(from).number)
+}
+
+/** The space above each block of `src`, as the read view leaves it. */
+const spaces = (src: string) => markdownBlocks(EditorState.create({ doc: src }).doc).map((block) => block.space)
 
 describe('live preview', () => {
   it('写完「# 标题」按回车,光标到了下一行,标题那行就渲染出来;光标回到标题行,它又是原文', () => {
@@ -53,5 +63,19 @@ describe('live preview', () => {
 
   it('选中一段跨过的每一块都是原文,其余照常渲染', () => {
     expect(renderedLines('# 甲\n\n‸乙\n\n丙‸\n\n丁')).toEqual(['1', '7'])
+  })
+
+  it('块之间的空行不在光标上就收起;光标停的那一行空行照常占一行,代码块里的空行属于代码块', () => {
+    expect(collapsedNumbers('甲‸\n\n乙\n\n\n丙')).toEqual([2, 4, 5])
+    expect(collapsedNumbers('甲\n‸\n乙')).toEqual([])
+    expect(collapsedNumbers('甲\n\n‸\n乙')).toEqual([2])
+    expect(collapsedNumbers('‸```\na\n\nb\n```\n\n乙')).toEqual([6])
+    expect(collapsedNumbers('\n‸\n甲')).toEqual([1])
+  })
+
+  it('每块上方留看的时候的空:第一块不留,标题下窄,标题和分隔线上下宽,同一个列表的项之间不留,其余一段的空', () => {
+    expect(spaces('# 标题\n\n正文\n\n- 甲\n- 乙\n\n1. 一\n\n---\n\n尾段\n## 小节\n## 又一节'))
+      .toEqual(['none', 'tight', 'block', 'none', 'block', 'wide', 'wide', 'wide', 'wide'])
+    expect(spaces('段一\n\n段二\n\n> 引文\n\n```\nx\n```')).toEqual(['none', 'block', 'block', 'block'])
   })
 })

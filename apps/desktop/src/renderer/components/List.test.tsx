@@ -212,6 +212,30 @@ describe('List focus when its focused item goes away', () => {
     expect(focused()).toBe('打开乙')
   })
 
+  it('删除由指针发起时，接过焦点的那一项不亮焦点环；由键盘发起时照常亮，离开后不再压着', async () => {
+    await render(['甲', '乙', '丙'])
+    row('乙').focus()
+    document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    await render(['甲', '丙'])
+    expect(focused()).toBe('丙')
+    expect(row('丙').hasAttribute('data-quiet-focus')).toBe(true)
+    act(() => row('丙').dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab', bubbles: true })))
+    expect(row('丙').hasAttribute('data-quiet-focus')).toBe(false)
+    await render(['甲'])
+    expect(focused()).toBe('甲')
+    expect(row('甲').hasAttribute('data-quiet-focus')).toBe(false)
+  })
+
+  it('指针发起后接过焦点的那一项失去焦点时，不再压着焦点环', async () => {
+    await render(['甲', '乙'], true)
+    row('乙').focus()
+    document.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
+    await render(['甲'], true)
+    expect(row('甲').hasAttribute('data-quiet-focus')).toBe(true)
+    act(() => host.querySelector<HTMLButtonElement>('#outside')!.focus())
+    expect(row('甲').hasAttribute('data-quiet-focus')).toBe(false)
+  })
+
   it('leaves the focus where it went when it moved out of the list before the item went away', async () => {
     await render(['甲', '乙'], true)
     row('乙').focus()
