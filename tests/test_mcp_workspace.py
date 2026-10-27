@@ -511,6 +511,99 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual(node["node"]["id"], "direction.A")
             self.assertEqual(node["linked_ideas"][0]["id"], "idea-1")
 
+    def test_a_plan_change_naming_its_tasks_and_milestones_expands_to_each_one_alone(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            plan_path = self._workspace(root)
+            plan = json.loads(plan_path.read_text(encoding="utf-8"))
+            plan["tasks"] = [{"id": "task-1", "title": "Run probe"}, {"id": "task-2", "title": "Write up"}]
+            plan["milestones"] = [{"id": "ms-1", "title": "Decision"}, {"id": "ms-2", "title": "Release"}]
+            plan_path.write_text(json.dumps(plan) + "\n", encoding="utf-8")
+            changes_path = root / ".meridian/control/changes.json"
+            journal = json.loads(changes_path.read_text(encoding="utf-8"))
+            journal["next_sequence"] = 5
+            journal["changes"] += [
+                {
+                    "sequence": 3,
+                    "at": "2026-09-17T00:00:00Z",
+                    "kind": "project.updated",
+                    "summary": "Project tasks updated: Shared research",
+                    "refs": [{"kind": "project", "id": "project-1"}],
+                },
+                {
+                    "sequence": 4,
+                    "at": "2026-09-18T00:00:00Z",
+                    "kind": "project.updated",
+                    "summary": "Project tasks, milestones updated: Shared research",
+                    "refs": [{"kind": "project", "id": "project-1"}],
+                    "task_ids": ["task-1", "task-gone"],
+                    "milestone_ids": ["ms-1"],
+                },
+            ]
+            changes_path.write_text(json.dumps(journal) + "\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            _, changes = self._call(server, "meridian.workspace_changes", {"cursor": "mcp-feed:2"})
+            without_ids, with_ids = changes["changes"]
+            expanded = [self._call(server, item["tool"], item["arguments"])[1] for item in with_ids["expand"]]
+
+            self.assertEqual(without_ids["expand"], [{"tool": "meridian.workspace_plan", "arguments": {}}])
+            self.assertEqual(
+                with_ids["expand"],
+                [
+                    {"tool": "meridian.workspace_plan", "arguments": {"task_id": "task-1"}},
+                    {"tool": "meridian.workspace_plan", "arguments": {"task_id": "task-gone"}},
+                    {"tool": "meridian.workspace_plan", "arguments": {"milestone_id": "ms-1"}},
+                ],
+            )
+            self.assertEqual(
+                [(item["tasks"], item["milestones"]) for item in expanded],
+                [
+                    ([{"id": "task-1", "title": "Run probe"}], []),
+                    ([], []),
+                    ([], [{"id": "ms-1", "title": "Decision"}]),
+                ],
+            )
+            self.assertEqual({item["revision"] for item in expanded}, {"revision-1"})
+            self.assertEqual({item["project"]["id"] for item in expanded}, {"project-1"})
+
+    def test_a_plan_read_takes_one_task_or_one_milestone_at_a_time(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            result, error = self._call(
+                server, "meridian.workspace_plan", {"task_id": "task-1", "milestone_id": "ms-1"},
+            )
+
+            self.assertTrue(result["isError"])
+            self.assertIn("one of task_id or milestone_id", error["message"])
+
+    def test_a_change_whose_changed_ids_are_not_a_list_of_ids_is_reported_unreadable(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            changes_path = root / ".meridian/control/changes.json"
+            journal = json.loads(changes_path.read_text(encoding="utf-8"))
+            journal["next_sequence"] = 4
+            journal["changes"].append({
+                "sequence": 3,
+                "at": "2026-09-17T00:00:00Z",
+                "kind": "project.updated",
+                "summary": "Project tasks updated: Shared research",
+                "refs": [{"kind": "project", "id": "project-1"}],
+                "task_ids": "task-1",
+            })
+            changes_path.write_text(json.dumps(journal) + "\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            _, changes = self._call(server, "meridian.workspace_changes", {"cursor": "mcp-feed:2"})
+
+            self.assertEqual(changes["changes"], [])
+            self.assertEqual(len(changes["unreadable_changes"]), 1)
+            self.assertIn("task_ids must be an array of ids", changes["unreadable_changes"][0])
+
     def test_unreadable_changes_are_reported_while_other_changes_and_the_node_still_read(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)

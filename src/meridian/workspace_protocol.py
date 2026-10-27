@@ -156,13 +156,35 @@ def inspect_project_workspace(root: Path) -> dict[str, Any]:
     return _status_payload(repository, status, surfaces, project=manifest["project"])
 
 
-def read_project_plan(root: Path) -> dict[str, Any]:
-    """Read the App-owned plan without changing any workspace file."""
+def read_project_plan(
+    root: Path, *, task_id: str | None = None, milestone_id: str | None = None
+) -> dict[str, Any]:
+    """Read the App-owned plan without changing any workspace file.
 
+    With ``task_id`` or ``milestone_id``, ``tasks`` and ``milestones`` hold only that task or
+    milestone, and are both empty when the plan no longer has it. Raises
+    ``WorkspaceProtocolError`` when both are given.
+    """
+
+    if task_id is not None and milestone_id is not None:
+        raise WorkspaceProtocolError("read one of task_id or milestone_id at a time")
     repository = _repository_root(root)
     manifest = _read_manifest(repository)
     plan_path = Path(manifest["surfaces"]["plan"]["path"])
-    return _validate_plan(_read_json(repository / plan_path, label="project plan"))
+    plan = _validate_plan(_read_json(repository / plan_path, label="project plan"))
+    if task_id is None and milestone_id is None:
+        return plan
+    return {
+        **plan,
+        "tasks": [item for item in plan["tasks"] if task_id is not None and _has_id(item, task_id)],
+        "milestones": [
+            item for item in plan["milestones"] if milestone_id is not None and _has_id(item, milestone_id)
+        ],
+    }
+
+
+def _has_id(item: Any, item_id: str) -> bool:
+    return isinstance(item, dict) and item.get("id") == item_id
 
 
 def read_workspace_changes(
@@ -895,6 +917,10 @@ def _validate_change(value: Any, index: int, *, after: int, before: int) -> dict
         if ref.get("kind") not in {"project", "idea", "node"}:
             raise WorkspaceProtocolError(f"workspace change {index} ref {ref_index} kind is invalid")
         _nonempty_string(ref.get("id"), f"workspace change {index} ref {ref_index} id")
+    for key in ("task_ids", "milestone_ids"):
+        ids = change.get(key, [])
+        if not isinstance(ids, list) or not all(isinstance(item, str) and item.strip() for item in ids):
+            raise WorkspaceProtocolError(f"workspace change {index} {key} must be an array of ids")
     return change
 
 
