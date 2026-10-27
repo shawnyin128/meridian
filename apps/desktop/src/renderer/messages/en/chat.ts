@@ -20,7 +20,7 @@ export const chat = {
   sourcePicker: (source: string) => `Source: ${source}`,
   defaultMark: 'Default',
   modelPicker: (model: string) => `Model: ${model}`,
-  modelSettings: 'Model settings…',
+  modelSettings: 'Model settings',
   effortPicker: (level: string) => `Reasoning effort: ${level}`,
   effortDefault: 'Default',
   expandPaperChat: 'Expand the paper chat',

@@ -55,7 +55,7 @@ export const common = {
     clear: 'Clear input',
     emptyValue: '—',
     edit: (label: string) => `Edit ${label}`,
-    chooseDirectory: 'Choose folder…',
+    chooseDirectory: 'Choose folder',
   },
   sshFolders: { up: 'Enclosing folder', path: 'Folder path' },
   pager: {

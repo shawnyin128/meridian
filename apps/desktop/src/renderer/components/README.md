@@ -262,7 +262,7 @@ Current shared contracts:
   of chips ending with the send control, a GenerationControl. The chat screen and the reader's paper
   chat compose it through `chat/ChatComposer`.
 - `ModelChips`: the composer's three pickers for one chat, each ChoicePicker's `capsule` look: the source,
-  ending with 模型设置…, the model of that source, and the reasoning effort. A pick changes only that
+  ending with 模型设置, the model of that source, and the reasoning effort. A pick changes only that
   chat's own choice, which Core keeps. While no model is set up it is the shared "AI not connected" tag.
 - `ElapsedTime`: the one time since a moment, `12s` under a minute and `1m 05s` after, counting up each
   second in tabular numerals; a pending chat answer shows it after 思考中….

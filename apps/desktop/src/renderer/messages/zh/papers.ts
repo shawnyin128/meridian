@@ -84,7 +84,7 @@ export const papers = {
     tooLarge: 'PDF 不能大于 100 MB',
     alreadyInLibrary: '这份 PDF 已在论文库中',
     importing: '正在导入…',
-    importAction: '导入 PDF…',
+    importAction: '导入 PDF',
   },
   columnMenu: {
     settings: '列设置',

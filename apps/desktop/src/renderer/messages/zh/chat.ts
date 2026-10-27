@@ -18,7 +18,7 @@ export const chat = {
   sourcePicker: (source: string) => `服务来源：${source}`,
   defaultMark: '默认',
   modelPicker: (model: string) => `模型：${model}`,
-  modelSettings: '模型设置…',
+  modelSettings: '模型设置',
   effortPicker: (level: string) => `推理强度：${level}`,
   effortDefault: '默认',
   expandPaperChat: '展开论文对话',

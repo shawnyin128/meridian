@@ -103,7 +103,7 @@ type CardActions = {
  * The demo's aggCard: kind tag, title, an "N parents" tag when the aggregation has several parents,
  * the first line of its summary, and a last line with its subpage count, paper count and update date.
  * The title is the card's button; a click anywhere else on the card opens it too. With `actions` the
- * card has the … menu: Rename turns the title into its inline field, Merge into… into a pick of the
+ * card has the … menu: Rename turns the title into its inline field, Merge into into a pick of the
  * page to merge into, both in place, and Delete moves the page to the trash.
  */
 function AggregationCard({ card, onOpen, onRemove, pending, actions }: {
@@ -115,7 +115,7 @@ function AggregationCard({ card, onOpen, onRemove, pending, actions }: {
   const summaryCut = useClipped(summary, card.summary, true)
   const kept = useDrafts<string>(['wiki', card.id])
   const element = useRef<HTMLElement>(null)
-  // Merge into… opens its pick once the menu has let go of focus, as Rename opens its field.
+  // Merge into opens its pick once the menu has let go of focus, as Rename opens its field.
   const mergeAsked = useRef(false)
   const merging = actions !== undefined && kept.get(MERGE) !== undefined
   const name = <ItemOpen className="tt"><FadeText>{card.title}</FadeText></ItemOpen>
@@ -711,11 +711,11 @@ export function Wiki() {
     })
   }
 
-  /** The cards Merge into… last offered, by page id, so a pick hands Core the card it showed. */
+  /** The cards Merge into last offered, by page id, so a pick hands Core the card it showed. */
   const offered = useRef(new Map<string, WikiAggregationCard>())
 
   /**
-   * The … menu of `card`: Rename writes the new title, keeping how the page is split; Merge into…
+   * The … menu of `card`: Rename writes the new title, keeping how the page is split; Merge into
    * offers the other pages of its kind whose title holds what is typed, every one of them while
    * nothing is, and merges into the one picked at once, with the two cards as they showed; Delete
    * moves the page to the trash. Merge and Delete offer Undo on their notice.

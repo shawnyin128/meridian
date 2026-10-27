@@ -191,7 +191,7 @@ describe('按钮组', () => {
     /** The computed styles of a busy Button of `classes`, its hidden label, its ring and the ring's track. */
     const busy = (classes: string) => {
       document.body.innerHTML = `<button type="button" class="${classes}" aria-busy="true" disabled aria-label="正在重置…">`
-        + '<span class="btn-label">重置库…</span><svg class="ring spin"><circle /><circle class="arc" /></svg></button>'
+        + '<span class="btn-label">重置库</span><svg class="ring spin"><circle /><circle class="arc" /></svg></button>'
       return ['button', '.btn-label', '.ring', '.ring circle:not(.arc)']
         .map((selector) => getComputedStyle(document.querySelector(selector)))
     }

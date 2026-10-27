@@ -37,8 +37,8 @@ const LOOK_UP_CHARS = 50
 /**
  * Application menu template, every title and item named by `copy`. `platform` comes from
  * `process.platform`; `onSettings`, `onAgentTutorial` and `onPalette` handle the Settings, tutorial
- * and Command Palette actions. File lists New Project, New Idea, New Chat and Import PDF…, Edit ends
- * with Find…, and View starts with Show or Hide Sidebar; each hands its command to `app.onCommand`, as
+ * and Command Palette actions. File lists New Project, New Idea, New Chat and Import PDF, Edit ends
+ * with Find, and View starts with Show or Hide Sidebar; each hands its command to `app.onCommand`, as
  * do the View menu's zoom items, whose shortcuts are those of Electron's zoom roles. Every other item
  * uses an Electron role, which supplies native copy, paste, developer tools, and related behavior
  * without reimplementing them here; each role menu lists the items Electron's own role menu has on

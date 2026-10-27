@@ -126,7 +126,7 @@ export const project = {
     paperCount: (n: number) => `${n} ${pluralEn(n, { one: 'paper', other: 'papers' })}`,
     workspaceLabel: 'Workspace',
     refreshWorkspace: 'Refresh workspace',
-    changeWorkspace: 'Change connection…',
+    changeWorkspace: 'Change connection',
     disconnectWorkspace: 'Disconnect',
   },
   workspace: {
@@ -135,7 +135,7 @@ export const project = {
     local: 'Local folder',
     pathLabel: 'Folder path',
     localPlaceholder: 'Local project folder',
-    chooseLocal: 'Choose project folder…',
+    chooseLocal: 'Choose project folder',
     add: 'Add',
     adding: 'Adding…',
     hostLabel: 'Host',
@@ -168,7 +168,7 @@ export const project = {
     removed: (text: string) => `Removed link to “${text}”`,
   },
   attachments: {
-    addTitle: 'Add attachment…',
+    addTitle: 'Add attachment',
     delete: 'Delete attachment',
     localOnly: 'You can only add files stored on this computer.',
     noPath: 'No file location',

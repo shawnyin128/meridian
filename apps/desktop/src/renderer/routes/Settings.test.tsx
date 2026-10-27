@@ -832,7 +832,7 @@ describe('Settings', () => {
       .querySelector('.row-actions button[aria-label="管理「青瓷」"]')).not.toBeNull()
 
     const items = await openThemeMenu(dialog, '青瓷')
-    expect(items.map((item) => item.textContent)).toEqual(['编辑…', '删除'])
+    expect(items.map((item) => item.textContent)).toEqual(['编辑', '删除'])
     await act(async () => { items[0]!.click() })
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="名称"]')!.value).toBe('青瓷')
     expect(dialog.querySelector<HTMLInputElement>('input[aria-label="色值"]')!.value).toBe(celadon.light.ground.toUpperCase())
@@ -972,7 +972,7 @@ describe('Settings', () => {
     const directory = dialog.querySelector('.storage-root .directory-field')!
     expect(directory.querySelector<HTMLInputElement>('input')?.value).toBe('/tmp/meridian')
     expect(directory.querySelector('input')?.hasAttribute('readonly')).toBe(true)
-    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
+    expect(directory.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
       .toBe(true)
     expect(directory.querySelector('svg path')?.getAttribute('d')).toBe('M3 6h6l2 2h10v10H3z')
     expect(dialog.querySelector('.storage-root code')).toBeNull()
@@ -1031,7 +1031,7 @@ describe('Settings', () => {
     expect(dialog.querySelector('.page-error')?.textContent).toBe('不是 Meridian 论文库')
     expect(dialog.querySelector<HTMLInputElement>('.storage-root input')?.value)
       .toBe('/tmp/broken-library')
-    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录…"]')?.disabled)
+    expect(dialog.querySelector<HTMLButtonElement>('[aria-label="选择论文库根目录"]')?.disabled)
       .toBe(false)
     expect(dialog.querySelector<HTMLButtonElement>('.storage-reset .btn.danger')?.disabled).toBe(false)
   })
@@ -1142,7 +1142,7 @@ describe('Settings', () => {
     expect([
       trigger.getAttribute('aria-label'), trigger.textContent, trigger.querySelector('.ring.spin') !== null, trigger.disabled,
       trigger.getAttribute('aria-busy'),
-    ]).toEqual(['正在重置…', '重置库…', true, true, 'true'])
+    ]).toEqual(['正在重置…', '重置库', true, true, 'true'])
     expect(api.restartApp).not.toHaveBeenCalled()
     await act(async () => { finish() })
     expect(api.restartApp).toHaveBeenCalledOnce()

@@ -52,7 +52,7 @@ const press = (app: ElectronApplication, cdp: CDPSession, key: keyof typeof MAC_
       })
     }, key)
 
-test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', async ({ app, win }) => {
+test('应用菜单里有「设置」,其余菜单仍是 Electron 的角色', async ({ app, win }) => {
   // The menu is set in whenReady, so it is fully installed once the first window is up.
   await win.locator('#sidebar').waitFor()
   const menu = await app.evaluate(({ Menu }) => {
@@ -70,7 +70,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
 
   const mac = process.platform === 'darwin'
   // The top-level menus keep their roles, so copy and paste, full screen and, in this unpackaged run,
-  // the developer tools remain. On macOS "Settings…" sits in the app-name menu and File is still a
+  // the developer tools remain. On macOS "Settings" sits in the app-name menu and File is still a
   // role; Windows and Linux add a Tools menu without a role, between View and Window. Every platform
   // ends with the Help menu, which has no role.
   expect(menu.map((top) => top.role)).toEqual(mac
@@ -84,7 +84,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
 
   const settings = menu.flatMap((top) => top.items).filter((item) => item.id === 'settings')
   expect(settings).toHaveLength(1)
-  expect(settings[0]!.label).toBe('设置…')
+  expect(settings[0]!.label).toBe('设置')
   expect(settings[0]!.accelerator).toBe('CmdOrCtrl+,')
   // On macOS it is in the menu bar's first menu (the app-name menu); on Windows and Linux in the Tools
   // menu, the fourth top-level menu after File, Edit and View.
@@ -96,7 +96,7 @@ test('应用菜单里有「设置…」,其余菜单仍是 Electron 的角色', 
 test.describe(() => {
   test.use({ showWindow: true })
 
-  test('应用菜单里的「设置…」与快捷键都打开设置,别的键不打开', async ({ app, win }) => {
+  test('应用菜单里的「设置」与快捷键都打开设置,别的键不打开', async ({ app, win }) => {
     await win.locator('#sidebar').waitFor()
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
@@ -111,7 +111,7 @@ test.describe(() => {
     await win.keyboard.press('Escape')
     await expect(win.locator('.setdlg')).toHaveCount(0)
 
-    // Negative check: Settings opens on the shortcut registered for "Settings…", not on any key.
+    // Negative check: Settings opens on the shortcut registered for "Settings", not on any key.
     await press(app, cdp, '.')
     await expect(win.locator('.setdlg')).toHaveCount(0)
   })
@@ -211,7 +211,7 @@ test('设置是左右分栏:左栏是分类,右栏是选中那一类的内容', 
   await expect(win.locator('.setdlg .storage-reset')).toContainText('重置论文库')
   const directory = win.locator('.setdlg .storage-root .directory-field')
   await expect(directory.locator('input')).toHaveValue(/meridian/i)
-  await expect(directory.locator('[aria-label="选择论文库根目录…"]')).toHaveCount(1)
+  await expect(directory.locator('[aria-label="选择论文库根目录"]')).toHaveCount(1)
   await expect(win.getByRole('button', { name: '选择根目录…' })).toHaveCount(0)
   // Reset is enabled in normal use; the shared fixture must not be cleared by a UI test.
   await expect(win.locator('.setdlg .storage-reset .btn')).toBeDisabled()
@@ -425,7 +425,7 @@ test('外观主题从新建、保存、套用,到重新加载后还在、在卡�
       await win.locator('.setdlg button[aria-label="管理「晨雾」"]').click()
     }
     await menu()
-    await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['编辑…', '删除'])
+    await expect(win.locator('[role="menu"] [role="menuitem"]')).toHaveText(['编辑', '删除'])
     await win.locator('[role="menu"] [role="menuitem"]', { hasText: '编辑' }).click()
     await expect(win.locator('.setdlg input[aria-label="名称"]')).toHaveValue('晨雾')
     await win.locator('.setdlg [data-module="ground"]').click()

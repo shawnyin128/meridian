@@ -55,7 +55,7 @@ describe('CommandPalette', () => {
       <button type="button" id="opener" />
       <CommandPalette
         open={shown} onOpenChange={(next) => { open.push(next) }}
-        commands={['新建项目', '设置…', '论文'].map((label) => ({ label, run: () => { ran.push(label) } }))}
+        commands={['新建项目', '设置', '论文'].map((label) => ({ label, run: () => { ran.push(label) } }))}
       />
     </MessagesProvider>,
   ))
@@ -85,7 +85,7 @@ describe('CommandPalette', () => {
 
   it('只列命令:开着时焦点在输入框里,空着列出全部命令,打字只留标签里有这几个字的,不去全局搜索', async () => {
     expect(document.activeElement?.id).toBe('cmdkq')
-    expect(rows().map((row) => row.textContent)).toEqual(['新建项目', '设置…', '论文'])
+    expect(rows().map((row) => row.textContent)).toEqual(['新建项目', '设置', '论文'])
     await type('论文')
     expect(rows().map((row) => row.textContent)).toEqual(['论文'])
     expect(searched).toEqual([])
@@ -99,7 +99,7 @@ describe('CommandPalette', () => {
     // The Enter is spent on the row, so it cannot also press what the command opens, such as a dialog's close button.
     expect(await press('Enter')).toBe(true)
     expect(open).toEqual([false])
-    expect(ran).toEqual(['设置…'])
+    expect(ran).toEqual(['设置'])
   })
 
   it('输入法组字时的 Enter 只确认组字,不跑命令', async () => {

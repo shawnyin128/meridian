@@ -86,7 +86,7 @@ export const papers = {
     tooLarge: 'PDF files cannot be larger than 100 MB',
     alreadyInLibrary: 'This PDF is already in the library',
     importing: 'Importing…',
-    importAction: 'Import PDF…',
+    importAction: 'Import PDF',
   },
   columnMenu: {
     settings: 'Column settings',

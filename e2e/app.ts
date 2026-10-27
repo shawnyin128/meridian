@@ -146,14 +146,14 @@ export const popupMenus = (app: ElectronApplication): Promise<string[][]> =>
   app.evaluate(() => (globalThis as unknown as { popupMenus: string[][] }).popupMenus)
 
 /**
- * Clicks the brand mark in the title bar to open the app menu, then "Settings…". Returns once the
+ * Clicks the brand mark in the title bar to open the app menu, then "Settings". Returns once the
  * Settings modal is on screen.
  */
 export async function openSettings(_app: ElectronApplication, win: Page): Promise<void> {
   // Settings opens from the brand mark at the top left of the title bar, the entry point for
   // app-level configuration; the app draws no menu bar.
   await win.locator('.titlebar .appbtn').click()
-  await win.locator('[data-appmenu] .mi', { hasText: '设置…' }).click()
+  await win.locator('[data-appmenu] .mi', { hasText: '设置' }).click()
   await win.locator('.setdlg').waitFor()
 }
 

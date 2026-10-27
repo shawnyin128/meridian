@@ -786,7 +786,7 @@ describe('AppShell command palette', () => {
   beforeEach(() => { HTMLElement.prototype.scrollIntoView = () => {} })
   afterEach(() => { delete (HTMLElement.prototype as Partial<HTMLElement>).scrollIntoView })
 
-  it('opens over the current screen from the native menu\'s 命令面板…, and ⌘K or Ctrl+K opens nothing', async () => {
+  it('opens over the current screen from the native menu\'s 命令面板, and ⌘K or Ctrl+K opens nothing', async () => {
     await mount()
     press('k', { metaKey: true })
     press('k', { ctrlKey: true })
@@ -796,7 +796,7 @@ describe('AppShell command palette', () => {
     expect(document.activeElement?.id).toBe('cmdkq')
   })
 
-  it('lists 命令面板… after 设置… in the App menu with ⇧⌘P on macOS and Ctrl+Shift+P elsewhere, and opens the palette from it', async () => {
+  it('lists 命令面板 after 设置 in the App menu with ⇧⌘P on macOS and Ctrl+Shift+P elsewhere, and opens the palette from it', async () => {
     /** Opens the title bar's App menu and returns each item's label and shortcut. */
     const openMenu = () => {
       act(() => {
@@ -805,7 +805,7 @@ describe('AppShell command palette', () => {
       return [...document.querySelectorAll('[data-appmenu] .mi')].map((item) => item.textContent)
     }
     await mount()
-    expect(openMenu().slice(0, 2)).toEqual(['设置…⌘,', '命令面板…⇧⌘P'])
+    expect(openMenu().slice(0, 2)).toEqual(['设置⌘,', '命令面板⇧⌘P'])
     const item = [...document.querySelectorAll<HTMLElement>('[data-appmenu] .mi')].find((mi) => mi.textContent?.startsWith('命令面板'))!
     await act(async () => {
       item.click()
@@ -817,7 +817,7 @@ describe('AppShell command palette', () => {
     act(() => root!.unmount())
     fixture.platform = 'win32'
     await mount()
-    expect(openMenu().slice(0, 2)).toEqual(['设置…Ctrl+,', '命令面板…Ctrl+Shift+P'])
+    expect(openMenu().slice(0, 2)).toEqual(['设置Ctrl+,', '命令面板Ctrl+Shift+P'])
     fixture.platform = 'darwin'
   })
 
@@ -843,11 +843,11 @@ describe('AppShell command palette', () => {
     expect(shown()).toBe('{"importPdf":true}')
     run('想法')
     expect(shown()).toBe('ideas')
-    run('设置…')
+    run('设置')
     expect(document.querySelector('#settingsProbe')!.textContent).toBe('default')
   })
 
-  it('lists 设置 · <pane> right after 设置…, one per pane in the Settings side list\'s order, each opening Settings on its pane', async () => {
+  it('lists 设置 · <pane> right after 设置, one per pane in the Settings side list\'s order, each opening Settings on its pane', async () => {
     const panes = [
       ['外观', 'appearance'], ['存储', 'storage'], ['第三方服务', 'api'], ['模型', 'model'], ['科研', 'research'],
       ['Agent 扩展', 'extensions'], ['论文推送', 'delivery'], ['关注', 'delivery-watch'], ['发现', 'delivery-discovery'],
@@ -856,7 +856,7 @@ describe('AppShell command palette', () => {
     await mount(<SettingsProbe />)
     act(() => fixture.openPalette!())
     const labels = [...document.querySelectorAll('.cmdk .rrow')].map((row) => row.textContent)
-    const settings = labels.indexOf('设置…⌘,')
+    const settings = labels.indexOf('设置⌘,')
     expect(labels.slice(settings + 1, settings + 1 + panes.length)).toEqual(panes.map(([name]) => `设置 · ${name}`))
     for (const [name, pane] of panes) {
       run(`设置 · ${name}`)
@@ -877,7 +877,7 @@ describe('AppShell 菜单栏命令', () => {
   const shown = () => document.querySelector('.screenslot:not([hidden])')!.textContent
   const command = (name: string) => act(() => fixture.appCommand!(name))
 
-  it('文件菜单的新建项目、新建想法、导入 PDF… 和命令面板走同一个落点,新对话新建一段对话', async () => {
+  it('文件菜单的新建项目、新建想法、导入 PDF 和命令面板走同一个落点,新对话新建一段对话', async () => {
     await mount(undefined, {
       project: <JumpProbe id="projectJump" />, papers: <JumpProbe id="papersJump" />, ideas: <JumpProbe id="ideasJump" />,
     })
@@ -892,7 +892,7 @@ describe('AppShell 菜单栏命令', () => {
     expect(fixture.createChat).toHaveBeenCalledTimes(1)
   })
 
-  it('编辑 › 查找… 像「/」一样跳到搜索框,在文本框里也一样', async () => {
+  it('编辑 › 查找 像「/」一样跳到搜索框,在文本框里也一样', async () => {
     await mount(<input aria-label="名称" />)
     const field = document.querySelector<HTMLInputElement>('[aria-label="名称"]')!
     field.focus()

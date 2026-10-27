@@ -521,10 +521,10 @@ export function AppShell({ screens, settings }: {
       && !watches.some((w) => w.id === inboxScope)) setInboxScope(ALL_WATCHES)
   }, [watches, inboxScope, inboxMode])
 
-  // "Settings…" in the app menu: the main process sends a message; the open state stays in the page.
+  // "Settings" in the app menu: the main process sends a message; the open state stays in the page.
   useEffect(() => appMenu.onOpenSettings(() => setSettingsOpen(true)), [])
 
-  // "Command Palette…" in the native menu, whose accelerator is the palette's shortcut.
+  // "Command Palette" in the native menu, whose accelerator is the palette's shortcut.
   useEffect(() => appMenu.onOpenPalette(() => setPaletteOpen(true)), [])
 
   // Help owns one stable entry into the same Extensions surface that reports installation state.
@@ -907,7 +907,7 @@ export function AppShell({ screens, settings }: {
           )}
           contentProps={{
               // The menu and the Dialog cannot both manage focus. Mounting the Dialog as soon as
-              // "Settings…" is selected makes it record the menu item being unmounted as the element
+              // "Settings" is selected makes it record the menu item being unmounted as the element
               // to refocus on close; by then that node is gone and focus falls to the body. So the
               // menu only notes which dialog is wanted, and the Dialog mounts in the menu's own close
               // callback, once the menu has handed focus back and the Dialog gets a stable element.

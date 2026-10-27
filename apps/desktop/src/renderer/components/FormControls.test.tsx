@@ -72,7 +72,7 @@ describe('FormControls', () => {
     expect(field).toContain('class="form-control form-input form-control-field"')
     expect(field).toContain('value="/Users/name/project"')
     expect(field).toContain('class="directory-field-action"')
-    expect(field).toContain('aria-label="选择目录…"')
+    expect(field).toContain('aria-label="选择目录"')
     expect(field).toContain('M3 6h6l2 2h10v10H3z')
   })
 

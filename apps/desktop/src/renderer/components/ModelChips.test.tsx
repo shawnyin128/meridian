@@ -160,12 +160,12 @@ describe('输入框下面的服务来源、模型和推理强度', () => {
     expect(pickers().map((picker) => picker.getAttribute('aria-label'))).toEqual(['服务来源：Claude 订阅', '模型：opus', '推理强度：high'])
   })
 
-  it('服务来源只列能跑的，加上这条对话现在用的那个，最后是模型设置…；换来源时只送来源，从它的默认模型和强度开始', async () => {
+  it('服务来源只列能跑的，加上这条对话现在用的那个，最后是模型设置；换来源时只送来源，从它的默认模型和强度开始', async () => {
     await mount({ source: 'cli:claude', model: 'sonnet', effort: 'max' })
     open(0)
     expect(options()).toEqual([['Anthropic API', false], ['Ollama 本地', false], ['Claude 订阅', true], ['ChatGPT 订阅', false]])
-    expect(commands()).toEqual(['模型设置…'])
-    await choose('模型设置…')
+    expect(commands()).toEqual(['模型设置'])
+    await choose('模型设置')
     expect(core.openCategory).toHaveBeenCalledExactlyOnceWith('model')
 
     await mount({ source: 'cli:claude', model: 'sonnet', effort: 'max' })
