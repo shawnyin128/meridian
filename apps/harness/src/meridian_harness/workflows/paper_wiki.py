@@ -3,10 +3,13 @@
 from __future__ import annotations
 
 import json
+import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Annotated, Protocol
 
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.prompt_values import PromptValue
 from langchain_core.prompts import ChatPromptTemplate
 from langchain_core.runnables import Runnable, RunnableLambda
@@ -23,9 +26,12 @@ from meridian_harness.models import (
     StructuredOutput,
     create_chat_model,
     runs_on_cli,
+    usage_line,
     with_closed_output,
 )
 from meridian_harness.protocol import ProtocolViolation
+
+_log = logging.getLogger(__name__)
 
 
 def _require_unique(values: list[str], label: str) -> None:
@@ -344,6 +350,8 @@ class PaperWikiRuntime:
 
     core: CoreReadContext
     draft_chain: DraftChain
+    # The runtime model settings Core sent, which name the provider.
+    settings: object
 
 
 PAPER_WIKI_PROMPT = ChatPromptTemplate.from_messages([
@@ -461,10 +469,18 @@ def _generate_draft(
         "reading": state["reading"].model_dump(mode="json"),
         "wiki": state["wiki"].model_dump(mode="json"),
     }
+    usage = UsageMetadataCallbackHandler()
+    started = time.monotonic()
     try:
-        candidate = runtime.context.draft_chain.invoke({
-            "scope_json": json.dumps(scope, ensure_ascii=False, separators=(",", ":")),
-        })
+        try:
+            candidate = runtime.context.draft_chain.invoke(
+                {"scope_json": json.dumps(scope, ensure_ascii=False, separators=(",", ":"))},
+                config={"callbacks": [usage]},
+            )
+        finally:
+            if usage.usage_metadata:
+                seconds = time.monotonic() - started
+                _log.info(usage_line(runtime.context.settings, seconds, usage.usage_metadata))
         draft = PaperWikiDraft.model_validate(candidate)
         available_pages, available_reading_refs = _validate_draft_anchors(
             draft,
@@ -602,7 +618,9 @@ def build_paper_wiki_method(
                     "scope_digest": params["scopeDigest"],
                     "action": params["action"],
                 },
-                context=PaperWikiRuntime(core=context, draft_chain=draft_chain),
+                context=PaperWikiRuntime(
+                    core=context, draft_chain=draft_chain, settings=params["model"],
+                ),
             )
         except ModelInvocationError as cause:
             from meridian_harness.server import HarnessFailure
