@@ -57,7 +57,7 @@
   /*
    * Content columns and cards scale with the window width in three steps, not continuously: narrow
    * (default), medium (≥1600) and wide (≥2000). --pagew is the content column width of list screens;
-   * --prosew, the reading width of prose pages (Wiki pages, project details), grows more slowly;
+   * --prosew, the reading width of prose pages (Wiki pages), grows more slowly;
    * --chatw, the message column width of Chats, grows more slowly still: overlong lines are hard to
    * read. --cardw / --card-tt / --card-fs / --card-lines are a card's minimum width, its title and
    * summary font sizes, and its number of summary lines.

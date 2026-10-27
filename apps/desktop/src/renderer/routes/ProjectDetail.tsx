@@ -636,7 +636,7 @@ export function ProjectDetail({
           <PageTitle>{m.project.loadingTitle}</PageTitle>
         </PageHeader>
         <PageError error={error} />
-        <PageBody column="prose">{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
+        <PageBody>{error === null ? <LoadingPlaceholder shape="lines" count={6} /> : null}</PageBody>
       </PageShell>
     )
   }
@@ -835,7 +835,7 @@ export function ProjectDetail({
               )}
       </ModalDialog>
 
-      <PageBody className="project-detail-body" column="prose">
+      <PageBody className="project-detail-body">
         <ProjectTimeline
           project={project} hoverMilestone={hoverMilestone} onHoverMilestone={setHoverMilestone}
           onLocateTask={locateTask}

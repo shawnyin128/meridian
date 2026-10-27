@@ -252,6 +252,24 @@ test('需要注意的类型、日期和正文使用统一列宽与间隔', async
   })).toEqual(['0px', '0px'])
 })
 
+test('1700px 宽的窗口里,时间线、需要注意和下方两栏区块的左右边缘对齐', async ({ win, app }) => {
+  // From 1600px wide the page column and the prose column differ, so the window must be past that step.
+  await app.evaluate(({ BrowserWindow }) => BrowserWindow.getAllWindows()[0]!.setContentSize(1700, 1000))
+  await expect.poll(() => win.evaluate(() => window.innerWidth)).toBe(1700)
+  await gotoProject(win)
+  const page = win.locator('.screenslot:not([hidden])')
+  const edges = async (selector: string) => {
+    const box = (await page.locator(selector).boundingBox())!
+    return { left: box.x, right: box.x + box.width }
+  }
+  const plan = await edges('.project-detail-page')
+  for (const [name, selector] of [['时间线', '.project-detail-body > .gantt'], ['需要注意', '.project-detail-body > .attn']]) {
+    const block = await edges(selector!)
+    expect(Math.abs(block.left - plan.left), `${name}的左边缘`).toBeLessThanOrEqual(1)
+    expect(Math.abs(block.right - plan.right), `${name}的右边缘`).toBeLessThanOrEqual(1)
+  }
+})
+
 test('科研记录的正文紧跟日期、与需要注意的正文对齐,节点和 agent 各成一列,细节用小号次要字', async ({ win }) => {
   await gotoProject(win)
   const page = win.locator('.screenslot:not([hidden])')
