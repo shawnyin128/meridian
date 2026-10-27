@@ -635,13 +635,13 @@ A design the user saved from an App chat is an idea whose file has the
 frontmatter `type: experiment-design`; read it from the absolute `path` of its
 entry in the `files` that `meridian.workspace_idea` returns for the idea. When
 the user starts that idea, build
-its two nodes from the file, using its table, in one ask that confirms
-`create_node`: a hypothesis node for the claim, placed as the file's Lab nodes
-section says (under the named project's active node, or as a root) by the rules
-of New Idea Placement, and an experiment child node for the smallest
-experiment, whose one `record_history` line is the file's declared decision
-table. Create no node for M2 or M0; propose the `alternative` sibling only when
-the M2 row later matches.
+its two nodes from the file's frontmatter, not its headings, which are in the
+user's language, in one ask that confirms `create_node`: a hypothesis node
+titled `hypothesis_node`, under node `parent_node` of project `parent_project`,
+or as a root when they are absent, by the rules of New Idea Placement, and an
+experiment child node titled `experiment_node`, whose one `record_history` line
+is `decision_table_history`. Create no node for M2 or M0; propose the
+`alternative` sibling only when the M2 row later matches.
 
 ### Research Prior Classification
 

@@ -131,7 +131,7 @@ export const modelText = (runs: readonly ChatRun[]) => runs.map((run) => {
 /** The text of a message as the model reads it again: its runs, then the sections of the design an answer carries. */
 const messageText = (message: StoredChatMessage) => {
   const text = modelText(message.runs).trim()
-  return message.design === undefined ? text : `${text}\n\n${designSections(message.design)}`
+  return message.design === undefined ? text : `${text}\n\n${designSections(message.design, 'en')}`
 }
 
 type Turn = { role: 'you' | 'ai'; text: string }

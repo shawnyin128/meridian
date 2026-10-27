@@ -2,7 +2,7 @@ import { useEffect, useId, useState } from 'react'
 import type { ChatDesignPreview, ExperimentDesign, WikiAggregationCard } from '../../../shared/contract.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { chat as chatApi, wiki } from '../../ipc.js'
-import { useMessages } from '../../messages/useMessages.js'
+import { useLocale, useMessages } from '../../messages/useMessages.js'
 import { useJump, useVaultRevision } from '../../shell/AppShell.js'
 import { Card } from '../Card.js'
 import { CommitActions } from '../CommitActions.js'
@@ -23,19 +23,8 @@ type Anchor = ExperimentDesign['ledger'][number]['anchor']
 const OUTCOME_MODE: Record<Outcome, keyof typeof NODE_MODE_LOOK> = {
   invalid: 'repairable', alternative: 'repairable', expand: 'supported', 'below-gate': 'supported', kill: 'dead', inconclusive: 'unresolved',
 }
-/**
- * The file `markdown` as a person reads it: its frontmatter as `key`/`value` fields, then its body,
- * which the frontmatter's closing line ends before.
- */
-function fileParts(markdown: string): { fields: Array<[string, string]>; body: string } {
-  const front = /^---\n([\s\S]*?)\n---\n/.exec(markdown)
-  if (front === null) return { fields: [], body: markdown }
-  const fields = front[1]!.split('\n').map((line): [string, string] => {
-    const at = line.indexOf(':')
-    return [line.slice(0, at), line.slice(at + 1).trim()]
-  })
-  return { fields, body: markdown.slice(front[0].length) }
-}
+/** The body of the file `markdown`, without the frontmatter its Lab skill reads. */
+const fileBody = (markdown: string) => markdown.replace(/^---\n[\s\S]*?\n---\n/, '')
 
 /** The most rows a design's tables show before they scroll. */
 const DESIGN_ROWS = 8
@@ -70,6 +59,7 @@ function LedgerAnchor({ anchor, titles }: { anchor: Anchor; titles: ReadonlyMap<
  */
 export function DesignCard({ chat, messageId, design }: { chat: string; messageId: string; design: ExperimentDesign }) {
   const m = useMessages()
+  const locale = useLocale()
   const d = m.chat.design
   const { open } = useJump()
   const { revision } = useVaultRevision()
@@ -80,14 +70,13 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
   const [saving, setSaving] = useState(false)
   const [titles, setTitles] = useState<ReadonlyMap<string, string>>(new Map())
   const chosen = design.predictions.find((prediction) => prediction.chosen)!
-  const file = preview === null ? null : fileParts(preview.file.markdown)
   const anchorsWiki = design.ledger.some((entry) => entry.anchor?.kind === 'wiki')
 
   useEffect(() => {
     let live = true
-    void chatApi.designPreview(chat, messageId).then((next) => { if (live) setPreview(next) })
+    void chatApi.designPreview(chat, messageId, locale).then((next) => { if (live) setPreview(next) })
     return () => { live = false }
-  }, [chat, messageId, revision])
+  }, [chat, messageId, locale, revision])
   useEffect(() => {
     if (!anchorsWiki) return undefined
     let live = true
@@ -100,7 +89,7 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
   const confirm = () => {
     if (preview === null) return
     setSaving(true)
-    void write(chatApi.saveDesign(chat, messageId, preview.fingerprint), {
+    void write(chatApi.saveDesign(chat, messageId, preview.fingerprint, locale), {
       note: m.chat.ideaSavedNote,
       action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
     }).finally(() => setSaving(false))
@@ -204,21 +193,23 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
         level="group" meta={preview?.saved == null ? undefined : d.savedAs}
         fold={{ open: unfolded, onToggle: () => setUnfolded((held) => !held), controls: writesId }}
       >{d.writes}</SectionHeading>
-      {!unfolded || file === null || preview === null ? null : (
+      {!unfolded || preview === null ? null : (
         <Card id={writesId}>
           <div className="design-writes">
             <PropertyList>
               <Property label={d.idea}>
-                {preview.saved === null ? preview.idea.title : (
-                  <EntityLink kind="idea" label={preview.idea.title} href={`#ideas:${preview.saved}`} onOpen={() => open('ideas', preview.saved!)} />
-                )}
+                <span className="design-claim">
+                  <Tag>{d.claimStatus[design.claim.status]}</Tag>
+                  {preview.saved === null ? preview.idea.title : (
+                    <EntityLink kind="idea" label={preview.idea.title} href={`#ideas:${preview.saved}`} onOpen={() => open('ideas', preview.saved!)} />
+                  )}
+                </span>
               </Property>
               <Property label={d.body}>{preview.idea.body.split('\n').map((line) => <div key={line}>{line}</div>)}</Property>
               {preview.idea.project === null ? null : <Property label={d.project}>{preview.idea.project.name}</Property>}
               <Property label={d.file}>{preview.file.name}</Property>
-              {file.fields.map(([key, value]) => <Property key={key} label={key}>{value}</Property>)}
             </PropertyList>
-            <Markdown src={file.body} />
+            <div className="md"><Markdown src={fileBody(preview.file.markdown)} /></div>
             <PropertyList>
               <Property label={d.hypothesisNode}>
                 <EntityLink kind="node" mode="unresolved" fill label={preview.nodes.hypothesis.title} />

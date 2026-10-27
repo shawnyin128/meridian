@@ -119,8 +119,8 @@ const DESIGN: ExperimentDesign = {
   ]
 }
 const api = vi.hoisted(() => ({
-  preview: vi.fn<(id: string, messageId: string) => Promise<unknown>>(),
-  save: vi.fn<(id: string, messageId: string, fingerprint: string) => Promise<unknown>>(),
+  preview: vi.fn<(id: string, messageId: string, language: string) => Promise<unknown>>(),
+  save: vi.fn<(id: string, messageId: string, fingerprint: string, language: string) => Promise<unknown>>(),
   opened: vi.fn(),
 }))
 vi.mock('../../ipc.js', () => ({
@@ -204,7 +204,7 @@ describe('the design card under an answer', () => {
 
     await act(async () => toggle.click())
     const writes = host.querySelector('.design-writes')!
-    expect(api.preview).toHaveBeenCalledWith('chat-3', 'msg-9')
+    expect(api.preview).toHaveBeenCalledWith('chat-3', 'msg-9', 'zh')
     for (const text of [
       DESIGN.claim.text, 'M1：一', 'M0：三', '推测解码加速', '实验设计-msg-9.md', '无效', 'repairable',
       '推测解码加速 · 动态树宽 之下', 'B 从 16 到 64，对照为等平均宽度的固定树', '2026-10-27: declared decision table: 无效 → repairable',
@@ -214,10 +214,15 @@ describe('the design card under an answer', () => {
     expect(writes.textContent).not.toContain('| Result pattern |')
     expect(writes.querySelector('h1')!.textContent).toBe('主张')
     expect([...writes.querySelectorAll('th')].map((cell) => cell.textContent)).toEqual(['Result pattern', 'Node state'])
-    expect([...writes.querySelectorAll('.property')].map((row) => row.textContent)).toContain('typeexperiment-design')
+    const rows = [...writes.querySelectorAll('.property')]
+    expect(rows.map((row) => row.querySelector('.property-label')!.textContent)).toEqual([
+      '想法', '正文', '关联项目', '文件', '假设节点', '实验节点', '历史',
+    ])
+    expect(rows[0]!.querySelector('.tag')!.textContent).toBe('假设')
+    expect(writes.querySelector('h1')!.closest('.md')).not.toBeNull()
 
     await act(async () => button('确认写入')!.click())
-    expect(api.save).toHaveBeenCalledWith('chat-3', 'msg-9', '0123456789abcdef')
+    expect(api.save).toHaveBeenCalledWith('chat-3', 'msg-9', '0123456789abcdef', 'zh')
   })
 
   it('shows a design already saved as its idea, with nothing left to confirm', async () => {

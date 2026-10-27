@@ -2547,8 +2547,13 @@ export const ChatFailureParamsSchema = z.object({ id: z.string() }).strict()
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
 export const ChatRetryParamsSchema = z.object({ id: z.string(), design: z.boolean().optional() }).strict()
 
-/** Reads what saving the design answer `messageId` of chat `id` carries as an idea would write; answers a ChatDesignPreview. */
-export const ChatDesignPreviewParamsSchema = z.object({ id: z.string(), messageId: z.string() }).strict()
+/**
+ * Reads what saving the design answer `messageId` of chat `id` carries as an idea would write, its
+ * file in the App language `language`; answers a ChatDesignPreview.
+ */
+export const ChatDesignPreviewParamsSchema = z.object({
+  id: z.string(), messageId: z.string(), language: z.enum(['zh', 'en']),
+}).strict()
 
 /**
  * Everything saving a design as an idea writes, and the nodes the coding agent's Lab skill will build
@@ -2574,9 +2579,9 @@ export const ChatDesignPreviewSchema = z.object({
   saved: z.string().nullable(),
 }).strict()
 
-/** Saves the design answer `messageId` of chat `id` as an idea; `fingerprint` is that of the preview the user saw. Answers the idea. */
+/** Saves the design answer `messageId` of chat `id` as an idea, its file in `language`; `fingerprint` is that of the preview the user saw. Answers the idea. */
 export const ChatSaveDesignParamsSchema = z.object({
-  id: z.string(), messageId: z.string(), fingerprint: z.string(),
+  id: z.string(), messageId: z.string(), fingerprint: z.string(), language: z.enum(['zh', 'en']),
 }).strict()
 export const ChatCancelResultSchema = z.object({ id: z.string(), cancelled: z.boolean() }).strict()
 
