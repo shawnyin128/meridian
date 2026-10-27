@@ -143,6 +143,7 @@ class LabGraphTests(unittest.TestCase):
                     self.assertIn(marker, (skill_root / "references" / reference).read_text(encoding="utf-8"))
 
                 self.assertIn("frontmatter `type: experiment-design`", design)
+                self.assertIn("`meridian.workspace_idea` lists it among the idea's files", design)
                 self.assertIn("build its two nodes from the file, using its table", design)
                 self.assertIn("an experiment child node for the smallest experiment", design)
                 self.assertIn("Create no node for M2 or M0", design)

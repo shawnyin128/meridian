@@ -621,7 +621,8 @@ checks, `references/rubric.md` to check a design before presenting it, and
 `references/examples.md` for a worked speculative-decoding design.
 
 A design the user saved from an App chat is an idea whose file has the
-frontmatter `type: experiment-design`. When the user starts that idea, build
+frontmatter `type: experiment-design`; `meridian.workspace_idea` lists it among
+the idea's files with its resolved path. When the user starts that idea, build
 its two nodes from the file, using its table, in one ask that confirms
 `create_node`: a hypothesis node for the claim, placed as the file's Lab nodes
 section says (under the named project's active node, or as a root) by the rules
