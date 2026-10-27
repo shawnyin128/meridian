@@ -187,6 +187,36 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
     return LabGraphBuildResult(graph=graph, lab_root=lab_root, source_files=source_files, health=health)
 
 
+def compact_lab_graph(graph: dict[str, Any]) -> dict[str, Any]:
+    """Reduce a materialized graph to orientation data.
+
+    Returns the active thread and nodes, each node's id, title, state, parent id and active
+    flag, and each edge's source, target and kind; node Markdown, details and artifacts are left out.
+    """
+
+    details = graph.get("node_details") or {}
+    nodes = []
+    for node in graph.get("nodes", []):
+        detail = details.get(node["id"]) or {}
+        parent = _node_ref(str(detail.get("thread_id") or node.get("thread_id") or ""), str(detail.get("parent") or ""))
+        nodes.append({
+            "id": node["id"],
+            "title": node.get("title"),
+            "state": node.get("state"),
+            "parent": parent or None,
+            "active": bool(node.get("active")),
+        })
+    return {
+        "active_thread": graph.get("active_thread"),
+        "active_nodes": graph.get("active_nodes", []),
+        "nodes": nodes,
+        "edges": [
+            {"source": edge.get("source"), "target": edge.get("target"), "kind": edge.get("kind")}
+            for edge in graph.get("edges", [])
+        ],
+    }
+
+
 def _resolve_active_nodes(frontmatter: dict[str, Any]) -> list[str]:
     """Read the active-node set from Lab state frontmatter.
 
