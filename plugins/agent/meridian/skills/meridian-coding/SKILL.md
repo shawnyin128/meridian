@@ -17,7 +17,9 @@ When the repository has `.meridian/` and Meridian MCP is available:
    current task. Omit `cursor` only when this task has no prior cursor.
 2. Compare the returned change summaries with the coding request.
 3. Follow only relevant `expand` entries:
-   - `meridian.workspace_plan` for a project/task/milestone change;
+   - `meridian.workspace_plan` for a project/task/milestone change; with a
+     `task_id` or `milestone_id` it returns only that one, and empty lists
+     mean it was removed;
    - `meridian.workspace_idea` for one changed idea;
    - `meridian.lab_node` for one referenced research node.
 4. Keep the new `next_cursor` in task context for the next check.

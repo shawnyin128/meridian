@@ -111,7 +111,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "name": "meridian.workspace_plan",
             "workflow": "Project Workspace",
             "summary": "Read the App-owned project plan without changing it.",
-            "inputs": ["workspace_root"],
+            "inputs": ["workspace_root", "task_id", "milestone_id"],
             "outputs": ["revision", "project", "tasks", "milestones"],
         },
         {

@@ -296,6 +296,8 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "task_id": {"type": "string", "description": "Read only this task."},
+                    "milestone_id": {"type": "string", "description": "Read only this milestone."},
                 }
             ),
         },
@@ -680,7 +682,11 @@ def _call_workspace_status(server: MeridianMCPServer, arguments: JsonDict) -> Js
 
 
 def _call_workspace_plan(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
-    return read_project_plan(server.workspace_root(arguments))
+    return read_project_plan(
+        server.workspace_root(arguments),
+        task_id=str(arguments["task_id"]) if arguments.get("task_id") not in (None, "") else None,
+        milestone_id=str(arguments["milestone_id"]) if arguments.get("milestone_id") not in (None, "") else None,
+    )
 
 
 def _call_workspace_changes(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
@@ -702,24 +708,25 @@ def _call_workspace_changes(server: MeridianMCPServer, arguments: JsonDict) -> J
         expansions: list[JsonDict] = []
         for ref in change.get("refs", []):
             if ref.get("kind") == "project":
-                candidate = {
-                    "tool": "meridian.workspace_plan",
-                    "arguments": dict(workspace_arguments),
-                }
+                named = [("task_id", item) for item in change.get("task_ids", [])]
+                named += [("milestone_id", item) for item in change.get("milestone_ids", [])]
+                candidates = [
+                    {"tool": "meridian.workspace_plan", "arguments": {**workspace_arguments, key: item_id}}
+                    for key, item_id in named
+                ] or [{"tool": "meridian.workspace_plan", "arguments": dict(workspace_arguments)}]
             elif ref.get("kind") == "idea":
-                candidate = {
+                candidates = [{
                     "tool": "meridian.workspace_idea",
                     "arguments": {**workspace_arguments, "idea_id": ref.get("id")},
-                }
+                }]
             elif ref.get("kind") == "node":
-                candidate = {
+                candidates = [{
                     "tool": "meridian.lab_node",
                     "arguments": {**workspace_arguments, "node_id": ref.get("id")},
-                }
+                }]
             else:
                 continue
-            if candidate not in expansions:
-                expansions.append(candidate)
+            expansions += [candidate for candidate in candidates if candidate not in expansions]
         change["expand"] = expansions
     return payload
 
