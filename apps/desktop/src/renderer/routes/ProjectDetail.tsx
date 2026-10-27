@@ -110,11 +110,12 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
  * unless the workspace manages the graph, drafts a new node in place, titled as the idea and after a
  * node or as a root, which `onCreateNode` creates and links, resolving whether it did. A `related`
  * idea, one that relates to the project but is not carried out in it, has no research-node section.
- * `sourceChatDeleted` says the chat the idea came from is deleted.
+ * `sourceChatDeleted` says the chat the idea came from is deleted. `onRename` saves the title
+ * renamed in the panel's head.
  */
 export function ProjectIdeaPanel({
   idea, graph, workspaceManaged, related = false, sourceChatDeleted = false,
-  onClose, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
+  onClose, onRename, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
   graph: ResearchGraphData
@@ -122,6 +123,7 @@ export function ProjectIdeaPanel({
   related?: boolean
   sourceChatDeleted?: boolean
   onClose: () => void
+  onRename?: (title: string) => boolean | Promise<boolean>
   onOpenIdea: () => void
   onOpenPaper: (paperId: string) => void
   onCreateNode: (label: string, after: string | null) => Promise<boolean>
@@ -136,7 +138,7 @@ export function ProjectIdeaPanel({
   const nodeDraft = useDraftSlot<HTMLDivElement>(draft !== null, () => setDraft({ label: idea.title, after: '' }))
   return (
     <IdeaPanel
-      idea={idea} onClose={onClose} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
+      idea={idea} onClose={onClose} onRename={onRename} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
       actions={(
         <IconButton label={m.project.idea.openIdea} size="nested" className="project-idea-open-idea" onClick={onOpenIdea}>
           <IconOpen />
@@ -180,6 +182,12 @@ export function ProjectIdeaPanel({
     </IdeaPanel>
   )
 }
+
+/** The draft a project's rename from its page title is kept under, with its project, so it reopens where it was typed. */
+const TITLE_RENAME = 'title-rename'
+
+/** The draft older Apps kept a project's name under while it was typed in the rail's name field. */
+const RAIL_NAME = 'name'
 
 /** Newest first, by creation day, then by id, which later ideas take higher numbers in. */
 const newestFirst = (a: ResearchIdea, b: ResearchIdea) =>
@@ -316,6 +324,14 @@ export function ProjectDetail({
   const [flash, setFlash] = useState<{ id: string } | null>(null)
   const [hoverMilestone, setHoverMilestone] = useState<string | null>(null)
   const edits = useDrafts<EditDraft>(['project', projectId])
+  const names = useDrafts<string>(['project', projectId])
+  const railName = names.get(RAIL_NAME)
+  // A name an older App kept from the rail's name field reopens as the title's rename it now is.
+  useEffect(() => {
+    if (railName === undefined) return
+    if (names.get(TITLE_RENAME) === undefined) names.set(TITLE_RENAME, railName)
+    names.drop(RAIL_NAME)
+  }, [railName, names])
   const [creating, setCreating] = useDraft<PlanCreating>(['project', projectId], 'new-row')
   const shownProject = project?.id === projectId ? project : null
   usePruneDrafts(['project', projectId, 'task'], shownProject === null ? null : shownProject.tasks.map((task) => task.id))
@@ -757,7 +773,15 @@ export function ProjectDetail({
     <PageShell>
       <PageHeader>
         <BackButton onClick={onReturn} />
-        <PageTitle>{project.name}</PageTitle>
+        <PageTitle rename={{
+          label: m.project.identity.nameFieldLabel, value: project.name, keep: { scope: ['project', projectId], target: TITLE_RENAME },
+          onSave: (name) => write(projectApi.update(projectId, { name }).then((renamed) => {
+            setProject(renamed.project)
+            return renamed
+          })),
+        }}
+        >{project.name}
+        </PageTitle>
       </PageHeader>
       <PageError error={error} />
 
@@ -1012,6 +1036,7 @@ export function ProjectDetail({
                 workspaceManaged={project.workspace !== undefined}
                 related={selectedIdea.project !== projectId} sourceChatDeleted={chatDeleted(selectedIdea)}
                 onClose={clearIdea}
+                onRename={(title) => write(ideaApi.update(selectedIdea.id, { title }))}
                 onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
                 onOpenPaper={(paperId) => jumpTo('reader', paperId)}
                 onCreateNode={(label, after) => placeIdeaOnGraph(selectedIdea, { kind: 'create', label, after })}
@@ -1054,16 +1079,6 @@ export function ProjectDetail({
                   <ProjectIdentityFields
                     project={project}
                     fields={{
-                      name: (
-                        <InlineMetadataField
-                          label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', projectId], target: 'name' }}
-                          onSave={(name) => {
-                            const next = name.trim()
-                            if (next === '') { notice.refusal(m.project.identity.nameRequired); return false }
-                            return writeProject(updateProject({ name: next }))
-                          }}
-                        />
-                      ),
                       status: (
                         <ChoicePicker
                           value={project.status} options={PROJECT_STATUSES}

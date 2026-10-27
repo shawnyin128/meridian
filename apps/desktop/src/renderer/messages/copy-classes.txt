@@ -452,7 +452,6 @@ project.identity.focusWithLabel state
 project.identity.heading label
 project.identity.nameFieldLabel placeholder
 project.identity.nameLabel label
-project.identity.nameRequired failure
 project.identity.noTopic state
 project.identity.paperCount state
 project.identity.priorityLabel label

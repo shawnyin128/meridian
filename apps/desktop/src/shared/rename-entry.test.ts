@@ -47,7 +47,7 @@ describe('改名只有一个入口:共用「更多」菜单里的重命名', () 
   })
 
   it('行和卡片上的名字不自己开编辑:屏上的每个 InlineField 要么是表格格子的编辑框,要么静止时就是名字本身,只从菜单打开', () => {
-    // TitleField is the one name a click renames: the chat page's title, which the next case pins down.
+    // TitleField is the one name a click renames: a page's or a panel's title, which the next case pins down.
     const opening = SOURCES.filter((path) => path !== join('components', 'InlineField.tsx') && path !== join('components', 'TitleField.tsx')).flatMap((path) => {
       const ast = parse(readFileSync(join(RENDERER, path), 'utf8'), { sourceType: 'module', plugins: ['typescript', 'jsx'] })
       return elements(ast.program).flatMap((element) => {
@@ -64,13 +64,14 @@ describe('改名只有一个入口:共用「更多」菜单里的重命名', () 
     expect(opening).toEqual([])
   })
 
-  it('点名字就改名的只有对话页和 Wiki 页的标题:TitleField 只经 PageTitle 的 rename 用,带 rename 的 PageTitle 只在这两屏', () => {
+  it('点名字就改名的只有对话页、项目页和 Wiki 页的标题和想法详情的头:TitleField 只经 PageTitle 和 PanelHead 的 rename 用', () => {
     const uses = (component: string, prop?: string) => SOURCES.flatMap((path) => {
       const ast = parse(readFileSync(join(RENDERER, path), 'utf8'), { sourceType: 'module', plugins: ['typescript', 'jsx'] })
       return elements(ast.program).some((element) => (element.name as Node).name === component
         && (prop === undefined || attribute(element, prop) !== undefined)) ? [path] : []
     })
-    expect(uses('TitleField')).toEqual([join('components', 'PageShell.tsx')])
-    expect(uses('PageTitle', 'rename')).toEqual([join('routes', 'Chat.tsx'), join('routes', 'Wiki.tsx')])
+    expect(uses('TitleField')).toEqual([join('components', 'PageShell.tsx'), join('components', 'SidePanel.tsx')])
+    expect(uses('PageTitle', 'rename')).toEqual([join('routes', 'Chat.tsx'), join('routes', 'ProjectDetail.tsx'), join('routes', 'Wiki.tsx')])
+    expect(uses('PanelHead', 'rename')).toEqual([join('components', 'ideas', 'IdeaPanel.tsx')])
   })
 })

@@ -63,6 +63,48 @@ describe('SidePanel', () => {
       .toEqual(['side-panel side-panel--edge probe-b', '阅读笔记', false])
   })
 
+  it('面板头带 rename 时点标题就地改名:静止时整段换行不淡出,编辑框也换行;回车存下,Esc 不改,清空了不改且标红', async () => {
+    const onSave = vi.fn<(title: string) => boolean>(() => true)
+    const title = '汇总今天的宽度扫描结果并把每个树宽下的接受率整理成一张对比表'
+    render(
+      <SidePanel surface="card">
+        <PanelHead
+          title={title} onClose={vi.fn()}
+          rename={{ label: '标题', value: title, keep: { scope: ['idea', 'idea-1'], target: 'title-rename' }, onSave }}
+        />
+      </SidePanel>,
+    )
+    const head = () => host.querySelector<HTMLElement>('.panel-head-title')!
+    const field = () => head().querySelector<HTMLTextAreaElement>('textarea.metadata-input')
+    const press = (key: string) => act(() => {
+      field()!.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true }))
+    })
+    const type = (value: string) => act(() => {
+      Object.getOwnPropertyDescriptor(window.HTMLTextAreaElement.prototype, 'value')!.set!.call(field()!, value)
+      field()!.dispatchEvent(new Event('input', { bubbles: true }))
+    })
+    const edit = () => act(() => head().querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+
+    expect([head().textContent, head().querySelector('.fade-text'), head().querySelector('.metadata-field--title')]).toEqual([title, null, null])
+    edit()
+    expect([field()!.value, field()!.classList.contains('multiline'), field()!.classList.contains('form-control-inline')])
+      .toEqual([title, true, true])
+    type('宽度扫描对比表')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect(onSave).toHaveBeenCalledExactlyOnceWith('宽度扫描对比表')
+
+    edit()
+    type('不要的名字')
+    press('Escape')
+    expect(field()).toBeNull()
+    edit()
+    type('   ')
+    press('Enter')
+    await act(async () => { await Promise.resolve() })
+    expect([field()!.getAttribute('aria-invalid'), onSave.mock.calls.length]).toEqual(['true', 1])
+  })
+
   it('正文在面板头下面自己滚动,头留在顶上', () => {
     render(
       <SidePanel surface="edge">

@@ -118,7 +118,6 @@ export const project = {
     focusLabel: { currentGoal: 'Current goal', restartCondition: 'Restart condition', outcome: 'Outcome' },
     focusWithLabel: (label: string, focus: string) => `${label}: ${focus}`,
     nameFieldLabel: 'Project name',
-    nameRequired: "Project name can't be empty.",
     topicUpdated: 'Topic updated',
     focusRequired: (label: string) => `${label} can't be empty.`,
     startLabel: 'Start',

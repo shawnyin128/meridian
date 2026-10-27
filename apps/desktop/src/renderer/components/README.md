@@ -19,9 +19,11 @@ Current shared contracts:
   outside saves, Escape cancels, a value its `validate` refuses keeps the field open and marked invalid, and
   what is typed is kept as a draft. A rename starts from a click on the name, or, where the name's click
   opens its item, from the item's rename command (the … menu's 重命名, a task's pencil); it never opens a
-  popover. The one page title that renames by a click is the chat page's (`TitleField`).
+  popover. The titles that rename by a click are the chat page's, the project page's and an idea
+  detail panel's head (`TitleField`).
 - `TitleField`: that click-to-rename title, an `InlineField` at the title's own size, on one line that
-  fades where it does not fit; `PageTitle` takes it through `rename`.
+  fades where it does not fit; `PageTitle` takes it through `rename`. `PanelHead` takes it through
+  `rename` too, with `wrap`: the title wraps as a panel head's does and is edited in a wrapping field.
 - `Button`: the one text button: `primary`, `secondary` or `ghost`, in the `neutral` or `danger` tone,
   `regular` (30px) in the page header bar and at dialog, popover and form feet and `compact` (24px) in
   section, group and panel headings, inside rows and cards, and in toolbars, with an optional glyph before
