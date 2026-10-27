@@ -3,7 +3,7 @@ import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
   appSwitcher, chipEdges, dshort, expect, expectChipHoverInPlace, expectChipsHug, expectWholeInRail, fixtureDay, gotoProject,
-  overlaps, panelHead, parkPointer, railEdges, readDraft, test, textBox, timelinePeriod, uniqueHeights, vaultToday,
+  overlaps, panelHead, parkPointer, railEdges, readDraft, settle, test, textBox, timelinePeriod, uniqueHeights, vaultToday,
   type MeridianWindow,
 } from './app.js'
 
@@ -1069,14 +1069,16 @@ test('任务详情头部的收起钮在标题上方单独一行靠右,长标题�
   await expect(side.locator('.panel-head-title')).toHaveText(title)
 
   // The same head as the paper detail's: Han text breaks between any two characters, so every full line ends less than a character short.
+  await settle(side.locator('.side-panel-content'))
   const head = await panelHead(side.locator('.panel-head'), '.panel-head-title', '.icbtn')
   expect(head.actions.map(({ label, width, height }) => [label, Math.round(width), Math.round(height)])).toEqual([['收起详情', 24, 24]])
-  expect(Math.abs(head.actions[0]!.right - head.content.right)).toBeLessThan(1)
   expect(Math.round(head.actions[0]!.top - head.content.top)).toBe(0)
   expect(head.actions[0]!.top + head.actions[0]!.height).toBeLessThanOrEqual(head.title.top)
   // The buttons' row sits up in the panel's top inset, so it adds no band of its own above the title.
-  const panel = await side.evaluate((el) => ({ top: el.getBoundingClientRect().top, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
+  const panel = await side.evaluate((el) => ({ top: el.getBoundingClientRect().top, right: el.getBoundingClientRect().right, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
   expect(head.actions[0]!.top - panel.top).toBeLessThan(panel.inset)
+  // The close button sits in the panel's top-right corner on its diagonal: as far from the top edge as from the right edge.
+  expect(Math.abs((panel.right - head.actions[0]!.right) - (head.actions[0]!.top - panel.top))).toBeLessThan(1)
   expect(head.title.top - panel.top).toBeLessThanOrEqual(panel.inset + head.actions[0]!.height)
   expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
   expect(head.title.lines.length).toBeGreaterThanOrEqual(2)

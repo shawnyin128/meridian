@@ -1376,15 +1376,17 @@ test('详情面板头部的打开和收起在标题上方单独一行靠右,长�
   await win.locator('.ptable tbody tr').first().locator('td.pt-title').click()
   await expect(win.locator('.paper-detail-slot .panel-head-title')).toHaveText(title)
 
+  await settle(win.locator('.paper-detail-slot .side-panel-content'))
   const head = await panelHead(win.locator('.paper-detail-slot .panel-head'), '.panel-head-title', '.icbtn')
   expect(head.actions.map(({ label, width, height }) => [label, Math.round(width), Math.round(height)]))
     .toEqual([['开始阅读', 24, 24], ['收起详情', 24, 24]])
-  expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
   expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
   expect(head.actions.map((action) => action.top + action.height <= head.title.top)).toEqual([true, true])
   // The buttons' row sits up in the panel's top inset, so it adds no band of its own above the title.
-  const panel = await win.locator('.paper-detail-slot').evaluate((el) => ({ top: el.getBoundingClientRect().top, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
+  const panel = await win.locator('.paper-detail-slot').evaluate((el) => ({ top: el.getBoundingClientRect().top, right: el.getBoundingClientRect().right, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
   expect(head.actions.map((action) => action.top - panel.top < panel.inset)).toEqual([true, true])
+  // The last button sits in the panel's top-right corner on its diagonal: as far from the top edge as from the right edge.
+  expect(Math.abs((panel.right - head.actions[1]!.right) - (head.actions[1]!.top - panel.top))).toBeLessThan(1)
   expect(head.title.top - panel.top).toBeLessThanOrEqual(panel.inset + head.actions[0]!.height)
   expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
   expect(head.title.lines.length).toBeGreaterThanOrEqual(3)
