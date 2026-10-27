@@ -114,6 +114,29 @@ const sshFields = (dialog: HTMLElement) => [...dialog.querySelectorAll<HTMLInput
 /** The folder button of the SSH form's path row. */
 const folderButton = (dialog: HTMLElement) => dialog.querySelector<HTMLButtonElement>('#workspaceSsh .directory-field-action')!
 
+/** Leaves `field`, the way a press elsewhere does. */
+async function leave(field: HTMLInputElement): Promise<void> {
+  await act(async () => { field.dispatchEvent(new FocusEvent('focusout', { bubbles: true })) })
+}
+
+/** Types `host`, and `port` when given, into the SSH form, leaves the host field and answers its check with the remote home. */
+async function reachHost(dialog: HTMLElement, host: string, port?: string): Promise<void> {
+  const [hostField, portField] = sshFields(dialog)
+  act(() => setValue(hostField!, host))
+  if (port !== undefined) act(() => setValue(portField!, port))
+  await leave(hostField!)
+  await answer(folder('/home/researcher', ['projects']))
+}
+
+/** What the slot under the port field holds: the path row, the busy ring, the failure or nothing, with the failure's text. */
+const slot = (dialog: HTMLElement) => {
+  const form = dialog.querySelector('#workspaceSsh')!
+  if (form.querySelector('.directory-field') !== null) return ['path']
+  if (form.querySelector('.loading-placeholder') !== null) return ['checking']
+  const alert = form.querySelector('[role="alert"]')
+  return alert === null ? ['none'] : ['failed', alert.textContent]
+}
+
 /** Opens the folder picker from the SSH form's folder button, which holds focus the way a click leaves it. */
 async function openPicker(dialog: HTMLElement): Promise<void> {
   await act(async () => {
@@ -178,27 +201,78 @@ describe('项目工作区对话框', () => {
     expect(document.querySelector('.workspace-dialog')).toBeNull()
   })
 
-  it('SSH 表单是主机、端口和一行跟本地目录一样的项目路径，表单里没有文件夹浏览；没填主机时文件夹按钮按不动', async () => {
+  it('SSH 表单先是主机和端口；连上主机后才出现一行跟本地目录一样的项目路径，填了路径添加才按得动', async () => {
     const dialog = await openWorkspaceDialog()
     const local = pathRow(dialog.querySelector('#workspaceLocal .directory-field')!)
     await chooseSsh(dialog)
-    expect([...dialog.querySelectorAll('#workspaceSsh .field-row-label')].map((label) => label.textContent))
-      .toEqual(['主机', '端口', '项目路径'])
+    const labels = () => [...dialog.querySelectorAll('#workspaceSsh .field-row-label')].map((label) => label.textContent)
+    expect([labels(), slot(dialog), submit(dialog).disabled]).toEqual([['主机', '端口'], ['none'], true])
+    await reachHost(dialog, 'gpu-lab')
+    expect(labels()).toEqual(['主机', '端口', '项目路径'])
     expect(pathRow(dialog.querySelector('#workspaceSsh .directory-field')!)).toEqual(local)
-    expect([dialog.querySelector('.ssh-folders'), submit(dialog).textContent]).toEqual([null, '添加'])
-    expect(folderButton(dialog).disabled).toBe(true)
-    act(() => setValue(sshFields(dialog)[0]!, 'gpu-lab'))
-    expect(folderButton(dialog).disabled).toBe(false)
+    expect([dialog.querySelector('.ssh-folders'), submit(dialog).textContent, submit(dialog).disabled]).toEqual([null, '添加', true])
+    act(() => setValue(sshFields(dialog)[2]!, '/srv/shared'))
+    expect(submit(dialog).disabled).toBe(false)
+  })
+
+  it('主机或端口停下 600ms 才检查连接；检查时这一格转圈，连不上写出 Core 给的原因，改了主机又回到检查，连上后出现项目路径', async () => {
+    const dialog = await openWorkspaceDialog()
+    await chooseSsh(dialog)
+    const [hostField, portField] = sshFields(dialog)
+    vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+    try {
+      act(() => setValue(hostField!, 'gpu'))
+      expect([slot(dialog), api.listings]).toEqual([['checking'], []])
+      act(() => { vi.advanceTimersByTime(300) })
+      act(() => setValue(hostField!, 'nope'))
+      act(() => { vi.advanceTimersByTime(599) })
+      expect(api.listings).toEqual([])
+      act(() => { vi.advanceTimersByTime(1) })
+      expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'nope' }])
+      await answer({ state: 'failed', issue: 'ssh: Could not resolve hostname nope: nodename nor servname provided, or not known' })
+      expect([slot(dialog), submit(dialog).disabled])
+        .toEqual([['failed', 'ssh: Could not resolve hostname nope: nodename nor servname provided, or not known'], true])
+
+      act(() => setValue(hostField!, 'gpu-lab'))
+      expect(slot(dialog)).toEqual(['checking'])
+      act(() => setValue(portField!, '2222'))
+      act(() => { vi.advanceTimersByTime(600) })
+      expect(api.listings.slice(1).map((listing) => listing.params)).toEqual([{ host: 'gpu-lab', port: 2222 }])
+      await answer(folder('/home/researcher', ['projects']))
+      expect([slot(dialog), api.binds]).toEqual([['path'], []])
+
+      act(() => setValue(hostField!, ''))
+      act(() => { vi.advanceTimersByTime(600) })
+      expect([slot(dialog), api.listings.length]).toEqual([['none'], 2])
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
+  it('离开主机框就检查，同一个值不再查第二次；新的主机值让还在路上的旧检查作废，旧结果晚到也不算', async () => {
+    const dialog = await openWorkspaceDialog()
+    await chooseSsh(dialog)
+    const [hostField] = sshFields(dialog)
+    act(() => setValue(hostField!, 'cluster'))
+    await leave(hostField!)
+    await leave(hostField!)
+    expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'cluster' }])
+    act(() => setValue(hostField!, 'gpu-lab'))
+    await leave(hostField!)
+    expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'cluster' }, { host: 'gpu-lab' }])
+    await act(async () => { api.listings[0]!.answer({ state: 'failed', issue: 'ssh: connect to host cluster port 22: Operation timed out' }) })
+    expect(slot(dialog)).toEqual(['checking'])
+    await act(async () => { api.listings[1]!.answer(folder('/home/researcher', ['projects'])) })
+    expect(slot(dialog)).toEqual(['path'])
   })
 
   it('文件夹按钮在工作区对话框上叠开远端文件夹选择框：从主目录开始，点文件夹进入、上层文件夹返回，选择把路径填进项目路径、关掉选择框、焦点回到文件夹按钮，再按添加才存', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
-    const [hostField, portField, pathField] = sshFields(dialog)
-    act(() => setValue(hostField!, 'gpu-lab'))
-    act(() => setValue(portField!, '2222'))
+    await reachHost(dialog, 'gpu-lab', '2222')
+    const pathField = sshFields(dialog)[2]
     await openPicker(dialog)
-    expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'gpu-lab', port: 2222 }])
+    expect(api.listings.slice(1).map((listing) => listing.params)).toEqual([{ host: 'gpu-lab', port: 2222 }])
     expect([document.querySelectorAll('[role="dialog"]').length, pickerButton('选择').disabled]).toEqual([2, true])
     expect(picker()!.querySelector(':scope > .modal-title:not(.modal-title--hidden)')?.textContent).toBe('gpu-lab')
     expect([
@@ -238,8 +312,8 @@ describe('项目工作区对话框', () => {
   it('取消或 Esc 只关掉选择框，项目路径还是原来手打的那个，工作区对话框还开着', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
-    const [hostField, , pathField] = sshFields(dialog)
-    act(() => setValue(hostField!, 'gpu-lab'))
+    await reachHost(dialog, 'gpu-lab')
+    const pathField = sshFields(dialog)[2]
     act(() => setValue(pathField!, '/srv/shared'))
     await openPicker(dialog)
     await answer(folder('/srv/shared', ['data']))
@@ -260,11 +334,11 @@ describe('项目工作区对话框', () => {
   it('项目路径里有主机能列出的文件夹时选择框从那里开始，列不出来就不报错、从远端主目录开始', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
-    const [hostField, , pathField] = sshFields(dialog)
-    act(() => setValue(hostField!, 'gpu-lab'))
+    await reachHost(dialog, 'gpu-lab')
+    const pathField = sshFields(dialog)[2]
     act(() => setValue(pathField!, ' /srv/shared '))
     await openPicker(dialog)
-    expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'gpu-lab', path: '/srv/shared' }])
+    expect(api.listings.slice(1).map((listing) => listing.params)).toEqual([{ host: 'gpu-lab', path: '/srv/shared' }])
     await answer(folder('/srv/shared', ['data']))
     expect(browsed()).toEqual(['/srv/shared', ['data']])
     await act(async () => { pickerButton('取消').click() })
@@ -272,7 +346,7 @@ describe('项目工作区对话框', () => {
     act(() => setValue(pathField!, '/srv/missing'))
     await openPicker(dialog)
     await answer({ state: 'failed', issue: 'cd: /srv/missing: No such file or directory' })
-    expect(api.listings.slice(1).map((listing) => listing.params))
+    expect(api.listings.slice(2).map((listing) => listing.params))
       .toEqual([{ host: 'gpu-lab', path: '/srv/missing' }, { host: 'gpu-lab' }])
     await answer(folder('/home/researcher', ['projects']))
     expect([browsed(), picker()!.querySelector('[role="alert"]')]).toEqual([['/home/researcher', ['projects']], null])
@@ -281,19 +355,18 @@ describe('项目工作区对话框', () => {
   it('手打的远端路径不开选择框也能直接存成工作区', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
-    const [hostField, , pathField] = sshFields(dialog)
-    act(() => setValue(hostField!, 'gpu-lab'))
-    act(() => setValue(pathField!, '/srv/shared'))
+    await reachHost(dialog, 'gpu-lab')
+    act(() => setValue(sshFields(dialog)[2]!, '/srv/shared'))
     await act(async () => { submit(dialog).click() })
-    expect([api.binds.map((bind) => bind.binding), api.listings]).toEqual([[{ kind: 'ssh', host: 'gpu-lab', path: '/srv/shared' }], []])
+    expect([api.binds.map((bind) => bind.binding), api.listings.length])
+      .toEqual([[{ kind: 'ssh', host: 'gpu-lab', path: '/srv/shared' }], 1])
   })
 
   it('SSH 工作区还没存好时，添加按钮在原处转圈、按不动；切回本地目录也开不了第二次连接', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
-    const [hostField, , pathField] = sshFields(dialog)
-    act(() => setValue(hostField!, 'gpu-lab'))
-    act(() => setValue(pathField!, '/home/researcher'))
+    await reachHost(dialog, 'gpu-lab')
+    act(() => setValue(sshFields(dialog)[2]!, '/home/researcher'))
     await act(async () => { submit(dialog).click() })
     await act(async () => { submit(dialog).click() })
     expect(api.binds.map((bind) => bind.binding)).toEqual([{ kind: 'ssh', host: 'gpu-lab', path: '/home/researcher' }])
@@ -310,7 +383,7 @@ describe('项目工作区对话框', () => {
   it('选择框的路径框里改了目录还没回车时选择按不动，回车去了那里之后选择填的就是那个文件夹', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
-    act(() => setValue(sshFields(dialog)[0]!, 'gpu-lab'))
+    await reachHost(dialog, 'gpu-lab')
     await openPicker(dialog)
     await answer(folder('/home/researcher', ['projects']))
     const browserPath = picker()!.querySelector<HTMLInputElement>('input.ssh-folders-path')!
@@ -326,38 +399,17 @@ describe('项目工作区对话框', () => {
     expect([picker(), sshFields(dialog)[2]!.value, api.binds]).toEqual([null, '/srv/shared', []])
   })
 
-  it('连不上时原因显示在选择框里，选择按不动，项目路径不变也什么都不存；改了主机再开就连新主机', async () => {
+  it('主机框列出 SSH 配置里含所打字的别名，回车把高亮的别名填进框里而不提交，离开时查的是这个别名', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
-    const [hostField, , pathField] = sshFields(dialog)
-    act(() => setValue(hostField!, 'nope'))
-    await openPicker(dialog)
-    await answer({ state: 'failed', issue: 'ssh: Could not resolve hostname nope: nodename nor servname provided, or not known' })
-    expect(picker()!.querySelector('[role="alert"]')?.textContent)
-      .toBe('ssh: Could not resolve hostname nope: nodename nor servname provided, or not known')
-    expect(pickerButton('选择').disabled).toBe(true)
-    await act(async () => { pickerButton('取消').click() })
-    expect([pathField!.value, api.binds]).toEqual(['', []])
-
-    act(() => setValue(hostField!, 'gpu-lab'))
-    await openPicker(dialog)
-    expect([api.listings.at(-1)!.params, picker()!.querySelector('[role="alert"]')]).toEqual([{ host: 'gpu-lab' }, null])
-    await answer(folder('/home/researcher', ['projects']))
-    expect(browsed()).toEqual(['/home/researcher', ['projects']])
-  })
-
-  it('主机框列出 SSH 配置里含所打字的别名，回车把高亮的别名填进框里而不提交，再回车才存', async () => {
-    const dialog = await openWorkspaceDialog()
-    await chooseSsh(dialog)
-    const [hostField, , pathField] = sshFields(dialog)
-    act(() => setValue(pathField!, '/srv/shared'))
+    const [hostField] = sshFields(dialog)
     act(() => setValue(hostField!, 'GPU'))
     const candidates = () => [...document.querySelectorAll('.pickhits .rrow')].map((option) => option.textContent)
     expect(candidates()).toEqual(['gpu-lab'])
     const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })
     await act(async () => { hostField!.dispatchEvent(enter) })
     expect([hostField!.value, candidates(), enter.defaultPrevented, api.binds]).toEqual(['gpu-lab', [], true, []])
-    await act(async () => { hostField!.form!.requestSubmit() })
-    expect(api.binds.map((bind) => bind.binding)).toEqual([{ kind: 'ssh', host: 'gpu-lab', path: '/srv/shared' }])
+    await leave(hostField!)
+    expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'gpu-lab' }])
   })
 })
