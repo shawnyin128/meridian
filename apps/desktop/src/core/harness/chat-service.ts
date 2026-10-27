@@ -4,7 +4,7 @@ import type {
 import { CallError, callFailure } from '../call-error.js'
 import type { VaultStore } from '../vault.js'
 import { trashedEntry } from '../write-receipts.js'
-import { ChatFailure, type ChatHarnessRunner } from './chat.js'
+import { ChatFailure, type ChatHarnessRunner, modelText } from './chat.js'
 import { failureDetail, failureLine } from './failure-detail.js'
 import type { HarnessModelConfig, ModelChoice } from './model-config.js'
 
@@ -24,9 +24,6 @@ const answerMessage = (text: string, model: ChatAnswerModel | undefined): ChatMe
 const statusMessage = (text: string): ChatMessageFields => ({
   role: 'status', runs: textRun(text), actions: [],
 })
-
-/** The text of a turn's runs, as the model is asked it. */
-const textOf = (runs: readonly ChatRun[]) => runs.map((run) => run.text).join('')
 
 /**
  * Core-owned chat transaction: persist the user turn, run once on the model the chat chose, as
@@ -93,7 +90,7 @@ export function createChatService(options: {
       options.store.chatSession(id)
       const runs = trimmed(written)
       options.store.appendChatMessages(id, [{ role: 'you', runs, actions: [] }])
-      return answer(id, textOf(runs))
+      return answer(id, modelText(runs))
     },
     /**
      * Asks the model again to answer chat `id`'s last question, whose turn ended in a status line,
@@ -108,7 +105,7 @@ export function createChatService(options: {
       if (messages.at(-1)?.role !== 'status' || question?.role !== 'you') {
         throw new CallError('refused', '这段对话的最后一问已经有回答')
       }
-      return answer(id, textOf(question.runs))
+      return answer(id, modelText(question.runs))
     },
     /**
      * Stops the reply being generated in `id` and keeps the text it had written so far as its answer,

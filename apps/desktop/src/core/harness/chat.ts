@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type {
-  CallFailure, ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
+  CallFailure, ChatAnswerModel, ChatRun, HarnessCliModel, HarnessModelConnectionCheckResult,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { CoreLogLevel } from '../core-log.js'
@@ -34,6 +34,10 @@ const ChatContextParamsSchema = z.object({
   currentText: z.string().min(1).max(20_000),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000) }).strict()
+/** How many mentioned Wiki pages, and claims of them, a turn's context holds. */
+const MENTIONED_WIKI_PAGES = 5
+const MENTIONED_WIKI_CLAIMS = 40
+const MENTIONED_CLAIM_CHARACTERS = 1_000
 /** The model IDs a provider's model-list call answered with, as Harness hands them over. */
 const ModelListSchema = z.object({ models: z.array(z.string().trim().min(1).max(200)).max(1_000) }).strict()
 /** How long one model-list read may take, Harness's own provider timeout included. */
@@ -71,8 +75,20 @@ export const CHAT_CONTEXT_BUDGETS = Object.freeze({
 type StoredChatMessage = ReturnType<VaultStore['chatMessages']>[number]
 type StoredPaperReading = ReturnType<VaultStore['paperReading']>
 
-const messageText = (message: StoredChatMessage) =>
-  message.runs.map((run) => run.text).join('').trim()
+/** How the model reads a mention of each kind of entity: its kind, and the id the vault lookups take. */
+const MENTIONED: Record<string, (id: string) => string> = {
+  page: (id) => `Wiki page ${id}`,
+  paper: (id) => `paper papers/${id}`,
+  project: (id) => `project ${id}`,
+}
+
+/** The text of `runs` as the model reads it: each mention of an entity followed by the entity's kind and id in parentheses. */
+export const modelText = (runs: readonly ChatRun[]) => runs.map((run) => {
+  const named = run.kind === 'mention' && run.target !== undefined ? MENTIONED[run.target.kind]?.(run.target.id) : undefined
+  return named === undefined ? run.text : `${run.text} (${named})`
+}).join('')
+
+const messageText = (message: StoredChatMessage) => modelText(message.runs).trim()
 
 type Turn = { role: 'you' | 'ai'; text: string }
 /** What a CLI session of a chat holds of `messages`: what was said and answered, without the status lines. */
@@ -283,6 +299,25 @@ export function createChatHarnessRunner(options: {
     return created
   }
 
+  /**
+   * The claims of the aggregation pages chat `chatId` mentioned, the latest mentioned first, at most
+   * MENTIONED_WIKI_PAGES pages and MENTIONED_WIKI_CLAIMS claims, each with its ref and its page's title.
+   */
+  const mentionedClaims = async (chatId: string) => {
+    const cards = new Map(options.store.wikiCards().map((card) => [card.id, card]))
+    const pages = [...new Set(options.store.chatMessages(chatId).flatMap((message) => message.runs)
+      .flatMap((run) => (run.target?.kind === 'page' && cards.has(run.target.id) ? [run.target.id] : []))
+      .reverse())].slice(0, MENTIONED_WIKI_PAGES)
+    const claims: Array<{ ref: string; page: string; text: string }> = []
+    for (const id of pages) {
+      const page = await options.store.wikiAggregation(id)
+      for (const claim of page.claims) {
+        claims.push({ ref: `${id}#${claim.id}`, page: page.title, text: clipMiddle(claim.text, MENTIONED_CLAIM_CHARACTERS) })
+      }
+    }
+    return claims.slice(0, MENTIONED_WIKI_CLAIMS)
+  }
+
   const rpc = createHarnessRpc({
     launch: options.launch ?? launchHarnessProcess,
     requiredCapabilities: ['chat', 'model-check'],
@@ -292,7 +327,8 @@ export function createChatHarnessRunner(options: {
         const { id, currentText } = ChatContextParamsSchema.parse(params)
         const session = options.store.chatSession(id)
         const history = packChatHistory(messagesBefore(options.store.chatMessages(id), currentText))
-        if (session.paperId === undefined) return { title: session.title, history }
+        const wiki = await mentionedClaims(id)
+        if (session.paperId === undefined) return { title: session.title, history, wiki }
         const paper = options.store.getPaper(session.paperId)
         const reading = options.store.paperReading(session.paperId)
         let pages: Array<{ number: number; text: string }> = []
@@ -321,6 +357,7 @@ export function createChatHarnessRunner(options: {
             pageCount,
             reading: packPaperReading(reading),
           },
+          wiki,
         }
       },
     },

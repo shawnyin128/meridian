@@ -10,7 +10,7 @@ import { CallError } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
 import type { VaultStore } from '../vault.js'
 import {
-  CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, createChatHarnessRunner, messagesBefore, packChatHistory,
+  CHAT_CONTEXT_BUDGETS, ChatFailure, chatHarnessError, createChatHarnessRunner, messagesBefore, modelText, packChatHistory,
   packPaperReading,
 } from './chat.js'
 import { createChatService } from './chat-service.js'
@@ -51,6 +51,23 @@ describe('Harness chat context budgets', () => {
       id: 'mention', role: 'you', actions: [],
       runs: [{ kind: 'text', text: '看看 ' }, { kind: 'mention', text: '@推测解码加速' }, { kind: 'text', text: ' 这条线还剩什么' }],
     }])).toEqual([{ role: 'user', text: '看看 @推测解码加速 这条线还剩什么' }])
+  })
+
+  it('packs a turn holding a mention of an entity with the entity\'s kind and id, as the model was asked it', () => {
+    const runs = [
+      { kind: 'text' as const, text: '看看 ' },
+      { kind: 'mention' as const, text: '@KV cache 量化', target: { kind: 'page', id: 'topics/kv-cache-quantization' } },
+      { kind: 'text' as const, text: ' 和 ' },
+      { kind: 'mention' as const, text: '@SmoothQuant', target: { kind: 'paper', id: '2210.17323' } },
+      { kind: 'text' as const, text: ' 对 ' },
+      { kind: 'mention' as const, text: '@草稿树项目', target: { kind: 'project', id: 'draft' } },
+      { kind: 'text' as const, text: ' 有用吗' },
+    ]
+    const asked = '看看 @KV cache 量化 (Wiki page topics/kv-cache-quantization) 和 @SmoothQuant (paper papers/2210.17323) 对 '
+      + '@草稿树项目 (project draft) 有用吗'
+    expect(packChatHistory([{ id: 'mention', role: 'you', runs, actions: [] }])).toEqual([{ role: 'user', text: asked }])
+    expect(messagesBefore([{ id: 'mention', role: 'you', runs, actions: [] }], asked)).toEqual([])
+    expect(modelText(runs)).toBe(asked)
   })
 
   it('caps turn count independently from the character budget', () => {
@@ -914,4 +931,48 @@ describe('deleting a chat on a subscription CLI', () => {
       }
     })
   }
+})
+
+describe('a chat turn on an API model', () => {
+  it('carries the claims of the Wiki pages the chat mentioned in its context, the latest mentioned first', async () => {
+    const child = new FakeHarness()
+    const store = createFixtureStore()
+    const chat = store.createChat('Quantization', true).id
+    const mention = (text: string, kind: string, id: string) => ({ kind: 'mention' as const, text, target: { kind, id } })
+    store.appendChatMessages(chat, [
+      { role: 'you', actions: [], runs: [mention('@KV cache quantization', 'page', 'topics/kv-cache-quantization')] },
+      { role: 'ai', actions: [], runs: [{ kind: 'text', text: 'Answer' }] },
+      {
+        role: 'you', actions: [], runs: [
+          mention('@Weight-activation PTQ', 'page', 'topics/ptq-weight-activation'), mention('@草稿树项目', 'project', 'draft'),
+          mention('@Gone', 'page', 'topics/no-such-page'), mention('@KV cache quantization', 'page', 'topics/kv-cache-quantization'),
+        ],
+      },
+    ])
+    const runner = createChatHarnessRunner({
+      store,
+      model: { runtime: async () => ({ provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-6.1', authentication: 'none' }) } as unknown as HarnessModelConfig,
+      checkCli: vi.fn(),
+      cli: vi.fn<CliChatRunner>(),
+      sessions: {} as CliChatSessions,
+      launch: () => child,
+    })
+    const answering = runner.answer(chat, 'Why?', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: 'Why?' } })
+    const { wiki } = (await context)['result'] as { wiki: Array<{ ref: string; page: string; text: string }> }
+
+    expect(wiki.map((claim) => [claim.ref, claim.page])).toEqual([
+      ['topics/kv-cache-quantization#per-channel-keys', 'KV cache quantization'],
+      ['topics/kv-cache-quantization#prefix-schedule', 'KV cache quantization'],
+      ['topics/ptq-weight-activation#rotation-kv', 'Weight-activation PTQ'],
+    ])
+    const claims = (await store.wikiAggregation('topics/kv-cache-quantization')).claims
+    expect(wiki[0]!.text).toBe(claims[0]!.text)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
+    await expect(answering).resolves.toBe('Answer')
+    runner.close()
+  })
 })

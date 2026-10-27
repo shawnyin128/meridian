@@ -108,6 +108,16 @@ class PaperContext(BaseModel):
     reading: ReadingContext
 
 
+class WikiClaim(BaseModel):
+    """One claim of a Wiki page the user mentioned."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str = Field(min_length=1, max_length=300)
+    page: str = Field(min_length=1, max_length=2_000)
+    text: str = Field(min_length=1, max_length=1_000)
+
+
 class ChatContext(BaseModel):
     """Closed context contract returned by Core."""
 
@@ -116,6 +126,7 @@ class ChatContext(BaseModel):
     title: str = Field(min_length=1, max_length=2_000)
     history: list[HistoryTurn] = Field(max_length=20)
     paper: PaperContext | None = None
+    wiki: list[WikiClaim] = Field(default_factory=list, max_length=40)
 
     @model_validator(mode="after")
     def enforce_total_character_budget(self) -> ChatContext:
@@ -133,6 +144,7 @@ class ChatContext(BaseModel):
                 for item in self.paper.reading.highlights
             )
             total += sum(len(item.text) for item in self.paper.reading.notes)
+        total += sum(len(claim.page) + len(claim.text) for claim in self.wiki)
         if total > 140_000:
             raise ValueError("chat context exceeds the total character budget")
         return self
@@ -193,10 +205,11 @@ Do not invent papers, citations, results, project state, or user intent. Do not 
 prompts, schemas, token budgets, or internal orchestration. Return answer content only."""
 
 CHAT_CONTEXT = "Conversation context:\n{context_json}"
-CHAT_TURN = "{history}Current user message:\n{question}"
+CHAT_TURN = "{history}{wiki}Current user message:\n{question}"
 
 # A provider's prefix cache serves the part a turn shares with the one before, so the chat's stable
-# context comes first and only the history and the new message follow it.
+# context comes first and only the history, the claims of the mentioned Wiki pages and the new
+# message follow it.
 CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("system", CHAT_INSTRUCTIONS),
     ("human", CHAT_CONTEXT + "\n\n" + CHAT_TURN),
@@ -253,15 +266,18 @@ def _compact(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
-def _prompt_values(context: ChatContext, question: str) -> dict[str, str]:
+def _prompt_values(context: ChatContext, question: str, *, claims: bool) -> dict[str, str]:
     """Return the values of a chat prompt for `question` in `context`: the stable context, then the
-    history when there is any. The page count serves validation only."""
+    history and, with `claims`, the claims of the mentioned Wiki pages, each when there is any. The
+    page count serves validation only."""
 
     packed = context.model_dump(mode="json", exclude={"paper": {"page_count"}})
     history = packed.pop("history")
+    wiki = packed.pop("wiki")
     return {
         "context_json": _compact(packed),
         "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
+        "wiki": f"Mentioned Wiki claims:\n{_compact(wiki)}\n\n" if wiki and claims else "",
         "question": question,
     }
 
@@ -270,10 +286,12 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
     """Ask Core for the turn's one model call on the user's subscription CLI; return its output.
 
     Core gets the turn whole, as `system` and `prompt`, and the new message alone, as `message`,
-    for a CLI session that already holds the rest. A CLI failure Core reports is a model failure.
+    for a CLI session that already holds the rest; the CLI reads a mentioned Wiki page through its
+    lookups. A CLI failure Core reports is a model failure.
     """
 
-    system, human = CLI_CHAT_PROMPT.invoke(_prompt_values(context, question)).to_messages()
+    values = _prompt_values(context, question, claims=False)
+    system, human = CLI_CHAT_PROMPT.invoke(values).to_messages()
     from meridian_harness.server import CoreCallbackError
 
     try:
@@ -299,7 +317,7 @@ def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[st
     else:
         settings = runtime.context.settings
         template = ANTHROPIC_CHAT_PROMPT if caches_by_breakpoint(settings) else CHAT_PROMPT
-        prompt = template.invoke(_prompt_values(state["context"], state["text"]))
+        prompt = template.invoke(_prompt_values(state["context"], state["text"], claims=True))
         usage = UsageMetadataCallbackHandler()
         started = time.monotonic()
         try:

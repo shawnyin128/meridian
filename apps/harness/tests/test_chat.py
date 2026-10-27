@@ -231,6 +231,58 @@ class ChatPromptCacheTests(unittest.TestCase):
                 order = [human.index(parts[name]) for name in _STABLE_FIRST]
                 self.assertEqual(order, sorted(order))
 
+    def test_an_api_turn_carries_the_mentioned_claims_after_the_history(self) -> None:
+        plain = _api_requests(_paper_chat_context(_HISTORY))
+        sent = _api_requests({**_paper_chat_context(_HISTORY), "wiki": _CLAIMS})
+        for route, (system, human) in sent.items():
+            with self.subTest(route=route):
+                before, _, question = plain[route][1].partition("Current user message:\n")
+                self.assertEqual(system, plain[route][0])
+                self.assertEqual(human, (
+                    f"{before}Mentioned Wiki claims:\n{_compact(_CLAIMS)}\n\n"
+                    f"Current user message:\n{question}"
+                ))
+        with AnthropicStandIn({"answer": "Answer"}) as service:
+            _ask(service.runtime, _paper_chat_context(_HISTORY))
+            _ask(service.runtime, {**_paper_chat_context(_HISTORY), "wiki": _CLAIMS})
+        cached = [body["messages"][0]["content"][0] for body in service.requests]
+        self.assertEqual(cached[1], cached[0])
+
+    def test_a_cli_turn_leaves_the_claims_to_its_lookups(self) -> None:
+        def cli_call(context: dict[str, object]) -> object:
+            calls: list[object] = []
+
+            def read(method: str, params: object) -> object:
+                if method == "model.invoke":
+                    calls.append(params)
+                    return {"output": "Answer"}
+                return context
+
+            build_chat_method()(RequestContext(35, Event(), read), _cli_params())
+            return calls[0]
+
+        mentioned = cli_call({**_paper_chat_context(_HISTORY), "wiki": _CLAIMS})
+        self.assertEqual(mentioned, cli_call(_paper_chat_context(_HISTORY)))
+        self.assertNotIn("Per-channel", json.dumps(mentioned))
+
+    def test_mentioned_claims_count_toward_the_context_budget(self) -> None:
+        context = _paper_chat_context([])
+        paper = context["paper"]
+        if not isinstance(paper, dict):
+            raise AssertionError("the paper fixture must be an object")
+        paper["pages"] = [{"number": 1, "text": "a" * 70_000}, {"number": 2, "text": "b" * 50_000}]
+        claims = [
+            {"ref": f"topics/long#claim-{n}", "page": "Long", "text": "c" * 1_000}
+            for n in range(40)
+        ]
+        service = ProviderStandIn({"answer": "must not run"})
+        method = build_chat_method(_answering("must not run", service))
+        method(RequestContext(36, Event(), _reads({**context, "wiki": claims[:10]})), _params())
+
+        with self.assertRaises(ProtocolViolation):
+            method(RequestContext(37, Event(), _reads({**context, "wiki": claims})), _params())
+        self.assertEqual(len(service.requests), 1)
+
     def test_consecutive_turns_of_a_paper_chat_share_the_whole_stable_prefix(self) -> None:
         turns = [_HISTORY[:0], _HISTORY[:2], _HISTORY]
         sent = [_api_requests(_paper_chat_context(history)) for history in turns]
@@ -425,6 +477,10 @@ _HISTORY = [
     {"role": "assistant", "text": "Earlier answer"},
     {"role": "user", "text": "Second question"},
     {"role": "assistant", "text": "Second answer"},
+]
+_CLAIMS = [
+    {"ref": "topics/kv#per-channel", "page": "KV cache", "text": "Per-channel keys keep accuracy."},
+    {"ref": "topics/kv#prefix", "page": "KV cache", "text": "A prefix schedule halves memory."},
 ]
 # The parts of a turn in the order an API request carries them.
 _STABLE_FIRST = [
