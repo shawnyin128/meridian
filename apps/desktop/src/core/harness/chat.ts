@@ -318,7 +318,7 @@ export function createChatHarnessRunner(options: {
    * The claims of the aggregation pages chat `chatId` mentioned, the latest mentioned first, at most
    * MENTIONED_WIKI_PAGES pages and MENTIONED_WIKI_CLAIMS claims, each with its ref and its page's title,
    * in `room` characters as the Harness counts them. Claims that do not fit leave in this order: the
-   * pages mentioned first, down to the latest one; then each page's claims past its first
+   * pages mentioned last, down to the first-mentioned one; then each page's claims past its first
    * MENTIONED_CLAIMS_KEPT; then the last claims left.
    */
   const mentionedClaims = async (chatId: string, room: number) => {
@@ -336,7 +336,7 @@ export function createChatHarnessRunner(options: {
       held += claims.length
       if (claims.length > 0) byPage.push(claims)
     }
-    while (byPage.length > 1 && claimCharacters(byPage.flat()) > room) byPage.pop()
+    while (byPage.length > 1 && claimCharacters(byPage.flat()) > room) byPage.shift()
     if (claimCharacters(byPage.flat()) > room) byPage = byPage.map((claims) => claims.slice(0, MENTIONED_CLAIMS_KEPT))
     const claims = byPage.flat()
     while (claims.length > 0 && claimCharacters(claims) > room) claims.pop()

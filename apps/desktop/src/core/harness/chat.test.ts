@@ -1052,20 +1052,20 @@ describe('the claims of mentioned Wiki pages in a full context', () => {
   const refs = (context: Context) => context.wiki.map((claim) => claim.ref)
   const claimsOf = (id: string, count: number) => Array.from({ length: count }, (_, n) => `topics/${id}#${id}-${n}`)
 
-  it('leaves out the first-mentioned pages\' claims first, and never trims the paper or the history', async () => {
+  it('leaves out the last-mentioned pages\' claims first, and never trims the paper or the history', async () => {
     const context = await contextOf({ a: 12, b: 12, c: 12 })
     expect(counted({ ...context, wiki: [] })).toBeGreaterThan(BUDGET - 3 * 12 * 3_000)
 
-    expect(refs(context)).toEqual([...claimsOf('a', 12), ...claimsOf('b', 12)])
+    expect(refs(context)).toEqual([...claimsOf('b', 12), ...claimsOf('c', 12)])
     expect(counted(context)).toBeLessThanOrEqual(BUDGET)
     expect(context.history.reduce((sum, turn) => sum + turn.text.length, 0)).toBe(CHAT_CONTEXT_BUDGETS.historyCharacters)
     expect(context.paper.abstract.length).toBe(CHAT_CONTEXT_BUDGETS.abstractCharacters)
   })
 
-  it('then keeps only the first claims of the latest-mentioned page', async () => {
-    const context = await contextOf({ a: 34, b: 6, c: 0 })
+  it('then keeps only the first claims of the first-mentioned page', async () => {
+    const context = await contextOf({ a: 6, b: 0, c: 34 })
 
-    expect(refs(context)).toEqual(claimsOf('a', KEPT))
+    expect(refs(context)).toEqual(claimsOf('c', KEPT))
     expect(counted(context)).toBeLessThanOrEqual(BUDGET)
   })
 
