@@ -27,6 +27,9 @@ export const inbox = {
     dismiss: '忽略',
   },
   notices: {
+    newDirection: (label: string) => `发现新方向「${label}」`,
+    newDirections: (n: number) => `发现 ${n} 个新方向`,
+    viewDirection: '查看',
     dismissedAll: '已全部忽略',
     dismissed: '已忽略',
     duplicateToast: '库里已有这一篇',

@@ -468,6 +468,44 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('刷新发现扫出新方向时提示「发现新方向」，点查看打开发现设置并落到那个方向', async () => {
+    api.mode = 'discovery'
+    api.scope = 'all'
+    api.profiles = []
+    api.discoveries.mockResolvedValueOnce({
+      projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
+      nothingNew: false, lastFetchedAt: null, directions: [{ projectId: 'p1', id: 'd1', label: 'AWQ' }],
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
+    await act(async () => { refresh.click() })
+    expect(api.notice.success.mock.calls).toEqual([['发现新方向「AWQ」', { label: '查看', onAction: expect.any(Function) }]])
+    act(() => { (api.notice.success.mock.calls[0]![1] as { onAction: () => void }).onAction() })
+    expect(api.openCategory).toHaveBeenCalledWith('delivery-discovery', { id: 'd1', within: 'p1' })
+    await act(async () => { root.unmount() })
+  })
+
+  it('一次扫出几个新方向时提示几个，查看落到第一个', async () => {
+    api.mode = 'discovery'
+    api.scope = 'all'
+    api.profiles = []
+    api.discoveries.mockResolvedValueOnce({
+      projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0, nothingNew: false,
+      lastFetchedAt: null, directions: [{ projectId: 'p1', id: 'd1', label: 'AWQ' }, { projectId: 'p2', id: 'd2', label: 'GPTQ' }],
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
+    await act(async () => { refresh.click() })
+    expect(api.notice.success.mock.calls).toEqual([['发现 2 个新方向', { label: '查看', onAction: expect.any(Function) }]])
+    act(() => { (api.notice.success.mock.calls[0]![1] as { onAction: () => void }).onAction() })
+    expect(api.openCategory).toHaveBeenCalledWith('delivery-discovery', { id: 'd1', within: 'p1' })
+    await act(async () => { root.unmount() })
+  })
+
   it('刷新发现有方向失败时只报失败:几个方向失败,不弹没有新论文的通知', async () => {
     api.mode = 'discovery'
     api.scope = 'p1'
