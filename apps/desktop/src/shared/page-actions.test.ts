@@ -214,10 +214,7 @@ const PLACES: Record<string, Place[]> = {
   ],
   restore: [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   close: [{ slot: 'panel head', size: 'nested', variant: 'plain' }],
-  'overflow menu': [
-    { slot: 'row actions', size: 'nested', variant: 'plain' },
-    { slot: 'page header', size: 'nested', variant: 'plain', scope: "the Papers page's actions over the whole paper list" },
-  ],
+  'overflow menu': [{ slot: 'row actions', size: 'nested', variant: 'plain' }],
   clear: [
     { slot: 'page header', size: 'md', variant: 'danger' },
     { slot: 'section heading', size: 'sm', variant: 'danger', scope: 'a section clears its own entries' },

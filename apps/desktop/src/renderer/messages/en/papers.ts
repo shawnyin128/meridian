@@ -80,6 +80,7 @@ export const papers = {
   publication: {
     fill: 'Fill publication info',
     filled: (count: number) => `Filled the publication info of ${count} ${pluralEn(count, { one: 'paper', other: 'papers' })}`,
+    filling: 'Filling publication info…',
     none: 'No new publication info found',
   },
   upload: {
