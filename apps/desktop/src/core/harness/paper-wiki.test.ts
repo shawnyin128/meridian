@@ -17,12 +17,17 @@ import type { HarnessExecution } from './cost-gate.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
 import type { PaperWikiDraft } from './paper-wiki.js'
 import {
-  citablePages, createPaperWikiHarnessRunner, pageHoldsAbstract, paperWikiHarnessError, projectPaperWikiReview,
-  renderPaperWikiDraft, validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
+  citablePages, createPaperWikiHarnessRunner, paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft, validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
   withoutBibliography,
 } from './paper-wiki.js'
 import { HARNESS_CAPABILITIES, HARNESS_PROTOCOL_VERSION } from './protocol.js'
+import SOURCES from './fixtures/paper-wiki-sources.json' with { type: 'json' }
 import { type HarnessChild, HarnessRpcError } from './rpc.js'
+
+vi.mock('../paper-library/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../paper-library/index.js')>()
+  return { ...actual, extractPdfPages: vi.fn(actual.extractPdfPages) }
+})
 
 const draft = (): PaperWikiDraft => ({
   problem: { text: 'Exact bottleneck', pages: [1] },
@@ -647,61 +652,15 @@ describe('What a Paper Wiki run sends of its paper', () => {
     }
   })
 
-  const entries = (from: number) => Array.from({ length: 12 }, (_, at) =>
-    `[${from + at}] Mei Lin, Arjun Rao, and Sofia Costa. 20${10 + at}. Paged attention for serving model ${from + at}. In Proceedings of the Systems Conference. 1${at}1–1${at}9.`).join(' ')
-  const appendix = 'A. Implementation Details  The draft head reads the second-to-top features of the target model, as in speculative sampling (Leviathan et al., 2023), and it predicts the next feature from them before the token is sampled. '.repeat(4)
-
-  it('sends every page unchanged when no page has a references heading', () => {
-    const pages = [
-      { number: 1, text: 'Paged attention  Abstract  We serve models with paged memory.' },
-      { number: 2, text: `Related work. ${entries(1)}` },
-      { number: 3, text: entries(13) },
-    ]
-    expect(withoutBibliography(pages)).toEqual(pages)
-  })
-
-  it('leaves out the references from their heading through the last whole page of entries, and keeps the appendix after them', () => {
-    const pages = [
-      { number: 1, text: 'Paged attention  Abstract  We serve models with paged memory.' },
-      { number: 2, text: `We thank the reviewers.  References  ${entries(1)}` },
-      { number: 3, text: entries(13) },
-      { number: 4, text: appendix },
-      { number: 5, text: entries(25) },
-    ]
-    expect(withoutBibliography(pages)).toEqual([
-      pages[0], { number: 2, text: 'We thank the reviewers.  References' }, { number: 3, text: '' }, pages[3], pages[4],
-    ])
-  })
-
-  it('keeps a page where the reference entries give way to the appendix', () => {
-    const pages = [
-      { number: 1, text: `We thank the reviewers.  References  ${entries(1)}` },
-      { number: 2, text: `${entries(13)}  B. Numeric appendix  ${'Throughput rises with batch size until memory runs out. '.repeat(20)}` },
-      { number: 3, text: appendix },
-    ]
-    expect(withoutBibliography(pages)).toEqual([{ number: 1, text: 'We thank the reviewers.  References' }, pages[1], pages[2]])
-  })
-
-  it('sends every page unchanged when the text after the heading does not read as reference entries', () => {
-    const pages = [
-      { number: 1, text: 'Paged attention  Abstract  We serve models with paged memory.' },
-      { number: 2, text: `Table 3 lists the sources.  References  ${appendix}` },
-      { number: 3, text: entries(1) },
-    ]
-    expect(withoutBibliography(pages)).toEqual(pages)
-  })
-
-  it('sends every page unchanged when more than one page has a references heading', () => {
-    const pages = [
-      { number: 1, text: `Main text.  References  ${entries(1)}` },
-      { number: 2, text: `Appendix.  References  ${entries(13)}` },
-    ]
-    expect(withoutBibliography(pages)).toEqual(pages)
-  })
-
-  it('finds the abstract on a page despite line-break hyphens, LaTeX, typography and case, and not when its words differ', () => {
-    const page = 'KIVI : A Tuning-Free Asymmetric 2bit Quantization  Abstract  KIVI   can enable Llama mod- els to keep almost the same qual- ity while using   2 . 6 ×   less peak memory. vLLM’s source code is public.  1 Introduction'
-    expect(pageHoldsAbstract('KIVI can enable Llama models to keep almost the same quality while using $\\mathbf{2.6\\times}$ less peak memory. vLLM\'s source code is public.', page)).toBe(true)
-    expect(pageHoldsAbstract('KIVI can enable Llama models to keep almost the same quality while using $\\mathbf{2.6\\times}$ less peak memory. The source code is public.', page)).toBe(false)
+  it.each(SOURCES.cases)('sends a source with $name as its fixture expects', async (source) => {
+    vi.mocked(extractPdfPages).mockResolvedValueOnce(source.pages)
+    const store = {
+      getPaper: () => ({ id: 'synthetic', title: 'Paged attention', authors: [], venue: '', abstract: source.abstract }),
+      paperSource: () => new Uint8Array(),
+    } as unknown as VaultStore
+    const sent = await sentPaper(store, 'synthetic')
+    expect(sent.pages).toEqual(source.pages.map((page, at) =>
+      ({ number: page.number, text: source.sent[at] === 'same' ? page.text : source.sent[at] })))
+    expect(sent.paper['abstract']).toBe(source.abstractSent ? source.abstract : undefined)
   })
 })
