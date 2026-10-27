@@ -370,12 +370,12 @@ describe('PaperTable', () => {
     reentry = 0
   })
 
-  it('存了 Semantic Scholar key 时论文屏屏头也只有导入 PDF…', async () => {
+  it('存了 Semantic Scholar key 时论文屏屏头也只有导入 PDF', async () => {
     const host = mount()
     columnsCall.resolve(EMPTY_COLUMNS)
     listCall.resolve({ rows: [ROW], total: 1 })
     await flush()
-    expect([...host.querySelectorAll('.desk-head .page-actions button')].map((button) => button.textContent)).toEqual(['导入 PDF…'])
+    expect([...host.querySelectorAll('.desk-head .page-actions button')].map((button) => button.textContent)).toEqual(['导入 PDF'])
   })
 
   it('从别的屏点链接打开一篇的详情时屏头左端有返回,按它回到来的那一屏;从论文屏自己的搜索打开时没有', async () => {
