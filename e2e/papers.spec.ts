@@ -674,9 +674,9 @@ test('主题列的 chip 静止时贴着文字,左右留同样的内边距;悬停
   expect(chips.filter((chip) => !chip.cut).length).toBeGreaterThan(5)
 
   const row = win.locator('.ptable tbody tr').first()
+  await expectChipHoverInPlace(cells.locator('.tagchip[data-row-actions]'), row.locator('td:nth-child(7) .tagchip[data-row-actions]').first())
   await row.locator('.pt-title').hover()
   await expect(row.locator('td:nth-child(7) .tagchip > .row-actions').first()).toHaveCSS('opacity', '0')
-  await expectChipHoverInPlace(cells.locator('.tagchip[data-row-actions]'), row.locator('td:nth-child(7) .tagchip[data-row-actions]').first())
 })
 
 test('标签添加框:空着焦点移走只收起;打了新主题再移走,像回车一样加上', async ({ win }) => {

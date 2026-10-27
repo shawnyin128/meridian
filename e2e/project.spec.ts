@@ -894,6 +894,37 @@ test('属性栏的 chip 静止时贴着文字,左右留同样的内边距:主题
   await expectChipHoverInPlace(side.locator('.tagchip[data-row-actions]'), side.locator('.project-topics .tagchip[data-row-actions]'))
 })
 
+test('悬停一个短关联 chip 后点它正中,打开它指的那一页而不是编辑;指针从 chip 移到它外侧的 ✎ 上,能点开编辑', async ({ win }) => {
+  await gotoProject(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const linked = side.locator('.wkrel .tagchip[data-wk][data-row-actions]')
+  const widths = await linked.evaluateAll((els) => els.map((el) => el.getBoundingClientRect().width))
+  const short = linked.nth(widths.indexOf(Math.min(...widths)))
+  const page = (await short.getAttribute('data-wk'))!
+  // The short chip is narrower than its name's room plus its pencil and ×, the case where they once covered its middle.
+  expect(Math.min(...widths)).toBeLessThan(100)
+
+  await short.hover()
+  await expect(short.locator('.row-actions')).toHaveCSS('opacity', '1')
+  await short.click()
+  await expect(side.locator('.wkrel .reladd')).toHaveCount(0)
+  await expect(win.locator('.screenslot:not([hidden]) .desk-head .t')).toHaveText((await call<{ title: string }>(win, 'wiki.aggregation', { id: page })).title)
+  await win.locator('.screenslot:not([hidden]) .desk-head .back').click()
+  await expect(win.locator('.screenslot:not([hidden]) .desk-head .t')).toHaveText('draft 效率')
+
+  const box = (await short.boundingBox())!
+  await win.mouse.move(box.x + box.width / 2, box.y + box.height / 2)
+  const pencil = short.locator('.tagchip-edit')
+  await expect(pencil).toHaveCSS('opacity', '1')
+  const target = (await pencil.boundingBox())!
+  await win.mouse.move(target.x + target.width / 2, target.y + target.height / 2, { steps: 12 })
+  await expect(short.locator('.row-actions')).toHaveCSS('opacity', '1')
+  await win.mouse.down()
+  await win.mouse.up()
+  await expect(side.locator('.wkrel .reladd .inedit')).toBeFocused()
+  await expect(win.locator('.screenslot:not([hidden]) .desk-head .t')).toHaveText('draft 效率')
+})
+
 test('移除一个主题,提示里的撤销把它放回', async ({ win }) => {
   await win.locator('[data-desk="resproj"]').waitFor()
   await call(win, 'project.update', { id: 'draft', patch: { topics: ['speculative decoding', 'kv cache eviction'] } })
@@ -1307,8 +1338,7 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
     ;(globalThis as { openedUrls?: string[] }).openedUrls = seen
     shell.openExternal = (url: string) => { seen.push(url); return Promise.resolve() }
   })
-  // A hovered chip's actions lie over its end, which on a short name covers its middle, so click the name.
-  await chip.locator('.tagchip-open').click()
+  await chip.click()
   await expect.poll(() => app.evaluate(() => (globalThis as { openedUrls?: string[] }).openedUrls))
     .toEqual(['https://wandb.ai/team/draft'])
   await win.screenshot({ path: resolve(import.meta.dirname, '../outputs/e2e/shots/project-url-chip.png') })
@@ -1386,7 +1416,7 @@ test('关联论文的候选行按标题任意一段命中,显示的是完整标�
     .toContainText('AWQ: Activation-aware Weight Quantization for LLM Compression and Acceleration')
 })
 
-test('关联 chip 上的 × 悬停才出现,落在 chip 自己的框里;点它只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
+test('关联 chip 上的 × 悬停才出现,在 chip 末端外侧显出、到右栏边时收进 chip 末端,不被右栏切掉;点它只移除这一条,不顺带打开它挂着的那一页', async ({ win }) => {
   await gotoProject(win)
   const side = win.locator('.screenslot:not([hidden]) .wkside')
   const linked = side.locator('.wkrel .tagchip[data-wk]')
@@ -1394,15 +1424,11 @@ test('关联 chip 上的 × 悬停才出现,落在 chip 自己的框里;点它�
   const chip = linked.first()
   const text = await chip.innerText()
 
-  // Inside its chip's own box the × cannot be clipped by the side column, even on a chip as wide as the column.
+  // Past its chip's end, or inside it at the column's edge, the × is never clipped by the side column,
+  // even on a chip as wide as the column.
   for (const each of await side.locator('.wkrel .tagchip').all()) {
-    const remove = each.locator('.rx')
     await expect(each.locator('.row-actions')).toHaveCSS('opacity', '0')
-    await each.hover()
-    await expect(each.locator('.row-actions')).toHaveCSS('opacity', '1')
-    const [outer, inner] = await Promise.all([each.boundingBox(), remove.boundingBox()])
-    expect(inner!.y).toBeGreaterThanOrEqual(outer!.y)
-    expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width)
+    await expectChipHoverInPlace(side.locator('.wkrel .tagchip'), each)
   }
   await rowAction(chip, '.rx')
   await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', 'draft 效率'])
