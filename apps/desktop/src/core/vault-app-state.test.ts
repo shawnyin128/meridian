@@ -403,39 +403,32 @@ describe('vault app state', () => {
       expect(store.listInbox().map((e) => e.id)).toEqual(['mixtral-1999', 'mixtral-2022'])
     })
 
-    it('忽略、稍后阅读、减少类似和已经了解都让卡片离开并记下原因,恢复时一并撤掉;更多类似留着', () => {
+    it('忽略、稍后阅读和已经了解都让卡片离开并记下原因,恢复时一并撤掉', () => {
       const project = store.createProject('离开的原因')
-      expect(store.addDiscoveryEntries(project, ['2609.30001', '2609.30002', '2609.30003'].map(found))).toBe(3)
-      const [less, known, more] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
+      expect(store.addDiscoveryEntries(project, ['2609.30001', '2609.30002'].map(found))).toBe(2)
+      const [known, live] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
       store.dismissInbox('in-dup')
       store.readLater('in-new')
-      store.feedbackDiscovery(less!, 'less')
       store.feedbackDiscovery(known!, 'known')
-      store.feedbackDiscovery(more!, 'more')
-      expect(store.listInbox().map((e) => [e.id, e.feedback])).toEqual([[more, 'more']])
-      expect(['in-dup', 'in-new', less, known, more].map((id) => [stored(id!).gone, stored(id!).left]))
-        .toEqual([[true, 'dismissed'], [true, 'later'], [true, 'less'], [true, 'known'], [false, undefined]])
+      expect(store.listInbox().map((e) => [e.id, e.feedback])).toEqual([[live, undefined]])
+      expect(['in-dup', 'in-new', known, live].map((id) => [stored(id!).gone, stored(id!).left]))
+        .toEqual([[true, 'dismissed'], [true, 'later'], [true, 'known'], [false, undefined]])
       store.restoreTrash(store.listTrash().find((item) => item.title === INBOX[0]!.title)!.id)
       expect(stored('in-dup')).not.toHaveProperty('left')
-      expect(reopen().listInbox().map((e) => e.id)).toEqual([more, 'in-dup'])
+      expect(reopen().listInbox().map((e) => e.id)).toEqual([live, 'in-dup'])
     })
 
-    it('减少类似和已经了解进垃圾桶,恢复后卡片回到论文推送,反馈和离开的原因一并撤掉', () => {
+    it('已经了解进垃圾桶,恢复后卡片回到论文推送,反馈和离开的原因一并撤掉', () => {
       const project = store.createProject('撤销反馈')
-      store.addDiscoveryEntries(project, ['2609.31001', '2609.31002'].map(found))
-      const [less, known] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
-      store.feedbackDiscovery(less!, 'less')
+      store.addDiscoveryEntries(project, ['2609.31002'].map(found))
+      const [known] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
       store.feedbackDiscovery(known!, 'known')
       expect(store.listInbox({ kind: 'discovery' })).toEqual([])
-      expect(reopen().listTrash().map(({ kind, title }) => [kind, title]))
-        .toEqual([['inbox', 'Found 2609.31002'], ['inbox', 'Found 2609.31001']])
-      expect(store.discoverySeeds(project).negative).toEqual(['semantic-2609.31001'])
+      expect(reopen().listTrash().map(({ kind, title }) => [kind, title])).toEqual([['inbox', 'Found 2609.31002']])
 
       for (const item of store.listTrash()) store.restoreTrash(item.id)
-      expect(reopen().listInbox({ kind: 'discovery' }).map((e) => [e.id, e.feedback])).toEqual([[less, undefined], [known, undefined]])
-      expect(store.discoverySeeds(project).negative).toEqual([])
-      expect([stored(less!), stored(known!)].map((entry) => [entry.gone, 'left' in entry, 'feedback' in entry]))
-        .toEqual([[false, false, false], [false, false, false]])
+      expect(reopen().listInbox({ kind: 'discovery' }).map((e) => [e.id, e.feedback])).toEqual([[known, undefined]])
+      expect([stored(known!)].map((entry) => [entry.gone, 'left' in entry, 'feedback' in entry])).toEqual([[false, false, false]])
     })
 
     it('从稍后阅读移出进垃圾桶,恢复后回到队列里原来的位置', () => {

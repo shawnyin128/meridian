@@ -75,6 +75,24 @@ export type RefreshProgress = {
   poolStalled: boolean
 }
 
+/**
+ * One inbox entry a stream of a scope lists, as the scope's model learns from it: the Semantic
+ * Scholar batch ids its paper goes by, `ARXIV:<arXiv id>` first; whether it left the feed, and why
+ * when that was stored; its stored discovery feedback; the reasons that stream gave; and the library
+ * rating of the paper page it was added as, when there is one.
+ */
+export type ScopeCard = {
+  paperIds: string[]
+  gone: boolean
+  left?: string
+  feedback?: 'more' | 'less' | 'known'
+  reasons: { kind: string; label: string }[]
+  rating?: number
+}
+
+/** What the user did with a scope's papers: its cards, and the library rating of each rated paper of its project by batch id. */
+export type ScopeSignals = { cards: ScopeCard[]; ratings: Record<string, number> }
+
 export type DiscoveryPreferences = {
   coreIntentId: string | null
   disabledIntentIds: string[]

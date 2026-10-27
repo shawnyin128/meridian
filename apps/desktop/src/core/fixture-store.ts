@@ -41,7 +41,7 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
+  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, streamsOf, withoutStreams, withStream, type StoredStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
@@ -58,6 +58,7 @@ import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
 import { NO_WORKSPACE_GRAPHS, type MetadataFill, type VaultOps, type VaultStore } from './vault.js'
 import { searchHits } from './search.js'
+import type { InboxLeft } from './vault/records.js'
 import { digestOf } from './wiki-proposals.js'
 import {
   applyProposal, checkBody, conclusionClaims, describeOp, mergedMemberships, mergePlan, projectClaims, projectDisputes, HUMAN, isPaper,
@@ -373,8 +374,8 @@ export function createFixtureStore(
   const takenAgentIdeas = new Set<string>()
   // Research-record events already copied into the feed; null until the first pass marks the existing ones.
   let feedEvents: Set<string> | null = null
-  // Dismissal and read-later both hide an inbox item while preserving its original slot for restoration.
-  const gone = new Set<string>()
+  // Each inbox item that left the feed and why; it keeps its original slot for restoration.
+  const gone = new Map<string, InboxLeft>()
   // Every paper delivered, including those whose entry left with its watch or project.
   const delivered: PaperIdentity[] = []
   // Track papers with an explicit read state so undo can distinguish absent state from stored unread.
@@ -530,7 +531,7 @@ export function createFixtureStore(
       ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, nowMs(),
     )
     const added = kept.map(make)
-    for (const id of folded) gone.add(id)
+    for (const id of folded) gone.set(id, 'folded')
     inbox = place(added, held)
     delivered.push(...added.map(entryIdentity))
     return added
@@ -1623,7 +1624,7 @@ export function createFixtureStore(
 
     dismissInbox(id) {
       const entry = liveEntry(id)
-      gone.add(id)
+      gone.set(id, 'dismissed')
       trash = [
         { id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id },
         ...trash,
@@ -1632,7 +1633,7 @@ export function createFixtureStore(
 
     readLater(id) {
       const entry = liveEntry(id)
-      gone.add(id)
+      gone.set(id, 'later')
       if (later.some((x) => x.id === id)) return false
       later = [{
         id: entry.id,
@@ -1662,7 +1663,7 @@ export function createFixtureStore(
       const result = storeUpload(`${entry.title}.pdf`, bytes)
       const source = sourceOf.get(result.paper.id)!
       inbox = inbox.map((held) => (held.id === id ? { ...held, downloaded: true, paper: source } : held))
-      gone.add(id)
+      gone.set(id, 'library')
       later = later.map((queued) => (queued.id === id ? { ...queued, paper: source } : queued))
       if (result.kind === 'existing') {
         return { kind: 'existing', paper: result.paper.id, title: result.paper.title }
@@ -1854,6 +1855,34 @@ export function createFixtureStore(
       progressByScope.set(`${scope.kind}:${scope.id}`, structuredClone(next))
     },
 
+    scopeSignals(scope) {
+      scopeOf(scope)
+      const kind = scope.kind === 'project' ? 'discovery' : 'watch'
+      const cards = inbox.flatMap((entry) => {
+        const stream = streamsOf(entry).find((held) => held.kind === kind && held.id === scope.id)
+        if (stream === undefined) return []
+        const left = gone.get(entry.id)
+        const rating = entry.paper === '' ? undefined : byId.get(paperOf(entry.paper))?.rating
+        return [{
+          paperIds: [...entry.vault.arxiv === '' ? [] : [`ARXIV:${entry.vault.arxiv}`], ...entry.semanticId === '' ? [] : [entry.semanticId]],
+          gone: left !== undefined,
+          ...(left === undefined ? {} : { left }),
+          ...(entry.feedback === undefined ? {} : { feedback: entry.feedback }),
+          reasons: stream.reasons.map(({ kind: reason, label }) => ({ kind: reason, label })),
+          ...(rating === undefined ? {} : { rating }),
+        }]
+      })
+      const linked = scope.kind === 'project' ? projectById.get(scope.id)!.papers : []
+      return {
+        cards,
+        ratings: Object.fromEntries(linked.flatMap((id) => {
+          const paper = byId.get(id)
+          const arxiv = libraryArxivId(paper)
+          return paper?.rating === undefined || arxiv === null ? [] : [[`ARXIV:${arxiv}`, paper.rating]]
+        })),
+      }
+    },
+
     setDiscoveryIntent(projectId, intentId, action) {
       if (!projectById.has(projectId)) throw new CallError('not-found', `项目不存在：${projectId}`)
       if (!projectDiscoveryIntents(projectId).some((intent) => intent.id === intentId)) {
@@ -1931,8 +1960,7 @@ export function createFixtureStore(
       const entry = liveEntry(id)
       if (!listedUnder(entry, 'discovery')) throw new CallError('invalid', `这一条不是论文发现：${id}`)
       inbox = inbox.map((held) => held.id === id ? { ...held, feedback } : held)
-      if (feedback === 'more') return
-      gone.add(id)
+      gone.set(id, feedback)
       trash = [
         { id: nextId('trash'), kind: 'inbox', title: entry.title, deletedAt: nowMs(), entryId: id, feedback },
         ...trash,

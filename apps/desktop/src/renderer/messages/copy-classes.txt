@@ -233,8 +233,6 @@ ideas.work.selectAriaLabel aria
 inbox.actions.dismiss action
 inbox.actions.download action
 inbox.actions.known action
-inbox.actions.less action
-inbox.actions.more action
 inbox.actions.readLater action
 inbox.check.checking aria
 inbox.check.failed failure
@@ -251,7 +249,6 @@ inbox.notices.downloadFailed failure
 inbox.notices.downloaded notice
 inbox.notices.duplicateToast notice
 inbox.notices.known notice
-inbox.notices.remembered notice
 inbox.refreshDiscovery action
 inbox.sort.impact action
 inbox.sort.latest action

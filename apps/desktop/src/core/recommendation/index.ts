@@ -58,4 +58,6 @@ export type {
   RefreshProgress,
   RefreshScope,
   ScholarlyMetadata,
+  ScopeCard,
+  ScopeSignals,
 } from './types.js'

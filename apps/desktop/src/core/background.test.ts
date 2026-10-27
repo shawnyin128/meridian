@@ -135,7 +135,7 @@ describe('createBackground', () => {
     expect(second).toMatchObject({ intents: 0, cachedIntents: 3, added: 0 })
   })
 
-  it('按项目论文生成独立发现流,并把显式负反馈带进下一轮种子', async () => {
+  it('按项目论文生成独立发现流', async () => {
     const { store, background } = setup({ semanticKey: 'saved-key' })
     const result = await background.fetchDiscoveries('draft')
     expect(result).toEqual({
@@ -157,9 +157,6 @@ describe('createBackground', () => {
         expect.objectContaining({ kind: 'seed' }),
       ]),
     })
-    store.feedbackDiscovery(rows[0]!.id, 'less')
-    expect(store.listInbox({ kind: 'discovery', project: 'draft' })).toHaveLength(1)
-    expect(store.discoverySeeds('draft').negative).toContain('semantic-branch-acceptance')
   })
 
   it('没存 key 时项目发现只搜 arXiv，推荐理由标明 arXiv', async () => {
