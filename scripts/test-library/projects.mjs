@@ -165,7 +165,10 @@ const discovered = (seed, id, arxiv, submitted, title, authors, abstract) => ({
 
 /**
  * Recommendations project discovery would have brought for the KV cache project, in the stored shape it
- * writes. The seed gives SnapKV `less` and Scissorhands `known` feedback, which put both in the trash.
+ * writes: KVQuant and MiniCache as this version scores them, with their calibrated score, the path that
+ * scored them and their reasons, and the others as an older version wrote them. The seed queues KVQuant
+ * to read later, dismisses SnapKV and gives Scissorhands `known` feedback, which puts those two in the
+ * trash, and leaves MiniCache in the feed.
  */
 export function discoveryRecords(seed) {
   const authors = ['Coleman Hooper', 'Sehoon Kim', 'Hiva Mohammadzadeh', 'Michael W. Mahoney', 'Yakun Sophia Shao', 'Kurt Keutzer', 'Amir Gholami']
@@ -175,11 +178,27 @@ export function discoveryRecords(seed) {
     authors: authors.join(', '), venue: 'arXiv:2401.18079',
     abstract: 'KVQuant quantizes keys per channel before the rotary embedding and keeps outliers per vector, reaching 3-bit KV caches with under $0.1$ perplexity loss.',
     rec: '', reasons: [
-      { kind: 'project', label: '来自项目「KV cache 量化」' }, { kind: 'source', label: '由相似论文召回' },
-      { kind: 'wiki', label: '匹配 Wiki 主题/方法「KV cache 压缩」' },
+      { kind: 'intent', label: '方向「KV cache 压缩」' }, { kind: 'seed', label: '接近《KIVI》', paperId: 'ARXIV:2402.02750' },
+      { kind: 'wiki', label: 'Wiki「KV cache 压缩」' },
     ],
     downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2401.18079', topic: '', gone: false,
     arxiv: '2401.18079', semanticId: '', meta: { authors, submitted: '2024-01-31', journalRef: null },
+    ranking: { relevance: 0.83, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2024-01-31' },
+    score: { path: 'api' },
+  }, {
+    id: 'seed-discovery-minicache', kind: 'discovery', watch: '', project: seed.projects.kv.id, source: '项目 · KV cache 量化',
+    title: 'MiniCache: KV Cache Compression in Depth Dimension for Large Language Models',
+    authors: 'Akide Liu, Jing Liu, Zizheng Pan, Yefei He, Gholamreza Haffari, Bohan Zhuang', venue: 'arXiv:2405.14366',
+    abstract: 'MiniCache merges the KV caches of adjacent middle-to-deep layers, whose states are highly similar, and keeps the tokens that differ most unmerged.',
+    rec: '', reasons: [
+      { kind: 'intent', label: '方向「KV cache 压缩」' }, { kind: 'seed', label: '接近《KIVI》', paperId: 'ARXIV:2402.02750' },
+      { kind: 'wiki', label: 'Wiki「KV cache 压缩」' },
+    ],
+    downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2405.14366', topic: '', gone: false,
+    arxiv: '2405.14366', semanticId: '',
+    meta: { authors: ['Akide Liu', 'Jing Liu', 'Zizheng Pan', 'Yefei He', 'Gholamreza Haffari', 'Bohan Zhuang'], submitted: '2024-05-23', journalRef: null },
+    ranking: { relevance: 0.78, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2024-05-23' },
+    score: { path: 'api' },
   }, discovered(seed, 'seed-discovery-snapkv', '2404.14469', '2024-04-22',
     'SnapKV: LLM Knows What You are Looking for Before Generation',
     ['Yuhong Li', 'Yingbing Huang', 'Bowen Yang', 'Bharat Venkitesh', 'Acyr Locatelli', 'Hanchen Ye', 'Tianle Cai', 'Patrick Lewis', 'Deming Chen'],
@@ -214,6 +233,44 @@ export function discoveryProgress(seed) {
         '2024-02-19', 'WKVQuant quantizes weights and the key/value cache together, with past-only quantization and two-dimensional quantization of the cache.'),
     ],
   }]
+}
+
+/**
+ * Adds to `record`, the KV cache project's stored discovery directions, what a re-scan after a change
+ * of its current goal would leave there: one candidate waiting for the user and one the user declined.
+ */
+export function withDirectionChoices(record) {
+  const direction = (id, label, paperId, title) => ({ id, label, score: 0.3, seeds: [{ paperId, title }] })
+  return {
+    ...record,
+    candidates: [...record.candidates, direction('intent-seed-quip', 'QuIP#', 'ARXIV:2402.04396',
+      'QuIP$\\#$: Even Better LLM Quantization with Hadamard Incoherence and Lattice Codebooks')],
+    declined: [...record.declined, direction('intent-seed-infbench', '$\\infty$Bench', 'ARXIV:2402.13718',
+      '$\\infty$Bench: Extending Long Context Evaluation Beyond 100K Tokens')],
+  }
+}
+
+/**
+ * Gives the KV cache project a candidate and a declined direction in
+ * `.meridian/discovery/directions.json`, and lists both among its directions turned off in
+ * `state.json`, as the App does for Apps that derive directions themselves. Run with the App closed.
+ */
+export function writeDirectionChoices(seed) {
+  const meridian = join(seed.out, 'library', '.meridian')
+  const file = join(meridian, 'discovery', 'directions.json')
+  const records = JSON.parse(readFileSync(file, 'utf8'))
+  const id = seed.projects.kv.id
+  const record = withDirectionChoices(records.find((held) => held.id === id))
+  writeFileSync(file, `${JSON.stringify(records.map((held) => (held.id === id ? record : held)), null, 2)}\n`, 'utf8')
+  const stateFile = join(meridian, 'state.json')
+  const state = JSON.parse(readFileSync(stateFile, 'utf8'))
+  const held = state.discoveryPreferences?.[id] ?? { coreIntentId: null, disabledIntentIds: [] }
+  const off = [...record.candidates, ...record.declined].map((direction) => direction.id)
+  state.discoveryPreferences = {
+    ...state.discoveryPreferences,
+    [id]: { ...held, disabledIntentIds: [...new Set([...held.disabledIntentIds, ...off])] },
+  }
+  writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
 }
 
 /**

@@ -141,7 +141,7 @@ test('侧栏「论文推送」进推送屏,条目、分组与正文都照 demo',
   expect(await card.locator('.plabel').allTextContents()).toEqual(['摘要', '推荐理由'])
 })
 
-test('关注与项目发现是两条流,发现解释来源并接受显式反馈', async ({ win }) => {
+test('关注与项目发现是两条流,发现解释来源,卡片只有从卡片上就能决定的操作', async ({ win }) => {
   await openInbox(win, 'discovery')
   await expect(win.locator('[data-inbox="discovery"]')).toHaveClass(/\bon\b/)
   await expect(shown(win, '.desk-head .t')).toHaveText('论文发现 · 0')
@@ -149,7 +149,7 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
 
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
   await expect(shown(win, '.pcard').first()).toBeVisible()
-  await expect(shown(win, '.pcard').first().locator('.prec')).toContainText('来自项目')
+  await expect(shown(win, '.pcard').first().locator('.prec')).toContainText('方向「')
   await expect(shown(win, '.collapsible-group-title').first()).toContainText('项目 ·')
   // Discovery lists its projects under the sidebar row; picking one shows only that project's papers.
   const byProject = new Map<string, number>()
@@ -164,17 +164,13 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
   await expect(shown(win, '.collapsible-group')).toHaveCount(1)
   await openInbox(win, 'discovery')
 
-  // More-like-this feedback keeps the card, pressed; less-like-this feedback then takes it out.
   const first = shown(win, '.pcard').first()
-  await rowAction(first, '更多类似')
-  await expect(first.locator('[aria-label="更多类似"]')).toHaveAttribute('aria-pressed', 'true')
-
-  const before = (await discoveryFromCore(win)).length
-  await rowAction(first, '减少类似')
-  await expect.poll(async () => (await discoveryFromCore(win)).length).toBe(before - 1)
+  await expect(first.locator('.item-actions [aria-label]')).toHaveCount(4)
+  expect(await first.locator('.item-actions [aria-label]').evaluateAll((actions) => actions.map((action) => action.getAttribute('aria-label'))))
+    .toEqual(['已经了解', '下载并入库', '稍后阅读', '忽略'])
 })
 
-test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
+test('发现的卡片能忽略;忽略和已经了解都进垃圾桶,恢复后回到发现,反馈一并撤掉', async ({ win }) => {
   await openInbox(win, 'discovery')
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
@@ -182,7 +178,7 @@ test('发现的卡片能忽略;忽略、减少类似和已经了解都进垃圾�
   await expect(shown(win, '.pcard')).toHaveCount(delivered.length)
   const title = (await cardTitles(win))[0]!
 
-  for (const label of ['忽略', '减少类似', '已经了解']) {
+  for (const label of ['忽略', '已经了解']) {
     await openInbox(win, 'discovery')
     await rowAction(shown(win, '.pcard').filter({ hasText: title }), label)
     await expect(shown(win, '.pcard')).toHaveCount(delivered.length - 1)
@@ -418,8 +414,9 @@ test('检查新论文按关注抓取一次,新论文进入相应分组且标题�
 test('在一条关注那一档里检查新论文只抓这一条;再抓没有新的,屏头写没有新论文和这一次的时刻', async ({ win }) => {
   const before = await inboxFromCore(win)
   const elsewhere = before.filter((e) => !listedUnder(e, 'watch').includes('spec')).map((e) => e.id)
+  const shownBefore = before.filter((e) => listedUnder(e, 'watch').includes('spec')).length
   await openInbox(win, 'spec')
-  const shownBefore = await shown(win, '.pcard').count()
+  await expect(shown(win, '.pcard')).toHaveCount(shownBefore)
   await shown(win, '.desk-head .btn').filter({ hasText: '检查新论文' }).click()
   await expect(shown(win, '.pcard')).toHaveCount(shownBefore + 1)
   expect((await cardTitles(win))).toContain('Tree Width in Batched Serving')
@@ -439,8 +436,9 @@ test('在一个项目那一档里刷新发现只刷这个项目;没有新的时�
   await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
   const project = listedUnder((await discoveryFromCore(win))[0]!, 'discovery')[0]!
+  const count = (await discoveryFromCore(win)).filter((e) => listedUnder(e, 'discovery').includes(project)).length
   await win.locator(`[data-discovery-project="${project}"]`).click()
-  const count = await shown(win, '.pcard').count()
+  await expect(shown(win, '.pcard')).toHaveCount(count)
 
   const refresh = shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' })
   await refresh.click()
@@ -829,4 +827,55 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
     if (n === 0) await expect(win.locator(sel)).toHaveCount(0)
     else await expect(win.locator(sel)).toHaveText(String(n))
   }
+})
+
+test('发现方向的候选:刷新扫出后点通知里的查看落到它那一行,添加和忽略都能撤销,添加后能就地重命名', async ({ win }) => {
+  const name = '方向候选'
+  const project = await win.evaluate(async (named) => {
+    const meridian = (window as unknown as MeridianWindow).meridian
+    await meridian.call('project.create', { name: named })
+    const id = (await meridian.call('project.list', {}) as { id: string; name: string }[]).find((held) => held.name === named)!.id
+    await meridian.call('project.addPaper', { projectId: id, paperId: '2306.00978' })
+    return id
+  }, name)
+  await openInbox(win, 'discovery')
+  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(/^发现新方向「.+」$/)
+  await win.locator('#notice .btn', { hasText: '查看' }).click()
+
+  const candidate = settings(win, '.direction-row').filter({ has: win.locator('.tag', { hasText: '候选' }) })
+  await expect(candidate).toHaveCount(1)
+  await expect(candidate).toHaveAttribute('data-arrived', '')
+  const id = (await candidate.getAttribute('data-direction'))!
+  const label = (await candidate.locator('.item-title span').last().textContent())!
+  const confirmed = settings(win, `.direction-row[data-direction="${id}"]`).filter({ hasNot: win.locator('.tag', { hasText: '候选' }) })
+
+  await candidate.hover()
+  await candidate.locator('.add-action').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加')
+  await expect(confirmed.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'true')
+  await win.locator('#notice .btn', { hasText: '撤销' }).click()
+  await expect(candidate).toHaveCount(1)
+  await expect(confirmed).toHaveCount(0)
+
+  await candidate.hover()
+  await candidate.locator('.row-actions .btn', { hasText: '忽略' }).click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已忽略')
+  await expect(candidate).toHaveCount(0)
+  await win.locator('#notice .btn', { hasText: '撤销' }).click()
+  await expect(candidate).toHaveCount(1)
+
+  await candidate.hover()
+  await candidate.locator('.add-action').click()
+  await expect(confirmed).toHaveCount(1)
+  await confirmed.hover()
+  await confirmed.locator('.dots').click()
+  await win.getByRole('menuitem', { name: '重命名' }).click()
+  const field = confirmed.locator('.metadata-input')
+  await expect(field).toHaveValue(label)
+  await field.fill('量化感知方向')
+  await field.press('Enter')
+  await expect(confirmed.locator('.item-title')).toContainText('量化感知方向')
+  const directions = await call<{ id: string; intents: { label: string }[]; candidates: unknown[] }[]>(win, 'discovery.profiles', {})
+  expect(directions.find((held) => held.id === project)).toMatchObject({ intents: [{ label: '量化感知方向' }], candidates: [] })
 })

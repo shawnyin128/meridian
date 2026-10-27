@@ -190,22 +190,23 @@ export function Inbox() {
     setDiscovering(true)
     void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then((result) => {
       if (result.failedIntents > 0) notice.refusal(m.settings.discovery.failed(result.failedIntents))
+      const [first] = result.directions
+      if (first !== undefined) {
+        notice.success(
+          result.directions.length === 1 ? m.inbox.notices.newDirection(first.label) : m.inbox.notices.newDirections(result.directions.length),
+          { label: m.inbox.notices.viewDirection, onAction: () => openCategory('delivery-discovery', { id: first.id, within: first.projectId }) },
+        )
+      }
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }
 
-  const feedback = (id: string, value: 'more' | 'less' | 'known') => {
-    if (value === 'more') {
-      void discovery.feedback(id, value).then(() => {
-        bump()
-      }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
-      return
-    }
+  const markKnown = (id: string) => {
     leave([id])
     window.setTimeout(() => {
       void write(
-        discovery.feedback(id, value).then((trashed) => (trashed === null ? [] : [trashed])),
-        { note: value === 'known' ? m.inbox.notices.known : m.inbox.notices.remembered, action: undo.restore },
+        discovery.feedback(id, 'known').then((trashed) => [trashed]),
+        { note: m.inbox.notices.known, action: undo.restore },
       )
     }, LEAVE_MS)
   }
@@ -216,17 +217,9 @@ export function Inbox() {
       actions={(
         <>
         {stream === 'discovery' ? (
-          <>
-            <IconButton
-              label={m.inbox.actions.more} size="nested" pressed={p.feedback === 'more'} onClick={() => feedback(p.id, 'more')}
-            ><Icon><path d="M7 10v11H3V10h4zM7 19l4 2h6.5a2 2 0 0 0 2-1.7l1.2-7A2 2 0 0 0 18.7 10H14l1-4.2A2.3 2.3 0 0 0 12.8 3L7 10z" /></Icon></IconButton>
-            <IconButton label={m.inbox.actions.less} size="nested" onClick={() => feedback(p.id, 'less')}>
-              <Icon><path d="M7 14V3H3v11h4zM7 5l4-2h6.5a2 2 0 0 1 2 1.7l1.2 7a2 2 0 0 1-2 2.3H14l1 4.2a2.3 2.3 0 0 1-2.2 2.8L7 14z" /></Icon>
-            </IconButton>
-            <IconButton label={m.inbox.actions.known} size="nested" onClick={() => feedback(p.id, 'known')}>
-              <IconSeen />
-            </IconButton>
-          </>
+          <IconButton label={m.inbox.actions.known} size="nested" onClick={() => markKnown(p.id)}>
+            <IconSeen />
+          </IconButton>
         ) : null}
         {busy.has(p.id)
           ? (

@@ -1,6 +1,6 @@
 import type {
   AttachmentFields, ChangeEntry, ChangeSource, ChatMessage, ChatMessageFields, ChatSession, ConclusionState, Facet,
-  DeliverySettings, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields, FieldValue,
+  DeliverySettings, DiscoveryDirectionParams, DiscoveryFeedback, DiscoveryIntentAction, DiscoveryProfile, FeedEntry, FeedFields, FieldValue,
   InboxDownloadResult, InboxEntry,
   InboxListParams, LaterEntry, ListParams, ListResult,
   GraphNode, MilestoneFields, PageVersion,
@@ -15,7 +15,8 @@ import type { PageText, PaperSnapshot } from './vault/records.js'
 import type { RemotePaper } from './net/arxiv.js'
 import type { Publication } from './net/semantic-metadata.js'
 import type {
-  DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
+  DiscoveryPaper, DiscoverySchedule, KnownPaper, RecommendationIntent, RecommendationProfile, RefreshProgress, RefreshScope,
+  ScopeCard, ScopeRanking, ScopeSignals,
 } from './recommendation/index.js'
 import type { WorkspaceAgentTask } from './project-management/index.js'
 import type { ResearchIdeaMutation } from './research-ideas/index.js'
@@ -655,14 +656,14 @@ export interface VaultStore {
   /**
    * Delivers for one watch at most `limit` of the arXiv results `found` that no stream delivered
    * before and the vault does not hold; a result that is already a live card is listed under this
-   * watch on that card instead. These papers and the watch's cards in the feed are then ranked by
-   * recommendation score down to the delivery settings' `maxShownPerScope`, a card given `more`
-   * feedback always staying and not counted: a card ranked below is folded away as seen, and a paper
-   * ranked below is not delivered at all, neither a card nor remembered, so a later run may still
+   * watch on that card instead. These papers and the watch's cards in the feed are then cut down to
+   * the delivery settings' `maxShownPerScope`: by `ranking` when given, which also rescores every
+   * card of the watch it scored; else by recommendation score. A card cut is folded away as seen, and
+   * a paper cut is not delivered at all, neither a card nor remembered, so a later run may still
    * deliver it, and `undelivered` still names it. Returns the arXiv ids of exactly the papers
    * delivered. Throws if no such watch exists.
    */
-  addInboxEntries(watchId: string, found: RemotePaper[], limit?: number): string[]
+  addInboxEntries(watchId: string, found: RemotePaper[], limit?: number, ranking?: ScopeRanking): string[]
 
   /**
    * Returns the papers of `found`, in order and each once, that adding them for any watch or project
@@ -683,8 +684,25 @@ export interface VaultStore {
   /** Project papers plus explicit feedback, with text needed for intent clustering. */
   discoveryProfile(projectId: string): RecommendationProfile
 
-  /** Derived directions with user-owned core and enable preferences applied. */
+  /**
+   * The project's confirmed directions with user-owned core and enable preferences applied; none
+   * before its first directions are confirmed.
+   */
   discoveryIntents(projectId: string): RecommendationIntent[]
+
+  /**
+   * Scans the project's papers for new directions when its topics, current goal or research path
+   * changed since the last scan, or it holds no direction of any kind yet, and offers each new one as
+   * a candidate. Never changes a confirmed direction. Returns the candidates it found, none when no
+   * scan was due or the project's stored directions cannot be read. Throws if no such project exists.
+   */
+  scanDiscoveryDirections(projectId: string): { id: string; label: string }[]
+
+  /**
+   * Adds or declines one of a project's candidate directions, or renames a confirmed one. Throws
+   * `not-found` if the project or the direction the action needs does not exist.
+   */
+  setDiscoveryDirection(params: DiscoveryDirectionParams): void
 
   /** Persisted fairness state for bounded project and direction scheduling. */
   discoverySchedule(projectId: string): DiscoverySchedule
@@ -698,23 +716,41 @@ export interface VaultStore {
   /** Replaces the progress of `scope`. Throws if it does not exist. */
   setRefreshProgress(scope: RefreshScope, progress: RefreshProgress): void
 
+  /**
+   * What the user did with the papers of `scope`: every inbox entry a stream of `scope` lists, live
+   * and gone, with the reasons that stream gave, and for a project the library rating of each of its
+   * rated papers with an arXiv id, by `ARXIV:<id>`. Throws if `scope` does not exist.
+   */
+  scopeSignals(scope: RefreshScope): ScopeSignals
+
   /** Persists one user-owned core/enable decision without mutating Wiki knowledge. */
   setDiscoveryIntent(projectId: string, intentId: string, action: DiscoveryIntentAction): void
 
   /**
    * Delivers to one project's discovery at most `limit` of the provider results `found` that no
    * stream delivered before and the vault does not hold, cutting the project's cards and these
-   * papers to its limit the way addInboxEntries does for a watch, and returns how many papers it
-   * delivered, exactly; a result that is already a live card is listed under this project on that
-   * card instead. Throws if no such project exists.
+   * papers to its limit by `ranking` the way addInboxEntries does for a watch, and returns how many
+   * papers it delivered, exactly; a result that is already a live card is listed under this project
+   * on that card instead. Each paper delivered takes its score, path and reasons from `ranking`, and
+   * each card of the project `ranking` scored takes the new score and path. Throws if no such
+   * project exists.
    */
-  addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit?: number): number
+  addDiscoveryEntries(projectId: string, found: DiscoveryPaper[], limit: number | undefined, ranking: ScopeRanking): number
+
+  /** The cards the feed shows for `scope`, in feed order. Throws if it does not exist. */
+  scopeCards(scope: RefreshScope): ScopeCard[]
 
   /**
-   * Persists explicit discovery feedback on the live discovery entry with the
-   * given id. A `more` entry stays in the feed; a `less` or `known` one leaves
-   * it into the trash, and restoring its trash entry puts it back without the
-   * feedback. Throws if no such live entry exists or it is not a discovery.
+   * What the vault or the feed knows of each of `paperIds`, Semantic Scholar batch ids: a card of the
+   * feed, live or gone, with that id first, else a vault paper whose arXiv id it names. Ids neither
+   * knows are left out.
+   */
+  knownPapers(paperIds: readonly string[]): Map<string, KnownPaper>
+
+  /**
+   * Records `known` feedback on the live discovery entry with the given id, which leaves the feed
+   * into the trash; restoring its trash entry puts it back without the feedback. Throws if no such
+   * live entry exists or it is not a discovery.
    */
   feedbackDiscovery(id: string, feedback: DiscoveryFeedback): void
 

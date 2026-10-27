@@ -44,6 +44,7 @@ import {
   HarnessSourceModelsParamsSchema,
   HarnessSubscriptionStatusParamsSchema,
   HarnessUpdateSubscriptionParamsSchema,
+  DiscoveryDirectionParamsSchema,
   DiscoveryFeedbackParamsSchema,
   DiscoveryFetchParamsSchema,
   DiscoveryIntentUpdateParamsSchema,
@@ -256,6 +257,7 @@ const background = createBackground({
   sleep: canned ? async () => {} : sleep,
   now: Date.now,
   semanticScholarApiKey: semanticKey.current,
+  userData,
 })
 const cliRunnerDeps = {
   // A run's own pre-call check decides at run time; what it finds corrects the status Settings and the pickers keep.
@@ -817,12 +819,11 @@ registerHandler('discovery.intent', (params) => {
   const { projectId, intentId, action } = DiscoveryIntentUpdateParamsSchema.parse(params)
   return store.setDiscoveryIntent(projectId, intentId, action)
 })
+registerHandler('discovery.direction', (params) => (
+  store.setDiscoveryDirection(DiscoveryDirectionParamsSchema.parse(params))
+))
 registerHandler('discovery.feedback', (params) => {
   const { id, feedback } = DiscoveryFeedbackParamsSchema.parse(params)
-  if (feedback === 'more') {
-    store.feedbackDiscovery(id, feedback)
-    return null
-  }
   return trashedEntry(store, () => store.feedbackDiscovery(id, feedback))
 })
 registerHandler('later.list', (params) => {

@@ -19,20 +19,20 @@ export const inbox = {
   },
   dismissAll: '全部忽略',
   actions: {
-    more: '更多类似',
-    less: '减少类似',
     known: '已经了解',
     download: '下载并入库',
     readLater: '稍后阅读',
     dismiss: '忽略',
   },
   notices: {
+    newDirection: (label: string) => `发现新方向「${label}」`,
+    newDirections: (n: number) => `发现 ${n} 个新方向`,
+    viewDirection: '查看',
     dismissedAll: '已全部忽略',
     dismissed: '已忽略',
     duplicateToast: '库里已有这一篇',
     downloaded: '已入库',
     downloadFailed: '下载失败',
-    remembered: '已记住',
     known: '已标记为已经了解',
   },
 } satisfies Record<string, unknown>

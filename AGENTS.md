@@ -361,10 +361,7 @@ on the reviewing machine.
   asked. Otherwise the agent names the milestone it suggests in its reply and
   leaves the issue in the backlog. The milestone-guard workflow undoes changes
   by unlisted accounts, but agents act through the owner's login, so only this
-  rule stops them. On the owner's machine a local Claude Code hook in
-  `.claude/settings.json` (ignored by git) runs `scripts/milestone-ask.mjs`
-  before every Bash command, and it asks the owner before any command that
-  changes a milestone.
+  rule stops them.
 - Commit messages follow Conventional Commits:
   `<type>(<scope>): <description>`, imperative, lowercase, no trailing period.
 - Stage explicit paths. Do not use `git add -A`, `git stash`, force-push, or
@@ -443,10 +440,12 @@ checks. This is the order to follow, on the version's release branch and never o
    version and every installer is attached.
 8. **After the release.** Move `master` as `.github/versioning.md` section 4
    says, merge a fix release branch into every feature release branch in
-   progress, delete merged branches as its section 7 says, and close the
-   version's milestone. Seed a test library with the released build into its
-   display-version folder (see Test Library) and keep it for the next release's
-   upgrade smoke.
+   progress, delete merged work branches, and close the
+   version's milestone. The release workflow deletes the pages and release
+   branches of releases beyond the newest five (`.github/versioning.md` section 7);
+   check its run and delete by hand any it reported and kept. Seed a test library
+   with the released build into its display-version folder (see Test Library)
+   and keep it for the next release's upgrade smoke.
 
 ## Mistakes Made Here Before
 

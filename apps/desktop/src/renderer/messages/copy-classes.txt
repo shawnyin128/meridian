@@ -233,8 +233,6 @@ ideas.work.selectAriaLabel aria
 inbox.actions.dismiss action
 inbox.actions.download action
 inbox.actions.known action
-inbox.actions.less action
-inbox.actions.more action
 inbox.actions.readLater action
 inbox.check.checking aria
 inbox.check.failed failure
@@ -251,7 +249,9 @@ inbox.notices.downloadFailed failure
 inbox.notices.downloaded notice
 inbox.notices.duplicateToast notice
 inbox.notices.known notice
-inbox.notices.remembered notice
+inbox.notices.newDirection notice
+inbox.notices.newDirections notice
+inbox.notices.viewDirection action
 inbox.refreshDiscovery action
 inbox.sort.impact action
 inbox.sort.latest action
@@ -700,10 +700,16 @@ settings.delivery.limitHeading label
 settings.delivery.saving aria
 settings.delivery.shownHeading label
 settings.delivery.unit state
+settings.discovery.add action
+settings.discovery.added notice
+settings.discovery.candidate state
 settings.discovery.core state
+settings.discovery.decline action
+settings.discovery.declined notice
 settings.discovery.directionsHeading label
 settings.discovery.failed failure
 settings.discovery.heading label
+settings.discovery.nameLabel aria
 settings.discovery.refreshProject action
 settings.discovery.refreshing aria
 settings.discovery.seeds state

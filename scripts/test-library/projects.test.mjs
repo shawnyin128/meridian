@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { RefreshProgressRecordSchema } from '../../apps/desktop/src/core/vault/records.ts'
-import { discoveryProgress, setAreas } from './projects.mjs'
+import { DiscoveryDirectionsRecordSchema, RefreshProgressRecordSchema } from '../../apps/desktop/src/core/vault/records.ts'
+import { discoveryProgress, setAreas, withDirectionChoices } from './projects.mjs'
 
 /** A seed `call` that answers `project.update` the way an App does, recording each patch it takes. */
 const app = ({ takesTopics }) => {
@@ -44,5 +44,15 @@ describe('种子里 KV cache 项目的候选池', () => {
     const records = discoveryProgress({ projects: { kv: { id: 'project-7' } } })
     expect(records.map((record) => RefreshProgressRecordSchema.safeParse(record).success)).toEqual([true])
     expect(records[0].candidates.map((paper) => paper.id)).toEqual(['2403.05527', '2402.12065'])
+  })
+})
+
+describe('种子里 KV cache 项目的发现方向', () => {
+  it('按 App 存方向的形状写一个候选和一个忽略的方向，原有的已确认方向不动', () => {
+    const migrated = { id: 'project-7', basis: 'b', directions: [{ id: 'intent-a', label: 'KIVI', score: 0.5, seeds: [{ paperId: 'ARXIV:2402.02750', title: 'KIVI' }] }], candidates: [], declined: [] }
+    const record = withDirectionChoices(migrated)
+    expect(DiscoveryDirectionsRecordSchema.safeParse(record).success).toBe(true)
+    expect(record.directions).toEqual(migrated.directions)
+    expect([record.candidates.length, record.declined.length]).toEqual([1, 1])
   })
 })

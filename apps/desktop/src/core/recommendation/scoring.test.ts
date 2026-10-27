@@ -47,22 +47,22 @@ describe('recommendation scoring', () => {
     })
   })
 
-  it('keeps relevance dominant and does not flatten source groups', () => {
-    const now = Date.parse('2026-09-15T00:00:00Z')
+  it('推荐排序就是分数本身,发表、影响力和新旧不再掺进去;别的排序照旧,也不打散分组', () => {
     const rows = [
       item('weak-famous', 'a', rank(0.1, true, 10_000, '2025-09-15')),
       item('strong-new', 'a', rank(1, false, 0, '2026-09-14')),
       item('published', 'a', rank(0.8, true, 20, '2026-08-15')),
       item('other-watch', 'b', rank(1, true, 999, '2026-09-15')),
     ]
-    expect(recommendationScore(rows[1]!, now)).toBeGreaterThan(recommendationScore(rows[0]!, now))
-    expect(orderInbox(rows, 'recommended', now).map((row) => row.id))
-      .toEqual(['published', 'strong-new', 'weak-famous', 'other-watch'])
-    expect(orderInbox(rows, 'latest', now).map((row) => row.id))
+    expect(rows.map((row) => recommendationScore(row))).toEqual([0.1, 1, 0.8, 1])
+    expect(recommendationScore(item('unranked', 'a'))).toBe(0)
+    expect(orderInbox(rows, 'recommended').map((row) => row.id))
       .toEqual(['strong-new', 'published', 'weak-famous', 'other-watch'])
-    expect(orderInbox(rows, 'published', now).map((row) => row.id).slice(0, 3))
+    expect(orderInbox(rows, 'latest').map((row) => row.id))
+      .toEqual(['strong-new', 'published', 'weak-famous', 'other-watch'])
+    expect(orderInbox(rows, 'published').map((row) => row.id).slice(0, 3))
       .toEqual(['published', 'weak-famous', 'strong-new'])
-    expect(orderInbox(rows, 'impact', now).map((row) => row.id).slice(0, 3))
+    expect(orderInbox(rows, 'impact').map((row) => row.id).slice(0, 3))
       .toEqual(['weak-famous', 'published', 'strong-new'])
   })
 })

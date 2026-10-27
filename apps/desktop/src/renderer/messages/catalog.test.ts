@@ -299,7 +299,7 @@ describe('提示、标签和占位只说结果', () => {
   // The notices, labels and placeholders the copy audit shortened: each states its result or name in
   // one clause, with no explanation after it.
   const results = (m: typeof zh) => [
-    m.chat.ideaSavedNote, m.inbox.notices.duplicateToast, m.inbox.notices.remembered,
+    m.chat.ideaSavedNote, m.inbox.notices.duplicateToast,
     m.research.list.createdFeedNote('Draft trees'),
     m.watches.projectLabel, m.watches.focusPlaceholder, m.wiki.ingest.discarded,
     m.common.trashed, m.inbox.notices.dismissed, m.inbox.notices.dismissedAll, m.papers.notices.topicAdded,

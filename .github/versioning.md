@@ -107,8 +107,8 @@ A tag is pushed only after all of these pass:
    projects, overview, Wiki and feed load.
 3. The owner reviews an unpacked build (`electron-builder --dir`) and approves the release.
 
-The workflow keeps the release pages and installers of the newest five releases. It never deletes
-a tag.
+The workflow keeps the release pages and installers of the newest five releases, and deletes an
+older release's page and its release branch together (see section 7). It never deletes a tag.
 
 ## 7. Branch lifecycle
 
@@ -118,23 +118,31 @@ look at or fix an old version, start a new branch from its tag.
 | Branch | Deleted when |
 |---|---|
 | Work branch `…/<module>/<name>` | Its pull request is merged into the release branch. GitHub deletes it automatically. |
-| `fix/vX.Y.Z.F/release` | It has been released and is contained in the next feature release branch. |
-| `feature/vX.Y.Z.0/release` | It has been released and merged into the next baseline. |
+| `fix/vX.Y.Z.F/release` | Its release page is deleted, together with it: the release is no longer among the newest five. |
+| `feature/vX.Y.Z.0/release` | Its release page is deleted, together with it: the release is no longer among the newest five. |
 | `baseline/vX.Y.0.0` | Three newer baselines exist. Only the latest three baselines are kept. |
 | Tag `v…` | Never. |
 
-So at any time the repository holds only: branches with unmerged work, release branches not yet
-contained in the next version, the latest three baselines, `master`, and every tag.
+A release and its release branch go together: whenever the release workflow deletes the pages of
+releases beyond the newest five, it also deletes their release branches, and an unreleased release
+branch is never touched. A fix release branch is still merged into every feature release branch in
+progress as soon as it is released.
+
+So at any time the repository holds only: branches with unmerged work, the release branches of
+the newest five releases and of versions in progress, the latest three baselines, `master`, and
+every tag.
 
 Rules that keep deletion safe:
 
-- A release branch is deleted only after the check
-  `git merge-base --is-ancestor <release branch> <branch that should contain it>` passes.
+- A release branch is deleted only once it is contained in `master` or in a baseline branch. The
+  workflow checks this through GitHub's compare API; a branch that fails the check is kept and the
+  run reports it.
 - Local branches are removed with `git branch -d`, which refuses a branch that is not merged.
 - Work branches may be squash-merged into their release branch (one pull request, one commit).
   Release branches merge into the next version and into baselines with a merge commit, so their
   history stays reachable after the branch is gone.
 
 Example: `v0.0.14.2` is released from `fix/v0.0.14.2/release`. Its work branch was deleted when its
-pull request merged. `fix/v0.0.14.2/release` is merged into `feature/v0.0.15.0/release`, and once the
-check above passes it is deleted. The tag `v0.0.14002` stays.
+pull request merged. `fix/v0.0.14.2/release` is merged into `feature/v0.0.15.0/release`. Five
+releases later the workflow deletes the `v0.0.14.2` release page and, in the same step,
+`fix/v0.0.14.2/release`. The tag `v0.0.14002` stays.

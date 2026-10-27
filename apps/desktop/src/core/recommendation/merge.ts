@@ -1,38 +1,32 @@
+import type { InboxEntry } from '../../shared/contract.js'
 import type { DiscoveryPaper, RecommendationIntent, RecommendationMatch } from './types.js'
 
 export type IntentResult = { intent: RecommendationIntent; papers: DiscoveryPaper[] }
 
-export function discoveryReasons(projectName: string, fallbackSeedCount: number, paper: DiscoveryPaper) {
-  const matches = paper.matches ?? []
-  const matchedSeeds = new Set(matches.flatMap((match) => match.seedPaperIds))
-  const sourceLabels = {
-    similarity: '由相似论文召回',
-    citation: '由后续引用召回',
-    reference: '由参考文献召回',
-    author: '由同作者论文召回',
-  } as const
-  const origins = paper.origins ?? []
-  const sources = [...new Set(origins.map((origin) => origin.source))]
-  const viaArxiv = (source: keyof typeof sourceLabels): boolean => origins.some((origin) => (
-    origin.source === source && origin.provider === 'arxiv'
-  ))
+/** Longest text a reason quotes, so a long title or label never makes the reason unreadable. */
+const QUOTE_LIMIT = 200
+
+const quote = (text: string): string => text.trim().slice(0, QUOTE_LIMIT)
+
+const TAKEN_LABEL = { library: '你入库的', later: '你稍后阅读的', rated: '你评 5 星的' } as const
+
+/**
+ * The reasons a discovery card shows, strongest first: the direction it scored best under; the
+ * positive example nearest to it, a seed or a paper the user `taken` from the feed, by its short
+ * title; and a Wiki term of that direction the paper contains.
+ */
+export function discoveryReasons(basis: {
+  direction: string
+  near?: { paperId: string; title: string; taken?: keyof typeof TAKEN_LABEL | undefined } | undefined
+  wikiTerm?: string | undefined
+}): InboxEntry['reasons'] {
+  const { direction, near, wikiTerm } = basis
   return [
-    { kind: 'project' as const, label: `来自项目「${projectName}」` },
-    ...matches.slice(0, 2).map((match) => ({
-      kind: 'intent' as const,
-      label: `匹配${match.core ? '核心' : '轮换'}方向「${match.intentLabel}」`,
-    })),
-    ...sources.slice(0, 2).map((source) => ({
-      kind: 'source' as const, label: viaArxiv(source) ? `${sourceLabels[source]} · arXiv` : sourceLabels[source],
-    })),
-    ...((paper.wikiTerms ?? []).length === 0 ? [] : [{
-      kind: 'wiki' as const,
-      label: `匹配 Wiki 主题/方法「${paper.wikiTerms!.slice(0, 3).join(' · ')}」`,
-    }]),
-    {
-      kind: 'seed' as const,
-      label: `基于 ${Math.max(1, matchedSeeds.size || fallbackSeedCount)} 篇相关论文`,
-    },
+    ...(quote(direction) === '' ? [] : [{ kind: 'intent' as const, label: `方向「${quote(direction)}」` }]),
+    ...(near === undefined || quote(near.title) === '' ? [] : [near.taken === undefined
+      ? { kind: 'seed' as const, label: `接近《${quote(near.title)}》`, paperId: near.paperId }
+      : { kind: 'feedback' as const, label: `接近${TAKEN_LABEL[near.taken]}《${quote(near.title)}》`, paperId: near.paperId }]),
+    ...(wikiTerm === undefined || quote(wikiTerm) === '' ? [] : [{ kind: 'wiki' as const, label: `Wiki「${quote(wikiTerm)}」` }]),
   ]
 }
 

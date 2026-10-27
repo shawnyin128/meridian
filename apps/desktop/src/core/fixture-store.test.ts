@@ -4,6 +4,7 @@ import papersFixture from './fixtures/papers.json' with { type: 'json' }
 import { createFixtureStore } from './fixture-store.js'
 import { minimalPdf } from './net/minimal-pdf.js'
 import { emptyColumns } from './paper-library/index.js'
+import { fixedRanking } from './fixtures/ranking.js'
 import {
   CONTRACT_METHODS, PaperRowSchema, ProjectDetailSchema, ProjectOverviewSchema,
   ProjectSummarySchema,
@@ -1484,23 +1485,19 @@ describe('fixture store', () => {
     expect(store.listTrash()).toHaveLength(0)
   })
 
-  it('减少类似和已经了解进垃圾桶,恢复后卡片回到发现,反馈一并撤掉', () => {
+  it('已经了解进垃圾桶,恢复后卡片回到发现,反馈一并撤掉', () => {
     const found = (arxiv: string) => ({
       semanticId: `semantic-${arxiv}`, id: arxiv, title: `Found ${arxiv}`, authors: ['Ada'], abstract: 'A',
       submitted: '2026-09-08', journalRef: null, pdf: `https://arxiv.org/pdf/${arxiv}`,
     })
-    store.addDiscoveryEntries('draft', ['2609.31001', '2609.31002'].map(found))
-    const [less, known] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
-    store.feedbackDiscovery(less!, 'less')
+    store.addDiscoveryEntries('draft', ['2609.31001'].map(found), undefined, fixedRanking())
+    const [known] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
     store.feedbackDiscovery(known!, 'known')
     expect(store.listInbox({ kind: 'discovery' })).toEqual([])
-    expect(store.listTrash().map(({ kind, title }) => [kind, title]))
-      .toEqual([['inbox', 'Found 2609.31002'], ['inbox', 'Found 2609.31001']])
-    expect(store.discoverySeeds('draft').negative).toEqual(['semantic-2609.31001'])
+    expect(store.listTrash().map(({ kind, title }) => [kind, title])).toEqual([['inbox', 'Found 2609.31001']])
 
     for (const item of store.listTrash()) store.restoreTrash(item.id)
-    expect(store.listInbox({ kind: 'discovery' }).map((e) => [e.id, e.feedback])).toEqual([[less, undefined], [known, undefined]])
-    expect(store.discoverySeeds('draft').negative).toEqual([])
+    expect(store.listInbox({ kind: 'discovery' }).map((e) => [e.id, e.feedback])).toEqual([[known, undefined]])
   })
 
   it('从稍后阅读移出进垃圾桶,恢复后回到队列里原来的位置', () => {
@@ -2343,6 +2340,10 @@ describe('fixture store', () => {
       'inbox.readLater': () => store.readLater('sequoia2'),
       'inbox.download': () => store.completeInboxDownload('fa3', minimalPdf({ lines: ['fa3'] })),
       'discovery.profiles': () => store.listDiscoveryProfiles(),
+      'discovery.direction': () => {
+        const [found] = store.scanDiscoveryDirections('draft')
+        if (found) store.setDiscoveryDirection({ projectId: 'draft', directionId: found.id, action: 'add' })
+      },
       'discovery.intent': () => {
         const intent = store.listDiscoveryProfiles()
           .find((profile) => profile.id === 'draft')?.intents[0]
@@ -2353,9 +2354,9 @@ describe('fixture store', () => {
           semanticId: 'semantic-test', id: '2609.99991', title: 'Discovery Contract Test',
           authors: [], abstract: '', submitted: '2026-09-01', journalRef: null,
           pdf: 'https://arxiv.org/pdf/2609.99991',
-        }])
+        }], undefined, fixedRanking())
         const entry = store.listInbox({ kind: 'discovery' })[0]!
-        store.feedbackDiscovery(entry.id, 'more')
+        store.feedbackDiscovery(entry.id, 'known')
       },
       'later.list': () => store.listLater(),
       'later.remove': () => store.removeLater('mixtral'),

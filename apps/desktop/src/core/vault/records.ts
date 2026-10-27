@@ -50,6 +50,11 @@ export const InboxRecordSchema = InboxEntrySchema.extend({
     submitted: z.string(),
     journalRef: z.string().nullable(),
   }).strict().default({ authors: [], submitted: '', journalRef: null }),
+  /**
+   * Which vectors scored `ranking.relevance`: `api` for SPECTER2 embeddings, `fallback` for TF-IDF.
+   * Any string reads, so a later version's path never makes the record unreadable.
+   */
+  score: z.object({ path: z.string() }).strict().optional(),
 })
 
 /**
@@ -180,6 +185,28 @@ export const RefreshProgressRecordSchema = z.object({
   poolStalled: z.boolean().optional(),
 }).strict()
 
+/** One direction a project's record holds: its id, label, ranking score and seed papers, `named` once the user renamed it. */
+const DirectionRecordSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  named: z.literal(true).exactOptional(),
+  score: z.number(),
+  seeds: z.array(z.object({ paperId: z.string(), title: z.string() }).strict()),
+}).strict()
+
+/**
+ * One `.meridian/discovery/directions.json` record: the discovery directions of the project `id`. `basis`
+ * fingerprints the project's topics, current goal and research path at its last scan; `directions` are
+ * the confirmed ones, `candidates` those waiting for the user and `declined` those the user declined.
+ */
+export const DiscoveryDirectionsRecordSchema = z.object({
+  id: z.string(),
+  basis: z.string(),
+  directions: z.array(DirectionRecordSchema),
+  candidates: z.array(DirectionRecordSchema),
+  declined: z.array(DirectionRecordSchema),
+}).strict()
+
 /**
  * `.meridian/state.json` vault state. `seq` assigns ids and only increases, preventing reuse across
  * restarts. `gitManaged` stores the last Git-management conclusion shown to the user, while
@@ -233,6 +260,7 @@ export type ChatRecord = z.infer<typeof ChatRecordSchema>
 export type TrashRecord = z.infer<typeof TrashRecordSchema>
 export type VaultState = z.infer<typeof VaultStateSchema>
 export type RefreshProgressRecord = z.infer<typeof RefreshProgressRecordSchema>
+export type DiscoveryDirectionsRecord = z.infer<typeof DiscoveryDirectionsRecordSchema>
 
 /** Full page text; null means the page did not exist. Proposal undo restores these snapshots. */
 export const PageTextSchema = z.object({ path: z.string(), text: z.string().nullable() }).strict()

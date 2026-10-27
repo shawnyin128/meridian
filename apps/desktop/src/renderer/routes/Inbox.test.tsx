@@ -19,7 +19,7 @@ const api = vi.hoisted(() => ({
   restored: [] as string[],
   writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   downloads: {} as Record<string, InboxDownloadResult>,
-  feedback: vi.fn(async (id: string, value: string) => (value === 'more' ? null : { trash: `trash-${id}` })),
+  feedback: vi.fn(async (id: string) => ({ trash: `trash-${id}` })),
   setIntent: vi.fn(async () => {}),
   openCategory: vi.fn(),
   /** While true the inbox list never arrives. */
@@ -36,7 +36,7 @@ const api = vi.hoisted(() => ({
   checks: vi.fn<(watchId?: string) => Promise<void>>(async () => {}),
   discoveries: vi.fn<(projectId?: string, force?: boolean) => Promise<DiscoveryFetchResult>>(async () => ({
     projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
-    nothingNew: true, lastFetchedAt: null,
+    nothingNew: true, lastFetchedAt: null, directions: [],
   })),
   notice: {
     success: vi.fn<(text: unknown, action?: { label: string; onAction: () => void }) => void>(),
@@ -217,6 +217,7 @@ describe('Inbox', () => {
         id: 'i1', label: 'speculative · decoding', core: true, enabled: true, seedCount: 2,
         seeds: [{ id: 'ARXIV:1', title: 'Draft Model' }, { id: 'ARXIV:2', title: 'Verifier' }],
       }],
+      candidates: [],
     }]
     api.entries = [{
       id: 'd1', kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一',
@@ -233,9 +234,8 @@ describe('Inbox', () => {
     expect(host.querySelector('.desk-head .t')?.textContent).toBe('论文发现 · 1')
     expect(host.querySelector('.prec')?.textContent)
       .toContain('来自项目「项目一」 · 基于 2 篇相关论文')
-    const more = host.querySelector<HTMLButtonElement>('[aria-label="更多类似"]')!
-    await act(async () => { more.click() })
-    expect(api.feedback).toHaveBeenCalledWith('d1', 'more')
+    expect([...host.querySelectorAll('.paper-card .item-actions [aria-label]')].map((action) => action.getAttribute('aria-label')))
+      .toEqual(['已经了解', '下载并入库', '稍后阅读', '忽略'])
     await act(async () => { root.unmount() })
   })
 
@@ -305,7 +305,7 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('一个图标只表示一种操作：忽略进垃圾桶画垃圾桶，已经了解不用选中的勾，更多类似按下后报出按下', async () => {
+  it('一个图标只表示一种操作：忽略进垃圾桶画垃圾桶，已经了解不用选中的勾；旧版本按过更多类似的卡片也没有按下的按钮', async () => {
     const card = (kind: InboxEntry['kind']): InboxEntry => ({
       id: kind, kind, watch: kind === 'watch' ? 'w1' : '', project: kind === 'watch' ? '' : 'p1', source: '主题 · w1',
       title: `Paper ${kind}`, authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', feedback: 'more',
@@ -324,7 +324,8 @@ describe('Inbox', () => {
     await act(async () => { again.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(glyph('已经了解')).toBe(renderToStaticMarkup(<IconSeen />))
     expect(glyph('已经了解')).not.toBe(renderToStaticMarkup(<IconCheck />))
-    expect(host.querySelector('[aria-label="更多类似"]')!.getAttribute('aria-pressed')).toBe('true')
+    expect(host.querySelector('[aria-label="更多类似"]')).toBeNull()
+    expect(host.querySelector('[aria-pressed]')).toBeNull()
     await act(async () => { again.unmount() })
   })
 
@@ -359,30 +360,26 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
-  it('减少类似和已经了解让卡片离开,提示里的撤销从垃圾桶把它放回;更多类似留在原处', async () => {
+  it('已经了解让卡片离开,提示里的撤销从垃圾桶把它放回', async () => {
     const entry = (id: string): InboxEntry => ({
       id, kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一', title: `Paper ${id}`,
       authors: 'Ada', venue: 'ICLR', abstract: 'Abstract', rec: '', reasons: [], downloaded: false, paper: '',
       pdf: 'https://arxiv.org/pdf/2609.1',
     })
-    api.entries = [entry('d1'), entry('d2'), entry('d3')]
+    api.entries = [entry('d2')]
     api.mode = 'discovery'
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     const card = (id: string) => host.querySelector<HTMLElement>(`.paper-card[data-pid="${id}"]`)!
-    for (const [id, label, note] of [['d1', '减少类似', '已记住'], ['d2', '已经了解', '已标记为已经了解']] as const) {
-      await act(async () => { card(id).querySelector<HTMLButtonElement>(`[aria-label="${label}"]`)!.click() })
-      expect(card(id).classList.contains('is-leaving')).toBe(true)
-      await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
-      const written = api.writes.at(-1)!
-      const action = written.opts.action!(written.result as never)
-      expect([written.opts.note, action.label]).toEqual([note, '撤销'])
-      await act(async () => { action.onAction() })
-      expect(api.restored.at(-1)).toBe(`trash-${id}`)
-    }
-    await act(async () => { card('d3').querySelector<HTMLButtonElement>('[aria-label="更多类似"]')!.click() })
-    expect(card('d3').classList.contains('is-leaving')).toBe(false)
-    expect(api.feedback).toHaveBeenLastCalledWith('d3', 'more')
+    await act(async () => { card('d2').querySelector<HTMLButtonElement>('[aria-label="已经了解"]')!.click() })
+    expect(card('d2').classList.contains('is-leaving')).toBe(true)
+    await act(async () => { await new Promise((done) => { setTimeout(done, 300) }) })
+    expect(api.feedback).toHaveBeenLastCalledWith('d2', 'known')
+    const written = api.writes.at(-1)!
+    const action = written.opts.action!(written.result as never)
+    expect([written.opts.note, action.label]).toEqual(['已标记为已经了解', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.restored.at(-1)).toBe('trash-d2')
     await act(async () => { root.unmount() })
   })
 
@@ -422,7 +419,7 @@ describe('Inbox', () => {
     await act(async () => { discovering.render(<MessagesProvider><Inbox /></MessagesProvider>) })
     expect(api.lists.at(-1)).toMatchObject({ kind: 'discovery', project: 'p1' })
     expect(host.querySelector('.desk-head .t')?.textContent).toBe('项目 · 项目一 · 1')
-    expect(host.querySelector('[aria-label="减少类似"]')).not.toBeNull()
+    expect(host.querySelector('[aria-label="已经了解"]')).not.toBeNull()
     await act(async () => { discovering.unmount() })
   })
 
@@ -451,12 +448,12 @@ describe('Inbox', () => {
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
     api.profiles = [
-      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at - 3_600_000, intents: [] },
-      { id: 'p2', name: '项目二', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at + 3_600_000, intents: [] },
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at - 3_600_000, intents: [], candidates: [] },
+      { id: 'p2', name: '项目二', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at + 3_600_000, intents: [], candidates: [] },
     ]
     api.discoveries.mockResolvedValueOnce({
       projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
-      nothingNew: true, lastFetchedAt: at,
+      nothingNew: true, lastFetchedAt: at, directions: [],
     })
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
@@ -467,16 +464,54 @@ describe('Inbox', () => {
     await act(async () => { root.unmount() })
   })
 
+  it('刷新发现扫出新方向时提示「发现新方向」，点查看打开发现设置并落到那个方向', async () => {
+    api.mode = 'discovery'
+    api.scope = 'all'
+    api.profiles = []
+    api.discoveries.mockResolvedValueOnce({
+      projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
+      nothingNew: false, lastFetchedAt: null, directions: [{ projectId: 'p1', id: 'd1', label: 'AWQ' }],
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
+    await act(async () => { refresh.click() })
+    expect(api.notice.success.mock.calls).toEqual([['发现新方向「AWQ」', { label: '查看', onAction: expect.any(Function) }]])
+    act(() => { (api.notice.success.mock.calls[0]![1] as { onAction: () => void }).onAction() })
+    expect(api.openCategory).toHaveBeenCalledWith('delivery-discovery', { id: 'd1', within: 'p1' })
+    await act(async () => { root.unmount() })
+  })
+
+  it('一次扫出几个新方向时提示几个，查看落到第一个', async () => {
+    api.mode = 'discovery'
+    api.scope = 'all'
+    api.profiles = []
+    api.discoveries.mockResolvedValueOnce({
+      projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0, nothingNew: false,
+      lastFetchedAt: null, directions: [{ projectId: 'p1', id: 'd1', label: 'AWQ' }, { projectId: 'p2', id: 'd2', label: 'GPTQ' }],
+    })
+    const root = createRoot(host)
+    await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
+    const refresh = [...host.querySelectorAll<HTMLButtonElement>('.desk-head .btn')].find((held) => held.textContent === '刷新发现')!
+    api.notice.success.mockClear()
+    await act(async () => { refresh.click() })
+    expect(api.notice.success.mock.calls).toEqual([['发现 2 个新方向', { label: '查看', onAction: expect.any(Function) }]])
+    act(() => { (api.notice.success.mock.calls[0]![1] as { onAction: () => void }).onAction() })
+    expect(api.openCategory).toHaveBeenCalledWith('delivery-discovery', { id: 'd1', within: 'p1' })
+    await act(async () => { root.unmount() })
+  })
+
   it('刷新发现有方向失败时只报失败:几个方向失败,不弹没有新论文的通知', async () => {
     api.mode = 'discovery'
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
     api.profiles = [
-      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [] },
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [], candidates: [] },
     ]
     api.discoveries.mockResolvedValueOnce({
       projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 1,
-      nothingNew: false, lastFetchedAt: at,
+      nothingNew: false, lastFetchedAt: at, directions: [],
     })
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
@@ -622,6 +657,7 @@ describe('Inbox', () => {
           seeds: [{ id: 'ARXIV:2', title: 'Tree Verification' }],
         },
       ],
+      candidates: [],
     }]
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })

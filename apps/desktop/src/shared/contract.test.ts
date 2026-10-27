@@ -30,6 +30,7 @@ import {
   ChatRenameParamsSchema,
   ChatSetArchivedParamsSchema,
   DeliverySettingsSchema,
+  DiscoveryFeedbackParamsSchema,
   FeedAppendParamsSchema,
   FeedEntrySchema,
   GraphNodeSchema,
@@ -363,6 +364,12 @@ describe('contract schemas', () => {
     expect(() => DeliverySettingsSchema.parse({ maxItemsPerRun: 0 })).toThrow()
     expect(() => DeliverySettingsSchema.parse({ maxItemsPerRun: 101 })).toThrow()
     expect(() => DeliverySettingsSchema.parse({ maxItemsPerRun: 2.5 })).toThrow()
+  })
+
+  it('发现卡片的反馈只收已经了解,不再收更多类似和减少类似', () => {
+    expect(DiscoveryFeedbackParamsSchema.parse({ id: 'd1', feedback: 'known' })).toEqual({ id: 'd1', feedback: 'known' })
+    expect(() => DiscoveryFeedbackParamsSchema.parse({ id: 'd1', feedback: 'more' })).toThrow()
+    expect(() => DiscoveryFeedbackParamsSchema.parse({ id: 'd1', feedback: 'less' })).toThrow()
   })
 
   it('论文上传只收 PDF 文件名与结构化克隆的二进制', () => {

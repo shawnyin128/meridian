@@ -1,6 +1,6 @@
 import type { InboxEntry, InboxListParams, InboxStream } from '../../shared/contract.js'
 import { listingsOf } from '../../shared/inbox-streams.js'
-import { orderInbox, recommendationScore } from '../recommendation/index.js'
+import { orderInbox, recommendationScore, type ScopeRanking } from '../recommendation/index.js'
 import { createPaperIndex, type PaperIdentity } from './identity.js'
 
 type Reason = InboxEntry['reasons'][number]
@@ -46,7 +46,7 @@ export function combinedReasons(entry: StreamEntry): Reason[] {
  */
 export function orderListing(rows: InboxEntry[], params: InboxListParams): InboxEntry[] {
   const scope = params.watch ?? params.project
-  return orderInbox(rows, params.sort, undefined, (entry) => {
+  return orderInbox(rows, params.sort, (entry) => {
     if (scope !== undefined) return scope
     const kind = params.kind ?? entry.kind
     return `${kind}:${listingsOf(entry, kind)[0]!.id}`
@@ -79,18 +79,17 @@ export function withoutStreams<E extends StreamEntry>(entry: E, gone: (stream: I
 }
 
 /**
- * Cuts a refresh of one scope to `shown` cards besides those given `more` feedback. `live` are the
- * cards the scope shows and `fresh` the papers it found to deliver; a live card given `more` feedback
- * always stays and takes no place, and the rest are ranked by recommendation score at `now`, ties
- * keeping live cards first, each list in its own order. Returns the fresh papers that make the cut, in
- * their order, and the ids of the live cards that do not.
+ * Cuts a refresh of one scope to `shown` cards. `live` are the cards the scope shows and `fresh` the
+ * papers it found to deliver, all ranked by recommendation score, ties keeping live cards first, each
+ * list in its own order. Returns the fresh papers that make the cut, in their order, and the ids of
+ * the live cards that do not.
  */
 export function cutBelow<P extends Pick<InboxEntry, 'ranking'>>(
-  live: Pick<InboxEntry, 'id' | 'feedback' | 'ranking'>[], fresh: P[], shown: number, now: number,
+  live: Pick<InboxEntry, 'id' | 'ranking'>[], fresh: P[], shown: number,
 ): { kept: P[]; folded: Set<string> } {
   const ranked: { card?: string; paper?: P; score: number }[] = [
-    ...live.filter((card) => card.feedback !== 'more').map((card) => ({ card: card.id, score: recommendationScore(card, now) })),
-    ...fresh.map((paper) => ({ paper, score: recommendationScore(paper, now) })),
+    ...live.map((card) => ({ card: card.id, score: recommendationScore(card) })),
+    ...fresh.map((paper) => ({ paper, score: recommendationScore(paper) })),
   ]
   const order = new Map(ranked.map((item, at) => [item, at]))
   ranked.sort((left, right) => right.score - left.score || order.get(left)! - order.get(right)!)
@@ -98,6 +97,25 @@ export function cutBelow<P extends Pick<InboxEntry, 'ranking'>>(
   return {
     kept: fresh.filter((paper) => kept.has(paper)),
     folded: new Set(ranked.slice(shown).flatMap(({ card }) => (card === undefined ? [] : [card]))),
+  }
+}
+
+/**
+ * Cuts a refresh of one scope to the papers `ranking` shows of the scope's `live` cards and the
+ * `fresh` papers it found, each named by its batch id, a card `ranking` did not score ranking by its
+ * stored relevance. Returns the fresh papers shown, in their order, and the ids of the live cards not.
+ */
+export function cutByRanking<P>(
+  live: { id: string; paperId: string; ranking?: { relevance: number } | undefined }[], fresh: P[],
+  paperIdOf: (paper: P) => string, ranking: ScopeRanking,
+): { kept: P[]; folded: Set<string> } {
+  const shown = ranking.shown([
+    ...live.map((card) => ({ paperId: card.paperId, relevance: card.ranking?.relevance ?? 0 })),
+    ...fresh.map((paper) => ({ paperId: paperIdOf(paper), relevance: 0 })),
+  ])
+  return {
+    kept: fresh.filter((paper) => shown.has(paperIdOf(paper))),
+    folded: new Set(live.filter((card) => !shown.has(card.paperId)).map((card) => card.id)),
   }
 }
 

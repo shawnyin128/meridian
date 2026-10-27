@@ -140,11 +140,18 @@ const JumpContext = createContext<{
 } | null>(null)
 /** The screen these children belong to: every mounted screen keeps running, so each must know its own. */
 const SlotContext = createContext<ScreenKey | null>(null)
+/**
+ * A row a request to open Settings lands on: `id`, the id its category gives it, inside the group
+ * `within` names when ids repeat across groups. A new object lands again.
+ */
+export type SettingsTarget = { id: string; within?: string }
+
 const SettingsContext = createContext<{
   open: boolean
   requestedCategory: SettingsCategory | null
+  requestedTarget: SettingsTarget | null
   setOpen: (open: boolean) => void
-  openCategory: (category: SettingsCategory) => void
+  openCategory: (category: SettingsCategory, target?: SettingsTarget) => void
 } | null>(null)
 const PaperChatGripContext = createContext<{ grip: GripProps; collapsed: boolean } | null>(null)
 
@@ -245,13 +252,15 @@ export function useJump(): {
  * Returns the open state of the Settings modal. `open` becomes true when the user opens Settings from
  * the app menu. `setOpen` goes to Radix: Escape, a click on the overlay, and the modal's links to
  * other places all close it through this. The returned `setOpen` keeps the same reference throughout
- * the lifetime of the shell.
+ * the lifetime of the shell. `openCategory` opens Settings at `category`, and at the row `target` names
+ * there when given, which the category lands on as `requestedTarget`.
  */
 export function useSettingsOpen(): {
   open: boolean
   requestedCategory: SettingsCategory | null
+  requestedTarget: SettingsTarget | null
   setOpen: (open: boolean) => void
-  openCategory: (category: SettingsCategory) => void
+  openCategory: (category: SettingsCategory, target?: SettingsTarget) => void
 } {
   const state = useContext(SettingsContext)
   if (!state) throw new Error('useSettingsOpen needs AppShell')
@@ -449,6 +458,7 @@ export function AppShell({ screens, settings }: {
   const [today, setToday] = useState<string | null>(null)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [settingsCategory, setSettingsCategory] = useState<SettingsCategory | null>(null)
+  const [settingsTarget, setSettingsTarget] = useState<SettingsTarget | null>(null)
   const [bootError, setBootError] = useState<string | null>(null)
   const [notice, setNotice] = useState<NoticeContent | null>(null)
   const noticeSeq = useRef(0)
@@ -592,16 +602,18 @@ export function AppShell({ screens, settings }: {
   const paperCountState = useMemo(() => ({ count: paperCount }), [paperCount])
   const screenState = useMemo(() => ({ screen, entry, reentry }), [screen, entry, reentry])
   const vaultRevision = useMemo(() => ({ revision, bump }), [revision, bump])
-  const openSettingsCategory = useCallback((category: SettingsCategory) => {
+  const openSettingsCategory = useCallback((category: SettingsCategory, target?: SettingsTarget) => {
     setSettingsCategory(category)
+    setSettingsTarget(target ?? null)
     setSettingsOpen(true)
   }, [])
   const settingsState = useMemo(() => ({
     open: settingsOpen,
     requestedCategory: settingsCategory,
+    requestedTarget: settingsTarget,
     setOpen: setSettingsOpen,
     openCategory: openSettingsCategory,
-  }), [settingsCategory, settingsOpen, openSettingsCategory])
+  }), [settingsCategory, settingsTarget, settingsOpen, openSettingsCategory])
 
   // ⌘B on macOS, Ctrl+B elsewhere, toggles the sidebar; Escape peels the topmost dismissible layer;
   // "/" outside an editable element jumps to the nearest search field; the mouse's back button goes back.

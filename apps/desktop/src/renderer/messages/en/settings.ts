@@ -355,6 +355,12 @@ export const settings = {
     refreshProject: 'Refresh this project',
     core: 'Priority',
     setCoreAction: 'Mark as priority',
+    candidate: 'Candidate',
+    add: 'Add',
+    decline: 'Dismiss',
+    added: 'Added',
+    declined: 'Dismissed',
+    nameLabel: 'Direction name',
     failed: (n: number) => `${n} ${pluralEn(n, { one: 'direction', other: 'directions' })} failed`,
   },
   archived: {

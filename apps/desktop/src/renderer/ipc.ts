@@ -5,7 +5,7 @@ import type {
   ChatMessage, ChatMessageFields, ChatModelChoice, ChatRun, ChatSendResult, ChatSession, ChatWriting, ColourTheme,
   ColourThemeFile,
   ConclusionState, ContractMethod, Facet, FieldValue, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
-  DeliverySettings, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
+  DeliverySettings, DiscoveryDirectionParams, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
   ExtensionStatus, FeedEntry, FeedFields,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
   HarnessAddModelParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
@@ -356,9 +356,11 @@ export const discovery = {
   ),
   setIntent: (projectId: string, intentId: string, action: DiscoveryIntentAction) =>
     call<void>('discovery.intent', { projectId, intentId, action }),
-  /** Records the feedback; `less` and `known` move the entry to the trash and answer that trash entry. */
+  /** Adds, declines, reopens as a candidate or renames one of a project's directions. */
+  direction: (params: DiscoveryDirectionParams) => call<void>('discovery.direction', params),
+  /** Records the feedback, which moves the entry to the trash, and answers that trash entry. */
   feedback: (id: string, feedback: DiscoveryFeedback) =>
-    call<TrashedEntry | null>('discovery.feedback', { id, feedback }),
+    call<TrashedEntry>('discovery.feedback', { id, feedback }),
 }
 
 export const delivery = {

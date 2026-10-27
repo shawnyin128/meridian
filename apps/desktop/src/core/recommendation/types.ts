@@ -1,3 +1,4 @@
+import type { InboxEntry } from '../../shared/contract.js'
 import type { RemotePaper } from '../net/arxiv.js'
 
 export type RecommendationSeed = {
@@ -75,6 +76,32 @@ export type RefreshProgress = {
   poolStalled: boolean
 }
 
+/**
+ * One inbox entry a stream of a scope lists, as the scope's model learns from it: the Semantic
+ * Scholar batch ids its paper goes by, its `semanticId` first, then `ARXIV:<arXiv id>`; whether it left the feed, and why
+ * when that was stored; whether it was downloaded into the vault; its stored discovery feedback; the
+ * reasons that stream gave; and the library
+ * rating of the paper page it was added as, when there is one.
+ */
+export type CardSignal = {
+  paperIds: string[]
+  gone: boolean
+  downloaded: boolean
+  left?: string
+  feedback?: 'more' | 'less' | 'known'
+  reasons: { kind: string; label: string }[]
+  rating?: number
+  /** The path that scored the card last; none for a card no scope model scored. */
+  path?: string
+  /** Whether the feed shows the card. */
+  shown: boolean
+  /** Whether the vault holds its paper, by the page it was added as or by its arXiv id. */
+  owned: boolean
+}
+
+/** What the user did with a scope's papers: its cards, and the library rating of each rated paper of its project by batch id. */
+export type ScopeSignals = { cards: CardSignal[]; ratings: Record<string, number> }
+
 export type DiscoveryPreferences = {
   coreIntentId: string | null
   disabledIntentIds: string[]
@@ -117,3 +144,27 @@ export type PaperImpact = {
 export type ScholarlyMetadata = {
   lookup(arxivIds: string[]): Promise<Map<string, PaperImpact>>
 }
+
+/** How a refresh scored one paper: its calibrated score in [0, 1], the path that scored it and the reasons it shows. */
+export type PaperScore = { relevance: number; path: 'api' | 'fallback'; reasons: InboxEntry['reasons'] }
+
+/**
+ * A refresh's ranking of the papers of one scope, each named by its Semantic Scholar batch id: the
+ * `semanticId` of a paper or card that has one, else `ARXIV:` and its arXiv id.
+ */
+export type ScopeRanking = {
+  /** How the refresh scored `paperId`; undefined for a paper it did not score. */
+  scoreOf(paperId: string): PaperScore | undefined
+  /** The papers of `candidates` the scope shows; a paper the refresh did not score ranks by its `relevance`. */
+  shown(candidates: readonly { paperId: string; relevance: number }[]): Set<string>
+}
+
+/** A card the feed shows for one scope: its id, its paper's Semantic Scholar batch id and its text. */
+export type ScopeCard = { id: string; paperId: string; title: string; abstract: string }
+
+/**
+ * One paper the vault or the feed knows, by Semantic Scholar batch id: its title, short title and
+ * abstract, and how the user took it, when it came from the feed: added to the vault (`library`, or
+ * `rated` once rated 5), or queued to read later.
+ */
+export type KnownPaper = { title: string; shortTitle: string; abstract: string; taken?: 'library' | 'later' | 'rated' }
