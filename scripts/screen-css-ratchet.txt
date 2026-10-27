@@ -503,19 +503,19 @@ routes/ProjectDetail.css:5: .project-idea-row { grid-template-columns }
 routes/ProjectDetail.css:5: .project-idea-row { align-items }
 routes/ProjectDetail.css:5: .project-idea-row { gap }
 routes/ProjectDetail.css:8: @media (max-width:900px) .project-idea-row { grid-template-columns }
-routes/ProjectDetail.css:17: .wkpage.node-reading { gap }
-routes/ProjectDetail.css:21: @media (max-width:1150px) .wkpage.node-reading { gap }
-routes/ProjectDetail.css:26: .workspace-root { border }
-routes/ProjectDetail.css:26: .workspace-root { background }
-routes/ProjectDetail.css:26: .workspace-root { color }
-routes/ProjectDetail.css:26: .workspace-root { font }
-routes/ProjectDetail.css:26: .workspace-root { text-align }
-routes/ProjectDetail.css:26: .workspace-root { cursor }
-routes/ProjectDetail.css:26: .workspace-root { padding }
-routes/ProjectDetail.css:27: .workspace-kinds { margin-bottom }
-routes/ProjectDetail.css:28: .workspace-form .form-input[type="number"] { -moz-appearance }
-routes/ProjectDetail.css:29: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
-routes/ProjectDetail.css:29: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
+routes/ProjectDetail.css:15: .wkpage.node-reading { gap }
+routes/ProjectDetail.css:19: @media (max-width:1150px) .wkpage.node-reading { gap }
+routes/ProjectDetail.css:24: .workspace-root { border }
+routes/ProjectDetail.css:24: .workspace-root { background }
+routes/ProjectDetail.css:24: .workspace-root { color }
+routes/ProjectDetail.css:24: .workspace-root { font }
+routes/ProjectDetail.css:24: .workspace-root { text-align }
+routes/ProjectDetail.css:24: .workspace-root { cursor }
+routes/ProjectDetail.css:24: .workspace-root { padding }
+routes/ProjectDetail.css:25: .workspace-kinds { margin-bottom }
+routes/ProjectDetail.css:26: .workspace-form .form-input[type="number"] { -moz-appearance }
+routes/ProjectDetail.css:27: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { appearance }
+routes/ProjectDetail.css:27: .workspace-form .form-input[type="number"]::-webkit-inner-spin-button { margin }
 routes/Projects.css:12: .project-card-label { color }
 routes/Projects.css:12: .project-card-label { font-size }
 routes/Projects.css:12: .project-card-label { font-weight }

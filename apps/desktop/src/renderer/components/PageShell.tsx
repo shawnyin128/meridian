@@ -89,7 +89,7 @@ export function PageTitle({ children, label, count, rename, className, ...props 
 /**
  * The only main scrolling area of the page; its top and bottom fade while content is hidden past them.
  * Its content keeps to the page's column: `column: 'page'` for list screens, `prose` for pages that are
- * read, such as a Wiki page or a project. A `fill` body does not scroll: its content takes its height
+ * read, such as a Wiki page. A `fill` body does not scroll: its content takes its height
  * and scrolls inside, as a table does.
  */
 export const PageBody = forwardRef<HTMLDivElement, HTMLAttributes<HTMLDivElement> & {
