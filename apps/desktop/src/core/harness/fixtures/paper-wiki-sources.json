@@ -1,0 +1,172 @@
+{
+ "cases": [
+  {
+   "name": "one references heading followed by entries",
+   "abstract": "We serve language models with paged KV memory, which cuts waste to under 5%.",
+   "pages": [
+    {
+     "number": 1,
+     "text": "Paged attention  Abstract  We serve language models with paged KV mem- ory, which cuts waste to under 4%.  1 Introduction  Serving is memory bound."
+    },
+    {
+     "number": 2,
+     "text": "We thank the reviewers.  References  [1] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 1. In Proceedings of the Systems Conference. 100-109. [2] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 2. In Proceedings of the Systems Conference. 101-110. [3] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 3. In Proceedings of the Systems Conference. 102-111."
+    },
+    {
+     "number": 3,
+     "text": "A. Implementation Details  The draft head reads the target features, as in speculative sampling (Leviathan et al., 2023), before the token is sampled."
+    }
+   ],
+   "sent": [
+    "same",
+    "We thank the reviewers.  References",
+    "same"
+   ],
+   "abstractSent": true
+  },
+  {
+   "name": "whole pages of entries after the heading, up to the page where the appendix starts",
+   "abstract": "We serve language models with paged KV memory, which cuts waste to under 5%.",
+   "pages": [
+    {
+     "number": 1,
+     "text": "Paged attention  Abstract  We serve language models with paged KV mem- ory, which cuts waste to under 4%.  1 Introduction  Serving is memory bound."
+    },
+    {
+     "number": 2,
+     "text": "We thank the reviewers.  References  [1] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 1. In Proceedings of the Systems Conference. 100-109. [2] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 2. In Proceedings of the Systems Conference. 101-110. [3] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 3. In Proceedings of the Systems Conference. 102-111."
+    },
+    {
+     "number": 3,
+     "text": "[4] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 4. In Proceedings of the Systems Conference. 100-109. [5] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 5. In Proceedings of the Systems Conference. 101-110. [6] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 6. In Proceedings of the Systems Conference. 102-111."
+    },
+    {
+     "number": 4,
+     "text": "[7] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 7. In Proceedings of the Systems Conference. 100-109. [8] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 8. In Proceedings of the Systems Conference. 101-110. [9] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 9. In Proceedings of the Systems Conference. 102-111.  B. Numeric appendix  Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. Throughput rises with batch size until memory runs out. "
+    },
+    {
+     "number": 5,
+     "text": "A. Implementation Details  The draft head reads the target features, as in speculative sampling (Leviathan et al., 2023), before the token is sampled."
+    }
+   ],
+   "sent": [
+    "same",
+    "We thank the reviewers.  References",
+    "",
+    "same",
+    "same"
+   ],
+   "abstractSent": true
+  },
+  {
+   "name": "several references headings",
+   "abstract": "We serve language models with paged KV memory, which cuts waste to under 5%.",
+   "pages": [
+    {
+     "number": 1,
+     "text": "Paged attention  Abstract  We serve language models with paged KV mem- ory, which cuts waste to under 4%.  1 Introduction  Serving is memory bound."
+    },
+    {
+     "number": 2,
+     "text": "Main text.  References  [1] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 1. In Proceedings of the Systems Conference. 100-109. [2] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 2. In Proceedings of the Systems Conference. 101-110. [3] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 3. In Proceedings of the Systems Conference. 102-111."
+    },
+    {
+     "number": 3,
+     "text": "Appendix.  References  [4] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 4. In Proceedings of the Systems Conference. 100-109. [5] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 5. In Proceedings of the Systems Conference. 101-110. [6] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 6. In Proceedings of the Systems Conference. 102-111."
+    }
+   ],
+   "sent": [
+    "same",
+    "same",
+    "same"
+   ],
+   "abstractSent": true
+  },
+  {
+   "name": "no references heading",
+   "abstract": "We serve language models with paged KV memory, which cuts waste to under 5%.",
+   "pages": [
+    {
+     "number": 1,
+     "text": "Paged attention  Abstract  We serve language models with paged KV mem- ory, which cuts waste to under 4%.  1 Introduction  Serving is memory bound."
+    },
+    {
+     "number": 2,
+     "text": "Related work. Prior work on paging is in the References of [3]. [1] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 1. In Proceedings of the Systems Conference. 100-109. [2] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 2. In Proceedings of the Systems Conference. 101-110. [3] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 3. In Proceedings of the Systems Conference. 102-111."
+    },
+    {
+     "number": 3,
+     "text": "[4] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 4. In Proceedings of the Systems Conference. 100-109. [5] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 5. In Proceedings of the Systems Conference. 101-110. [6] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 6. In Proceedings of the Systems Conference. 102-111."
+    }
+   ],
+   "sent": [
+    "same",
+    "same",
+    "same"
+   ],
+   "abstractSent": true
+  },
+  {
+   "name": "text after the heading that does not read as entries",
+   "abstract": "We serve language models with paged KV memory, which cuts waste to under 5%.",
+   "pages": [
+    {
+     "number": 1,
+     "text": "Paged attention  Abstract  We serve language models with paged KV mem- ory, which cuts waste to under 4%.  1 Introduction  Serving is memory bound."
+    },
+    {
+     "number": 2,
+     "text": "Table 3 lists the sources.  References  A. Implementation Details  The draft head reads the target features, as in speculative sampling (Leviathan et al., 2023), before the token is sampled."
+    },
+    {
+     "number": 3,
+     "text": "[1] Mei Lin, Arjun Rao, and Sofia Costa. 2015. Paged attention for serving model 1. In Proceedings of the Systems Conference. 100-109. [2] Mei Lin, Arjun Rao, and Sofia Costa. 2016. Paged attention for serving model 2. In Proceedings of the Systems Conference. 101-110. [3] Mei Lin, Arjun Rao, and Sofia Costa. 2017. Paged attention for serving model 3. In Proceedings of the Systems Conference. 102-111."
+    }
+   ],
+   "sent": [
+    "same",
+    "same",
+    "same"
+   ],
+   "abstractSent": true
+  },
+  {
+   "name": "an abstract page 1 holds once hyphens, LaTeX and case are set aside",
+   "abstract": "We serve language models with paged KV memory, which cuts waste to under $\\mathbf{4\\%}$.",
+   "pages": [
+    {
+     "number": 1,
+     "text": "Paged attention  Abstract  We serve language models with paged KV mem- ory, which cuts waste to under 4%.  1 Introduction  Serving is memory bound."
+    },
+    {
+     "number": 2,
+     "text": "A. Implementation Details  The draft head reads the target features, as in speculative sampling (Leviathan et al., 2023), before the token is sampled."
+    }
+   ],
+   "sent": [
+    "same",
+    "same"
+   ],
+   "abstractSent": false
+  },
+  {
+   "name": "an abstract whose words differ from page 1",
+   "abstract": "We serve language models with paged KV memory, which cuts waste to under 5%.",
+   "pages": [
+    {
+     "number": 1,
+     "text": "Paged attention  Abstract  We serve language models with paged KV mem- ory, which cuts waste to under 4%.  1 Introduction  Serving is memory bound."
+    },
+    {
+     "number": 2,
+     "text": "A. Implementation Details  The draft head reads the target features, as in speculative sampling (Leviathan et al., 2023), before the token is sampled."
+    }
+   ],
+   "sent": [
+    "same",
+    "same"
+   ],
+   "abstractSent": true
+  }
+ ]
+}
