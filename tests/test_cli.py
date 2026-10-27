@@ -335,6 +335,12 @@ class CliTests(unittest.TestCase):
             claude = (CLAUDE_PLUGIN_SKILL_ROOT / skill_name / "SKILL.md").read_text(encoding="utf-8")
             self.assertEqual(agent, codex, skill_name)
             self.assertEqual(claude, codex, skill_name)
+            references = {
+                root: {path.name: path.read_text(encoding="utf-8") for path in (root / skill_name / "references").glob("*.md")}
+                for root in (AGENT_PLUGIN_SKILL_ROOT, CODEX_PLUGIN_SKILL_ROOT, CLAUDE_PLUGIN_SKILL_ROOT)
+            }
+            self.assertEqual(references[AGENT_PLUGIN_SKILL_ROOT], references[CODEX_PLUGIN_SKILL_ROOT], skill_name)
+            self.assertEqual(references[CLAUDE_PLUGIN_SKILL_ROOT], references[CODEX_PLUGIN_SKILL_ROOT], skill_name)
 
     def test_agent_surfaces_name_findings_and_experiment_conclusions_with_the_app_words(self) -> None:
         def helps(parser: argparse.ArgumentParser) -> list[str]:

@@ -227,10 +227,12 @@ concerns a Lab node, including inside a coding task.
   when the record is new) and the new `next_action`. When the work produced no
   experiment, update `doing` and `next_action` through `meridian.lab_update`
   and add the `完成` event from Keeping the App informed. In that
-  `lab_result` or `lab_update` call, decide the node's state: set `state` to
-  `supported` when valid evidence supports the node; when it needs repair or
-  has failed, ask the user, then set `repairable` or `dead` with the accepted
-  `user_confirmation`. Otherwise it stays `unresolved`. Marking a node
+  `lab_result` or `lab_update` call, decide the node's state. When the node has
+  one, the row of its declared decision table that the result matched sets the
+  state (see Discriminating Design). Otherwise set `state` to `supported` when
+  valid evidence supports the node. When it needs repair or has failed, ask the
+  user, then set `repairable` or `dead` with the accepted `user_confirmation`.
+  Otherwise it stays `unresolved`. Marking a node
   `supported` or `dead` removes it from `active_nodes` automatically, in the
   same write.
 - **Tasks.** When the user asks to work on a planned task, read it with
@@ -242,7 +244,9 @@ concerns a Lab node, including inside a coding task.
 - **Experiment conclusion.** When a node becomes `supported` or `dead`, record
   what the project actually found with a `record_conclusion` change: `text` is
   the experiment conclusion in one line, `evidence` lists the experiment ids
-  attached to the node that show it. The App lists it under 实验结论 as
+  attached to the node that show it. When the node has a declared decision
+  table, `text` names the decision-table row that matched, never a summary
+  written after the fact. The App lists it under 实验结论 as
   unverified until the user verifies it. Never write an experiment conclusion
   the node's experiments do not show; when it changes, record it again and the
   user verifies it anew.
@@ -543,7 +547,7 @@ B dynamic width (parent A), C adaptive length (parent B), D shared-KV head
 ### Wiki-Grounded Feasibility Review
 
 Use when the user asks whether an idea, path, repair, or experiment direction is
-plausible.
+plausible, and before designing any experiment for a node.
 
 Minimum completion:
 
@@ -552,11 +556,23 @@ Minimum completion:
 - Read selected canonical pages with `meridian.read` when the feasibility
   judgment depends on a paper, method, concept, finding, or evidence section.
 - Trace provenance with `meridian.trace` when a finding would affect a decision.
-- Separate source facts, wiki synthesis, user insight, local experiment
-  evidence, and uncertainty.
-- End with a next research move: refine the node, design evidence, propose a
-  finding via `wiki_propose`, or prepare a Research Grounding
-  Injection for coding work.
+- Frame the claim: separate the observation, the target claim, the proposed
+  mechanism, and the evidence. A claim with nothing measured is a hypothesis.
+  For a cross-domain analogy, name the shared mathematical, causal, or
+  computational structure and the assumptions that break; shared vocabulary is
+  not a bridge.
+- Name the competing explanations: M1 is the proposed mechanism, M2 the
+  strongest charitable alternative for the same result, and M0 one
+  consequential null or artifact (capacity, compute, leakage, measurement).
+  They are comparison roles that may coexist, not an exhaustive list.
+- Keep an evidence ledger: mark each statement `Source-supported` (with the
+  Paper Wiki anchor from `meridian.trace`), `Inference`, or `New hypothesis`.
+  Wiki synthesis is `Inference` unless its trace reaches a source; keep user
+  insight and local experiment evidence apart from source claims. Novelty
+  stays unresolved without a literature check.
+- End with a next research move: refine the node, design evidence (Discriminating
+  Design below), propose a finding via `wiki_propose`, or prepare a Research
+  Grounding Injection for coding work.
 
 Example:
 
@@ -565,6 +581,42 @@ The user asks whether a repair path is credible. Retrieve relevant mechanism
 and failure-boundary pages, summarize what supports or weakens the path, and
 identify the smallest evidence needed next.
 ```
+
+#### Discriminating Design
+
+Designing a test does not mean running it. With the claim framed and M1, M2
+and M0 named:
+
+1. Before choosing the experiment, build a prediction matrix: for each
+   candidate intervention or regime, what M1, M2 and M0 predict on one
+   observable metric, and why. Choose the one where they differ in sign,
+   scaling, threshold, localization, timing, or failure mode. Label unknown or
+   shared predictions instead of inventing differences; a large effect every
+   explanation predicts discriminates nothing. If no feasible regime separates
+   them, name the smallest extra measurement that would.
+2. Choose the smallest sufficient substrate: analytic, synthetic, an isolated
+   component, a small learned system, or the full system. Take the lowest
+   level that keeps the disputed mechanism, and state what the test preserves,
+   removes, and leaves untested.
+3. Declare the decision table before the deciding run, with this node's
+   concrete patterns and thresholds. Check validity first, then the M1
+   contrast, then the expansion gate:
+
+   | Result pattern | Node state |
+   | --- | --- |
+   | A validity check failed | `repairable`, after the user confirms: repair, not a negative result |
+   | A valid M1-specific contrast passes the expansion gate | `supported`, plus child nodes for the expansion |
+   | A precise null excludes the required effect (the kill criterion) | `dead`, after the user confirms |
+   | Wide uncertainty, mixtures, or predictions every explanation shares | stays `unresolved` |
+
+   An imprecise null is never a kill. Each child node is its own `create_node`
+   ask. Once the user settles the table, record it on the node in one
+   `record_history` line. A table written after the result is exploratory and
+   sets no state.
+
+Read `references/framework.md` for fork axes, substrate levels and analogy
+checks, `references/rubric.md` to check a design before presenting it, and
+`references/examples.md` for a worked speculative-decoding design.
 
 ### Research Prior Classification
 
@@ -637,7 +689,8 @@ Minimum completion:
 - Record experiments as independent evidence records under
   `.meridian/experiments/`.
 - Include question, primary target, targets and impacts, command/config/output,
-  result, validity, and interpretation.
+  result, validity, and interpretation. When the node has a declared decision
+  table, the interpretation names the row the result matched.
 - Record Research Prior state when the experiment design depends on a metric,
   baseline, prompt, evaluation protocol, ablation, probe, or failure claim.
 - Link experiments to nodes or proposals instead of copying results everywhere.
@@ -703,6 +756,9 @@ Minimum completion:
 - Include an `Official Benchmark Fidelity` block when implementation depends on
   an official benchmark, baseline, eval, metric, score, or leaderboard claim.
 - State the smallest development question or task as a coding implication.
+- When the node has a Discriminating Design, carry its intervention, fixed
+  controls, metric, data roles, budget, and decision table into the coding work
+  unchanged.
 - Include an `Implementation Integrity Gate` when the coding task has
   current-version behavior, data-layout, benchmark-contract, or fallback risk.
   Name the required current behavior, forbidden shortcuts, blocker-reporting

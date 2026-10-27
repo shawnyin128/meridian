@@ -87,6 +87,63 @@ class LabGraphTests(unittest.TestCase):
         self.assertIn("in the same ask that confirms `create_node`", placement)
         self.assertIn("ask about that pair instead of guessing", placement)
 
+    def test_lab_skill_sets_node_states_from_a_decision_table_declared_before_the_deciding_run(self) -> None:
+        repo_root = Path(__file__).resolve().parents[1]
+        for plugin in ("agent", "claude-code", "codex"):
+            skill_root = repo_root / "plugins" / plugin / "meridian/skills/lab"
+            with self.subTest(plugin=plugin):
+                skill = (skill_root / "SKILL.md").read_text(encoding="utf-8")
+                review = skill.split("### Wiki-Grounded Feasibility Review", 1)[1].split("\n### ", 1)[0]
+                self.assertIn("#### Discriminating Design", review)
+                feasibility, design = (" ".join(part.split()) for part in review.split("#### Discriminating Design", 1))
+
+                self.assertIn("separate the observation, the target claim, the proposed mechanism, and the evidence", feasibility)
+                self.assertIn("shared vocabulary is not a bridge", feasibility)
+                for role in ("M1 is the proposed mechanism", "M2 the strongest charitable alternative", "M0 one consequential null or artifact"):
+                    self.assertIn(role, feasibility)
+                for status in ("`Source-supported`", "`Inference`", "`New hypothesis`"):
+                    self.assertIn(status, feasibility)
+                self.assertIn("Paper Wiki anchor from `meridian.trace`", feasibility)
+                self.assertIn("Novelty stays unresolved without a literature check", feasibility)
+
+                self.assertIn("Before choosing the experiment, build a prediction matrix", design)
+                self.assertIn("analytic, synthetic, an isolated component, a small learned system, or the full system", design)
+                self.assertIn("before the deciding run", design)
+                self.assertIn("An imprecise null is never a kill.", design)
+
+                rows = {}
+                for line in review.splitlines():
+                    cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+                    if line.lstrip().startswith("|") and len(cells) == 2 and not set(cells[0]) <= {"-", " "}:
+                        rows[cells[0]] = cells[1]
+                self.assertEqual(
+                    {
+                        "A validity check failed": "`repairable`, after the user confirms: repair, not a negative result",
+                        "A valid M1-specific contrast passes the expansion gate": "`supported`, plus child nodes for the expansion",
+                        "A precise null excludes the required effect (the kill criterion)": "`dead`, after the user confirms",
+                        "Wide uncertainty, mixtures, or predictions every explanation shares": "stays `unresolved`",
+                    },
+                    {pattern: state for pattern, state in rows.items() if pattern != "Result pattern"},
+                )
+
+                for reference, marker in (
+                    ("framework.md", "## Fork axes"),
+                    ("rubric.md", "| Check |"),
+                    ("examples.md", "speculative decoding"),
+                ):
+                    self.assertIn(f"references/{reference}", design)
+                    self.assertIn(marker, (skill_root / "references" / reference).read_text(encoding="utf-8"))
+
+                completion = " ".join(skill.split("- **Completion.**", 1)[1].split("\n- **Tasks.**", 1)[0].split())
+                self.assertIn("the row of its declared decision table that the result matched sets the state", completion)
+                conclusion = " ".join(skill.split("- **Experiment conclusion.**", 1)[1].split("\n- **Leaving.**", 1)[0].split())
+                self.assertIn("names the decision-table row that matched, never a summary written after the fact", conclusion)
+                injection = " ".join(skill.split("### Research Grounding Injection", 1)[1].split("\n### ", 1)[0].split())
+                self.assertIn(
+                    "carry its intervention, fixed controls, metric, data roles, budget, and decision table into the coding work unchanged",
+                    injection,
+                )
+
     def test_materialize_graph_uses_core_research_nodes_only(self) -> None:
         with TemporaryDirectory() as tmp:
             root = Path(tmp)
