@@ -8,6 +8,9 @@
 .inline-message--warning{color:var(--warn-text)}
 .inline-message--info{color:var(--sec)}
 .inline-message--done{color:var(--good-text)}
+/* A field's height (FormControls.css), so the message and the field it stands for swap without a jump. */
+.inline-message--field{height:30px}
+.inline-message--field .inline-message-text{display:flex}
 .inline-message--box{padding:var(--sp-8) var(--sp-12);border-radius:var(--r-md);background:var(--tint-mut)}
 .inline-message-lead{display:flex;flex:none;align-items:center}
 .inline-message-lead svg{width:14px;height:14px}

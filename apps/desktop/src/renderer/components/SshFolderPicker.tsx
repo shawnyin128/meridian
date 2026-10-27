@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InputHTMLAttributes } from 'react'
 import type { SshFolders } from '../../shared/contract.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
+import { useDebounced } from '../hooks/useDebounced.js'
 import { ssh } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commitKeys } from '../lib/keyboard.js'
@@ -104,6 +105,36 @@ export function useSshFolders(): SshFolderChoice {
   return { folder, opening, issue, path, edited, type, connect, open, reset }
 }
 
+/** How long a host and port stay unchanged before they are checked. */
+const SETTLE_MS = 600
+
+/** Whether an SSH host was reached: nothing to check, checking, reached, or failed with Core's reason. */
+export type SshReach =
+  | { state: 'idle' | 'checking' | 'ready'; issue: null }
+  | { state: 'failed'; issue: string }
+
+/**
+ * Checks whether `target` can be reached by listing its remote home through Core, once it settles:
+ * `SETTLE_MS` after it last changed, or at `settle`, whichever comes first; a settled target is
+ * checked once. A null target or an empty host is not checked. A change of target drops the check
+ * before it, whose answer is then ignored, and goes back to checking.
+ */
+export function useSshReach(target: SshTarget | null): SshReach & { settle: () => void } {
+  const { folder, issue, connect, reset } = useSshFolders()
+  const host = target?.host ?? ''
+  const port = target?.port
+  const key = `${host}\n${port ?? ''}`
+  const [settledKey, settle] = useDebounced(key, SETTLE_MS)
+  useEffect(() => { reset() }, [key, reset])
+  useEffect(() => {
+    if (host !== '' && settledKey === key) connect({ host, ...(port === undefined ? {} : { port }) })
+  }, [settledKey, key, host, port, connect])
+
+  if (host === '') return { state: 'idle', issue: null, settle }
+  if (folder !== null) return { state: 'ready', issue: null, settle }
+  return issue === null ? { state: 'checking', issue: null, settle } : { state: 'failed', issue, settle }
+}
+
 /**
  * The host field of an SSH connection. It offers the user's `Host` aliases that contain the typed
  * text, read once when it mounts, and keeps whatever host is typed. Typing, a click or ↓ shows the
@@ -111,7 +142,7 @@ export function useSshFolders(): SshFolderChoice {
  * field, after which Enter submits the form it sits in. Esc or leaving the field hides them. A failed
  * read of the aliases goes to `onError`; other props go to the input.
  */
-export function SshHostField({ value, onValue, onError, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
+export function SshHostField({ value, onValue, onError, onBlur, ...props }: Omit<InputHTMLAttributes<HTMLInputElement>, 'value' | 'onChange'> & {
   value: string
   onValue: (host: string) => void
   onError: (error: unknown) => void
@@ -144,7 +175,10 @@ export function SshHostField({ value, onValue, onError, ...props }: Omit<InputHT
             setShown(true)
           }}
           onClick={() => setShown(true)}
-          onBlur={() => setShown(false)}
+          onBlur={(event) => {
+            setShown(false)
+            onBlur?.(event)
+          }}
           onKeyDown={(event) => {
             if (event.key === 'ArrowDown') setShown(true)
             // Enter on an alias puts it in the field instead of submitting the form.

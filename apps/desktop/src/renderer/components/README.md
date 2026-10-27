@@ -254,8 +254,8 @@ Current shared contracts:
   to a typed path (absolute or under `~`, hidden folders too), then its subfolders in a list five rows high,
   the loading state while the next folder lists, and a failure under the list. `SshFolderPicker` is the
   folder picker of a host: a dialog stacked on the one that opened it and titled with the host, holding a
-  `SshFolderBrowser` that starts at the folder asked for or the remote home, with Cancel and Choose. The project's workspace dialog puts the host field, then a `DirectoryField` whose folder
-  button opens the picker, and any other choice of a remote folder reuses them.
+  `SshFolderBrowser` that starts at the folder asked for or the remote home, with Cancel and Choose. `useSshReach` checks a host once it settles. The project's workspace dialog puts the host
+  field, then, once the host is reached, a `DirectoryField` whose folder button opens the picker, and any other choice of a remote folder reuses them.
 - `ClearableInput`: the shared controlled single-line field with one trailing clear action. `SearchField` is
   the one search, a `ClearableInput` with the search glyph at its start: the sidebar search, the command
   palette and the library search configure the same focus restoration, icon geometry, and accessible naming.

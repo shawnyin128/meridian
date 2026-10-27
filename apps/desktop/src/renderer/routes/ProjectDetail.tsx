@@ -57,7 +57,8 @@ import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FieldRow, FieldRows, FormInput } from '../components/FormControls.js'
-import { SshFolderPicker, SshHostField } from '../components/SshFolderPicker.js'
+import { InlineMessage } from '../components/InlineMessage.js'
+import { SshFolderPicker, SshHostField, useSshReach } from '../components/SshFolderPicker.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -597,6 +598,7 @@ export function ProjectDetail({
 
   const sshPortNumber = sshPort.trim() === '' ? undefined : Number(sshPort)
   const sshTarget = { host: sshHost.trim(), ...(sshPortNumber === undefined ? {} : { port: sshPortNumber }) }
+  const reach = useSshReach(workspaceOpen && workspaceMode === 'ssh' ? sshTarget : null)
 
   const connectSshWorkspace = async () => {
     setBinding('ssh')
@@ -792,6 +794,7 @@ export function ProjectDetail({
           <CommitActions
             place="foot" onCancel={() => setWorkspaceOpen(false)}
             saving={binding !== null}
+            canSave={workspaceMode === 'local' || (reach.state === 'ready' && sshPath.trim() !== '')}
             {...workspaceMode === 'local'
               ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
               : { form: 'workspaceSsh', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }}
@@ -835,23 +838,29 @@ export function ProjectDetail({
                     <FieldRow label={m.project.workspace.hostLabel}>
                       <SshHostField
                         value={sshHost} autoFocus required placeholder={m.project.workspace.hostPlaceholder}
-                        onValue={setSshHost} onError={report}
+                        onValue={setSshHost} onError={report} onBlur={reach.settle}
                       />
                     </FieldRow>
                     <FieldRow label={m.project.workspace.portLabel}>
                       <FormInput
                         appearance="field" value={sshPort} type="number" min={1} max={65_535}
                         placeholder={m.project.workspace.portLabel}
-                        onChange={(event) => setSshPort(event.target.value)}
+                        onChange={(event) => setSshPort(event.target.value)} onBlur={reach.settle}
                       />
                     </FieldRow>
                     <FieldRow label={m.project.workspace.pathLabel}>
-                      <DirectoryField
-                        value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
-                        chooseLabel={m.project.workspace.chooseLocal} chooseDisabled={sshTarget.host === ''}
-                        onChoose={() => setPickingSsh(true)}
-                        onChange={(event) => setSshPath(event.target.value)}
-                      />
+                      {reach.state === 'failed'
+                        ? <InlineMessage tone="error" variant="field">{reach.issue}</InlineMessage>
+                        : reach.state === 'checking'
+                          ? <LoadingPlaceholder shape="ring" holds="field" />
+                          : (
+                            <DirectoryField
+                              value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
+                              chooseLabel={m.project.workspace.chooseLocal} disabled={reach.state === 'idle'}
+                              onChoose={() => setPickingSsh(true)}
+                              onChange={(event) => setSshPath(event.target.value)}
+                            />
+                          )}
                     </FieldRow>
                   </FieldRows>
                 </form>
