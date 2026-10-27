@@ -1351,9 +1351,10 @@ test('详情面板保留完整列与列操作,Escape 收的是详情面板', asy
   await expect(win.locator('.pdetail')).toHaveCount(1)
   const detailSlot = win.locator('.paper-detail-slot')
   // The panel takes its place at once and only its content moves in, as every side panel does.
+  // Its only transition is the scrollbar thumb's fade, which every element carries.
   expect(await detailSlot.evaluate((element) => [
-    getComputedStyle(element).transitionDuration, getComputedStyle(element.firstElementChild!).animationName,
-  ])).toEqual(['0s', 'side-panel-in'])
+    getComputedStyle(element).transitionProperty, getComputedStyle(element.firstElementChild!).animationName,
+  ])).toEqual(['--sb-thumb', 'side-panel-in'])
   expect(await win.locator('.ptable thead th').allTextContents()).toEqual(headersBefore)
   await expect(win.locator('.ptable thead [aria-label="新建列"]')).toBeEnabled()
   await win.keyboard.press('Escape')
