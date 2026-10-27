@@ -1,5 +1,5 @@
 import { EventEmitter } from 'node:events'
-import { chmodSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { chmodSync, cpSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
@@ -8,15 +8,18 @@ import type {
   HarnessPaperWikiQuality, HarnessPlan, PaperReading, PaperRow, WikiPaper,
 } from '../../shared/contract.js'
 import { callFailure } from '../call-error.js'
+import { extractPdfPages } from '../paper-library/index.js'
 import type { VaultStore } from '../vault.js'
+import { createVaultStore } from '../vault-store.js'
 import { type CliFailureKind, CliRunError } from './cli/child.js'
 import { type CliCall, type CliRunner, createCliRunner } from './cli/runner.js'
 import type { HarnessExecution } from './cost-gate.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
 import type { PaperWikiDraft } from './paper-wiki.js'
 import {
-  citablePages, createPaperWikiHarnessRunner, paperWikiHarnessError, projectPaperWikiReview, renderPaperWikiDraft,
-  validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
+  citablePages, createPaperWikiHarnessRunner, pageHoldsAbstract, paperWikiHarnessError, projectPaperWikiReview,
+  renderPaperWikiDraft, validatePaperWikiDraftScope, validatePaperWikiDraftSemantics, validatePaperWikiQuality,
+  withoutBibliography,
 } from './paper-wiki.js'
 import { HARNESS_CAPABILITIES, HARNESS_PROTOCOL_VERSION } from './protocol.js'
 import { type HarnessChild, HarnessRpcError } from './rpc.js'
@@ -554,5 +557,151 @@ describe('Paper Wiki run on a subscription CLI', () => {
     child.send({ type: 'response', id: 1, ok: true, result: envelope() })
     await running
     runner.close()
+  })
+})
+
+/** A seeded test library (`node scripts/test-library.mjs seed`), whose four real arXiv PDFs the cases below read. */
+const testLibrary = process.env['MERIDIAN_TEST_LIBRARY']
+const testLibraryIt = testLibrary === undefined ? it.skip : it
+
+/**
+ * The test library's real papers: their page count, the page with the references heading, the last
+ * page of reference entries, one entry's text, and whether page 1 holds the stored abstract.
+ */
+const REAL_PAPERS = [
+  { id: '2401-15077', pages: 13, heading: 9, last: 11, entry: 'NEFTune: Noisy em- beddings improve instruction finetuning', abstractOnPage1: true },
+  { id: '2309-06180', pages: 16, heading: 14, last: 16, entry: 'Check- mate: Breaking the memory wall', abstractOnPage1: true },
+  { id: '2402-02750', pages: 15, heading: 10, last: 11, entry: 'The refinedweb dataset for falcon llm', abstractOnPage1: true },
+  { id: '2401-10774', pages: 27, heading: 10, last: 12, entry: 'Judging llm-as-a-judge with mt-bench and chatbot arena', abstractOnPage1: false },
+]
+
+/** What a Paper Wiki run on `store` answers Harness's `papers.get` and `papers.source` reads of paper `id`. */
+async function sentPaper(store: VaultStore, id: string) {
+  const child = new FakeHarness()
+  const runner = createPaperWikiHarnessRunner({
+    store, model: { runtime: async () => API_MODEL } as unknown as HarnessModelConfig, cli: vi.fn<CliRunner>(), launch: () => child,
+  })
+  const running = runner.run({ ...execution(), plan: { ...execution().plan, targetId: id } }).catch(() => undefined)
+  child.ready()
+  await child.frame()
+  const read = async (method: string) => {
+    const reply = child.frame()
+    child.send({ type: 'callback', id: 1, callbackId: method, method, params: { id } })
+    return ((await reply) as { result: unknown }).result
+  }
+  const paper = await read('papers.get') as Record<string, unknown>
+  const source = await read('papers.source') as { pages: Array<{ number: number; text: string }> }
+  child.send({ type: 'error', id: 1, ok: false, error: { kind: 'model_error', message: 'stand-in ends the run' } })
+  await running
+  runner.close()
+  return { paper, pages: source.pages }
+}
+
+describe('What a Paper Wiki run sends of its paper', () => {
+  testLibraryIt('leaves out each real paper\'s bibliography text but keeps every page, and every other page\'s text as extracted', async () => {
+    const vault = mkdtempSync(join(tmpdir(), 'meridian-wiki-ingest-'))
+    cpSync(join(testLibrary!, 'library'), vault, { recursive: true })
+    try {
+      const store = createVaultStore(vault)
+      for (const paper of REAL_PAPERS) {
+        const extracted = await extractPdfPages(store.paperSource(paper.id))
+        const sent = await sentPaper(store, paper.id)
+        expect(extracted.map((page) => page.text).join(' ')).toContain(paper.entry)
+        expect(sent.pages.map((page) => page.number)).toEqual(Array.from({ length: paper.pages }, (_, at) => at + 1))
+        for (const [at, page] of sent.pages.entries()) {
+          const original = extracted[at]!.text
+          if (page.number === paper.heading) {
+            expect(page.text).toMatch(/\sReferences$/u)
+            expect(original.startsWith(page.text)).toBe(true)
+          } else if (page.number > paper.heading && page.number <= paper.last) {
+            expect(page.text).toBe('')
+          } else {
+            expect(page.text).toBe(original)
+          }
+        }
+        expect(sent.pages.map((page) => page.text).join(' ')).not.toContain(paper.entry)
+        const stored = store.getPaper(paper.id)
+        expect(stored.abstract).toBeTruthy()
+        expect(sent.paper).toEqual({
+          id: stored.id, title: stored.title, authors: stored.authors, year: stored.year, venue: stored.venue,
+          identifier: stored.identifier, ...(paper.abstractOnPage1 ? {} : { abstract: stored.abstract }),
+        })
+      }
+    } finally {
+      rmSync(vault, { recursive: true, force: true })
+    }
+  })
+
+  testLibraryIt('sends a real paper whole when its references heading is gone', async () => {
+    const vault = mkdtempSync(join(tmpdir(), 'meridian-wiki-ingest-'))
+    cpSync(join(testLibrary!, 'library'), vault, { recursive: true })
+    try {
+      const store = createVaultStore(vault)
+      for (const paper of REAL_PAPERS) {
+        const unheaded = (await extractPdfPages(store.paperSource(paper.id)))
+          .map((page) => ({ ...page, text: page.text.replace(/\sReferences\s/gu, ' Literature ') }))
+        expect(withoutBibliography(unheaded)).toEqual(unheaded)
+      }
+    } finally {
+      rmSync(vault, { recursive: true, force: true })
+    }
+  })
+
+  const entries = (from: number) => Array.from({ length: 12 }, (_, at) =>
+    `[${from + at}] Mei Lin, Arjun Rao, and Sofia Costa. 20${10 + at}. Paged attention for serving model ${from + at}. In Proceedings of the Systems Conference. 1${at}1–1${at}9.`).join(' ')
+  const appendix = 'A. Implementation Details  The draft head reads the second-to-top features of the target model, as in speculative sampling (Leviathan et al., 2023), and it predicts the next feature from them before the token is sampled. '.repeat(4)
+
+  it('sends every page unchanged when no page has a references heading', () => {
+    const pages = [
+      { number: 1, text: 'Paged attention  Abstract  We serve models with paged memory.' },
+      { number: 2, text: `Related work. ${entries(1)}` },
+      { number: 3, text: entries(13) },
+    ]
+    expect(withoutBibliography(pages)).toEqual(pages)
+  })
+
+  it('leaves out the references from their heading through the last whole page of entries, and keeps the appendix after them', () => {
+    const pages = [
+      { number: 1, text: 'Paged attention  Abstract  We serve models with paged memory.' },
+      { number: 2, text: `We thank the reviewers.  References  ${entries(1)}` },
+      { number: 3, text: entries(13) },
+      { number: 4, text: appendix },
+      { number: 5, text: entries(25) },
+    ]
+    expect(withoutBibliography(pages)).toEqual([
+      pages[0], { number: 2, text: 'We thank the reviewers.  References' }, { number: 3, text: '' }, pages[3], pages[4],
+    ])
+  })
+
+  it('keeps a page where the reference entries give way to the appendix', () => {
+    const pages = [
+      { number: 1, text: `We thank the reviewers.  References  ${entries(1)}` },
+      { number: 2, text: `${entries(13)}  B. Numeric appendix  ${'Throughput rises with batch size until memory runs out. '.repeat(20)}` },
+      { number: 3, text: appendix },
+    ]
+    expect(withoutBibliography(pages)).toEqual([{ number: 1, text: 'We thank the reviewers.  References' }, pages[1], pages[2]])
+  })
+
+  it('sends every page unchanged when the text after the heading does not read as reference entries', () => {
+    const pages = [
+      { number: 1, text: 'Paged attention  Abstract  We serve models with paged memory.' },
+      { number: 2, text: `Table 3 lists the sources.  References  ${appendix}` },
+      { number: 3, text: entries(1) },
+    ]
+    expect(withoutBibliography(pages)).toEqual(pages)
+  })
+
+  it('sends every page unchanged when more than one page has a references heading', () => {
+    const pages = [
+      { number: 1, text: `Main text.  References  ${entries(1)}` },
+      { number: 2, text: `Appendix.  References  ${entries(13)}` },
+    ]
+    expect(withoutBibliography(pages)).toEqual(pages)
+  })
+
+  it('finds the abstract on a page despite line-break hyphens, LaTeX, typography and case, and not when its words differ', () => {
+    const page = 'KIVI : A Tuning-Free Asymmetric 2bit Quantization  Abstract  KIVI   can enable Llama mod- els to keep almost the same qual- ity while using   2 . 6 ×   less peak memory. vLLM’s source code is public.  1 Introduction'
+    expect(pageHoldsAbstract('KIVI can enable Llama models to keep almost the same quality while using $\\mathbf{2.6\\times}$ less peak memory. vLLM\'s source code is public.', page)).toBe(true)
+    expect(pageHoldsAbstract('KIVI can enable Llama models to keep almost the same quality while using $\\mathbf{2.6\\times}$ less peak memory. The source code is public.', page)).toBe(false)
   })
 })

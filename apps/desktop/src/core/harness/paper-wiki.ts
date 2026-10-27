@@ -8,7 +8,7 @@ import type {
 import { CallError } from '../call-error.js'
 import type { CoreLogLevel } from '../core-log.js'
 import type { VaultStore } from '../vault.js'
-import { extractPdfPages, probePdf } from '../paper-library/index.js'
+import { type ExtractedPdfPage, extractPdfPages, probePdf } from '../paper-library/index.js'
 import { CLI_CALL_TIMEOUT_MS, CLI_REQUEST_TIMEOUT_MS, cliCallError, cliUsageLine } from './cli-call.js'
 import { CliRunError } from './cli/child.js'
 import { CLI_CALL_FAILURES } from './cli/failure.js'
@@ -287,6 +287,51 @@ export async function citablePages(paper: Pick<PaperRow, 'pageCount'>, source: (
   return paper.pageCount > 0 ? paper.pageCount : (await probePdf(source())).pageCount
 }
 
+/** A references heading as pdf.js text extraction joins it: an item of its own, so set off by two spaces. */
+const BIBLIOGRAPHY_HEADING = /(?<=^|\s{2})(?:References|REFERENCES|R EFERENCES|Bibliography|BIBLIOGRAPHY)(?=\s{2}|$)/gu
+const YEAR = /\b(?:19|20)\d\d[a-z]?\b/gu
+/** An author-year citation in running text, such as "(Leviathan et al., 2023)", which reference entries do not hold. */
+const IN_TEXT_CITATION = /\([^()]*,\s*(?:19|20)\d\d[a-z]?\)/u
+/** The most characters reference entries run without a year, about two entries' worth. */
+const MAX_YEARLESS_RUN = 600
+
+/** Whether `text` reads as reference entries throughout: a year at least every `MAX_YEARLESS_RUN` characters, and no in-text citation. */
+function readsAsReferences(text: string): boolean {
+  if (IN_TEXT_CITATION.test(text)) return false
+  const marks = [0, ...[...text.matchAll(YEAR)].map((match) => match.index), text.length]
+  return marks.length > 2 && marks.every((at, index) => index === 0 || at - marks[index - 1]! <= MAX_YEARLESS_RUN)
+}
+
+/**
+ * `pages` as a Paper Wiki run sends them: without the text after the references heading on its
+ * page, and with every whole page of reference entries right after that page sent empty. Every
+ * page keeps its entry and number. Returns `pages` unchanged unless exactly one references heading
+ * is found and the text after it on its page reads as reference entries.
+ */
+export function withoutBibliography(pages: ExtractedPdfPage[]): ExtractedPdfPage[] {
+  const headings = pages.flatMap((page, index) =>
+    [...page.text.matchAll(BIBLIOGRAPHY_HEADING)].map((match) => ({ index, end: match.index + match[0].length })))
+  if (headings.length !== 1) return pages
+  const { index, end } = headings[0]!
+  if (!readsAsReferences(pages[index]!.text.slice(end))) return pages
+  let last = index
+  while (last + 1 < pages.length && readsAsReferences(pages[last + 1]!.text)) last += 1
+  return pages.map((page, at) => {
+    if (at === index) return { number: page.number, text: page.text.slice(0, end) }
+    return at > index && at <= last ? { number: page.number, text: '' } : page
+  })
+}
+
+/** `text` with only its letters and digits, lower-cased and without LaTeX commands, so neither a line-break hyphen nor `$\times$` counts. */
+const comparable = (text: string) =>
+  text.normalize('NFKC').toLowerCase().replace(/\\[a-z]+/gu, '').replace(/[^\p{L}\p{N}]/gu, '')
+
+/** Whether `page` holds all of `abstract`, compared by their letters and digits. */
+export function pageHoldsAbstract(abstract: string, page: string): boolean {
+  const wanted = comparable(abstract)
+  return wanted !== '' && comparable(page).includes(wanted)
+}
+
 /** Revalidate every model-provided anchor against the user-confirmed Core snapshot. */
 export function validatePaperWikiDraftScope(draft: PaperWikiDraft, scope: {
   paperPages: number
@@ -400,18 +445,6 @@ export function createPaperWikiHarnessRunner(options: {
     requiredCapabilities: ['paper-wiki'],
     ...(options.onLog === undefined ? {} : { onLog: options.onLog }),
     callbacks: {
-      'papers.get': (params) => {
-        const paper = options.store.getPaper(PapersGetParamsSchema.parse(params).id)
-        return {
-          id: paper.id,
-          title: paper.title,
-          authors: paper.authors ?? [],
-          ...(paper.year === undefined ? {} : { year: paper.year }),
-          venue: paper.venue,
-          ...(paper.identifier === undefined ? {} : { identifier: paper.identifier }),
-          ...(paper.abstract === undefined ? {} : { abstract: paper.abstract }),
-        }
-      },
       'papers.reading': (params) => {
         const reading = options.store.paperReading(PapersReadingParamsSchema.parse(params).id)
         return {
@@ -420,16 +453,42 @@ export function createPaperWikiHarnessRunner(options: {
           remark: reading.remark,
         }
       },
-      'papers.source': async (params) => {
-        const source = options.store.paperSource(PapersSourceParamsSchema.parse(params).id)
-        return { pages: await extractPdfPages(source) }
-      },
       'wiki.page': (params) => {
         const wiki = options.store.wikiPaper(WikiPageParamsSchema.parse(params).id)
         return { id: wiki.id, body: wiki.body }
       },
     },
   })
+
+  /** The paper reads of one run, which extract each PDF once and send it without its bibliography or a repeated abstract. */
+  const paperReads = (): Record<string, HarnessCallback> => {
+    const sent = new Map<string, Promise<ExtractedPdfPage[]>>()
+    const pages = (id: string) => {
+      let read = sent.get(id)
+      if (read === undefined) {
+        read = extractPdfPages(options.store.paperSource(id)).then(withoutBibliography)
+        sent.set(id, read)
+      }
+      return read
+    }
+    return {
+      'papers.get': async (params) => {
+        const paper = options.store.getPaper(PapersGetParamsSchema.parse(params).id)
+        const abstract = paper.abstract === undefined
+          || pageHoldsAbstract(paper.abstract, (await pages(paper.id))[0]?.text ?? '') ? undefined : paper.abstract
+        return {
+          id: paper.id,
+          title: paper.title,
+          authors: paper.authors ?? [],
+          ...(paper.year === undefined ? {} : { year: paper.year }),
+          venue: paper.venue,
+          ...(paper.identifier === undefined ? {} : { identifier: paper.identifier }),
+          ...(abstract === undefined ? {} : { abstract }),
+        }
+      },
+      'papers.source': async (params) => ({ pages: await pages(PapersSourceParamsSchema.parse(params).id) }),
+    }
+  }
 
   /** The one model call of a run on `model`, which ends when `signal` aborts and reports a CLI failure to `onFailure`. */
   const modelCall = (
@@ -474,12 +533,13 @@ export function createPaperWikiHarnessRunner(options: {
         limits: execution.limits,
       }, {
         signal: execution.signal,
-        ...('source' in model ? {
-          timeoutMs: CLI_REQUEST_TIMEOUT_MS,
-          callbacks: {
+        timeoutMs: 'source' in model ? CLI_REQUEST_TIMEOUT_MS : execution.requestTimeoutMs,
+        callbacks: {
+          ...paperReads(),
+          ...('source' in model ? {
             'model.invoke': modelCall(model, AbortSignal.any([execution.signal, ended.signal]), (cause) => { failure = cause }),
-          },
-        } : { timeoutMs: execution.requestTimeoutMs }),
+          } : {}),
+        },
       }))
     } catch (cause) {
       options.onLog?.('error', failureLine(`Paper Wiki run of ${execution.plan.targetId}`, failureDetail(failure ?? cause)))
