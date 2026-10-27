@@ -11,7 +11,8 @@ without rereading the whole project, graph, or Paper Wiki.
 
 ## Default path
 
-When the repository has `.meridian/` and Meridian MCP is available:
+When the repository has `.meridian/` and Meridian MCP is available (in a repository holding
+several Meridian projects, pass `project` with the id of the one this work is for to every call):
 
 1. Call `meridian.workspace_changes` with the last `next_cursor` held in the
    current task. Omit `cursor` only when this task has no prior cursor.

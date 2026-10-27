@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.lab.graph import materialize_lab_graph
+from meridian.spaces import workspace_projects
 
 MAX_OUTPUT_LINES = 6
 FOCUS_RULE_LINE = (
@@ -46,13 +47,37 @@ def find_lab_or_workspace_root(start: Path) -> Path | None:
     return None
 
 
+def render_workspace_projects(root: Path) -> str:
+    """Render, in at most `MAX_OUTPUT_LINES` lines, the projects of a workspace holding several.
+
+    Names the rule that every workspace and Lab call passes `project`, then each project's id,
+    name and active node count, or the space whose manifest cannot be read.
+    """
+
+    spaces = workspace_projects(root)
+    lines = [f"Meridian workspace: {len(spaces)} projects. Pass `project` (one id below) to every workspace_* and lab_* call."]
+    shown = spaces[: MAX_OUTPUT_LINES - 2]
+    for space, project in shown:
+        if project is None:
+            lines.append(f"- {space.folder.as_posix()}: its manifest cannot be read")
+            continue
+        active = materialize_lab_graph(space.lab_root).graph.get("active_nodes", [])
+        lines.append(f"- {project['id']}: {project['name']} ({len(active)} node(s) active)")
+    if len(spaces) > len(shown):
+        lines.append(f"- ...and {len(spaces) - len(shown)} more")
+    return "\n".join(lines[:MAX_OUTPUT_LINES])
+
+
 def render_lab_focus_report(root: Path, *, hook_event_name: str) -> str:
     """Render the compact Focus report for one hook invocation, at most `MAX_OUTPUT_LINES` lines.
 
     Lists each active node's id, state, and label, then a one-line Focus rule
     reminder. `SessionStart` also names the Lab skill to load, budget permitting.
+    A workspace holding several projects gets render_workspace_projects instead.
     """
 
+    if len(workspace_projects(root)) > 1:
+        return render_workspace_projects(root)
     graph = materialize_lab_graph(root).graph
     active_ids = [str(node_id) for node_id in graph.get("active_nodes", [])]
     nodes_by_id = {node["id"]: node for node in graph.get("nodes", [])}

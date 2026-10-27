@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.lab.research_agent_contract import inject_meridian_agents_contract
+from meridian.spaces import ROOT_SPACE, repository_of, resolve_space
 from meridian.wiki.corpus import FrontmatterError, parse_frontmatter, strip_frontmatter
 
 
@@ -60,10 +61,11 @@ def validate_lab_space(root: Path) -> LabValidationReport:
     """Validate a lightweight `.meridian/` research space.
 
     This is an internal release/debug helper for tests and future tooling. It is
-    intentionally not a product CLI, MCP server, or workflow engine.
+    intentionally not a product CLI, MCP server, or workflow engine. ``root`` names the project
+    space as :func:`meridian.spaces.resolve_space` reads it.
     """
 
-    lab_root = root if root.name == ".meridian" else root / ".meridian"
+    lab_root = resolve_space(root).lab_root
     findings: list[LabValidationFinding] = []
 
     def add(severity: str, code: str, path: Path | str, message: str) -> None:
@@ -198,10 +200,15 @@ def initialize_lab_space(root: Path, *, overwrite: bool = False, inject_agents_c
     """Create the minimal `.meridian/` skeleton used by Lab lazy init.
 
     This is an internal helper for release/debug checks and agent workflows. It
-    does not add a product CLI, MCP surface, database, daemon, or router.
+    does not add a product CLI, MCP surface, database, daemon, or router. ``root`` names the
+    project space as :func:`meridian.spaces.resolve_space` reads it; a later project's space must
+    already hold the manifest the Meridian App wrote. Raises ``FileNotFoundError`` otherwise.
     """
 
-    lab_root = root if root.name == ".meridian" else root / ".meridian"
+    space = resolve_space(root)
+    lab_root = space.lab_root
+    if space.folder != ROOT_SPACE and not (lab_root / "workspace.json").is_file():
+        raise FileNotFoundError(f"{lab_root} is not a project space the Meridian App created")
     template_root = Path(__file__).resolve().parents[1] / "templates" / "research-dev"
     today = date.today().isoformat()
     written: list[Path] = []
@@ -219,9 +226,9 @@ def initialize_lab_space(root: Path, *, overwrite: bool = False, inject_agents_c
         written.append(target)
 
     if inject_agents_contract:
-        target = lab_root.parent / "AGENTS.md"
+        target = repository_of(lab_root) / "AGENTS.md"
         before = target.read_text(encoding="utf-8") if target.exists() else None
-        agents_path = inject_meridian_agents_contract(lab_root.parent)
+        agents_path = inject_meridian_agents_contract(repository_of(lab_root))
         after = agents_path.read_text(encoding="utf-8")
         if before != after and agents_path not in written:
             written.append(agents_path)

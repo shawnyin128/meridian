@@ -6,10 +6,18 @@ import re
 import tempfile
 from dataclasses import dataclass
 from datetime import date, datetime, timezone
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from typing import Any, Callable
 
 from meridian import __version__
+from meridian.spaces import (
+    NESTED_SPACES,
+    ROOT_SPACE,
+    SPACE_ID,
+    ProjectChoiceError,
+    ProjectSpace,
+    resolve_space,
+)
 
 WORKSPACE_SCHEMA_VERSION = "meridian.workspace.v1"
 PROJECT_PLAN_SCHEMA_VERSION = "meridian.project-plan.v1"
@@ -26,19 +34,27 @@ WORKSPACE_AGENT_IDEA_FILE_WRITE_SCHEMA_VERSION = "meridian.workspace-agent-idea-
 WORKSPACE_AGENT_TASKS_SCHEMA_VERSION = "meridian.workspace-agent-tasks.v1"
 WORKSPACE_AGENT_TASK_WRITE_SCHEMA_VERSION = "meridian.workspace-agent-task-write.v1"
 
-MANIFEST_PATH = Path(".meridian/workspace.json")
-PLAN_PATH = Path(".meridian/control/plan.json")
-GRAPH_PATH = Path(".meridian/graph/graph.json")
-EVENTS_PATH = Path(".meridian/events/events.json")
-CHANGES_PATH = Path(".meridian/control/changes.json")
-AGENT_IDEAS_PATH = Path(".meridian/ideas/ideas.json")
-AGENT_IDEA_FILES_PATH = Path(".meridian/ideas/files.json")
-AGENT_TASKS_PATH = Path(".meridian/tasks/tasks.json")
+# Each surface's path inside a project space; MANIFEST_PATH and the others are the root space's.
+_MANIFEST = "workspace.json"
+_PLAN = "control/plan.json"
+_GRAPH = "graph/graph.json"
+_EVENTS = "events/events.json"
+_CHANGES = "control/changes.json"
+_AGENT_IDEAS = "ideas/ideas.json"
+_AGENT_IDEA_FILES = "ideas/files.json"
+_AGENT_TASKS = "tasks/tasks.json"
+MANIFEST_PATH = Path(ROOT_SPACE / _MANIFEST)
+PLAN_PATH = Path(ROOT_SPACE / _PLAN)
+GRAPH_PATH = Path(ROOT_SPACE / _GRAPH)
+EVENTS_PATH = Path(ROOT_SPACE / _EVENTS)
+CHANGES_PATH = Path(ROOT_SPACE / _CHANGES)
+AGENT_IDEAS_PATH = Path(ROOT_SPACE / _AGENT_IDEAS)
+AGENT_IDEA_FILES_PATH = Path(ROOT_SPACE / _AGENT_IDEA_FILES)
+AGENT_TASKS_PATH = Path(ROOT_SPACE / _AGENT_TASKS)
 
 _EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _APP_OR_GENERATED_SURFACES = {
-    MANIFEST_PATH, PLAN_PATH, GRAPH_PATH, EVENTS_PATH, CHANGES_PATH, AGENT_IDEAS_PATH, AGENT_IDEA_FILES_PATH,
-    AGENT_TASKS_PATH,
+    _MANIFEST, _PLAN, _GRAPH, _EVENTS, _CHANGES, _AGENT_IDEAS, _AGENT_IDEA_FILES, _AGENT_TASKS,
 }
 EVENT_KINDS = {"start", "reopen", "result", "decision", "complete", "note"}
 _EVENT_TITLE_MAX_LEN = 120
@@ -82,26 +98,42 @@ class PreparedWorkspaceEvent:
 
 
 def inspect_project_workspace(root: Path) -> dict[str, Any]:
-    """Return a compact, machine-readable view of the workspace surfaces."""
+    """Return a compact, machine-readable view of the workspace surfaces of one project.
+
+    ``root`` names the project's space as :func:`meridian.spaces.resolve_space` reads it. A
+    repository holding several projects is reported ``choose_project`` with each project's ``id``
+    and ``name`` under ``projects``, and no surfaces.
+    """
 
     repository = _repository_root(root)
+    try:
+        space = resolve_space(root)
+    except ProjectChoiceError as exc:
+        return {
+            "schema_version": WORKSPACE_STATUS_SCHEMA_VERSION,
+            "status": "choose_project",
+            "root": str(repository),
+            "projects": exc.projects,
+            "surfaces": {},
+        }
     surfaces: dict[str, dict[str, Any]] = {}
+    manifest_path = Path(space.path(_MANIFEST))
 
     try:
-        manifest = _read_manifest(repository)
+        manifest = _read_manifest(space)
     except (OSError, WorkspaceProtocolError) as exc:
-        surfaces["manifest"] = _invalid_surface(MANIFEST_PATH, exc)
+        surfaces["manifest"] = _invalid_surface(manifest_path, exc)
         return _status_payload(repository, "invalid", surfaces)
 
     surfaces["manifest"] = {
         "status": "ok",
-        "path": MANIFEST_PATH.as_posix(),
+        "path": manifest_path.as_posix(),
         "schema_version": manifest["schema_version"],
     }
 
     plan = _inspect_optional_surface(
-        repository / PLAN_PATH,
-        PLAN_PATH,
+        repository / space.path(_PLAN),
+        Path(space.path(_PLAN)),
         _validate_plan,
         summary=lambda value: {
             "schema_version": value["schema_version"],
@@ -112,8 +144,8 @@ def inspect_project_workspace(root: Path) -> dict[str, Any]:
         },
     )
     graph = _inspect_optional_surface(
-        repository / GRAPH_PATH,
-        GRAPH_PATH,
+        repository / space.path(_GRAPH),
+        Path(space.path(_GRAPH)),
         _validate_graph,
         summary=lambda value: {
             "schema": value["schema"],
@@ -124,8 +156,8 @@ def inspect_project_workspace(root: Path) -> dict[str, Any]:
         },
     )
     changes = _inspect_optional_surface(
-        repository / CHANGES_PATH,
-        CHANGES_PATH,
+        repository / space.path(_CHANGES),
+        Path(space.path(_CHANGES)),
         _validate_changes,
         summary=lambda value: {
             "schema_version": value["schema_version"],
@@ -137,8 +169,8 @@ def inspect_project_workspace(root: Path) -> dict[str, Any]:
         },
     )
     events = _inspect_optional_surface(
-        repository / EVENTS_PATH,
-        EVENTS_PATH,
+        repository / space.path(_EVENTS),
+        Path(space.path(_EVENTS)),
         lambda value: _validate_events(value, repository=repository),
         summary=lambda value: {
             "schema_version": value["schema_version"],
@@ -168,8 +200,9 @@ def read_project_plan(
 
     if task_id is not None and milestone_id is not None:
         raise WorkspaceProtocolError("read one of task_id or milestone_id at a time")
-    repository = _repository_root(root)
-    manifest = _read_manifest(repository)
+    space = _space(root)
+    repository = space.repository
+    manifest = _read_manifest(space)
     plan_path = Path(manifest["surfaces"]["plan"]["path"])
     plan = _validate_plan(_read_json(repository / plan_path, label="project plan"))
     if task_id is None and milestone_id is None:
@@ -194,16 +227,17 @@ def read_workspace_changes(
     limit: int = 20,
     kinds: list[str] | None = None,
 ) -> dict[str, Any]:
-    """Read a bounded incremental page from the App-owned change journal.
+    """Read a bounded incremental page from the App-owned change journal of one project.
 
     Changes this version cannot read are left out of the page and listed, each with its reason,
     in ``unreadable_changes``.
     """
 
-    repository = _repository_root(root)
-    manifest = _read_manifest(repository)
+    space = _space(root)
+    repository = space.repository
+    manifest = _read_manifest(space)
     surface = manifest["surfaces"].get("changes")
-    if surface is None or not (repository / CHANGES_PATH).exists():
+    if surface is None or not (repository / space.path(_CHANGES)).exists():
         return {
             "schema_version": WORKSPACE_CHANGE_PAGE_SCHEMA_VERSION,
             "status": "unavailable",
@@ -222,7 +256,7 @@ def read_workspace_changes(
     if unknown_kinds:
         raise WorkspaceProtocolError(f"unknown workspace change kinds: {', '.join(sorted(unknown_kinds))}")
 
-    payload = _validate_changes(_read_json(repository / CHANGES_PATH, label="workspace changes"))
+    payload = _validate_changes(_read_json(repository / space.path(_CHANGES), label="workspace changes"))
     epoch = payload["epoch"]
     head = payload["next_sequence"] - 1
     retained_from = payload["changes"][0]["sequence"] if payload["changes"] else head + 1
@@ -287,11 +321,11 @@ def read_workspace_idea(root: Path, idea_id: str, *, vault: Path | None = None) 
     read is left out; a vault holding no idea files lists none.
     """
 
-    repository = _repository_root(root)
-    manifest = _read_manifest(repository)
+    space = _space(root)
+    manifest = _read_manifest(space)
     if "changes" not in manifest["surfaces"]:
         raise WorkspaceProtocolError("workspace idea index is unavailable")
-    payload = _validate_changes(_read_json(repository / CHANGES_PATH, label="workspace changes"))
+    payload = _validate_changes(_read_json(space.repository / space.path(_CHANGES), label="workspace changes"))
     normalized = idea_id.strip()
     idea = next((item for item in payload["ideas"] if item["id"] == normalized), None)
     if idea is None:
@@ -327,13 +361,14 @@ def _vault_idea_files(vault: Path, idea_id: str) -> list[dict[str, str]]:
 
 
 def read_workspace_node_ideas(root: Path, node_id: str) -> list[dict[str, Any]]:
-    """Return compact current idea references attached to one Lab node."""
+    """Return compact current idea references attached to one Lab node of one project."""
 
-    repository = _repository_root(root)
-    manifest = _read_manifest(repository)
-    if "changes" not in manifest["surfaces"] or not (repository / CHANGES_PATH).exists():
+    space = _space(root)
+    manifest = _read_manifest(space)
+    changes = space.repository / space.path(_CHANGES)
+    if "changes" not in manifest["surfaces"] or not changes.exists():
         return []
-    payload = _validate_changes(_read_json(repository / CHANGES_PATH, label="workspace changes"))
+    payload = _validate_changes(_read_json(changes, label="workspace changes"))
     return [
         {
             "id": idea["id"],
@@ -357,7 +392,7 @@ def add_workspace_event(
     kind: str | None = None,
     detail: str | None = None,
 ) -> dict[str, Any]:
-    """Append one source-backed event to the repository-owned event projection."""
+    """Append one source-backed event to the event projection of one project."""
 
     prepared = prepare_workspace_event(
         root,
@@ -385,8 +420,9 @@ def prepare_workspace_event(
 ) -> PreparedWorkspaceEvent:
     """Validate and stage one event without writing its projection."""
 
-    repository = _repository_root(root)
-    manifest = _read_manifest(repository)
+    space = _space(root)
+    repository = space.repository
+    manifest = _read_manifest(space)
     events_path = Path(manifest["surfaces"]["events"]["path"])
 
     normalized_id = event_id.strip()
@@ -483,8 +519,9 @@ def add_workspace_agent_idea(
     title or context outside these limits, raises :class:`WorkspaceProtocolError`.
     """
 
-    repository = _repository_root(root)
-    _read_manifest(repository)
+    space = _space(root)
+    repository = space.repository
+    _read_manifest(space)
     normalized_id = idea_id.strip()
     if not _EVENT_ID.fullmatch(normalized_id):
         raise WorkspaceProtocolError("idea id must be 1-128 URL-safe identifier characters")
@@ -518,7 +555,7 @@ def add_workspace_agent_idea(
     if node is not None and node.strip():
         idea["node"] = node.strip()
 
-    target = repository / AGENT_IDEAS_PATH
+    target = repository / space.path(_AGENT_IDEAS)
     if target.exists():
         payload = _validate_agent_ideas(_read_json(target, label="workspace agent ideas"))
     else:
@@ -537,7 +574,7 @@ def add_workspace_agent_idea(
     return {
         "schema_version": WORKSPACE_AGENT_IDEA_WRITE_SCHEMA_VERSION,
         "status": status,
-        "path": AGENT_IDEAS_PATH.as_posix(),
+        "path": space.path(_AGENT_IDEAS).as_posix(),
         "idea": idea,
     }
 
@@ -560,8 +597,9 @@ def add_workspace_agent_idea_file(
     surface raises :class:`WorkspaceProtocolError`.
     """
 
-    repository = _repository_root(root)
-    _read_manifest(repository)
+    space = _space(root)
+    repository = space.repository
+    _read_manifest(space)
     normalized_id = file_id.strip()
     normalized_idea = idea_id.strip()
     if not _EVENT_ID.fullmatch(normalized_id) or not _EVENT_ID.fullmatch(normalized_idea):
@@ -573,7 +611,7 @@ def add_workspace_agent_idea_file(
         "date": _event_date(file_date),
     }
 
-    target = repository / AGENT_IDEA_FILES_PATH
+    target = repository / space.path(_AGENT_IDEA_FILES)
     if target.exists():
         payload = _validate_agent_idea_files(_read_json(target, label="workspace agent idea files"))
     else:
@@ -592,7 +630,7 @@ def add_workspace_agent_idea_file(
     return {
         "schema_version": WORKSPACE_AGENT_IDEA_FILE_WRITE_SCHEMA_VERSION,
         "status": status,
-        "path": AGENT_IDEA_FILES_PATH.as_posix(),
+        "path": space.path(_AGENT_IDEA_FILES).as_posix(),
         "file": entry,
     }
 
@@ -628,8 +666,9 @@ def add_workspace_agent_task(
     no-op; the same id with different content raises :class:`WorkspaceProtocolError`.
     """
 
-    repository = _repository_root(root)
-    _read_manifest(repository)
+    space = _space(root)
+    repository = space.repository
+    _read_manifest(space)
     normalized_id = task_id.strip()
     if not _EVENT_ID.fullmatch(normalized_id):
         raise WorkspaceProtocolError("task id must be 1-128 URL-safe identifier characters")
@@ -642,7 +681,7 @@ def add_workspace_agent_task(
             raise WorkspaceProtocolError("task note must be at most 20000 characters")
         task["note"] = note.strip()
 
-    target = repository / AGENT_TASKS_PATH
+    target = repository / space.path(_AGENT_TASKS)
     if target.exists():
         payload = _validate_agent_tasks(_read_json(target, label="workspace agent tasks"))
     else:
@@ -661,7 +700,7 @@ def add_workspace_agent_task(
     return {
         "schema_version": WORKSPACE_AGENT_TASK_WRITE_SCHEMA_VERSION,
         "status": status,
-        "path": AGENT_TASKS_PATH.as_posix(),
+        "path": space.path(_AGENT_TASKS).as_posix(),
         "task": task,
     }
 
@@ -705,11 +744,21 @@ def _repository_root(root: Path) -> Path:
     resolved = candidate.resolve()
     if not resolved.is_dir():
         raise WorkspaceProtocolError(f"workspace root is not a directory: {resolved}")
-    return resolved.parent if resolved.name == ".meridian" else resolved
+    if resolved.name == ROOT_SPACE.name:
+        return resolved.parent
+    if resolved.parent.name == NESTED_SPACES.name and resolved.parent.parent.name == ROOT_SPACE.name:
+        return resolved.parent.parent.parent
+    return resolved
 
 
-def _read_manifest(repository: Path) -> dict[str, Any]:
-    manifest = _read_json(repository / MANIFEST_PATH, label="workspace manifest")
+def _space(root: Path) -> ProjectSpace:
+    """The project space a call at ``root`` works in; raises as resolve_space does."""
+    _repository_root(root)
+    return resolve_space(root)
+
+
+def _read_manifest(space: ProjectSpace) -> dict[str, Any]:
+    manifest = _read_json(space.repository / space.path(_MANIFEST), label="workspace manifest")
     _required_keys(manifest, {"schema_version", "project", "surfaces"}, "workspace manifest")
     if manifest.get("schema_version") != WORKSPACE_SCHEMA_VERSION:
         raise WorkspaceProtocolError("workspace manifest is not meridian.workspace.v1")
@@ -731,11 +780,11 @@ def _read_manifest(repository: Path) -> dict[str, Any]:
             f"(meridian {__version__}); restart the agent session or update Meridian."
         )
     expected = {
-        "plan": (PLAN_PATH, "meridian-app"),
-        **({"changes": (CHANGES_PATH, "meridian-app")} if "changes" in surfaces else {}),
-        "graph": (GRAPH_PATH, "workspace"),
-        "events": (EVENTS_PATH, "workspace"),
-        **({"ideas": (AGENT_IDEAS_PATH, "workspace")} if "ideas" in surfaces else {}),
+        "plan": (space.path(_PLAN), "meridian-app"),
+        **({"changes": (space.path(_CHANGES), "meridian-app")} if "changes" in surfaces else {}),
+        "graph": (space.path(_GRAPH), "workspace"),
+        "events": (space.path(_EVENTS), "workspace"),
+        **({"ideas": (space.path(_AGENT_IDEAS), "workspace")} if "ideas" in surfaces else {}),
     }
     for name, (path, writer) in expected.items():
         surface = _object(surfaces.get(name), f"workspace {name} surface")
@@ -953,9 +1002,21 @@ def _source_path(repository: Path, source: str, *, label: str = "event source") 
         raise WorkspaceProtocolError(f"{label} must be an existing file inside the workspace") from exc
     if not resolved.is_file():
         raise WorkspaceProtocolError(f"{label} must be an existing file inside the workspace")
-    if normalized in _APP_OR_GENERATED_SURFACES:
+    if _protocol_surface(normalized):
         raise WorkspaceProtocolError(f"{label} must be durable evidence, not a protocol projection")
     return normalized.as_posix()
+
+
+def _protocol_surface(relative: Path) -> bool:
+    """Whether workspace-relative ``relative`` is a protocol surface of the root space or of a nested one."""
+    parts = PurePosixPath(relative.as_posix()).parts
+    if parts[:2] == NESTED_SPACES.parts and len(parts) > 3 and SPACE_ID.fullmatch(parts[2]):
+        inner = parts[3:]
+    elif parts[:1] == ROOT_SPACE.parts:
+        inner = parts[1:]
+    else:
+        return False
+    return "/".join(inner) in _APP_OR_GENERATED_SURFACES
 
 
 def _event_date(value: str | None) -> str:

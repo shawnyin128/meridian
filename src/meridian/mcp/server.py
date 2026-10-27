@@ -15,6 +15,7 @@ from meridian.lab import (
     record_lab_result,
 )
 from meridian.mcp import adapter
+from meridian.spaces import resolve_space
 from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import (
     EVENT_KINDS,
@@ -178,12 +179,25 @@ class MeridianMCPServer:
         return None if workspace is None else workspace.library_root
 
     def workspace_root(self, arguments: JsonDict) -> Path:
+        """The root a workspace or Lab tool works at: the space folder of ``project`` when given."""
         explicit = arguments.get("workspace_root")
         if explicit:
-            return Path(str(explicit))
-        if self.default_workspace_root is not None:
-            return self.default_workspace_root
-        return Path.cwd()
+            root = Path(str(explicit))
+        elif self.default_workspace_root is not None:
+            root = self.default_workspace_root
+        else:
+            root = Path.cwd()
+        project = arguments.get("project")
+        return root if project in (None, "") else resolve_space(root, str(project)).lab_root
+
+
+PROJECT_PROPERTY: JsonDict = {
+    "type": "string",
+    "description": (
+        "Id of the project this call is for. Optional when the workspace holds one project; required "
+        "when it holds several (meridian.workspace_status lists them)."
+    ),
+}
 
 
 def tool_definitions() -> list[JsonDict]:
@@ -295,6 +309,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                 }
             ),
         },
@@ -307,6 +322,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "task_id": {"type": "string", "description": "Read only this task."},
                     "milestone_id": {"type": "string", "description": "Read only this milestone."},
                 }
@@ -321,6 +337,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "cursor": {
                         "type": "string",
                         "description": "Opaque next_cursor returned by the previous call. Omit for a bounded recent baseline.",
@@ -346,6 +363,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "idea_id": {"type": "string"},
                 },
                 required=["idea_id"],
@@ -364,6 +382,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "event_id": {"type": "string", "description": "Stable idempotency key for the event."},
                     "title": {"type": "string", "description": "The outcome in one line, shown as the record title."},
                     "kind": {
@@ -398,6 +417,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "idea_id": {"type": "string", "description": "Stable idempotency key for the idea."},
                     "title": {
                         "type": "string",
@@ -429,6 +449,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "file_id": {"type": "string", "description": "Stable idempotency key for the file."},
                     "idea_id": {
                         "type": "string",
@@ -453,6 +474,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "task_id": {"type": "string", "description": "Stable idempotency key for the task."},
                     "title": {"type": "string", "description": "The step in one line, at most 160 characters."},
                     "note": {"type": "string", "description": "Optional Markdown note: what done means, inputs, commands."},
@@ -474,6 +496,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "detail": {"type": "string", "enum": ["compact", "full"], "default": "compact"},
                 }
             ),
@@ -487,6 +510,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "node_id": {"type": "string"},
                 },
                 required=["node_id"],
@@ -506,6 +530,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "packet": {
                         "type": "object",
                         "description": "Strict meridian.lab.update.v1 packet. Boundary-changing operations require accepted user confirmation in the packet.",
@@ -528,6 +553,7 @@ def tool_definitions() -> list[JsonDict]:
                         "type": "string",
                         "description": "Repository or .meridian root. Defaults to the configured root or server cwd.",
                     },
+                    "project": PROJECT_PROPERTY,
                     "node_id": {"type": "string", "description": "Existing Lab graph node id."},
                     "event_id": {"type": "string", "description": "Stable idempotency key for the App-visible event."},
                     "summary": {"type": "string", "description": "Compact agent progress summary shown in the App."},
@@ -742,11 +768,9 @@ def _call_workspace_changes(server: MeridianMCPServer, arguments: JsonDict) -> J
         limit=int(arguments.get("limit") or 20),
         kinds=[str(kind) for kind in kinds] if kinds is not None else None,
     )
-    workspace_arguments = (
-        {"workspace_root": str(arguments["workspace_root"])}
-        if arguments.get("workspace_root") not in (None, "")
-        else {}
-    )
+    workspace_arguments = {
+        key: str(arguments[key]) for key in ("workspace_root", "project") if arguments.get(key) not in (None, "")
+    }
     for change in payload.get("changes", []):
         expansions: list[JsonDict] = []
         for ref in change.get("refs", []):

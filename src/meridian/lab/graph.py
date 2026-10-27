@@ -11,6 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.lab.state import ALLOWED_NODE_MODES
+from meridian.spaces import folder_of, repository_of, resolve_space
 from meridian.wiki.corpus import FrontmatterError, parse_frontmatter, strip_frontmatter
 from meridian.workspace_protocol import (
     WorkspaceProtocolError,
@@ -172,8 +173,8 @@ def materialize_lab_graph(root: Path) -> LabGraphBuildResult:
     graph = {
         "schema": LAB_GRAPH_SCHEMA_VERSION,
         "generated_at": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-        "lab_root": ".meridian",
-        "source_files": [_display_path(path, lab_root=lab_root.parent) for path in source_files if path.exists()],
+        "lab_root": folder_of(lab_root),
+        "source_files": [_display_path(path, lab_root=repository_of(lab_root)) for path in source_files if path.exists()],
         "active_thread": active_thread,
         "active_nodes": active_nodes,
         "nodes": nodes,
@@ -616,7 +617,7 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
     plan_issue = ""
     if any(isinstance(change, dict) and change.get("op") == "link_task" for change in changes or []):
         try:
-            plan = read_project_plan(lab_root.parent)
+            plan = read_project_plan(lab_root)
             plan_task_ids = {str(task.get("id")) for task in plan["tasks"] if isinstance(task, dict)}
         except (OSError, WorkspaceProtocolError) as exc:
             plan_issue = str(exc)
@@ -724,7 +725,7 @@ def validate_lab_update_packet(root: Path, packet: dict[str, Any]) -> dict[str, 
                         "attach_artifact requires non-empty artifact path.",
                         f"changes[{index}].artifact.path",
                     )
-                elif _path_starts_with_meridian(path) and not (lab_root.parent / Path(path.replace("\\", "/"))).exists():
+                elif _path_starts_with_meridian(path) and not (repository_of(lab_root) / Path(path.replace("\\", "/"))).exists():
                     add(
                         "artifact_path_missing",
                         f"Artifact path `{path}` does not exist.",
@@ -819,7 +820,6 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
         write_active_nodes([*active_nodes, node_id])
         node = node_lookup.get(node_id, {})
         _add_focus_event(
-            root,
             lab_root,
             node_id=node_id,
             label=str(node.get("label") or node_id),
@@ -905,17 +905,17 @@ def apply_lab_update(root: Path, packet: dict[str, Any]) -> dict[str, Any]:
         "schema": LAB_APPLY_UPDATE_SCHEMA_VERSION,
         "status": "applied",
         "validation": validation,
-        "written_paths": [_display_path(path, lab_root=lab_root.parent) for path in written_paths],
+        "written_paths": [_display_path(path, lab_root=repository_of(lab_root)) for path in written_paths],
         "graph_health": graph_result.health,
         "warnings": warnings,
     }
 
 
-def _add_focus_event(root: Path, lab_root: Path, *, node_id: str, label: str, thread_id: str, action: str) -> None:
+def _add_focus_event(lab_root: Path, *, node_id: str, label: str, thread_id: str, action: str) -> None:
     """Record a Focus workspace event for an activation or reopen, when a workspace exists.
 
-    Silently does nothing when the repository has no `.meridian/workspace.json`
-    manifest (Lab-only repositories are valid and carry no App workspace).
+    Silently does nothing when the project space has no `workspace.json` manifest (Lab-only
+    repositories are valid and carry no App workspace).
     """
 
     if not (lab_root / "workspace.json").exists():
@@ -924,10 +924,10 @@ def _add_focus_event(root: Path, lab_root: Path, *, node_id: str, label: str, th
     kind = "start" if action == "activate" else "reopen"
     today = datetime.now(timezone.utc).astimezone().date().isoformat()
     add_workspace_event(
-        root,
+        lab_root,
         event_id=f"lab-focus.{node_id}.{action}.{today}",
         text=f"{verb} {label}",
-        source=f".meridian/threads/{thread_id}.md",
+        source=f"{folder_of(lab_root)}/threads/{thread_id}.md",
         event_date=today,
         node=node_id,
         kind=kind,
@@ -949,7 +949,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
     def add(severity: str, code: str, message: str, path: Path | str | None = None) -> None:
         finding: dict[str, Any] = {"severity": severity, "code": code, "message": message}
         if path is not None:
-            finding["path"] = _display_path(path, lab_root=lab_root.parent) if isinstance(path, Path) else path
+            finding["path"] = _display_path(path, lab_root=repository_of(lab_root)) if isinstance(path, Path) else path
         findings.append(finding)
 
     if not isinstance(graph, dict):
@@ -1080,7 +1080,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                 f"nodes/{index}/kind",
             )
         markdown_path = str(node.get("markdown_path") or "")
-        if _path_starts_with_meridian(markdown_path) and not (lab_root.parent / markdown_path).exists():
+        if _path_starts_with_meridian(markdown_path) and not (repository_of(lab_root) / markdown_path).exists():
             add(
                 "error",
                 "node_markdown_path_missing",
@@ -1091,7 +1091,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
             raw_id = _node_raw_id(node)
             expected_anchor = _node_markdown_anchor(raw_id, str(node.get("title") or "").strip())
             markdown_anchor = str(node.get("markdown_anchor") or "")
-            markdown_file = lab_root.parent / markdown_path
+            markdown_file = repository_of(lab_root) / markdown_path
             if markdown_anchor != expected_anchor or not _markdown_node_heading_exists(markdown_file, raw_id):
                 add(
                     "error",
@@ -1237,7 +1237,7 @@ def check_lab_graph_payload(graph: dict[str, Any], lab_root: Path) -> dict[str, 
                     f"supporting_artifacts/{node_id}/{artifact_index}/type",
                 )
             artifact_path = str(artifact.get("path") or "")
-            if _path_starts_with_meridian(artifact_path) and not (lab_root.parent / artifact_path).exists():
+            if _path_starts_with_meridian(artifact_path) and not (repository_of(lab_root) / artifact_path).exists():
                 add(
                     "error",
                     "artifact_path_missing",
@@ -1419,7 +1419,7 @@ def _graph_schema() -> dict[str, Any]:
 
 
 def _lab_root(root: Path) -> Path:
-    return root if root.name == ".meridian" else root / ".meridian"
+    return resolve_space(root).lab_root
 
 
 def _frontmatter(path: Path) -> dict[str, Any]:
@@ -1540,7 +1540,7 @@ def _apply_attach_artifact_change(text: str, raw_id: str, artifact: dict[str, An
     def edit(body: str) -> str:
         artifact_id = str(artifact.get("id") or "").strip()
         already_attached = any(
-            str(existing.get("id") or "").strip() == artifact_id for existing in _parse_supporting_artifacts(body)
+            str(existing.get("id") or "").strip() == artifact_id for existing in _parse_supporting_artifacts(body, "")
         )
         updated = body if already_attached else _append_supporting_artifact(body, artifact)
         if str(artifact.get("type") or "").strip() == "experiment":
@@ -1827,7 +1827,7 @@ def _parse_thread_nodes(
         node_id = f"{thread_id}.{raw_id}"
         mode = _node_field(body, "mode") or "unresolved"
         parent = _node_field(body, "parent")
-        project_root = thread_path.parents[1].parent
+        project_root = repository_of(thread_path.parents[1])
         node = {
             "id": node_id,
             "thread_id": thread_id,
@@ -1845,13 +1845,13 @@ def _parse_thread_nodes(
             # body here so clients do not need a second, path-aware file protocol.
             "markdown": body,
         }
-        artifacts = _parse_supporting_artifacts(body)
+        artifacts = _parse_supporting_artifacts(body, folder_of(thread_path.parents[1]))
         tasks = _parse_node_tasks(body)
         agent_text = {
             field: _unescape_agent_text(_extract_heading_section(body, heading)) for field, heading in _AGENT_TEXT_SECTIONS
         }
         conclusion = _parse_node_conclusion(
-            body, mode=mode, artifacts=artifacts, project_root=thread_path.parents[1].parent
+            body, mode=mode, artifacts=artifacts, project_root=project_root
         )
         parsed.append(
             {
@@ -1918,7 +1918,8 @@ def _parse_graph_relations(thread_id: str, text: str) -> list[dict[str, Any]]:
     return edges
 
 
-def _parse_supporting_artifacts(body: str) -> list[dict[str, Any]]:
+def _parse_supporting_artifacts(body: str, folder: str) -> list[dict[str, Any]]:
+    """The artifacts a node `body` lists; an experiment named only by id lies in `folder`'s experiments."""
     artifacts: list[dict[str, Any]] = []
     experiments = _extract_heading_section(body, "Experiments")
     for line in experiments.splitlines():
@@ -1934,7 +1935,7 @@ def _parse_supporting_artifacts(body: str) -> list[dict[str, Any]]:
                 "id": experiment_id,
                 "title": "",
                 "impact": "referenced",
-                "path": f".meridian/experiments/{experiment_id}.md",
+                "path": f"{folder}/experiments/{experiment_id}.md",
             }
         )
 

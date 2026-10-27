@@ -13,6 +13,7 @@ from meridian.mcp.app_library import (
     app_native_unreadable_pages,
 )
 from meridian.mcp.context_contract import CONTEXT_SCHEMA_VERSION, build_context_packet
+from meridian.spaces import ProjectChoiceError
 from meridian.wiki.claims import ProposalValidationError
 from meridian.wiki.context_paths import default_mcp_context_out_dir
 from meridian.wiki.corpus import (
@@ -104,77 +105,77 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "name": "meridian.workspace_status",
             "workflow": "Project Workspace",
             "summary": "Validate the App-owned plan and repository-owned graph/event views.",
-            "inputs": ["workspace_root"],
+            "inputs": ["workspace_root", "project"],
             "outputs": ["status", "project", "surfaces"],
         },
         {
             "name": "meridian.workspace_plan",
             "workflow": "Project Workspace",
             "summary": "Read the App-owned project plan without changing it.",
-            "inputs": ["workspace_root", "task_id", "milestone_id"],
+            "inputs": ["workspace_root", "project", "task_id", "milestone_id"],
             "outputs": ["revision", "project", "tasks", "milestones"],
         },
         {
             "name": "meridian.workspace_changes",
             "workflow": "Coding Context",
             "summary": "Read bounded App-owned changes after an opaque client cursor.",
-            "inputs": ["workspace_root", "cursor", "limit", "kinds"],
+            "inputs": ["workspace_root", "project", "cursor", "limit", "kinds"],
             "outputs": ["cursor_status", "next_cursor", "has_more", "changes", "unreadable_changes"],
         },
         {
             "name": "meridian.workspace_idea",
             "workflow": "Coding Context",
             "summary": "Expand one current project-linked idea referenced by the change list.",
-            "inputs": ["workspace_root", "idea_id"],
+            "inputs": ["workspace_root", "project", "idea_id"],
             "outputs": ["project_id", "idea"],
         },
         {
             "name": "meridian.workspace_event_add",
             "workflow": "Project Workspace",
             "summary": "Append an idempotent App-visible event backed by durable repository evidence.",
-            "inputs": ["workspace_root", "event_id", "title", "kind", "detail", "source", "date", "node"],
+            "inputs": ["workspace_root", "project", "event_id", "title", "kind", "detail", "source", "date", "node"],
             "outputs": ["status", "path", "event"],
         },
         {
             "name": "meridian.workspace_idea_add",
             "workflow": "Project Workspace",
             "summary": "Record an idempotent idea that could stand alone as a research contribution, for the App's idea list.",
-            "inputs": ["workspace_root", "idea_id", "title", "body", "context", "date", "node"],
+            "inputs": ["workspace_root", "project", "idea_id", "title", "body", "context", "date", "node"],
             "outputs": ["status", "path", "idea"],
         },
         {
             "name": "meridian.workspace_idea_file_add",
             "workflow": "Project Workspace",
             "summary": "Attach an idempotent file in the repository to an idea, for the App to show with it.",
-            "inputs": ["workspace_root", "file_id", "idea_id", "path", "date"],
+            "inputs": ["workspace_root", "project", "file_id", "idea_id", "path", "date"],
             "outputs": ["status", "path", "file"],
         },
         {
             "name": "meridian.workspace_task_add",
             "workflow": "Project Workspace",
             "summary": "Add an idempotent concrete next step agreed with the user to the App's project plan.",
-            "inputs": ["workspace_root", "task_id", "title", "note", "date"],
+            "inputs": ["workspace_root", "project", "task_id", "title", "note", "date"],
             "outputs": ["status", "path", "task"],
         },
         {
             "name": "meridian.lab_graph",
             "workflow": "Lab",
             "summary": "Read each research node's id, title, state, parent and active flag, the edges and health; detail full adds node content.",
-            "inputs": ["workspace_root", "detail"],
+            "inputs": ["workspace_root", "project", "detail"],
             "outputs": ["graph", "health"],
         },
         {
             "name": "meridian.lab_node",
             "workflow": "Coding Context",
             "summary": "Expand one research node, its local edges, details, and linked ideas.",
-            "inputs": ["workspace_root", "node_id"],
+            "inputs": ["workspace_root", "project", "node_id"],
             "outputs": ["node", "detail", "incoming", "outgoing", "linked_ideas", "health"],
         },
         {
             "name": "meridian.lab_update",
             "workflow": "Lab",
             "summary": "Validate and apply a strict Lab update packet, then refresh the App-visible graph projection.",
-            "inputs": ["workspace_root", "packet"],
+            "inputs": ["workspace_root", "project", "packet"],
             "outputs": ["status", "validation", "written_paths", "graph_health"],
         },
         {
@@ -183,6 +184,7 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "summary": "Atomically attach an experiment to a Lab node, optionally writing the new record first, and publish its compact App-visible event.",
             "inputs": [
                 "workspace_root",
+                "project",
                 "node_id",
                 "event_id",
                 "summary",
@@ -603,6 +605,17 @@ def call_chain_error_payload(exc: Exception) -> dict[str, Any]:
             "error_code": "invalid_proposal",
             "message": str(exc),
             "next_action": "Fix the proposed finding and resubmit; agents may only submit the six claim ops.",
+        }
+    if isinstance(exc, ProjectChoiceError):
+        return {
+            "status": "error",
+            "error_code": "project_required",
+            "message": str(exc),
+            "projects": exc.projects,
+            "next_action": (
+                "Pass project with the id of the project this work is for; ask the user once when the "
+                "request does not name one."
+            ),
         }
     if isinstance(exc, WorkspaceProtocolError):
         return {

@@ -14,6 +14,7 @@ from meridian.lab import (
     validate_meridian_agents_contract,
     validate_research_agent_principles,
 )
+from meridian.spaces import resolve_space
 
 
 @dataclass(frozen=True)
@@ -41,6 +42,7 @@ class LabSetupResult:
 def initialize_lab_readiness(*, lab_root: Path, config_home: Path | None = None) -> LabSetupResult:
     raw_root = lab_root.expanduser().resolve()
     root = raw_root.parent if raw_root.name == ".meridian" else raw_root
+    repository = resolve_space(raw_root).repository
     resolved_config_home = config_home.expanduser().resolve() if config_home is not None else None
 
     coding_style_profile = migrate_coding_style_profile(config_home=resolved_config_home)
@@ -50,7 +52,7 @@ def initialize_lab_readiness(*, lab_root: Path, config_home: Path | None = None)
     blockers: list[dict[str, str]] = []
     _collect_profile_blockers(blockers, validate_coding_style_profile(config_home=resolved_config_home))
     _collect_profile_blockers(blockers, validate_research_agent_principles(config_home=resolved_config_home))
-    _collect_contract_blockers(blockers, validate_meridian_agents_contract(root))
+    _collect_contract_blockers(blockers, validate_meridian_agents_contract(repository))
     _collect_lab_blockers(blockers, validate_lab_space(root))
 
     status = "ready" if not blockers else "needs_manual_repair"

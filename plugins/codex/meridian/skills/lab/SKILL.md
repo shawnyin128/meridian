@@ -95,6 +95,12 @@ use `python -m meridian workspace status --root .` and
 protocol files with ad-hoc scripts when either deterministic entry is
 available.
 
+A repository can hold several Meridian projects: the first in `.meridian/`, each later one in
+`.meridian/projects/<id>/` with its own plan, graph and records. When the session hook or
+`meridian.workspace_status` lists several, pass `project` (CLI `--project`) with the id of the
+project the request is for to every `workspace_*` and `lab_*` call, and write evidence inside that
+project's folder; ask the user once when the request does not say which.
+
 - Do not edit `plan.json` from Lab, an external agent, or repository code.
 - If Lab state conflicts with the plan, report the mismatch; do not silently
   choose one or rewrite either side.

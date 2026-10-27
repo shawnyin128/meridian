@@ -15,6 +15,7 @@ from meridian.mcp import adapter
 from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.setup.lab import format_lab_setup_result, initialize_lab_readiness, write_lab_setup_json
 from meridian.setup.repair import apply_mcp_repair
+from meridian.spaces import resolve_space
 from meridian.wiki.workspace import default_user_config_path, init_workspace, resolve_workspace, workspace_for_cli
 from meridian.workspace_protocol import (
     EVENT_KINDS,
@@ -26,6 +27,12 @@ from meridian.workspace_protocol import (
     add_workspace_event,
     inspect_project_workspace,
     read_project_plan,
+)
+
+
+PROJECT_HELP = (
+    "Id of the project this is for; required when the workspace holds several projects "
+    "(workspace status lists them)."
 )
 
 
@@ -94,6 +101,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Target research repo root or .meridian directory to initialize for Lab.",
     )
+    setup_init_lab.add_argument("--project", default=None, help=PROJECT_HELP)
     setup_init_lab.add_argument(
         "--config-home",
         type=Path,
@@ -115,6 +123,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Target research repo root or .meridian directory.",
     )
+    lab_graph_refresh.add_argument("--project", default=None, help=PROJECT_HELP)
     lab_graph_refresh.add_argument("--json-out", type=Path, default=None, help="Optional graph JSON copy path.")
 
     lab_graph_check = lab_subparsers.add_parser(
@@ -127,6 +136,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Target research repo root or .meridian directory.",
     )
+    lab_graph_check.add_argument("--project", default=None, help=PROJECT_HELP)
     lab_graph_check.add_argument("--json-out", type=Path, default=None, help="Optional graph health report path.")
 
     lab_apply_update = lab_subparsers.add_parser(
@@ -140,6 +150,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Target research repo root or .meridian directory.",
     )
+    lab_apply_update.add_argument("--project", default=None, help=PROJECT_HELP)
     lab_apply_update.add_argument("--json-out", type=Path, default=None, help="Optional apply result JSON path.")
 
     lab_export_graph = lab_subparsers.add_parser(
@@ -152,6 +163,7 @@ def build_parser() -> argparse.ArgumentParser:
         required=True,
         help="Target research repo root or .meridian directory.",
     )
+    lab_export_graph.add_argument("--project", default=None, help=PROJECT_HELP)
     lab_export_graph.add_argument("--json-out", type=Path, required=True, help="Required graph JSON output path.")
 
     lab_focus = lab_subparsers.add_parser(
@@ -172,6 +184,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate and summarize the shared workspace surfaces.",
     )
     workspace_status.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_status.add_argument("--project", default=None, help=PROJECT_HELP)
     workspace_status.add_argument("--json-out", type=Path, default=None, help="Optional status JSON path.")
 
     workspace_plan = workspace_subparsers.add_parser(
@@ -179,6 +192,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Read the App-owned project plan as JSON.",
     )
     workspace_plan.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_plan.add_argument("--project", default=None, help=PROJECT_HELP)
     workspace_plan.add_argument("--json-out", type=Path, default=None, help="Optional plan JSON path.")
 
     workspace_event_add = workspace_subparsers.add_parser(
@@ -186,6 +200,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Append a source-backed event to the repository-owned event projection.",
     )
     workspace_event_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_event_add.add_argument("--project", default=None, help=PROJECT_HELP)
     workspace_event_add.add_argument("--id", required=True, help="Stable event identifier.")
     workspace_event_add.add_argument("--text", required=True, help="One-line title: the outcome.")
     workspace_event_add.add_argument(
@@ -202,6 +217,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Record an idea that could stand alone as a research contribution, for the Meridian App's idea list.",
     )
     workspace_idea_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_idea_add.add_argument("--project", default=None, help=PROJECT_HELP)
     workspace_idea_add.add_argument("--id", required=True, help="Stable idea identifier.")
     workspace_idea_add.add_argument(
         "--title", required=True, help=f"One line of at most {IDEA_TITLE_MAX_LEN} characters that names the idea."
@@ -222,6 +238,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Attach a file in the repository, such as a proposal, to an idea, for the Meridian App to show with it.",
     )
     workspace_idea_file_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_idea_file_add.add_argument("--project", default=None, help=PROJECT_HELP)
     workspace_idea_file_add.add_argument("--id", required=True, help="Stable file identifier.")
     workspace_idea_file_add.add_argument(
         "--idea", required=True, help="The id given to idea-add, or an App idea id the workspace changes list."
@@ -235,6 +252,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Add a concrete next step agreed with the user to the Meridian App's project plan.",
     )
     workspace_task_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_task_add.add_argument("--project", default=None, help=PROJECT_HELP)
     workspace_task_add.add_argument("--id", required=True, help="Stable task identifier.")
     workspace_task_add.add_argument("--title", required=True, help="The step in one line.")
     workspace_task_add.add_argument("--note", default=None, help="Optional Markdown note.")
@@ -309,6 +327,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(effective_argv)
 
     try:
+        if args.product in {"lab", "workspace", "setup"} and getattr(args, "project", None):
+            # A named project resolves to its space folder, which every workspace and Lab call takes as its root.
+            attribute = "lab_root" if hasattr(args, "lab_root") else "root"
+            setattr(args, attribute, resolve_space(getattr(args, attribute), args.project).lab_root)
         if args.product == "framework-check":
             report = run_framework_check(
                 project_root=args.project_root,

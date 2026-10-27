@@ -16,6 +16,7 @@ from meridian.lab.graph import (
     validate_lab_apply_update,
 )
 from meridian.lab.state import ALLOWED_EXPERIMENT_VALIDITY
+from meridian.spaces import ProjectSpace, resolve_space
 from meridian.wiki.corpus import (
     FrontmatterError,
     parse_frontmatter,
@@ -70,7 +71,7 @@ def record_lab_result(
     created = (
         None
         if experiment is None
-        else _write_experiment_record(_lab_root_of(root).parent, source, experiment, node_id)
+        else _write_experiment_record(resolve_space(root), source, experiment, node_id)
     )
     try:
         result = _record_lab_result(
@@ -134,7 +135,7 @@ def _record_lab_result(
         event_date=event_date,
         node=node_id,
     )
-    evidence = _validate_experiment(prepared_event)
+    evidence = _validate_experiment(prepared_event, Path(resolve_space(root).folder))
     if evidence["validity"] != "valid" and normalized_impact in {
         "supports",
         "refutes",
@@ -244,15 +245,16 @@ def _record_lab_result(
     }
 
 
-def _validate_experiment(prepared: PreparedWorkspaceEvent) -> dict[str, str]:
+def _validate_experiment(prepared: PreparedWorkspaceEvent, folder: Path) -> dict[str, str]:
+    """The evidence the experiment record ``prepared`` cites gives, which must lie in the space ``folder``."""
     relative = Path(prepared.event["source"])
-    experiments_root = Path(".meridian/experiments")
+    experiments_root = folder / "experiments"
     if (
         relative == experiments_root / "index.md"
         or experiments_root not in relative.parents
     ):
         raise LabResultError(
-            "lab_result source must be an experiment Markdown file under .meridian/experiments"
+            f"lab_result source must be an experiment Markdown file under {experiments_root.as_posix()}"
         )
     if relative.suffix.lower() != ".md":
         raise LabResultError("lab_result source must be a Markdown experiment record")
@@ -315,14 +317,10 @@ def _validate_experiment(prepared: PreparedWorkspaceEvent) -> dict[str, str]:
     }
 
 
-def _lab_root_of(root: Path) -> Path:
-    return root if root.name == ".meridian" else root / ".meridian"
-
-
 def _write_experiment_record(
-    repository: Path, source: str, experiment: dict[str, Any], node_id: str
+    space: ProjectSpace, source: str, experiment: dict[str, Any], node_id: str
 ) -> Path:
-    """Write a new experiment record at ``source`` and return its path; never overwrites."""
+    """Write a new experiment record at ``source``, in ``space``'s experiments, and return its path; never overwrites."""
 
     unknown = sorted(set(experiment) - set(EXPERIMENT_RECORD_FIELDS))
     if unknown:
@@ -341,7 +339,7 @@ def _write_experiment_record(
         )
 
     relative = Path(source.strip())
-    experiments_root = Path(".meridian/experiments")
+    experiments_root = Path(space.folder) / "experiments"
     if (
         relative.is_absolute()
         or ".." in relative.parts
@@ -351,9 +349,9 @@ def _write_experiment_record(
         or relative.stem.splitlines() != [relative.stem]
     ):
         raise LabResultError(
-            "a new experiment record must be .meridian/experiments/<id>.md"
+            f"a new experiment record must be {experiments_root.as_posix()}/<id>.md"
         )
-    path = repository / relative
+    path = space.repository / relative
     if path.exists():
         raise LabResultError(
             "experiment record already exists; omit experiment to attach the existing record"
