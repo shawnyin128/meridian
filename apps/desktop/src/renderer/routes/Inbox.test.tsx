@@ -36,7 +36,7 @@ const api = vi.hoisted(() => ({
   checks: vi.fn<(watchId?: string) => Promise<void>>(async () => {}),
   discoveries: vi.fn<(projectId?: string, force?: boolean) => Promise<DiscoveryFetchResult>>(async () => ({
     projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
-    nothingNew: true, lastFetchedAt: null,
+    nothingNew: true, lastFetchedAt: null, directions: [],
   })),
   notice: {
     success: vi.fn<(text: unknown, action?: { label: string; onAction: () => void }) => void>(),
@@ -217,6 +217,7 @@ describe('Inbox', () => {
         id: 'i1', label: 'speculative · decoding', core: true, enabled: true, seedCount: 2,
         seeds: [{ id: 'ARXIV:1', title: 'Draft Model' }, { id: 'ARXIV:2', title: 'Verifier' }],
       }],
+      candidates: [],
     }]
     api.entries = [{
       id: 'd1', kind: 'discovery', watch: '', project: 'p1', source: '项目 · 项目一',
@@ -451,12 +452,12 @@ describe('Inbox', () => {
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
     api.profiles = [
-      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at - 3_600_000, intents: [] },
-      { id: 'p2', name: '项目二', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at + 3_600_000, intents: [] },
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at - 3_600_000, intents: [], candidates: [] },
+      { id: 'p2', name: '项目二', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at + 3_600_000, intents: [], candidates: [] },
     ]
     api.discoveries.mockResolvedValueOnce({
       projects: 1, intents: 1, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 0,
-      nothingNew: true, lastFetchedAt: at,
+      nothingNew: true, lastFetchedAt: at, directions: [],
     })
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
@@ -472,11 +473,11 @@ describe('Inbox', () => {
     api.scope = 'p1'
     const at = new Date(2026, 9, 23, 9, 30).getTime()
     api.profiles = [
-      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [] },
+      { id: 'p1', name: '项目一', seedCount: 1, positiveCount: 0, negativeCount: 0, intentCount: 1, lastFetchedAt: at, intents: [], candidates: [] },
     ]
     api.discoveries.mockResolvedValueOnce({
       projects: 0, intents: 0, added: 0, deferredProjects: 0, cachedIntents: 0, failedIntents: 1,
-      nothingNew: false, lastFetchedAt: at,
+      nothingNew: false, lastFetchedAt: at, directions: [],
     })
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })
@@ -622,6 +623,7 @@ describe('Inbox', () => {
           seeds: [{ id: 'ARXIV:2', title: 'Tree Verification' }],
         },
       ],
+      candidates: [],
     }]
     const root = createRoot(host)
     await act(async () => { root.render(<MessagesProvider><Inbox /></MessagesProvider>) })

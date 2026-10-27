@@ -217,6 +217,44 @@ export function discoveryProgress(seed) {
 }
 
 /**
+ * Adds to `record`, the KV cache project's stored discovery directions, what a re-scan after a change
+ * of its current goal would leave there: one candidate waiting for the user and one the user declined.
+ */
+export function withDirectionChoices(record) {
+  const direction = (id, label, paperId, title) => ({ id, label, score: 0.3, seeds: [{ paperId, title }] })
+  return {
+    ...record,
+    candidates: [...record.candidates, direction('intent-seed-quip', 'QuIP#', 'ARXIV:2402.04396',
+      'QuIP$\\#$: Even Better LLM Quantization with Hadamard Incoherence and Lattice Codebooks')],
+    declined: [...record.declined, direction('intent-seed-infbench', '$\\infty$Bench', 'ARXIV:2402.13718',
+      '$\\infty$Bench: Extending Long Context Evaluation Beyond 100K Tokens')],
+  }
+}
+
+/**
+ * Gives the KV cache project a candidate and a declined direction in
+ * `.meridian/discovery/directions.json`, and lists both among its directions turned off in
+ * `state.json`, as the App does for Apps that derive directions themselves. Run with the App closed.
+ */
+export function writeDirectionChoices(seed) {
+  const meridian = join(seed.out, 'library', '.meridian')
+  const file = join(meridian, 'discovery', 'directions.json')
+  const records = JSON.parse(readFileSync(file, 'utf8'))
+  const id = seed.projects.kv.id
+  const record = withDirectionChoices(records.find((held) => held.id === id))
+  writeFileSync(file, `${JSON.stringify(records.map((held) => (held.id === id ? record : held)), null, 2)}\n`, 'utf8')
+  const stateFile = join(meridian, 'state.json')
+  const state = JSON.parse(readFileSync(stateFile, 'utf8'))
+  const held = state.discoveryPreferences?.[id] ?? { coreIntentId: null, disabledIntentIds: [] }
+  const off = [...record.candidates, ...record.declined].map((direction) => direction.id)
+  state.discoveryPreferences = {
+    ...state.discoveryPreferences,
+    [id]: { ...held, disabledIntentIds: [...new Set([...held.disabledIntentIds, ...off])] },
+  }
+  writeFileSync(stateFile, `${JSON.stringify(state, null, 2)}\n`, 'utf8')
+}
+
+/**
  * Moves each project's creation, and every research record Core stamped on the project page on day
  * `stamped`, to the day the project was created. Run with the App closed.
  */

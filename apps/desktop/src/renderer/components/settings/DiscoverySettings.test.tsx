@@ -16,6 +16,7 @@ const api = vi.hoisted(() => ({
       { id: 'side', label: '草稿头', core: false, enabled: false, seedCount: 1, seeds: [] },
       { id: 'next', label: '验证策略', core: false, enabled: true, seedCount: 1, seeds: [] },
     ],
+    candidates: [],
   }] as DiscoveryProfile[],
   setIntent: vi.fn(async () => {}),
   fetch: vi.fn(),

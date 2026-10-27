@@ -44,19 +44,20 @@ import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
 } from './inbox/identity.js'
 import {
-  applyRecommendationPreferences, buildRecommendationProfile, clusterRecommendationProfile,
-  discoveryReasons, recommendationSeedIds,
-  type DiscoveryPaper, type DiscoveryPreferences, type RefreshScope,
+  buildRecommendationProfile, clusterRecommendationProfile, directionBasis, directionIntents, directionsAfter,
+  discoveryReasons, migratedDirections, mirroredDisabled, recommendationSeedIds, scannedDirections,
+  type DirectionPaper, type DiscoveryPaper, type DiscoveryPreferences, type ProjectDirections, type RefreshScope,
 } from './recommendation/index.js'
 import type { RemotePaper } from './net/arxiv.js'
 import type { Publication } from './net/semantic-metadata.js'
 import type { Json } from './vault/frontmatter.js'
 import { emitKey } from './vault/frontmatter.js'
 import type {
-  ChatRecord, InboxLeft, InboxRecord, PaperSnapshot, RefreshProgressRecord, TrashRecord, VaultState,
+  ChatRecord, DiscoveryDirectionsRecord, InboxLeft, InboxRecord, PaperSnapshot, RefreshProgressRecord, TrashRecord,
+  VaultState,
 } from './vault/records.js'
 import {
-  ChatRecordSchema, DeliveredRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
+  ChatRecordSchema, DeliveredRecordSchema, DiscoveryDirectionsRecordSchema, DiscoveryPreferencesRecordSchema, InboxRecordSchema, LaterRecordSchema,
   MetadataFillRecordSchema, PaperReadingRecordSchema, RefreshProgressRecordSchema, TrashRecordSchema, VaultStateSchema,
 } from './vault/records.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from './vault/stored-records.js'
@@ -463,6 +464,9 @@ export function createVaultStore(
   let readings = load('paper-readings', PaperReadingRecordSchema, 'paperId')
   let fills = load('metadata-fills', MetadataFillRecordSchema, 'paper')
   let progress: RefreshProgressRecord[] = load('discovery/progress', RefreshProgressRecordSchema)
+  /** Whether a version that stores discovery directions opened this vault before. */
+  const directionsStored = existsSync(join(meridian, 'discovery', 'directions.json'))
+  let directions: DiscoveryDirectionsRecord[] = load('discovery/directions', DiscoveryDirectionsRecordSchema)
 
   /** The identity of the paper a stored inbox entry delivers. */
   const entryIdentity = (entry: InboxRecord): PaperIdentity => paperIdentity({
@@ -1533,9 +1537,59 @@ export function createVaultStore(
   const discoveryPreferences = (projectId: string): DiscoveryPreferences => (
     preferences.get(projectId) ?? { coreIntentId: null, disabledIntentIds: [] }
   )
-  const projectDiscoveryIntents = (projectId: string) => applyRecommendationPreferences(
-    clusterRecommendationProfile(projectDiscoveryProfile(projectId)),
-    discoveryPreferences(projectId),
+  /** Writes `changed` over project `projectId`'s discovery preferences in `state.json`. Throws when it cannot write. */
+  const saveDiscoveryPreferences = (projectId: string, changed: Partial<DiscoveryPreferences>): void => {
+    const held = discoveryPreferences(projectId)
+    const stored = state.discoveryPreferences?.[projectId]
+    // A key this change leaves alone keeps its stored value, even one this version cannot read.
+    saveState({
+      ...state,
+      discoveryPreferences: {
+        ...state.discoveryPreferences,
+        [projectId]: { ...held, ...(typeof stored === 'object' && stored !== null ? stored : {}), ...changed },
+      },
+    })
+    preferences.set(projectId, { ...held, ...changed })
+  }
+  /** The projects whose record in `discovery/directions.json` this version cannot read. */
+  const unreadableDirections = new Set((lists.get('discovery/directions')?.unreadable ?? []).flatMap((record) => {
+    const id = (record as { id?: unknown } | null)?.id
+    return typeof id === 'string' ? [id] : []
+  }))
+  const heldDirections = (projectId: string): ProjectDirections | undefined => (
+    directions.find((record) => record.id === projectId)
+  )
+  /**
+   * Stores `next` as project `projectId`'s directions, and lists its candidates and declined
+   * directions among the directions turned off, `disabled` when given, for Apps that derive directions
+   * themselves. Throws when it cannot write.
+   */
+  const putDirections = (projectId: string, next: ProjectDirections, disabled = discoveryPreferences(projectId).disabledIntentIds): void => {
+    const record = { id: projectId, ...next }
+    directions = save('discovery/directions', directions.some((held) => held.id === projectId)
+      ? directions.map((held) => (held.id === projectId ? record : held)) : [...directions, record])
+    const mirrored = mirroredDisabled(next, disabled)
+    if (mirrored.join('\n') !== discoveryPreferences(projectId).disabledIntentIds.join('\n')) {
+      saveDiscoveryPreferences(projectId, { disabledIntentIds: mirrored })
+    }
+  }
+  /** The fingerprint of the project fields its directions follow: topics, current goal and research path. */
+  const directionBasisOf = (project: ProjectRecord): string => directionBasis({
+    topics: projectTopics(served(project)),
+    focus: project.focus,
+    path: (project.graph.activeNodes ?? []).flatMap((id) => project.graph.nodes.find((node) => node.id === id)?.label ?? []),
+  })
+  /** The Wiki topics and short title of each of the project's papers that seeds discovery, by seed id. */
+  const directionPapers = (project: ProjectRecord) => {
+    const bySeed = new Map<string, DirectionPaper>(project.papers.flatMap((id) => {
+      const paper = papers.get(id)
+      const arxiv = libraryArxivId(paper)
+      return paper === undefined || arxiv === null ? [] : [[`ARXIV:${arxiv}`, { topics: paper.topics, shortTitle: paper.shortTitle }] as const]
+    }))
+    return (paperId: string) => bySeed.get(paperId)
+  }
+  const projectDiscoveryIntents = (projectId: string) => directionIntents(
+    heldDirections(projectId), discoveryPreferences(projectId), projectDiscoveryProfile(projectId),
   )
 
   /** Returns whether an inbox entry shows in the feed: it has not left, and the vault does not hold its paper. */
@@ -1584,6 +1638,17 @@ export function createVaultStore(
     inbox = save('inbox', place(added, held.map(fold)))
     remember(added)
     return added
+  }
+
+  // An older version derived every project's directions on each read and fetched them; they become
+  // its confirmed directions, so a project created from now on starts with candidates instead.
+  if (!directionsStored) {
+    directions = save('discovery/directions', [...projectById.values()].map((project) => ({
+      id: project.id,
+      ...migratedDirections(
+        clusterRecommendationProfile(projectDiscoveryProfile(project.id)), directionBasisOf(project), directionPapers(project),
+      ),
+    })))
   }
 
   const ops: VaultOps = {
@@ -2525,6 +2590,10 @@ export function createVaultStore(
               seedCount: intent.seeds.length,
               seeds: intent.seeds.map((seed) => ({ id: seed.paperId, title: seed.title })),
             })),
+            candidates: (heldDirections(project.id)?.candidates ?? []).map((candidate) => ({
+              id: candidate.id, label: candidate.label, seedCount: candidate.seeds.length,
+              seeds: candidate.seeds.map((seed) => ({ id: seed.paperId, title: seed.title })),
+            })),
           }
         })
     },
@@ -2583,24 +2652,34 @@ export function createVaultStore(
       if (!projectDiscoveryIntents(projectId).some((intent) => intent.id === intentId)) {
         throw new CallError('not-found', `推荐方向不存在：${intentId}`)
       }
-      const held = discoveryPreferences(projectId)
-      const disabled = new Set(held.disabledIntentIds)
+      const disabled = new Set(discoveryPreferences(projectId).disabledIntentIds)
       if (action === 'disable') disabled.add(intentId)
       else disabled.delete(intentId)
-      const changed = action === 'set-core'
+      saveDiscoveryPreferences(projectId, action === 'set-core'
         ? { coreIntentId: intentId, disabledIntentIds: [...disabled] }
-        : { disabledIntentIds: [...disabled] }
-      const stored = state.discoveryPreferences?.[projectId]
-      // A key this action leaves alone keeps its stored value, even one this version cannot read.
-      saveState({
-        ...state,
-        discoveryPreferences: {
-          ...state.discoveryPreferences,
-          [projectId]: { ...held, ...(typeof stored === 'object' && stored !== null ? stored : {}), ...changed },
-        },
-      })
-      preferences.set(projectId, { ...held, ...changed })
+        : { disabledIntentIds: [...disabled] })
     },
+
+    scanDiscoveryDirections: atomic((projectId) => {
+      const project = projectOf(projectId)
+      if (unreadableDirections.has(projectId)) return []
+      const held = heldDirections(projectId)
+      const scanned = scannedDirections(
+        held, clusterRecommendationProfile(projectDiscoveryProfile(projectId)), directionBasisOf(project), directionPapers(project),
+      )
+      if (scanned === null) return []
+      if (scanned.found.length > 0 || (held !== undefined && held.basis !== scanned.next.basis)) {
+        putDirections(projectId, scanned.next)
+      }
+      return scanned.found.map(({ id, label }) => ({ id, label }))
+    }),
+
+    setDiscoveryDirection: atomic((params) => {
+      projectOf(params.projectId)
+      const next = directionsAfter(heldDirections(params.projectId), params)
+      const disabled = discoveryPreferences(params.projectId).disabledIntentIds
+      putDirections(params.projectId, next, params.action === 'add' ? disabled.filter((id) => id !== params.directionId) : disabled)
+    }),
 
     addDiscoveryEntries: atomic((projectId, found: DiscoveryPaper[], limit) => {
       const project = projectOf(projectId)

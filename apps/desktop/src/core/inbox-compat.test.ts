@@ -20,6 +20,13 @@ const discovered = (id: string, project: string, arxiv: string) => ({
   arxiv, semanticId: `semantic-${arxiv}`, meta: { authors: ['Ada'], submitted: '2026-09-08', journalRef: null },
 })
 
+/** Confirms every direction a scan of `project` in `store` offers, as the user adding each one would. */
+const confirmDirections = (store: VaultStore, project: string): void => {
+  for (const found of store.scanDiscoveryDirections(project)) {
+    store.setDiscoveryDirection({ projectId: project, directionId: found.id, action: 'add' })
+  }
+}
+
 /** The provider result that would deliver the paper `arxiv` again. */
 const refound = (arxiv: string) => ({
   semanticId: `semantic-${arxiv}`, id: arxiv, title: `Discovered ${arxiv}`, authors: ['Ada'], abstract: 'A',
@@ -130,6 +137,7 @@ describe('论文推送重做后要写的存储形状', () => {
   it('state.json 里项目的推荐偏好多出确认方向和候选方向：照常读出，改启停后原样留着', async () => {
     store.updatePaper(SEED_PAPER, { identifier: 'arXiv:2211.17192' })
     await store.addPaper(project, SEED_PAPER)
+    confirmDirections(store, project)
     const directions = [{ id: 'direction-1', label: '推测解码', seeds: ['ARXIV:2211.17192'], weight: 1, confirmedAt: 1_792_000_000_000 }]
     const candidates = [{ id: 'direction-2', label: '树状验证', seeds: ['ARXIV:2401.15077'], foundAt: 1_792_000_000_000 }]
     const basis = { topic: '推测解码', goal: '', path: '' }
@@ -153,6 +161,8 @@ describe('论文推送重做后要写的存储形状', () => {
     await store.addPaper(project, SEED_PAPER)
     const other = store.createProject('另一个项目')
     await store.addPaper(other, SEED_PAPER)
+    confirmDirections(store, project)
+    confirmDirections(store, other)
     const intentOf = (s: VaultStore, id: string) => s.listDiscoveryProfiles().find((profile) => profile.id === id)!.intents[0]!
     const intent = intentOf(store, other).id
     const directions = [{ id: 'direction-1', label: '推测解码', seeds: ['ARXIV:2211.17192'] }]
@@ -181,7 +191,7 @@ describe('论文推送重做后要写的存储形状', () => {
   it('刷新进度和候选池存在 .meridian/discovery/progress.json：重开后读回来，state.json 不动，删掉的项目不留进度，读不懂的照留', () => {
     const other = store.createProject('删掉的项目')
     const folder = join(vault, '.meridian', 'discovery')
-    mkdirSync(folder)
+    mkdirSync(folder, { recursive: true })
     const later = [refound('2609.95001')]
     const scores = { '2609.95001': 0.8 }
     writeFileSync(join(folder, 'progress.json'), JSON.stringify([
@@ -239,7 +249,7 @@ describe('论文推送重做后要写的存储形状', () => {
     const watchNamed = (name: string) => store.listWatches().find((watch) => watch.name === name)!.id
     const [kept, removed] = [watchNamed('kv cache'), watchNamed('speculative decoding')]
     write('watches', [...read('watches') as object[], { id: 'watch-future', type: 'venue', name: 'NeurIPS', active: true }])
-    mkdirSync(join(vault, '.meridian', 'discovery'))
+    mkdirSync(join(vault, '.meridian', 'discovery'), { recursive: true })
     const future = { id: 'watch:watch-future', candidates: [refound('2609.96002')] }
     write('discovery/progress', [{ id: `watch:${removed}`, candidates: [refound('2609.96001')] }, future])
     vi.spyOn(console, 'error').mockImplementation(() => {})
@@ -255,7 +265,7 @@ describe('论文推送重做后要写的存储形状', () => {
 
   it('.meridian/discovery 下的候选池和 SPECTER2 向量缓存：打开、删项目、清空垃圾桶都不碰它们', () => {
     const folder = join(vault, '.meridian', 'discovery')
-    mkdirSync(folder)
+    mkdirSync(folder, { recursive: true })
     const pool = JSON.stringify({ [project]: { candidates: [refound('2609.93001')], cursor: 1 } })
     const vectors = JSON.stringify({ model: 'specter2', vectors: { 'semantic-2609.93001': [0.12, -0.03, 0.4] } })
     writeFileSync(join(folder, 'candidates.json'), pool, 'utf8')

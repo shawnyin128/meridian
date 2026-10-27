@@ -57,6 +57,13 @@ const INBOX_ENTRY = {
   meta: { authors: ['Li'], submitted: '2026-09-03', journalRef: null },
 }
 
+/** Confirms every direction a scan of `project` in `store` offers, as the user adding each one would. */
+const confirmDirections = (store: VaultStore, project: string): void => {
+  for (const found of store.scanDiscoveryDirections(project)) {
+    store.setDiscoveryDirection({ projectId: project, directionId: found.id, action: 'add' })
+  }
+}
+
 /** ListResult and Facet have contract types but no schemas, so build local shape predicates from those types. */
 const ListResultSchema = z.object({ rows: z.array(PaperRowSchema), total: z.number().int() }).strict()
 const FacetSchema = z.object({
@@ -374,6 +381,7 @@ describe('vault store', () => {
     store.createProject('发现项目')
     const projectId = store.listProjects().find((project) => project.name === '发现项目')!.id
     await store.addPaper(projectId, WITH_SOURCE)
+    confirmDirections(store, projectId)
     expect(store.listDiscoveryProfiles()).toContainEqual({
       id: projectId, name: '发现项目', seedCount: 1, positiveCount: 0, negativeCount: 0,
       intentCount: 1, lastFetchedAt: null,
@@ -381,6 +389,7 @@ describe('vault store', () => {
         core: true, enabled: true, seedCount: 1,
         seeds: [{ id: 'ARXIV:2211.17192', title: expect.any(String) }],
       })],
+      candidates: [],
     })
     expect(store.discoverySeeds(projectId).positive).toEqual(['ARXIV:2211.17192'])
     expect(store.discoveryProfile(projectId).wikiTerms).toEqual([
@@ -421,6 +430,7 @@ describe('vault store', () => {
     const projectId = store.listProjects().find((project) => project.name === '方向偏好')!.id
     await store.addPaper(projectId, WITH_SOURCE)
     await store.addPaper(projectId, imported.id)
+    confirmDirections(store, projectId)
     const projectPage = join(vault, 'wiki', 'projects', `${projectId}.md`)
     const beforeWiki = readFileSync(projectPage, 'utf8')
     const before = store.listDiscoveryProfiles().find((profile) => profile.id === projectId)!

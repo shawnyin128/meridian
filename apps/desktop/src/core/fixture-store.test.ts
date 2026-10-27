@@ -2343,6 +2343,10 @@ describe('fixture store', () => {
       'inbox.readLater': () => store.readLater('sequoia2'),
       'inbox.download': () => store.completeInboxDownload('fa3', minimalPdf({ lines: ['fa3'] })),
       'discovery.profiles': () => store.listDiscoveryProfiles(),
+      'discovery.direction': () => {
+        const [found] = store.scanDiscoveryDirections('draft')
+        if (found) store.setDiscoveryDirection({ projectId: 'draft', directionId: found.id, action: 'add' })
+      },
       'discovery.intent': () => {
         const intent = store.listDiscoveryProfiles()
           .find((profile) => profile.id === 'draft')?.intents[0]

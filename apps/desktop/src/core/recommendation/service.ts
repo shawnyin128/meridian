@@ -90,7 +90,7 @@ export function createRecommendationService(deps: {
   store: Pick<VaultStore,
     'listDiscoveryProfiles' | 'discoveryIntents' | 'discoveryProfile' | 'discoverySchedule'
     | 'setDiscoverySchedule' | 'refreshProgress' | 'setRefreshProgress' | 'addDiscoveryEntries'
-    | 'undelivered' | 'deliverySettings'>
+    | 'undelivered' | 'deliverySettings' | 'scanDiscoveryDirections'>
   provider: RecommendationProvider
   onWrite: () => void
   now: () => number
@@ -99,9 +99,13 @@ export function createRecommendationService(deps: {
     async discover(projectId, force = false) {
       const now = deps.now()
       const cap = deps.store.deliverySettings().maxItemsPerRun
-      const profiles = deps.store.listDiscoveryProfiles()
+      const scoped = deps.store.listDiscoveryProfiles()
         .filter((profile) => projectId === undefined || profile.id === projectId)
-        .filter((profile) => profile.seedCount + profile.positiveCount > 0)
+      // A scan only offers candidates, so the confirmed directions every plan below reads stay as they were.
+      const directions = scoped.filter((profile) => profile.seedCount + profile.positiveCount > 0)
+        .flatMap((profile) => deps.store.scanDiscoveryDirections(profile.id).map((found) => ({ projectId: profile.id, ...found })))
+      const profiles = scoped
+        .filter((profile) => profile.seedCount + profile.positiveCount > 0 || profile.intentCount > 0)
         .sort((left, right) => {
           if (left.lastFetchedAt === null) return right.lastFetchedAt === null ? 0 : -1
           if (right.lastFetchedAt === null) return 1
@@ -226,7 +230,7 @@ export function createRecommendationService(deps: {
           added += delivered
           if (fetchedAt !== null) lastFetchedAt = Math.max(lastFetchedAt ?? fetchedAt, fetchedAt)
         }
-        if (wrote) deps.onWrite()
+        if (wrote || directions.length > 0) deps.onWrite()
         const deferredProjects = fetching.filter((plan) => (
           plan.intents.length > 0 && plan.selected.length === 0
         )).length
@@ -240,6 +244,7 @@ export function createRecommendationService(deps: {
           failedIntents,
           nothingNew: plans.length > 0 && added === 0 && deferredProjects === 0 && failedIntents === 0,
           lastFetchedAt,
+          directions,
         }
       } catch (error) {
         throw new Error(`没能保存论文发现：${error instanceof Error ? error.message : String(error)}`, { cause: error })
