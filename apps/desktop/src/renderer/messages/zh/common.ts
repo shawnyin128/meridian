@@ -53,7 +53,7 @@ export const common = {
     clear: '清除输入',
     emptyValue: '—',
     edit: (label: string) => `编辑${label}`,
-    chooseDirectory: '选择目录…',
+    chooseDirectory: '选择目录',
   },
   sshFolders: { up: '上层文件夹', path: '文件夹路径' },
   pager: {

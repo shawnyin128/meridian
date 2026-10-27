@@ -780,7 +780,7 @@ describe('PaperTable', () => {
     expect([...importCall.bytes]).toEqual([...bytes])
     const importing = host.querySelector<HTMLButtonElement>('.pdfupload')!
     expect([importing.disabled, importing.getAttribute('aria-busy'), importing.getAttribute('aria-label'), importing.textContent])
-      .toEqual([true, 'true', '正在导入…', '导入 PDF…'])
+      .toEqual([true, 'true', '正在导入…', '导入 PDF'])
 
     const paper = { ...ROW, id: 'uploaded', title: '新论文' }
     importCall.resolve({ kind: 'added', paper })

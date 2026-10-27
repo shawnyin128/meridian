@@ -123,7 +123,7 @@ export const project = {
     paperCount: (n: number) => `${n} 篇`,
     workspaceLabel: '工作区',
     refreshWorkspace: '刷新',
-    changeWorkspace: '更换连接…',
+    changeWorkspace: '更换连接',
     disconnectWorkspace: '断开',
   },
   workspace: {
@@ -132,7 +132,7 @@ export const project = {
     local: '本地目录',
     pathLabel: '项目路径',
     localPlaceholder: '本机项目目录',
-    chooseLocal: '选择项目目录…',
+    chooseLocal: '选择项目目录',
     add: '添加',
     adding: '正在添加…',
     hostLabel: '主机',
@@ -165,7 +165,7 @@ export const project = {
     removed: (text: string) => `已移除关联「${text}」`,
   },
   attachments: {
-    addTitle: '添加附件…',
+    addTitle: '添加附件',
     delete: '删除附件',
     localOnly: '只能添加本机上的文件',
     noPath: '无文件位置',

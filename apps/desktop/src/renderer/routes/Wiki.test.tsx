@@ -194,9 +194,9 @@ describe('Wiki keyboard reach', () => {
     })
   }
 
-  it('主题卡片的更多菜单是重命名、合并到…、删除；删除不弹确认，把那一页移进垃圾桶，通知带撤销', async () => {
+  it('主题卡片的更多菜单是重命名、合并到、删除；删除不弹确认，把那一页移进垃圾桶，通知带撤销', async () => {
     const items = await cardMenu('topics/sd')
-    expect(items.map((item) => item.textContent)).toEqual(['重命名', '合并到…', '删除'])
+    expect(items.map((item) => item.textContent)).toEqual(['重命名', '合并到', '删除'])
     await choose(items, '删除')
     expect(document.querySelector('[role="alertdialog"]')).toBeNull()
     expect(fixture.deletePage).toHaveBeenCalledWith('topics/sd')
@@ -213,10 +213,10 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.writes.at(-1)!.opts!.note).toBe('已移入垃圾桶')
   })
 
-  it('合并到…：在卡片上挑出要并进的那一页就合并，不弹确认；带上两张卡片当时的样子，通知带撤销', async () => {
+  it('合并到：在卡片上挑出要并进的那一页就合并，不弹确认；带上两张卡片当时的样子，通知带撤销', async () => {
     const dup = card('topics/dup', '投机采样')
     fixture.cards = [card('topics/sd', '推测解码'), dup, { ...card('methods/m', '树'), kind: 'method' }]
-    await choose(await cardMenu('topics/sd'), '合并到…')
+    await choose(await cardMenu('topics/sd'), '合并到')
     await act(async () => { await new Promise((ok) => setTimeout(ok, 0)) })
     const hits = [...document.querySelectorAll<HTMLElement>('.pickhits .rrow')]
     expect(hits.map((hit) => hit.textContent)).toEqual([expect.stringContaining('投机采样')])

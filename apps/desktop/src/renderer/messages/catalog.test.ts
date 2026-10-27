@@ -69,15 +69,18 @@ describe('确认框的文案', () => {
   }
 })
 
-describe('占位文字和要再问一步的命令', () => {
+describe('占位文字和命令的省略号', () => {
   const catalogs = { zh: texts(zh as unknown as Node), en: texts(en as unknown as Node) }
   /** Whether the key at `path` is a field's placeholder or a picker's empty value. */
   const placeholder = (path: string) => /(^|\.)(placeholder|[a-z]+Placeholder|[a-z]+Pick)$/.test(path)
-  // The commands that open a file dialog, a dialog or an editor before they act, as #500 lists them.
-  const ASKING = [
-    'papers.upload.importAction', 'common.field.chooseDirectory', 'settings.storage.chooseAction',
-    'project.identity.changeWorkspace', 'project.workspace.chooseLocal', 'project.attachments.addTitle',
-    'wiki.claims.revise', 'wiki.claims.markConflict', 'settings.appearance.editor.edit',
+  // The busy states shown while something runs, the only texts that still end in an ellipsis.
+  const BUSY = [
+    'common.loading', 'common.saving', 'chat.thinking', 'inbox.discovering', 'inbox.check.checking', 'papers.upload.importing',
+    'project.workspace.adding', 'project.workspace.connecting', 'project.workspace.choosing', 'watches.suggesting',
+    'settings.storage.checkingDirectory', 'settings.storage.resetting', 'settings.storage.backupSwitching',
+    'settings.storage.backupDeleting', 'settings.model.saving', 'settings.model.connection.testing',
+    'settings.extensions.plugin.checking', 'settings.extensions.app.checking', 'settings.extensions.app.downloading',
+    'settings.delivery.saving', 'settings.discovery.refreshing', 'wiki.ingest.discarding', 'wiki.ingest.writing',
   ]
 
   it('每个占位文字只说出它那一栏的名字：不叫人输入、粘贴或选择，不举例，不写可选，不提问', () => {
@@ -88,9 +91,12 @@ describe('占位文字和要再问一步的命令', () => {
     expect([...off, ...offEn]).toEqual([])
   })
 
-  it('打开对话框、文件选择或编辑器才完成的命令以省略号结尾，两种语言都是', () => {
-    const at = (language: 'zh' | 'en') => new Map(catalogs[language])
-    expect(ASKING.filter((path) => !at('zh').get(path)?.endsWith('…') || !at('en').get(path)?.endsWith('…'))).toEqual([])
+  it('命令不以省略号结尾，打开对话框、文件选择或编辑器的也不；只有进行中的状态以省略号结尾，两种语言都是', () => {
+    for (const language of ['zh', 'en'] as const) {
+      const trailing = catalogs[language].filter(([, text]) => /(…|\.\.\.)$/.test(text)).map(([path]) => path)
+      expect(trailing.filter((path) => !BUSY.includes(path)), language).toEqual([])
+      expect(BUSY.filter((path) => !trailing.includes(path)), language).toEqual([])
+    }
   })
 })
 
