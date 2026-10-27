@@ -35,7 +35,7 @@ import { useTopLevel } from '../../hooks/useTopLevel.js'
 import { useVaultWrite } from '../../hooks/useVaultWrite.js'
 import { useDragReorder, type ReorderDrag } from '../../hooks/useDragReorder.js'
 import {
-  useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreenReentry, useVaultRevision,
+  useCrumbTail, useEscapeLayer, useJump, useNotice, usePaperCount, useScreenReentry, useSettingsOpen, useVaultRevision,
 } from '../../shell/AppShell.js'
 import { AddAction } from '../AddAction.js'
 import { DragHandle } from '../DragHandle.js'
@@ -301,11 +301,14 @@ export function PaperTable() {
     : view === 'research-map' ? (mapLoading ? null : mapTotal)
       : listed ? total : null
 
-  // The header's … menu fills publication info from Semantic Scholar, so it shows only while a key is saved.
+  // The header's … menu fills publication info from Semantic Scholar, so it shows only while a key is
+  // saved. The key is saved in Settings, so it is read again each time Settings closes.
   const [keyed, setKeyed] = useState(false)
+  const { open: settingsOpen } = useSettingsOpen()
   useEffect(() => {
+    if (settingsOpen) return
     void delivery.semanticKey().then((status) => setKeyed(status.configured)).catch(report)
-  }, [revision, report])
+  }, [settingsOpen, report])
 
   /**
    * Fills the papers' publication venue and year from Semantic Scholar and says how many changed; each
