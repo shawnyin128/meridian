@@ -144,8 +144,9 @@ class LabGraphTests(unittest.TestCase):
 
                 self.assertIn("frontmatter `type: experiment-design`", design)
                 self.assertIn("in the `files` that `meridian.workspace_idea` returns for the idea", design)
-                self.assertIn("build its two nodes from the file, using its table", design)
-                self.assertIn("an experiment child node for the smallest experiment", design)
+                self.assertIn("build its two nodes from the file's frontmatter, not its headings", design)
+                for key in ("`hypothesis_node`", "`parent_project`", "`parent_node`", "`experiment_node`", "`decision_table_history`"):
+                    self.assertIn(key, design)
                 self.assertIn("Create no node for M2 or M0", design)
 
                 completion = " ".join(skill.split("- **Completion.**", 1)[1].split("\n- **Tasks.**", 1)[0].split())

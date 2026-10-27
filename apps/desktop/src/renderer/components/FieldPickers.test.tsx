@@ -7,7 +7,7 @@ import { MessagesProvider } from '../messages/useMessages.js'
 import { TodayContext } from '../shell/AppShell.js'
 import { LANGUAGE_STORAGE_KEY } from '../shell/language.js'
 import { MenuItem } from './ActionMenu.js'
-import { CapsuleToggle, ChoicePicker, DateButton, DateRangeField, DotsMenu } from './FieldPickers.js'
+import { CapsuleButton, ChoicePicker, DateButton, DateRangeField, DotsMenu } from './FieldPickers.js'
 import { RowActions } from './Item.js'
 import { TOOLTIP_DELAY } from './Tooltip.js'
 
@@ -370,27 +370,34 @@ describe('DateRangeField', () => {
   })
 })
 
-describe('CapsuleToggle', () => {
+describe('CapsuleButton', () => {
   beforeEach(() => { globalThis.IS_REACT_ACT_ENVIRONMENT = true })
 
-  it('is the composer\'s capsule that turns on and off, pressed while on', async () => {
+  it('is the composer\'s capsule: with pressed it turns on and off and is pressed while on; without it it only acts', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const root = createRoot(host)
-    function Toggling() {
+    const saved = vi.fn()
+    function Capsules() {
       const [on, setOn] = useState(false)
-      return <CapsuleToggle pressed={on} onToggle={() => setOn((held) => !held)}>实验设计</CapsuleToggle>
+      return (
+        <>
+          <CapsuleButton pressed={on} onClick={() => setOn((held) => !held)}>实验设计</CapsuleButton>
+          <CapsuleButton id="qaIdea" onClick={saved}>保存为想法</CapsuleButton>
+        </>
+      )
     }
-    await act(async () => root.render(<Toggling />))
-    const capsule = host.querySelector('button')!
+    await act(async () => root.render(<Capsules />))
+    const [toggle, action] = [...host.querySelectorAll('button')]
 
-    expect(capsule.className).toBe('choice-capsule')
-    expect(capsule.textContent).toBe('实验设计')
-    expect(capsule.getAttribute('aria-pressed')).toBe('false')
-    await act(async () => capsule.click())
-    expect(capsule.getAttribute('aria-pressed')).toBe('true')
-    await act(async () => capsule.click())
-    expect(capsule.getAttribute('aria-pressed')).toBe('false')
+    expect([toggle!.className, toggle!.textContent, toggle!.getAttribute('aria-pressed')]).toEqual(['choice-capsule', '实验设计', 'false'])
+    await act(async () => toggle!.click())
+    expect(toggle!.getAttribute('aria-pressed')).toBe('true')
+    await act(async () => toggle!.click())
+    expect(toggle!.getAttribute('aria-pressed')).toBe('false')
+    expect([action!.className, action!.id, action!.hasAttribute('aria-pressed')]).toEqual(['choice-capsule', 'qaIdea', false])
+    await act(async () => action!.click())
+    expect(saved).toHaveBeenCalledOnce()
     act(() => root.unmount())
     host.remove()
   })

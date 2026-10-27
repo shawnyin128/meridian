@@ -319,7 +319,7 @@ test('一条带实验设计的回答在正文下列出设计；展开「将写�
   await card.getByRole('button', { name: '将写入' }).click()
   const writes = card.locator('.design-writes')
   await expect(writes).toContainText(design.claim.text)
-  await expect(writes).toContainText('No node for M2 or M0.')
+  await expect(writes).toContainText('不为 M2 或 M0 建节点')
   await writes.getByRole('button', { name: '确认写入' }).click()
   await expect(card.getByRole('button', { name: /^将写入/ })).toContainText('已存为想法')
 

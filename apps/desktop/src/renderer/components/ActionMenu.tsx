@@ -3,7 +3,7 @@ import type { MouseEvent as ReactMouseEvent, MouseEventHandler, ReactElement, Re
 import { useScrollFade } from '../hooks/useScrollFade.js'
 import { ignoreComposingEscape } from '../lib/keyboard.js'
 import { COLLISION_PADDING } from './floating-layer.js'
-import { IconCheck } from './icons.js'
+import { IconCheck, IconNext, RunningRing } from './icons.js'
 import { OutsideToolbar } from './Toolbar.js'
 import './ActionMenu.css'
 
@@ -93,6 +93,38 @@ export function ActionMenu({
  */
 export function MenuItem({ className = 'mi', inset = false, children, ...props }: DropdownMenu.DropdownMenuItemProps & { inset?: boolean }) {
   return <DropdownMenu.Item className={className} {...props}>{inset ? <span className="ck" aria-hidden="true" /> : null}{children}</DropdownMenu.Item>
+}
+
+/**
+ * A menu row that opens a submenu of `children`: `label`, then `value`, what is chosen there now, at
+ * the row's end before a caret. Hovering the row, or the right arrow key on it, opens the submenu
+ * beside the menu, on the same surface; the left arrow key and Escape close it again. While `busy`,
+ * as its choices are read, the row shows the running ring in place of its value and cannot open.
+ * `onOpenChange` hears the submenu open and close.
+ */
+export function MenuSub({ label, value, busy = false, disabled = false, onOpenChange, children }: {
+  label: ReactNode
+  value: ReactNode
+  busy?: boolean
+  disabled?: boolean
+  onOpenChange?: (open: boolean) => void
+  children: ReactNode
+}) {
+  return (
+    <DropdownMenu.Sub {...(onOpenChange === undefined ? {} : { onOpenChange })}>
+      <DropdownMenu.SubTrigger className="mi mi-sub" disabled={disabled || busy} aria-busy={busy || undefined}>
+        <span className="ck" aria-hidden="true" />
+        <span className="mi-sub-label">{label}</span>
+        <span className="mi-sub-value">{busy ? <RunningRing /> : value}</span>
+        <span className="mi-sub-caret" aria-hidden="true"><IconNext /></span>
+      </DropdownMenu.SubTrigger>
+      <DropdownMenu.Portal>
+        <DropdownMenu.SubContent className={menuSurfaceClass('menu')} sideOffset={4} collisionPadding={COLLISION_PADDING}>
+          <OutsideToolbar>{children}</OutsideToolbar>
+        </DropdownMenu.SubContent>
+      </DropdownMenu.Portal>
+    </DropdownMenu.Sub>
+  )
 }
 
 export function MenuSeparator({ className = 'msep', ...props }: DropdownMenu.DropdownMenuSeparatorProps) {

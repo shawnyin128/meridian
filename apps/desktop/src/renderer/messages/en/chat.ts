@@ -1,4 +1,8 @@
+import { DESIGN_FILE_TEXT } from '../../../shared/design-file.js'
 import { chat as zh } from '../zh/chat.js'
+
+/** The text the card in a chat answer shares with the file a design is saved as. */
+const FILE = DESIGN_FILE_TEXT.en
 
 /** English counterpart of `zh/chat`. */
 export const chat = {
@@ -17,11 +21,10 @@ export const chat = {
   paperChatLabel: 'Paper chat',
   messagesLabel: 'Messages',
   thinking: 'Thinking…',
-  sourcePicker: (source: string) => `Source: ${source}`,
+  modelMenu: 'Model',
+  modelRows: { source: 'Source', model: 'Model', effort: 'Reasoning effort' },
   defaultMark: 'Default',
-  modelPicker: (model: string) => `Model: ${model}`,
   modelSettings: 'Model settings',
-  effortPicker: (level: string) => `Reasoning effort: ${level}`,
   effortDefault: 'Default',
   expandPaperChat: 'Expand the paper chat',
   collapsePaperChat: 'Collapse the paper chat',
@@ -31,24 +34,25 @@ export const chat = {
   design: {
     toggle: 'Experiment design',
     claim: 'Claim',
-    explanations: 'Explanations',
-    predictions: 'Predictions',
-    experiment: 'Smallest experiment',
-    decisions: 'Decisions',
-    ledger: 'Evidence',
+    explanations: FILE.sections.explanations,
+    predictions: FILE.sections.predictions,
+    experiment: FILE.sections.experiment,
+    decisions: FILE.sections.decisions,
+    ledger: FILE.sections.ledger,
     writes: 'Will write',
     claimStatus: { hypothesis: 'Hypothesis', observed: 'Observed' },
-    unknown: 'Unknown',
+    unknown: FILE.unknown,
     columns: {
-      regime: 'Intervention', metric: 'Metric', pattern: 'Result', interpretation: 'Reading', next: 'Next', state: 'Node',
-      statement: 'Statement', status: 'Basis', anchor: 'Anchor',
+      regime: FILE.columns.regime, metric: FILE.columns.metric, pattern: FILE.columns.pattern,
+      interpretation: FILE.columns.interpretation, next: FILE.columns.next, state: FILE.columns.state,
+      statement: FILE.columns.statement, status: FILE.columns.status, anchor: FILE.columns.anchor,
     },
-    substrate: { analytic: 'Analytic', synthetic: 'Synthetic data', component: 'Isolated component', 'small-system': 'Small system', 'full-system': 'Full system' },
+    substrate: FILE.substrate,
     substrateLabel: 'Substrate',
     intervention: 'Intervention',
     keeps: 'Keeps',
     untested: 'Untested',
-    ledgerStatus: { source: 'Source', inference: 'Inference', 'new-hypothesis': 'New hypothesis' },
+    ledgerStatus: FILE.ledgerStatus,
     claimAnchor: (page: string) => `${page} · claim`,
     paperAnchor: (page: number) => `p.${page}`,
     idea: 'Idea',

@@ -157,6 +157,8 @@ function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string):
 }
 
 describe('PaperChat', () => {
+  /** The paper chat's capsule that saves it as an idea. */
+  const saveIdea = () => [...document.querySelectorAll<HTMLButtonElement>('.paper-chat .choice-capsule')].find((held) => held.textContent === '保存为想法')!
   let root: Root | null = null
 
   beforeEach(() => {
@@ -343,7 +345,7 @@ describe('PaperChat', () => {
 
     expect(host.querySelector('.qacts .tag')).toBeNull()
     await act(async () => {
-      host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!.click()
+      saveIdea().click()
       await Promise.resolve()
     })
     expect(document.querySelector('[role="dialog"]')).toBeNull()
@@ -465,7 +467,7 @@ describe('PaperChat', () => {
   it('想法草稿留在它的论文上：换一篇时不跟过去，回到原篇草稿还在；Esc 收起', async () => {
     api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
     const host = await mountChat()
-    await act(async () => { host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!.click() })
+    await act(async () => { saveIdea().click() })
     act(() => setValue(host.querySelector<HTMLInputElement>('.idea-draft input')!, '只属于这一篇'))
     await showPaper(null)
     await showPaper(PAPER_TWO)
@@ -479,7 +481,7 @@ describe('PaperChat', () => {
     expect(api.createIdea).not.toHaveBeenCalled()
   })
 
-  it('问题去掉空白后为空时发送钮不可点；还没讨论时保存为想法是变淡的幽灵按钮', async () => {
+  it('问题去掉空白后为空时发送钮不可点；保存为想法是输入框下面一行的功能胶囊，还没讨论时按不了，上面不再有一行', async () => {
     const host = await mountChat()
     const send = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(send.disabled).toBe(true)
@@ -488,9 +490,9 @@ describe('PaperChat', () => {
     type('关键假设是什么？')
     expect(send.disabled).toBe(false)
 
-    const save = host.querySelector<HTMLButtonElement>('.paper-chat .save-idea')!
-    expect([save.className, save.disabled]).toEqual(['btn ghost sm save-idea', true])
-    expect(save.previousElementSibling).toBeNull()
+    const save = saveIdea()
+    expect([save.className, save.disabled, save.closest('.cbox-foot') !== null]).toEqual(['choice-capsule', true, true])
+    expect(host.querySelector('.paper-chat .qacts')).toBeNull()
   })
 
   it('空对话的空态只有对话的图标，和输入框一样留在对话栏的左右边距里', async () => {

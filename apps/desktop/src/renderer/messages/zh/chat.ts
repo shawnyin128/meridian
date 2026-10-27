@@ -1,3 +1,8 @@
+import { DESIGN_FILE_TEXT } from '../../../shared/design-file.js'
+
+/** The text the card in a chat answer shares with the file a design is saved as. */
+const FILE = DESIGN_FILE_TEXT.zh
+
 /** chat screen copy. */
 export const chat = {
   newChat: '新对话',
@@ -15,11 +20,10 @@ export const chat = {
   paperChatLabel: '当前论文对话',
   messagesLabel: '对话记录',
   thinking: '思考中…',
-  sourcePicker: (source: string) => `服务来源：${source}`,
+  modelMenu: '模型',
+  modelRows: { source: '来源', model: '模型', effort: '推理强度' },
   defaultMark: '默认',
-  modelPicker: (model: string) => `模型：${model}`,
   modelSettings: '模型设置',
-  effortPicker: (level: string) => `推理强度：${level}`,
   effortDefault: '默认',
   expandPaperChat: '展开论文对话',
   collapsePaperChat: '收起论文对话',
@@ -29,24 +33,25 @@ export const chat = {
   design: {
     toggle: '实验设计',
     claim: '主张',
-    explanations: '解释',
-    predictions: '预测',
-    experiment: '最小实验',
-    decisions: '决策',
-    ledger: '证据',
+    explanations: FILE.sections.explanations,
+    predictions: FILE.sections.predictions,
+    experiment: FILE.sections.experiment,
+    decisions: FILE.sections.decisions,
+    ledger: FILE.sections.ledger,
     writes: '将写入',
     claimStatus: { hypothesis: '假设', observed: '已观察' },
-    unknown: '未知',
+    unknown: FILE.unknown,
     columns: {
-      regime: '干预', metric: '指标', pattern: '结果', interpretation: '解读', next: '下一步', state: '节点',
-      statement: '陈述', status: '依据', anchor: '锚点',
+      regime: FILE.columns.regime, metric: FILE.columns.metric, pattern: FILE.columns.pattern,
+      interpretation: FILE.columns.interpretation, next: FILE.columns.next, state: FILE.columns.state,
+      statement: FILE.columns.statement, status: FILE.columns.status, anchor: FILE.columns.anchor,
     },
-    substrate: { analytic: '解析构造', synthetic: '合成数据', component: '隔离组件', 'small-system': '小系统', 'full-system': '完整系统' },
+    substrate: FILE.substrate,
     substrateLabel: '载体',
     intervention: '干预',
     keeps: '保留',
     untested: '未测',
-    ledgerStatus: { source: '来源', inference: '推断', 'new-hypothesis': '新假设' },
+    ledgerStatus: FILE.ledgerStatus,
     claimAnchor: (page: string) => `${page} · 断言`,
     paperAnchor: (page: number) => `p.${page}`,
     idea: '想法',

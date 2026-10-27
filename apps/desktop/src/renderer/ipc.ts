@@ -27,6 +27,7 @@ import type {
   WikiAggregationCard, WikiBacklink, WikiHome, WikiPaper, ProposalReceipt, ProposalStatus, WikiProposal, WikiSignal,
 } from '../shared/contract.js'
 import { CallError } from './call-error.js'
+import type { Locale } from './shell/language.js'
 
 /**
  * The CallError for a rejected `method` call: Core rejects with a CallRejection; any other rejection,
@@ -303,10 +304,11 @@ export const chat = {
   /** Asks again for an answer to the chat's last question after its turn ended in a status line, as a design turn with `design`. */
   retry: (id: string, design = false) => call<ChatSendResult>('chat.retry', { id, ...(design ? { design } : {}) }),
   /** What saving design answer `messageId` as an idea writes, with its fingerprint. */
-  designPreview: (id: string, messageId: string) => call<ChatDesignPreview>('chat.designPreview', { id, messageId }),
+  designPreview: (id: string, messageId: string, language: Locale) =>
+    call<ChatDesignPreview>('chat.designPreview', { id, messageId, language }),
   /** Saves design answer `messageId` as an idea; `fingerprint` is that of the preview shown. */
-  saveDesign: (id: string, messageId: string, fingerprint: string) =>
-    call<ResearchIdea>('chat.saveDesign', { id, messageId, fingerprint }),
+  saveDesign: (id: string, messageId: string, fingerprint: string, language: Locale) =>
+    call<ResearchIdea>('chat.saveDesign', { id, messageId, fingerprint, language }),
   cancel: (id: string) => call<ChatCancelResult>('chat.cancel', { id }),
   /** The answer being written in the chat, with the model writing it, or null while no turn runs there. */
   writing: (id: string) => call<ChatWriting | null>('chat.writing', { id }),

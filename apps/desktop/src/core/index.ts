@@ -996,12 +996,12 @@ registerHandler('chat.retry', (params) => {
   return chatService.retry(id, design)
 })
 registerHandler('chat.designPreview', (params) => {
-  const { id, messageId } = ChatDesignPreviewParamsSchema.parse(params)
-  return designPreview(store, id, messageId)
+  const { id, messageId, language } = ChatDesignPreviewParamsSchema.parse(params)
+  return designPreview(store, id, messageId, language)
 })
 registerHandler('chat.saveDesign', (params) => {
-  const { id, messageId, fingerprint } = ChatSaveDesignParamsSchema.parse(params)
-  return saveDesignAsIdea(store, id, messageId, fingerprint)
+  const { id, messageId, fingerprint, language } = ChatSaveDesignParamsSchema.parse(params)
+  return saveDesignAsIdea(store, id, messageId, fingerprint, language)
 })
 registerHandler('chat.cancel', (params) =>
   chatService.cancel(ChatCancelParamsSchema.parse(params).id))
