@@ -1435,7 +1435,7 @@ export function createVaultStore(
   }
 
   /** What fillPaperPublication writes onto paper `id` for `publication`. Throws if there is no such paper. */
-  const publicationFillOf = (id: string, publication: Publication): MetadataFill => {
+  const publicationFillOf = (id: string, publication: Publication | undefined): MetadataFill => {
     const paper = papers.get(id)
     if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
     return publicationFill(paper, fills.find((record) => record.paper === id)?.fields, publication)

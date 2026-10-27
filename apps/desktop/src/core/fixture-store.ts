@@ -787,7 +787,7 @@ export function createFixtureStore(
   const fills = new Map<string, Record<string, unknown>>()
 
   /** What fillPaperPublication writes onto paper `id` for `publication`. Throws if there is no such paper. */
-  const publicationFillOf = (id: string, publication: Publication): MetadataFill => {
+  const publicationFillOf = (id: string, publication: Publication | undefined): MetadataFill => {
     const paper = byId.get(id)
     if (!paper) throw new CallError('not-found', `论文不存在：${id}`)
     return publicationFill(paper, fills.get(id), publication)

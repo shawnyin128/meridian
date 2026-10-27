@@ -42,13 +42,58 @@ describe('发表信息只改 App 填的值，用户改过的不动', () => {
   })
 
   it('没有记录的旧论文：会场是空的或 arXiv 时才换，从不写年份', () => {
-    const paper = { venue: 'arXiv' }
+    const paper = { venue: 'arXiv', year: 2026, identifier: 'arXiv:2509.01234', submitted: '2025-09-02' }
     expect(publicationFill(paper, undefined, { venue: 'ICLR', year: 2026 })).toEqual({ venue: 'ICLR 2026' })
-    expect(publicationFill({ venue: '' }, undefined, { venue: 'ICLR', year: 2026 })).toEqual({ venue: 'ICLR 2026' })
+    expect(publicationFill({ ...paper, venue: '' }, undefined, { venue: 'ICLR', year: 2026 })).toEqual({ venue: 'ICLR 2026' })
     expect(publicationFill(paper, undefined, { venue: 'ICLR' })).toEqual({ venue: 'ICLR' })
-    expect(publicationFill({ venue: 'ICML 2025' }, undefined, { venue: 'ICLR', year: 2026 })).toEqual({})
-    expect(publicationFill({ venue: 'ICML' }, { venue: 'ICML', year: 2024 }, { venue: 'ICML', year: 2024 })).toEqual({ venue: 'ICML 2024' })
-    expect(publicationFill({ venue: 'ICML 2024' }, { venue: 'ICML 2024' }, { venue: 'ICML', year: 2024 })).toEqual({})
+    expect(publicationFill({ ...paper, venue: 'ICML 2025' }, undefined, { venue: 'ICLR', year: 2026 })).toEqual({})
+    expect(publicationFill({ ...paper, venue: 'ICML' }, { venue: 'ICML' }, { venue: 'ICML', year: 2024 })).toEqual({ venue: 'ICML 2024' })
+    expect(publicationFill({ ...paper, venue: 'ICML 2024' }, { venue: 'ICML 2024' }, { venue: 'ICML', year: 2024 })).toEqual({})
+  })
+})
+
+describe('上一版补全换掉的年份换回 arXiv 投稿年份', () => {
+  /** An arXiv paper whose year an earlier fill replaced: the App recorded writing 2026 over its 2025 submission. */
+  function replacedYear(): { store: VaultStore; id: string } {
+    const store = createFixtureStore(() => '2026-08-25')
+    const id = store.importPaper('draft.pdf', minimalPdf({ lines: ['draft'] })).paper.id
+    const { title, venue, identifier, submitted } = ARXIV_FILL
+    store.fillPaperMetadata(id, { title, venue, identifier, submitted }, store.getPaper(id).title)
+    store.fillPaperMetadata(id, { year: 2026 }, null)
+    return { store, id }
+  }
+
+  it('有 arXiv 编号、年份是 App 写的：下次补全把年份换回投稿年份，会场照常补上', () => {
+    const { store, id } = replacedYear()
+    expect(store.fillPaperPublication(id, { venue: 'ICLR', year: 2026 })).toEqual(['year', 'venue'])
+    expect(store.getPaper(id)).toMatchObject({ venue: 'ICLR 2026', year: 2025 })
+    expect(store.fillPaperPublication(id, { venue: 'ICLR', year: 2026 })).toEqual([])
+  })
+
+  it('查不到发表信息的论文也换回年份，每篇记一条能撤销的变动', async () => {
+    const { store, id } = replacedYear()
+    expect(await fillPublications(store, { lookup: async () => new Map() })).toBe(1)
+    expect(store.getPaper(id)).toMatchObject({ venue: 'arXiv', year: 2025 })
+    const changes = store.listChanges().filter((c) => c.title.includes('补全了发表信息'))
+    expect(changes).toHaveLength(1)
+    store.undoChange(changes[0]!.id)
+    expect(store.getPaper(id).year).toBe(2026)
+  })
+
+  it('用户填的年份、没有 arXiv 编号的论文和没有记录的旧论文，年份都不动', () => {
+    const typed = replacedYear()
+    typed.store.updatePaper(typed.id, { year: 2024 })
+    expect(typed.store.fillPaperPublication(typed.id, { venue: 'ICLR', year: 2026 })).toEqual(['venue'])
+    expect(typed.store.getPaper(typed.id).year).toBe(2024)
+
+    const doi = replacedYear()
+    doi.store.updatePaper(doi.id, { identifier: 'doi:10.1145/3600006.3613165' })
+    expect(doi.store.fillPaperPublication(doi.id, { venue: 'SOSP', year: 2023 })).toEqual(['venue'])
+    expect(doi.store.getPaper(doi.id).year).toBe(2026)
+
+    const unrecorded = { venue: 'ICLR', year: 2026, identifier: 'arXiv:2509.01234', submitted: '2025-09-02' }
+    expect(publicationFill(unrecorded, undefined, undefined)).toEqual({})
+    expect(publicationFill(unrecorded, { year: 2026 }, undefined)).toEqual({ year: 2025 })
   })
 })
 

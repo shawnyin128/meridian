@@ -18,8 +18,9 @@ export function publicationIdOf(identifier: string | undefined): string | null {
 
 /**
  * Looks up, in one pass of `source`, where every paper of `store` whose identifier names an arXiv id or
- * a DOI was published, and refreshes the venue, with its year, of each one that may take it
- * (refreshPaperPublication). Returns how many papers changed. Throws when the lookup fails, having
+ * a DOI was published, and refreshes each one (refreshPaperPublication): the venue, with its year,
+ * where it may take it, and a year the App filled over an arXiv submission year, even for a paper
+ * nothing was found for. Returns how many papers changed. Throws when the lookup fails, having
  * written nothing.
  */
 export async function fillPublications(store: VaultStore, source: PublicationSource): Promise<number> {
@@ -31,8 +32,7 @@ export async function fillPublications(store: VaultStore, source: PublicationSou
   const found = await source.lookup([...new Set(papers.map((p) => p.id))])
   let updated = 0
   for (const { paper, id } of papers) {
-    const publication = found.get(id)
-    if (publication !== undefined && store.refreshPaperPublication(paper, publication).length > 0) updated += 1
+    if (store.refreshPaperPublication(paper, found.get(id)).length > 0) updated += 1
   }
   return updated
 }

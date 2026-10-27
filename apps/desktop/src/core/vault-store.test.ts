@@ -1436,14 +1436,20 @@ describe('vault store', () => {
     expect(createVaultStore(vault).getPaper(added.id)).toMatchObject({ venue: 'MLSys', year: 2025 })
   })
 
-  it('上一版补全时换过年份的论文：再补全只把会场补上年份，年份不动', () => {
-    const added = store.importPaper('Old Fill Paper.pdf', minimalPdf({ lines: ['old fill'] })).paper
-    store.updatePaper(added.id, { venue: 'ICLR', year: 2026 })
+  it('上一版补全时换过年份的论文：再补全把会场补上年份，有 arXiv 编号的年份换回投稿年份，没有的不动', () => {
+    const arxiv = store.importPaper('Old Fill Paper.pdf', minimalPdf({ lines: ['old fill'] })).paper
+    store.updatePaper(arxiv.id, { venue: 'ICLR', year: 2026, identifier: 'arXiv:2509.01234', submitted: '2025-09-02' })
+    const bare = store.importPaper('Old Bare Paper.pdf', minimalPdf({ lines: ['old bare'] })).paper
+    store.updatePaper(bare.id, { venue: 'ICLR', year: 2026 })
     const records = join(vault, '.meridian', 'metadata-fills.json')
-    writeFileSync(records, `${JSON.stringify([{ paper: added.id, fields: { year: 2026, venue: 'ICLR' } }])}\n`)
+    const old = [arxiv.id, bare.id].map((paper) => ({ paper, fields: { year: 2026, venue: 'ICLR' } }))
+    writeFileSync(records, `${JSON.stringify(old)}\n`)
     const reopened = createVaultStore(vault)
-    expect(reopened.fillPaperPublication(added.id, { venue: 'ICLR', year: 2026 })).toEqual(['venue'])
-    expect(createVaultStore(vault).getPaper(added.id)).toMatchObject({ venue: 'ICLR 2026', year: 2026 })
+    expect(reopened.fillPaperPublication(arxiv.id, { venue: 'ICLR', year: 2026 })).toEqual(['year', 'venue'])
+    expect(reopened.fillPaperPublication(bare.id, { venue: 'ICLR', year: 2026 })).toEqual(['venue'])
+    const again = createVaultStore(vault)
+    expect(again.getPaper(arxiv.id)).toMatchObject({ venue: 'ICLR 2026', year: 2025 })
+    expect(again.getPaper(bare.id)).toMatchObject({ venue: 'ICLR 2026', year: 2026 })
   })
 
   it('导入之后论文没有页数,补全跑过之后页上多一行 page_count,论文表就是那个数', () => {

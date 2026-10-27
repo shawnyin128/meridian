@@ -182,22 +182,22 @@ export interface VaultStore {
   fillPaperMetadata(id: string, fill: MetadataFill, replaceTitle: string | null): string[]
 
   /**
-   * Writes the venue of `publication`, with its year, onto paper `id` where publicationFill allows, given the
-   * values the App last filled into its fields, and returns the names of the fields it wrote, in
+   * Writes what publicationFill gives for paper `id`, the values the App last filled into its fields
+   * and `publication` (undefined when unknown), and returns the names of the fields it wrote, in
    * MetadataFill's order. Records what it wrote as filled by the App, and records no change. Throws if
    * no such paper exists.
    */
-  fillPaperPublication(id: string, publication: Publication): string[]
+  fillPaperPublication(id: string, publication: Publication | undefined): string[]
 
   /**
    * Writes `publication` onto paper `id` as fillPaperPublication does, recorded as one change of that
    * paper when it writes anything, and returns the names of the fields it wrote. Throws if no such
    * paper exists.
    */
-  refreshPaperPublication(id: string, publication: Publication): string[]
+  refreshPaperPublication(id: string, publication: Publication | undefined): string[]
 
   /** Returns what fillPaperPublication would write onto paper `id` for `publication`, writing nothing. */
-  publicationFillOf(id: string, publication: Publication): MetadataFill
+  publicationFillOf(id: string, publication: Publication | undefined): MetadataFill
 
   /** Returns the user's persisted highlights, notes, remark and last page read for one paper. */
   paperReading(id: string): PaperReading

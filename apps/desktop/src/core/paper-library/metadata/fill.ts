@@ -3,6 +3,7 @@ import type { RemotePaper } from '../../net/arxiv.js'
 import type { Publication } from '../../net/semantic-metadata.js'
 import type { MetadataFill } from '../../vault.js'
 import type { LaterRecord } from '../../vault/records.js'
+import { publicationIdOf } from './publications.js'
 
 /** The venue the arXiv fill writes for a paper arXiv knows no publication of. */
 export const ARXIV_VENUE = 'arXiv'
@@ -46,19 +47,27 @@ export function remoteMetadata(paper: Omit<RemotePaper, 'pdf'>): MetadataFill {
 }
 
 /**
- * Returns the venue `found` gives, as its name and the year of that publication (`ICML 2024`, the
- * name alone without a year), when it may replace the venue of `paper`, given `filled`, the values
- * the App last filled into its fields (undefined for a paper filled before the App recorded them).
- * The venue may be replaced while it is empty, `arXiv`, or the value the App filled; any other value
- * is the user's. The paper's year is never written. Empty when the venue would not change.
+ * Returns what a publication fill writes onto `paper`, given `filled`, the values the App last filled
+ * into its fields (undefined for a paper filled before the App recorded them), and `found`, where it
+ * was published (undefined when that is not known). The venue becomes the name `found` gives and the
+ * year of that publication (`ICML 2024`, the name alone without a year) while it is empty, `arXiv`,
+ * or the value the App filled; any other value is the user's. The year is written only to restore
+ * the arXiv submission year of a paper with an arXiv id whose year the App filled. Fields that would
+ * not change are left out.
  */
 export function publicationFill(
-  paper: Pick<PaperRow, 'venue'>,
+  paper: Pick<PaperRow, 'venue' | 'year' | 'identifier' | 'submitted'>,
   filled: Record<string, unknown> | undefined,
-  found: Publication,
+  found: Publication | undefined,
 ): MetadataFill {
+  const submitted = paper.submitted === undefined ? undefined : Number(paper.submitted.slice(0, 4))
+  const restore = submitted !== undefined && publicationIdOf(paper.identifier)?.startsWith('ARXIV:') === true
+    && paper.year !== undefined && filled?.['year'] === paper.year && paper.year !== submitted
   const venueFilled = paper.venue === '' || paper.venue === ARXIV_VENUE || filled?.['venue'] === paper.venue
-  if (!venueFilled) return {}
-  const venue = found.year === undefined ? found.venue : `${found.venue} ${found.year}`
-  return venue === paper.venue ? {} : { venue }
+  const venue = found === undefined || !venueFilled ? paper.venue
+    : found.year === undefined ? found.venue : `${found.venue} ${found.year}`
+  return {
+    ...(restore ? { year: submitted } : {}),
+    ...(venue === paper.venue ? {} : { venue }),
+  }
 }
