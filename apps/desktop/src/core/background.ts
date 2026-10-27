@@ -135,6 +135,27 @@ export function createBackground(deps: {
     }
     return result
   }
+  /** Posts to the feed each direction candidate a scheduled refresh found, under its project. */
+  const noteDirections = (result: DiscoveryFetchResult): void => {
+    if (result.directions.length === 0) return
+    const names = new Map(deps.store.listDiscoveryProfiles().map((profile) => [profile.id, profile.name]))
+    for (const found of result.directions) {
+      deps.store.appendFeed({
+        source: 'inbox',
+        body: {
+          kind: 'runs',
+          runs: [
+            { kind: 'text', text: '发现：' },
+            { kind: 'strong', text: `新方向「${found.label}」` },
+            { kind: 'text', text: '（项目' },
+            { kind: 'strong', text: `「${names.get(found.projectId) ?? found.projectId}」`, target: { kind: 'project', id: found.projectId } },
+            { kind: 'text', text: '）。' },
+          ],
+        },
+      })
+    }
+    onWrite()
+  }
   return {
     importPaper(filename, bytes) {
       const result = deps.store.importPaper(filename, bytes)
@@ -179,7 +200,7 @@ export function createBackground(deps: {
         refreshedAt: () => deps.store.listDiscoveryProfiles()
           .filter((profile) => profile.seedCount + profile.positiveCount > 0 && profile.intentCount > 0)
           .map((profile) => profile.lastFetchedAt),
-        run: () => fetchDiscoveries().catch((error: unknown) => {
+        run: () => fetchDiscoveries().then(noteDirections).catch((error: unknown) => {
           console.error(`[discovery] scheduled discovery refresh failed: ${error instanceof Error ? error.message : String(error)}`)
         }),
       }, deps.now)

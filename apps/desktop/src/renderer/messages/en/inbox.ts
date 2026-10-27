@@ -29,6 +29,9 @@ export const inbox = {
     dismiss: 'Dismiss',
   },
   notices: {
+    newDirection: (label: string) => `New direction: ${label}`,
+    newDirections: (n: number) => `${n} new directions`,
+    viewDirection: 'View',
     dismissedAll: 'All dismissed',
     dismissed: 'Dismissed',
     duplicateToast: 'Already in the library',

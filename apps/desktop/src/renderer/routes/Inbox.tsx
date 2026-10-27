@@ -190,6 +190,13 @@ export function Inbox() {
     setDiscovering(true)
     void (scope === ALL_WATCHES ? discovery.fetch() : discovery.fetch(scope, true)).then((result) => {
       if (result.failedIntents > 0) notice.refusal(m.settings.discovery.failed(result.failedIntents))
+      const [first] = result.directions
+      if (first !== undefined) {
+        notice.success(
+          result.directions.length === 1 ? m.inbox.notices.newDirection(first.label) : m.inbox.notices.newDirections(result.directions.length),
+          { label: m.inbox.notices.viewDirection, onAction: () => openCategory('delivery-discovery', { id: first.id, within: first.projectId }) },
+        )
+      }
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e))).finally(() => setDiscovering(false))
   }

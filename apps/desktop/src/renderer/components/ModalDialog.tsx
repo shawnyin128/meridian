@@ -46,7 +46,8 @@ function DialogClose({ onClose }: { onClose: () => void }) {
  * when it is taller than the window allows, and `actions` stay pinned below it. `closable` puts the
  * dialog's close control in the surface's top-right corner, above anything the body holds. `place: 'top'`
  * pins the surface near the window's top instead of centring it, so a field at its top stays put while
- * the list under it grows and shrinks. `className` names the layout inside.
+ * the list under it grows and shrinks. `className` names the layout inside. A press on the app's
+ * notice, such as its Undo, does not close the dialog.
  */
 export function ModalDialog({
   open, onOpenChange, size, place = 'center', title, actions, closable = false, className, overlayClassName = 'scrim', children,
@@ -85,6 +86,11 @@ export function ModalDialog({
             // inline draft cancels itself on Esc, so Esc from one leaves the dialog open.
             if (event.target instanceof Element && event.target.matches('[data-inline-draft]')) event.preventDefault()
           })}
+          onInteractOutside={(event) => {
+            contentProps?.onInteractOutside?.(event)
+            // The app's one notice shows above every dialog, and its Undo acts on what the dialog shows.
+            if (event.target instanceof Element && event.target.closest('.notice-host') !== null) event.preventDefault()
+          }}
           onCloseAutoFocus={returnFocus}
         >
           <OutsideToolbar>

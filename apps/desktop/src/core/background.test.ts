@@ -117,6 +117,33 @@ describe('createBackground', () => {
     stop()
   })
 
+  it('定时刷新扫出的新方向写一条动态，带上它的项目', async () => {
+    vi.useFakeTimers({ now: 0 })
+    const { store, background } = setup({ semanticKey: 'saved-key' })
+    const project = store.createProject('定时扫描')
+    await store.addPaper(project, '2306.00978')
+    const stop = background.armSchedule()
+    await vi.advanceTimersByTimeAsync(FIRST_TICK_MS)
+    await vi.waitFor(() => expect(store.listDiscoveryProfiles().find((profile) => profile.id === project)!.candidates).toHaveLength(1))
+    const [found] = store.listDiscoveryProfiles().find((profile) => profile.id === project)!.candidates
+    await vi.waitFor(async () => expect((await store.listFeed()).map((entry) => entry.body)).toContainEqual({
+      kind: 'runs',
+      runs: [
+        { kind: 'text', text: '发现：' }, { kind: 'strong', text: `新方向「${found!.label}」` }, { kind: 'text', text: '（项目' },
+        { kind: 'strong', text: '「定时扫描」', target: { kind: 'project', id: project } }, { kind: 'text', text: '）。' },
+      ],
+    }))
+    stop()
+  })
+
+  it('点刷新扫出的新方向不写动态，留给刷新后的通知', async () => {
+    const { store, background } = setup({ semanticKey: 'saved-key' })
+    const project = store.createProject('点刷新扫描')
+    await store.addPaper(project, '2306.00978')
+    expect((await background.fetchDiscoveries()).directions).toHaveLength(1)
+    expect(JSON.stringify((await store.listFeed()).map((entry) => entry.body))).not.toContain('新方向')
+  })
+
   it('同时来两次论文发现时排队跑,后一次看得到前一次的进度,不重复请求', async () => {
     const asked: string[] = []
     const canned = createCannedGet(cannedNet as CannedTable, VAULT)

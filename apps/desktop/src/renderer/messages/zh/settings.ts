@@ -345,6 +345,12 @@ export const settings = {
     refreshProject: '刷新本项目',
     core: '核心',
     setCoreAction: '设为核心',
+    candidate: '候选',
+    add: '添加',
+    decline: '忽略',
+    added: '已添加',
+    declined: '已忽略',
+    nameLabel: '方向名称',
     failed: (n: number) => `${n} 个方向失败`,
   },
   archived: {

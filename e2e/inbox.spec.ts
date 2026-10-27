@@ -832,3 +832,54 @@ test('侧栏角标数的都是库里的真实数量', async ({ win }) => {
     else await expect(win.locator(sel)).toHaveText(String(n))
   }
 })
+
+test('发现方向的候选:刷新扫出后点通知里的查看落到它那一行,添加和忽略都能撤销,添加后能就地重命名', async ({ win }) => {
+  const name = '方向候选'
+  const project = await win.evaluate(async (named) => {
+    const meridian = (window as unknown as MeridianWindow).meridian
+    await meridian.call('project.create', { name: named })
+    const id = (await meridian.call('project.list', {}) as { id: string; name: string }[]).find((held) => held.name === named)!.id
+    await meridian.call('project.addPaper', { projectId: id, paperId: '2306.00978' })
+    return id
+  }, name)
+  await openInbox(win, 'discovery')
+  await shown(win, '.desk-head .btn').filter({ hasText: '刷新发现' }).click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText(/^发现新方向「.+」$/)
+  await win.locator('#notice .btn', { hasText: '查看' }).click()
+
+  const candidate = settings(win, '.direction-row').filter({ has: win.locator('.tag', { hasText: '候选' }) })
+  await expect(candidate).toHaveCount(1)
+  await expect(candidate).toHaveAttribute('data-arrived', '')
+  const id = (await candidate.getAttribute('data-direction'))!
+  const label = (await candidate.locator('.item-title span').last().textContent())!
+  const confirmed = settings(win, `.direction-row[data-direction="${id}"]`).filter({ hasNot: win.locator('.tag', { hasText: '候选' }) })
+
+  await candidate.hover()
+  await candidate.locator('.add-action').click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已添加')
+  await expect(confirmed.locator('[role="switch"]')).toHaveAttribute('aria-checked', 'true')
+  await win.locator('#notice .btn', { hasText: '撤销' }).click()
+  await expect(candidate).toHaveCount(1)
+  await expect(confirmed).toHaveCount(0)
+
+  await candidate.hover()
+  await candidate.locator('.row-actions .btn', { hasText: '忽略' }).click()
+  await expect(win.locator('#notice[data-tone="success"] .notice-text')).toHaveText('已忽略')
+  await expect(candidate).toHaveCount(0)
+  await win.locator('#notice .btn', { hasText: '撤销' }).click()
+  await expect(candidate).toHaveCount(1)
+
+  await candidate.hover()
+  await candidate.locator('.add-action').click()
+  await expect(confirmed).toHaveCount(1)
+  await confirmed.hover()
+  await confirmed.locator('.dots').click()
+  await win.getByRole('menuitem', { name: '重命名' }).click()
+  const field = confirmed.locator('.metadata-input')
+  await expect(field).toHaveValue(label)
+  await field.fill('量化感知方向')
+  await field.press('Enter')
+  await expect(confirmed.locator('.item-title')).toContainText('量化感知方向')
+  const directions = await call<{ id: string; intents: { label: string }[]; candidates: unknown[] }[]>(win, 'discovery.profiles', {})
+  expect(directions.find((held) => held.id === project)).toMatchObject({ intents: [{ label: '量化感知方向' }], candidates: [] })
+})
