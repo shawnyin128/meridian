@@ -22,6 +22,7 @@ from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
     create_chat_model,
+    log_output_cap,
     runs_on_cli,
     structured_output_method,
 )
@@ -242,8 +243,9 @@ def _prompt_context(context: ChatContext) -> dict[str, object]:
 def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -> object:
     """Ask Core for the turn's one model call on the user's subscription CLI; return its output.
 
-    Core gets the turn whole, as `system` and `prompt`, and the new message alone, as `message`,
-    for a CLI session that already holds the rest. A CLI failure Core reports is a model failure.
+    Core gets the turn whole, as `system` and `prompt`, the new message alone, as `message`, for a
+    CLI session that already holds the rest, and the context `system` shows, as `context`, for a
+    session that holds an older one. A CLI failure Core reports is a model failure.
     """
 
     packed = _prompt_context(context)
@@ -257,7 +259,10 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
 
     try:
         result = core.invoke_model({
-            "system": system.content, "prompt": human.content, "message": question,
+            "system": system.content,
+            "prompt": human.content,
+            "message": question,
+            "context": packed,
         })
     except CoreCallbackError as cause:
         if cause.kind != "model_error":
@@ -358,6 +363,8 @@ def build_chat_method(
         except ModelInvocationError as cause:
             from meridian_harness.server import HarnessFailure
 
+            if cause.detail == "structured_output" and model is not None:
+                log_output_cap(chat_model, limits)
             raise HarnessFailure("model_error", str(cause), cause.detail) from cause
         return ChatAnswer(answer=result["answer"]).model_dump(mode="json")
 

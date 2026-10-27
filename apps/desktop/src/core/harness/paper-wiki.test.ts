@@ -295,7 +295,7 @@ const execution = (signal = new AbortController().signal): HarnessExecution => (
     wiki: {} as WikiPaper,
   },
   signal,
-  limits: { maxOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 120 },
+  limits: { maxOutputTokens: 6_000, minOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 120 },
   requestTimeoutMs: 120_000,
 })
 
@@ -540,7 +540,7 @@ describe('Paper Wiki run on a subscription CLI', () => {
 
   it('sends an API run\'s limits to Harness and gives up on its request after the run\'s own timeout', async () => {
     const { child, runner } = paperWikiRunner(API_MODEL, vi.fn<CliRunner>())
-    const limits = { maxOutputTokens: 38_000, maxModelCalls: 1, timeoutSeconds: 600 }
+    const limits = { maxOutputTokens: 38_000, minOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 600 }
     const running = runner.run({ ...execution(), limits, requestTimeoutMs: 50 })
     child.ready()
 

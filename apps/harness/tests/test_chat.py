@@ -175,6 +175,23 @@ class ChatWorkflowTests(unittest.TestCase):
                 self.assertEqual(raised.exception.detail, "structured_output")
                 self.assertEqual(len(service.requests), 1)
 
+    def test_an_api_answer_failing_its_schema_logs_the_output_cap_and_model_limit(self) -> None:
+        method = build_chat_method(_answering("unused", ProviderStandIn(text="A plain answer")))
+        params = {
+            **_params("openai-compatible", "chat-completions"),
+            "limits": {"maxOutputTokens": 40_000, "minOutputTokens": 2_000, "maxModelCalls": 1},
+        }
+
+        with self.assertLogs("meridian_harness", "WARNING") as logged, \
+                self.assertRaises(HarnessFailure) as raised:
+            method(RequestContext(9, Event(), _read), params)
+
+        self.assertEqual(raised.exception.detail, "structured_output")
+        self.assertEqual(logged.output, [
+            "WARNING:meridian_harness.models:the output of paper-model did not validate; "
+            "its output cap was 8192 tokens, the model takes at most 8192",
+        ])
+
     def test_output_a_provider_parser_cannot_read_is_a_structured_output_failure(self) -> None:
         method = build_chat_method(lambda _model, _limits: _UnreadableOutputModel())
 
@@ -205,8 +222,32 @@ class ChatOnCliTests(unittest.TestCase):
         call = calls[0]
         if not isinstance(call, dict):
             raise AssertionError("model.invoke params must be an object")
-        self.assertEqual(set(call), {"system", "prompt", "message"})
+        self.assertEqual(set(call), {"system", "prompt", "message", "context"})
         self.assertEqual(call["message"], "What changed?")
+
+    def test_a_cli_turn_hands_core_the_context_its_system_prompt_shows(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def read(method: str, params: object) -> object:
+            if method != "model.invoke":
+                context = _read_with_pages(method, params)
+                if not isinstance(context, dict):
+                    raise AssertionError("chat.context must be an object")
+                return {**context, "history": [{"role": "user", "text": "Earlier question"}]}
+            if not isinstance(params, dict):
+                raise AssertionError("model.invoke params must be an object")
+            calls.append(params)
+            return {"output": "Answer"}
+
+        build_chat_method()(RequestContext(25, Event(), read), _cli_params())
+
+        context = calls[0]["context"]
+        if not isinstance(context, dict):
+            raise AssertionError("the context must be an object")
+        self.assertNotIn("history", context)
+        self.assertNotIn("page_count", context["paper"])
+        shown = json.dumps(context, ensure_ascii=False, separators=(",", ":"))
+        self.assertTrue(str(calls[0]["system"]).endswith(f"Conversation context:\n{shown}"))
 
     def test_a_cli_turn_keeps_the_context_in_a_prefix_the_history_never_changes(self) -> None:
         def turn(history: list[dict[str, str]]) -> dict[str, object]:

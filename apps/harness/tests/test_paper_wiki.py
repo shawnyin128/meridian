@@ -231,6 +231,22 @@ class PaperWikiWorkflowTests(unittest.TestCase):
                 self.assertEqual(raised.exception.kind, "model_error")
                 self.assertEqual(raised.exception.detail, "structured_output")
 
+    def test_a_draft_that_fails_its_schema_logs_the_output_cap_and_the_model_limit(self) -> None:
+        def draft(_model: object, _limits: object) -> Runnable[dict[str, object], PaperWikiDraft]:
+            return RunnableLambda(lambda _packet: {"what_to_remember": []})
+
+        limits = {"maxOutputTokens": 26_000, "minOutputTokens": 6_000, "maxModelCalls": 1}
+        params = {**_params(), "limits": limits}
+        with self.assertLogs("meridian_harness", "WARNING") as logged, \
+                self.assertRaises(HarnessFailure) as raised:
+            build_paper_wiki_method(draft)(RequestContext(11, Event(), _read), params)
+
+        self.assertEqual(raised.exception.detail, "structured_output")
+        self.assertEqual(logged.output, [
+            "WARNING:meridian_harness.models:the output of test-model did not validate; "
+            "its output cap was 8192 tokens, the model takes at most 8192",
+        ])
+
     def test_the_draft_reaches_each_api_provider_as_its_own_structured_output(self) -> None:
         for provider, protocol, mechanism in (
             ("openai", "responses", "json_schema"),

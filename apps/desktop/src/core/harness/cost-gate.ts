@@ -22,21 +22,44 @@ const REASONING_ALLOWANCES: Readonly<Record<string, number>> = {
   none: 0, minimal: 4_000, low: 8_000, medium: 20_000, high: 32_000, xhigh: 56_000, max: 56_000,
 }
 
+/** The effort whose reasoning allowance a run at the provider's own default effort gets, as a model may reason by default. */
+const DEFAULT_ALLOWANCE_EFFORT = 'medium'
+
+/**
+ * The output tokens an answer of at most `characters` characters may take: one a character, the
+ * worst case, which CJK text reaches.
+ */
+export const answerTokens = (characters: number) => characters
+
 /**
  * The limits of a run on an API model at reasoning effort `effort`, or at the provider's own default
  * without one, whose own output cap is `maxOutputTokens`: that cap raised by the effort's reasoning
- * allowance, and the timeouts of its model call, in seconds, and of its Harness request: the
- * subscription CLIs' ten and twelve minutes with an allowance, two minutes for both without one.
+ * allowance, the medium effort's without one, with `minOutputTokens` as the cap Harness never
+ * clamps it below to fit the model's own limit; and the timeouts of its model call, in seconds, and
+ * of its Harness request: the subscription CLIs' ten and twelve minutes with an allowance, two
+ * minutes for both without one.
  */
-export function apiRunLimits(effort: string | undefined, maxOutputTokens: number) {
-  const allowance = effort === undefined ? 0 : REASONING_ALLOWANCES[effort] ?? 0
+export function apiRunLimits(effort: string | undefined, maxOutputTokens: number, minOutputTokens = maxOutputTokens) {
+  const allowance = REASONING_ALLOWANCES[effort ?? DEFAULT_ALLOWANCE_EFFORT] ?? 0
   return allowance === 0
-    ? { maxOutputTokens, timeoutSeconds: API_CALL_TIMEOUT_MS / 1_000, requestTimeoutMs: API_CALL_TIMEOUT_MS }
+    ? { ...cliRunLimits(maxOutputTokens), minOutputTokens }
     : {
         maxOutputTokens: maxOutputTokens + allowance,
+        minOutputTokens,
         timeoutSeconds: CLI_CALL_TIMEOUT_MS / 1_000,
         requestTimeoutMs: CLI_REQUEST_TIMEOUT_MS,
       }
+}
+
+/**
+ * The limits Harness gets for a run on a subscription CLI, whose output has no cap to raise:
+ * `maxOutputTokens` as it is, and two minutes for the model call and the Harness request.
+ */
+export function cliRunLimits(maxOutputTokens: number) {
+  return {
+    maxOutputTokens, minOutputTokens: maxOutputTokens,
+    timeoutSeconds: API_CALL_TIMEOUT_MS / 1_000, requestTimeoutMs: API_CALL_TIMEOUT_MS,
+  }
 }
 
 export type HarnessModel = HarnessPlan['model']
@@ -51,9 +74,13 @@ export type HarnessExecution = {
   plan: HarnessPlan
   snapshot: PaperWikiSnapshot
   signal: AbortSignal
-  /** What the run may spend, as Harness receives it; `timeoutSeconds` bounds an API model call. */
+  /**
+   * What the run may spend, as Harness receives it; `timeoutSeconds` bounds an API model call, and
+   * `minOutputTokens` is the output cap Harness never clamps `maxOutputTokens` below.
+   */
   limits: {
     maxOutputTokens: number
+    minOutputTokens: number
     maxModelCalls: number
     timeoutSeconds: number
   }
@@ -147,8 +174,9 @@ export function createHarnessCostGate(deps: Dependencies) {
   const failures = new Map<string, CallFailure>()
 
   const configuredModel = () => typeof deps.model === 'function' ? deps.model() : deps.model
-  /** The limits of a run on `model`; a subscription CLI's output has no cap to raise. */
-  const limitsOf = (model: HarnessModel) => apiRunLimits(model.cli === undefined ? model.effort : undefined, MAX_OUTPUT_TOKENS)
+  /** The limits of a run on `model`. */
+  const limitsOf = (model: HarnessModel) => (model.cli === undefined
+    ? apiRunLimits(model.effort, MAX_OUTPUT_TOKENS) : cliRunLimits(MAX_OUTPUT_TOKENS))
 
   const snapshot = (paperId: string): PaperWikiSnapshot => ({
     paper: deps.paper(paperId),
@@ -232,13 +260,13 @@ export function createHarnessCostGate(deps: Dependencies) {
       running.set(held.plan.targetId, controller)
       failures.delete(held.plan.targetId)
       let result: Awaited<ReturnType<HarnessRunner>>
-      const { maxOutputTokens, timeoutSeconds, requestTimeoutMs } = limitsOf(held.plan.model)
+      const { maxOutputTokens, minOutputTokens, timeoutSeconds, requestTimeoutMs } = limitsOf(held.plan.model)
       try {
         result = await deps.run({
           plan: structuredClone(held.plan),
           snapshot: current,
           signal: controller.signal,
-          limits: { maxOutputTokens, maxModelCalls: MAX_MODEL_CALLS, timeoutSeconds },
+          limits: { maxOutputTokens, minOutputTokens, maxModelCalls: MAX_MODEL_CALLS, timeoutSeconds },
           requestTimeoutMs,
         })
       } catch (error) {

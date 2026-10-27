@@ -21,6 +21,7 @@ from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
     create_chat_model,
+    log_output_cap,
     runs_on_cli,
     structured_output_method,
 )
@@ -609,6 +610,8 @@ def build_paper_wiki_method(
         except ModelInvocationError as cause:
             from meridian_harness.server import HarnessFailure
 
+            if cause.detail == "structured_output" and not runs_on_cli(params["model"]):
+                log_output_cap(params["model"], params["limits"])
             raise HarnessFailure("model_error", str(cause), cause.detail) from cause
 
         return {

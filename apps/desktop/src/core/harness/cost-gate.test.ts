@@ -92,8 +92,8 @@ describe('Harness cost gate', () => {
     expect(receipt.state).toBe('demo-complete')
     expect(run).toHaveBeenCalledTimes(1)
     expect(run).toHaveBeenCalledWith(expect.objectContaining({
-      limits: { maxOutputTokens: 6000, maxModelCalls: 1, timeoutSeconds: 120 },
-      requestTimeoutMs: 120_000,
+      limits: { maxOutputTokens: 26_000, minOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 600 },
+      requestTimeoutMs: 720_000,
       signal: expect.any(AbortSignal),
     }))
     await expect(costGate.start({
@@ -289,14 +289,16 @@ describe('Harness cost gate', () => {
   })
 
   it.each([
-    ['minimal', 10_000], ['low', 14_000], ['medium', 26_000], ['high', 38_000], ['xhigh', 62_000], ['max', 62_000],
-  ])('raises the output cap of an API run at the %s effort by its reasoning allowance, shows it in the plan and gives the call ten minutes', async (effort, cap) => {
+    ['the provider\'s own default', undefined, 26_000], ['the minimal effort', 'minimal', 10_000], ['the low effort', 'low', 14_000],
+    ['the medium effort', 'medium', 26_000], ['the high effort', 'high', 38_000], ['the xhigh effort', 'xhigh', 62_000],
+    ['the max effort', 'max', 62_000],
+  ])('raises the output cap of an API run at %s by its reasoning allowance, the medium one at the default, shows it in the plan and gives the call ten minutes', async (_, effort, cap) => {
     const run = vi.fn(async () => ({ state: 'demo-complete' as const, message: 'done' }))
     const costGate = createHarnessCostGate({
       paper: () => structuredClone(paper),
       reading: () => structuredClone(reading),
       wiki: () => structuredClone(wiki),
-      model: { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true, effort },
+      model: { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true, ...(effort === undefined ? {} : { effort }) },
       run,
       applyWiki: vi.fn(),
       now: () => new Date('2026-09-17T12:00:00.000Z'),
@@ -307,12 +309,11 @@ describe('Harness cost gate', () => {
 
     expect(plan.outputLimit).toBe(cap)
     expect(run).toHaveBeenCalledWith(expect.objectContaining({
-      limits: { maxOutputTokens: cap, maxModelCalls: 1, timeoutSeconds: 600 }, requestTimeoutMs: 720_000,
+      limits: { maxOutputTokens: cap, minOutputTokens: 6_000, maxModelCalls: 1, timeoutSeconds: 600 }, requestTimeoutMs: 720_000,
     }))
   })
 
   it.each([
-    ['an API run at the provider\'s own default', { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true }],
     ['an API run at the none effort', { provider: 'OpenAI', name: 'gpt-6.1', configured: true, billable: true, effort: 'none' }],
     ['a CLI run at an effort', { provider: 'Claude 订阅', name: 'opus', configured: true, billable: false, cli: 'claude' as const, effort: 'max' }],
   ])('keeps the output cap and the two-minute call of %s, with no cap in the plan', async (_, model) => {
@@ -332,7 +333,7 @@ describe('Harness cost gate', () => {
 
     expect(plan).not.toHaveProperty('outputLimit')
     expect(run).toHaveBeenCalledWith(expect.objectContaining({
-      limits: { maxOutputTokens: 6000, maxModelCalls: 1, timeoutSeconds: 120 }, requestTimeoutMs: 120_000,
+      limits: { maxOutputTokens: 6000, minOutputTokens: 6000, maxModelCalls: 1, timeoutSeconds: 120 }, requestTimeoutMs: 120_000,
     }))
   })
 
