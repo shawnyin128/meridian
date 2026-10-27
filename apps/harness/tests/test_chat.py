@@ -112,6 +112,18 @@ class ChatWorkflowTests(unittest.TestCase):
         self.assertIn("exact one-based token [p. N]", system_prompt)
         self.assertIn("Return answer content only", system_prompt)
 
+    def test_takes_a_message_of_20000_typed_characters_with_the_ids_core_adds_on_top(self) -> None:
+        text = "a" * 19_978 + "@KV cache quantization (Wiki page topics/kv-cache-quantization)"
+        service = ProviderStandIn({"answer": "Answer"})
+        params = {**_params(), "text": text}
+
+        result = build_chat_method(_answering("Answer", service))(
+            RequestContext(9, Event(), _read), params,
+        )
+
+        self.assertEqual(result, {"answer": "Answer"})
+        self.assertTrue(service.requests[0]["input"][1]["content"].endswith(text))
+
     def test_rejects_an_oversized_core_context_before_model_invocation(self) -> None:
         service = ProviderStandIn({"answer": "must not run"})
         method = build_chat_method(_answering("must not run", service))

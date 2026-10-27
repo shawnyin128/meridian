@@ -230,6 +230,10 @@ CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("human", CHAT_TURN),
 ])
 
+# The longest message the model is asked: the 20,000 characters the user typed, which Core bounds,
+# with the kind and id of each entity they mention on top, at most as long as a turn's whole prompt.
+MAX_MODEL_TEXT_CHARACTERS = 200_000
+
 _CITATION_TOKEN = re.compile(r"\[(?:p|pp)\.[^\]]*\]")
 _VALID_CITATION = re.compile(r"\[p\. ([1-9]\d*)\]")
 
@@ -377,8 +381,8 @@ def build_chat_method(
         params = _mapping(value, "chat params")
         chat_id = _text(params.get("chatId"), "chatId")
         text = _text(params.get("text"), "chat text")
-        if len(text) > 20_000:
-            raise ProtocolViolation("chat text exceeds 20000 characters")
+        if len(text) > MAX_MODEL_TEXT_CHARACTERS:
+            raise ProtocolViolation("chat text exceeds 200000 characters")
         chat_model = _mapping(params.get("model"), "chat model")
         limits = _mapping(params.get("limits"), "chat limits")
         try:

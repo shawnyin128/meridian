@@ -5,7 +5,7 @@ import { join, resolve } from 'node:path'
 import { PassThrough } from 'node:stream'
 import { describe, expect, it, vi } from 'vitest'
 import { z } from 'zod'
-import type { ChatMessage, PaperReading } from '../../shared/contract.js'
+import { ChatSendParamsSchema, type ChatMessage, type PaperReading } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { createFixtureStore } from '../fixture-store.js'
 import type { VaultStore } from '../vault.js'
@@ -974,5 +974,33 @@ describe('a chat turn on an API model', () => {
     child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
     await expect(answering).resolves.toBe('Answer')
     runner.close()
+  })
+})
+
+describe('a message at the length limit', () => {
+  it('reaches the model whole with its mentions\' kinds and ids on top of the 20,000 characters the user typed', async () => {
+    const mention = { kind: 'mention' as const, text: '@KV cache quantization', target: { kind: 'page', id: 'topics/kv-cache-quantization' } }
+    const runs = [{ kind: 'text' as const, text: 'a'.repeat(20_000 - mention.text.length) }, mention]
+    expect(ChatSendParamsSchema.parse({ id: 'chat-1', runs }).runs).toEqual(runs)
+    const text = modelText(runs)
+    expect(text.length).toBeGreaterThan(20_000)
+    const cli = vi.fn<CliChatRunner>(async () => ({ answer: 'Answer', durationMs: 1 }))
+    const { child, runner, chat, store, close } = chatRunner(CLI_MODEL, cli)
+    store.appendChatMessages(chat, [{ role: 'you', runs, actions: [] }])
+    const answering = runner.answer(chat, text, new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    expect(request).toMatchObject({ method: 'chat.answer', params: { text } })
+
+    const context = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: text } })
+    expect(await context).toMatchObject({ callbackId: 'context', result: { history: [] } })
+    const called = child.frame()
+    child.callModel('call', request['id'] as number, { system: 'Chat rules', prompt: `Current user message:\n${text}`, message: text })
+    expect(await called).toMatchObject({ callbackId: 'call', result: { output: 'Answer' } })
+    expect(cli.mock.calls[0]![0].prompt).toBe(`Current user message:\n${text}`)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: 'Answer' } })
+    await expect(answering).resolves.toBe('Answer')
+    close()
   })
 })

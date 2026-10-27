@@ -29,9 +29,15 @@ const MODEL_CONNECTION_REDACTIONS = [
 ] as const
 const MODEL_CONNECTION_TOKEN = /\b(?:sk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{20,})\b/g
 
+/**
+ * The longest message the model is asked: the 20,000 characters the user typed, which
+ * ChatSendParamsSchema bounds, with the kind and id of each entity they mention on top, at most as
+ * long as a turn's whole prompt.
+ */
+const MODEL_TEXT_CHARACTERS = 200_000
 const ChatContextParamsSchema = z.object({
   id: z.string().min(1),
-  currentText: z.string().min(1).max(20_000),
+  currentText: z.string().min(1).max(MODEL_TEXT_CHARACTERS),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(20_000) }).strict()
 /** How many mentioned Wiki pages, and claims of them, a turn's context holds. */
@@ -58,7 +64,7 @@ const modelListFailure = (cause: unknown): CallFailure => {
 const ChatModelInvokeParamsSchema = z.object({
   system: z.string().min(1).max(500_000),
   prompt: z.string().min(1).max(200_000),
-  message: z.string().min(1).max(20_000),
+  message: z.string().min(1).max(MODEL_TEXT_CHARACTERS),
 }).strict()
 export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   sourceCharacters: 80_000,
