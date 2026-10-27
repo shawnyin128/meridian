@@ -165,9 +165,10 @@ const discovered = (seed, id, arxiv, submitted, title, authors, abstract) => ({
 
 /**
  * Recommendations project discovery would have brought for the KV cache project, in the stored shape it
- * writes: KVQuant as this version scores it, with its calibrated score, the path that scored it and its
- * reasons, and the others as an older version wrote them. The seed queues KVQuant to read later,
- * dismisses SnapKV and gives Scissorhands `known` feedback, which puts those two in the trash.
+ * writes: KVQuant and MiniCache as this version scores them, with their calibrated score, the path that
+ * scored them and their reasons, and the others as an older version wrote them. The seed queues KVQuant
+ * to read later, dismisses SnapKV and gives Scissorhands `known` feedback, which puts those two in the
+ * trash, and leaves MiniCache in the feed.
  */
 export function discoveryRecords(seed) {
   const authors = ['Coleman Hooper', 'Sehoon Kim', 'Hiva Mohammadzadeh', 'Michael W. Mahoney', 'Yakun Sophia Shao', 'Kurt Keutzer', 'Amir Gholami']
@@ -183,6 +184,20 @@ export function discoveryRecords(seed) {
     downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2401.18079', topic: '', gone: false,
     arxiv: '2401.18079', semanticId: '', meta: { authors, submitted: '2024-01-31', journalRef: null },
     ranking: { relevance: 0.83, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2024-01-31' },
+    score: { path: 'api' },
+  }, {
+    id: 'seed-discovery-minicache', kind: 'discovery', watch: '', project: seed.projects.kv.id, source: '项目 · KV cache 量化',
+    title: 'MiniCache: KV Cache Compression in Depth Dimension for Large Language Models',
+    authors: 'Akide Liu, Jing Liu, Zizheng Pan, Yefei He, Gholamreza Haffari, Bohan Zhuang', venue: 'arXiv:2405.14366',
+    abstract: 'MiniCache merges the KV caches of adjacent middle-to-deep layers, whose states are highly similar, and keeps the tokens that differ most unmerged.',
+    rec: '', reasons: [
+      { kind: 'intent', label: '方向「KV cache 压缩」' }, { kind: 'seed', label: '接近《KIVI》', paperId: 'ARXIV:2402.02750' },
+      { kind: 'wiki', label: 'Wiki「KV cache 压缩」' },
+    ],
+    downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2405.14366', topic: '', gone: false,
+    arxiv: '2405.14366', semanticId: '',
+    meta: { authors: ['Akide Liu', 'Jing Liu', 'Zizheng Pan', 'Yefei He', 'Gholamreza Haffari', 'Bohan Zhuang'], submitted: '2024-05-23', journalRef: null },
+    ranking: { relevance: 0.78, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2024-05-23' },
     score: { path: 'api' },
   }, discovered(seed, 'seed-discovery-snapkv', '2404.14469', '2024-04-22',
     'SnapKV: LLM Knows What You are Looking for Before Generation',
