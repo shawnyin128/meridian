@@ -1127,7 +1127,6 @@ wiki.kindNamePlaceholder placeholder
 wiki.membershipHeading label
 wiki.nameFieldLabel aria
 wiki.nameNeedsChar failure
-wiki.nameRequired failure
 wiki.originalLabel label
 wiki.paperCardFooter state
 wiki.paperComparisonHeading label
@@ -1297,7 +1296,6 @@ wiki.tidy.kinds.unfiled-paper state
 wiki.tidy.pointsTo state
 wiki.title label
 wiki.titleLabel label
-wiki.titleRequired failure
 wiki.toc label
 wiki.updatedLabel label
 wiki.venueLabel label

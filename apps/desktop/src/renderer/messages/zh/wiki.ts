@@ -34,7 +34,6 @@ export const wiki = {
   addPaperTitle: '添加论文',
   kindNamePlaceholder: (kind: string) => `${kind}名称`,
   nameFieldLabel: 'Wiki 名称',
-  nameRequired: 'Wiki 名称不能为空',
   scaleLabel: '规模',
   scaleSummary: (members: number, children: number) =>
     `${members} 篇${children > 0 ? ` · ${children} 细分` : ''}`,
@@ -43,7 +42,6 @@ export const wiki = {
   belongsTo: '属于',
   internalizedContent: 'Wiki 内化内容',
   titleLabel: '标题',
-  titleRequired: '标题不能为空',
   shortTitleLabel: '短标题',
   authorsLabel: '作者',
   yearLabel: '年份',

@@ -258,6 +258,19 @@ describe('Wiki keyboard reach', () => {
     expect(fixture.updatePaper).toHaveBeenCalledExactlyOnceWith('p1', { title: 'EAGLE-3' })
   })
 
+  /** The labels of the page's property rows in the rail, in order. */
+  const railLabels = () => [...host.querySelectorAll('.split-rail .property-list .property-label')].map((label) => label.textContent)
+
+  it('主题页和论文页只在标题上改名：右栏不再有名称或标题那一行，别的属性都还在', async () => {
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    await flush()
+    expect(railLabels()).toEqual(['类型', '规模', '细分依据', '更新'])
+    await press(host.querySelector<HTMLElement>('.desk-head > .back')!)
+    await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
+    await flush()
+    expect(railLabels()).toEqual(['类型', '短标题', '作者', '年份', '发表', '更新'])
+  })
+
   it('首页的标题不能点着改名', () => {
     expect(titleField()).toBeNull()
   })

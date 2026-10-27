@@ -317,7 +317,7 @@ test('论文页右栏的多行和单行值进入编辑时,编辑框整个露在�
   await gotoWiki(win)
   await shown(win).locator('.wkgrid').last().locator('.wkcard').first().click()
   const side = shown(win).locator('.split-rail')
-  for (const key of ['标题', '年份']) {
+  for (const key of ['作者', '年份']) {
     const field = side.locator(`.property-label:text-is("${key}") + .property-value > .metadata-field`)
     const value = field.locator('.metadata-editable')
     const before = await textBox(value)

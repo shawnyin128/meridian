@@ -1030,19 +1030,6 @@ export function Wiki() {
                 <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <PropertyList>
                   <Property label={m.project.identity.typeLabel}>{shownAgg.kindLabel}</Property>
-                  <Property label={m.project.identity.nameLabel}>
-                    <InlineMetadataField
-                      label={m.wiki.nameFieldLabel} value={shownAgg.title} keep={{ scope: ['wiki', shownAgg.id], target: 'title' }}
-                      onSave={(title) => {
-                        const next = title.trim()
-                        if (next === '') { notice.refusal(m.wiki.nameRequired); return false }
-                        return propose(m.wiki.proposals.editMetadata(shownAgg.title), [{
-                          op: 'setAggregationMetadata', page: shownAgg.id, title: next,
-                          splitOn: shownAgg.splitOn ?? null,
-                        }])
-                      }}
-                    />
-                  </Property>
                   <Property label={m.wiki.scaleLabel}>{m.wiki.scaleSummary(shownAgg.memberCount, shownAgg.childCount)}</Property>
                   <Property label={m.wiki.splitOnLabel}>
                     <InlineMetadataField
@@ -1088,16 +1075,6 @@ export function Wiki() {
                 <SectionHeading level="group">{m.project.identity.heading}</SectionHeading>
                 <PropertyList>
                   <Property label={m.project.identity.typeLabel}>{m.wiki.paperKind}</Property>
-                  <Property label={m.wiki.titleLabel}>
-                    <InlineMetadataField
-                      label={m.wiki.titleLabel} value={shownPaper.title} keep={{ scope: ['wiki', shownPaper.id], target: 'title' }}
-                      onSave={(title) => {
-                        const next = title.trim()
-                        if (next === '') { notice.refusal(m.wiki.titleRequired); return false }
-                        return updateWikiPaper({ title: next })
-                      }}
-                    />
-                  </Property>
                   <Property label={m.wiki.shortTitleLabel}>
                     <InlineMetadataField
                       label={m.wiki.shortTitleLabel} value={shownPaper.short} keep={{ scope: ['wiki', shownPaper.id], target: 'short' }}
