@@ -46,6 +46,8 @@ export type { RecommendationService } from './service.js'
 export { batchIdOf, createScorer } from './scorer.js'
 export type { GroupScore, RunScores, ScoreGap, ScoredText, Scorer, ScoreGroup, ScorePath } from './scorer.js'
 export { trainingExamples } from './examples.js'
+export { feedMeasures, logFeedMeasures, logGaps, rankingGap } from './measures.js'
+export type { PathMeasures, RankingGap } from './measures.js'
 export type { ExampleScope, ExampleStore, TrainingExample } from './examples.js'
 export { SCORE_THRESHOLD, selectShown } from './selection.js'
 export type {

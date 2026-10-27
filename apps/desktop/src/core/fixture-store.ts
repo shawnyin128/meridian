@@ -1879,6 +1879,8 @@ export function createFixtureStore(
     scopeSignals(scope) {
       scopeOf(scope)
       const kind = scope.kind === 'project' ? 'discovery' : 'watch'
+      const shown = inFeed()
+      const ownedArxiv = new Set([...byId.values()].flatMap((paper) => libraryArxivId(paper) ?? []))
       const cards = inbox.flatMap((entry) => {
         const stream = streamsOf(entry).find((held) => held.kind === kind && held.id === scope.id)
         if (stream === undefined) return []
@@ -1892,6 +1894,9 @@ export function createFixtureStore(
           ...(entry.feedback === undefined ? {} : { feedback: entry.feedback }),
           reasons: stream.reasons.map(({ kind: reason, label }) => ({ kind: reason, label })),
           ...(rating === undefined ? {} : { rating }),
+          ...(entry.vault.score === undefined ? {} : { path: entry.vault.score.path }),
+          shown: shown(entry),
+          owned: pageOf.has(entry.paper) || ownedArxiv.has(entry.vault.arxiv),
         }]
       })
       const linked = scope.kind === 'project' ? projectById.get(scope.id)!.papers : []

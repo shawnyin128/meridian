@@ -224,6 +224,24 @@ describe('vault store', () => {
     }
 
     for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:范围的卡片信号带上打分路径、是否还在显示、库里是否已有这篇`, () => {
+        const s = make()
+        const project = s.createProject('信号项目')
+        const scored = (id: string) => Object.assign(found(id), {
+          semanticId: `semantic-${id}`,
+          ranking: { relevance: 0, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2026-09-01' },
+        })
+        s.addDiscoveryEntries(project, [scored('2609.29001'), scored('2609.29002')], undefined, fixedRanking({ path: 'api' }))
+        s.updatePaper(s.listPapers({ page: 1, size: 1 }).rows[0]!.id, { identifier: 'arXiv:2609.29002' })
+        expect(s.scopeSignals({ kind: 'project', id: project }).cards.map(({ paperIds, path, shown, owned }) => ({ paperIds, path, shown, owned })))
+          .toEqual([
+            { paperIds: ['semantic-2609.29001', 'ARXIV:2609.29001'], path: 'api', shown: true, owned: false },
+            { paperIds: ['semantic-2609.29002', 'ARXIV:2609.29002'], path: 'api', shown: false, owned: true },
+          ])
+      })
+    }
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
       it(`${name}:问哪些候选还会送出:库里有的、送过的(送它的关注删了也算)和推送里正列着的都不算,同一篇只算一次`, () => {
         const s = make()
         s.createWatch({ type: 'topic', name: 'asked' })

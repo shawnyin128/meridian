@@ -38,7 +38,7 @@ const actionsOf = (card: CardSignal): string[] => [
 ]
 
 /** The direction of `directions` that `card` counts for: the first one its reasons name, else the core one. */
-function directionOf(card: CardSignal, directions: RecommendationIntent[]): RecommendationIntent | undefined {
+export function directionOf(card: Pick<CardSignal, 'reasons'>, directions: readonly RecommendationIntent[]): RecommendationIntent | undefined {
   for (const reason of card.reasons) {
     const label = reason.kind === 'intent' ? /「(.+)」/.exec(reason.label)?.[1] : undefined
     const named = directions.find((direction) => direction.label === label)

@@ -125,6 +125,23 @@ describe('project recommendation service', () => {
     expect(onWrite).toHaveBeenCalledOnce()
   })
 
+  it('每次刷新后按打分路径在 Core 日志记一条这个项目的推送量:送过几张、显示几张、各种去向、各方向占显示的份额', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, 'OPD 与 speculative drafter', ON_POLICY_DISTILLATION_SAMPLE.seeds)
+    const core = store.discoveryIntents(project).find((intent) => intent.core)!
+    const service = createRecommendationService({
+      scorer: keylessScorer(), store, onWrite: vi.fn(), now: () => 1,
+      provider: { recommend: async (positive) => (positive.some((seed) => seed.paperId === 'ARXIV:2605.29343') ? [ON_POLICY_DISTILLATION_SAMPLE.expected] : []) },
+    })
+    await service.discover(project)
+    expect(info.mock.calls.map(([line]) => String(line)).filter((line) => line.startsWith(`[feed] measures project:${project} `))).toEqual([
+      `[feed] measures project:${project} path=fallback delivered=1 shown=1 added=0 dismissed=0 known=0 owned-shown=0 `
+      + `added-rate=0.000 dismiss-rate=0.000 known-share=0.000 directions=${core.id}:1.000`,
+    ])
+    info.mockRestore()
+  })
+
   it('新项目的刷新只扫出候选方向并报出来，添加之前不请求 provider', async () => {
     const store = createFixtureStore(() => '2026-09-17')
     const project = store.createProject('新的发现项目')
