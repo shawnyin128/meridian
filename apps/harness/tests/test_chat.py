@@ -10,6 +10,7 @@ from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel, GenericFakeChatModel
 from langchain_core.runnables import Runnable, RunnableLambda
 from provider_stand_in import AnthropicStandIn, ProviderStandIn
+from schema_pin import developer_text, released_schema
 
 from meridian_harness.protocol import ProtocolViolation
 from meridian_harness.server import CoreCallbackError, HarnessFailure, RequestContext
@@ -17,6 +18,7 @@ from meridian_harness.workflows.chat import (
     CHAT_GRAPH,
     CHAT_INSTRUCTIONS,
     CHAT_PROMPT,
+    ChatAnswer,
     ChatContext,
     build_chat_method,
 )
@@ -156,6 +158,18 @@ class ChatWorkflowTests(unittest.TestCase):
                 self.assertEqual(list(schema["properties"]), ["answer"])
                 self.assertEqual(schema["properties"]["answer"]["minLength"], 1)
                 self.assertEqual(schema["properties"]["answer"]["maxLength"], 20_000)
+                self.assertEqual(developer_text(request, ChatAnswer), [])
+
+    def test_the_answer_schema_is_the_released_one_without_titles_or_docstrings(self) -> None:
+        self.assertEqual(ChatAnswer.model_json_schema(), released_schema("ChatAnswer"))
+        with AnthropicStandIn({"answer": "Answer"}) as service:
+            _ask(service.runtime, _paper_chat_context([]))
+        (body,) = service.requests
+        schema = body["output_config"]["format"]["schema"]
+        self.assertEqual(developer_text(body, ChatAnswer), [])
+        self.assertEqual(schema["additionalProperties"], False)
+        self.assertEqual(schema["required"], ["answer"])
+        self.assertIn("maxLength: 20000", schema["properties"]["answer"]["description"])
 
     def test_output_outside_the_answer_schema_is_a_structured_output_failure(self) -> None:
         for label, provider, protocol, service in (

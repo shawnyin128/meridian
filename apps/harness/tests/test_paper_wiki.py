@@ -7,7 +7,8 @@ from threading import Event
 from unittest import mock
 
 from langchain_core.runnables import Runnable, RunnableLambda
-from provider_stand_in import ProviderStandIn
+from provider_stand_in import AnthropicStandIn, ProviderStandIn
+from schema_pin import developer_text, released_schema
 
 from meridian_harness.protocol import ProtocolViolation
 from meridian_harness.server import CoreCallbackError, HarnessFailure, RequestContext
@@ -255,6 +256,17 @@ class PaperWikiWorkflowTests(unittest.TestCase):
                     self.assertNotIn("response_format", request)
                     self.assertEqual(request["tools"][0]["function"]["name"], "PaperWikiDraft")
                     self.assertIn("PaperWikiDraft", json.dumps(request["tool_choice"]))
+                self.assertEqual(developer_text(request, PaperWikiDraft), [])
+
+    def test_the_draft_schema_is_the_released_one_without_titles_or_docstrings(self) -> None:
+        self.assertEqual(PaperWikiDraft.model_json_schema(), released_schema("PaperWikiDraft"))
+        with AnthropicStandIn(_valid_draft()) as service:
+            model = {**service.runtime, "model": "stand-in-model"}
+            draft = build_draft_chain(model, _params()["limits"]).invoke({"scope_json": "{}"})
+        self.assertEqual(PaperWikiDraft.model_validate(draft).model_dump(), _valid_draft())
+        (body,) = service.requests
+        self.assertEqual(body["output_config"]["format"]["type"], "json_schema")
+        self.assertEqual(developer_text(body, PaperWikiDraft), [])
 
     def test_rejects_a_source_page_outside_the_authorized_scope(self) -> None:
         def draft(_model: object, _limits: object) -> Runnable[dict[str, object], PaperWikiDraft]:

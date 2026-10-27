@@ -5,15 +5,16 @@ from __future__ import annotations
 import re
 from collections.abc import Callable, Mapping
 from functools import reduce
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 from urllib.parse import urlparse
 
 from langchain_core.messages import HumanMessage
 from langchain_core.messages.ai import UsageMetadata, add_usage
-from pydantic import SecretStr
+from pydantic import BaseModel, ConfigDict, SecretStr
 
 if TYPE_CHECKING:
-    from langchain_core.language_models import BaseChatModel
+    from langchain_core.language_models import BaseChatModel, LanguageModelInput
+    from langchain_core.runnables import Runnable
 
 DEFAULT_TIMEOUT_SECONDS = 120.0
 MAX_TIMEOUT_SECONDS = 900
@@ -156,6 +157,50 @@ def structured_output_method(model: object) -> Literal["json_schema", "function_
     if _runtime_model(model)["provider"] == "openai-compatible":
         return "function_calling"
     return "json_schema"
+
+
+def _drop_titles(node: object) -> None:
+    if isinstance(node, dict):
+        if isinstance(node.get("title"), str):
+            del node["title"]
+        for value in node.values():
+            _drop_titles(value)
+    elif isinstance(node, list):
+        for value in node:
+            _drop_titles(value)
+
+
+def _model_facing(schema: dict[str, Any]) -> None:
+    """Remove from the JSON schema pydantic makes of one class its title, its docstring and the
+    titles of its fields."""
+
+    schema.pop("title", None)
+    schema.pop("description", None)
+    for field in schema.get("properties", {}).values():
+        _drop_titles(field)
+
+
+class StructuredOutput(BaseModel):
+    """A model's structured output, whose JSON schema says only what the model needs: it carries
+    no pydantic titles and no class docstrings, which are written for developers."""
+
+    model_config = ConfigDict(json_schema_extra=_model_facing)
+
+
+def with_closed_output(
+    chat_model: BaseChatModel, schema: type[StructuredOutput], model: object,
+) -> Runnable[LanguageModelInput, object]:
+    """Return `chat_model` answering with the closed schema `schema` through the provider-native
+    structured output runtime model `model` takes, as structured_output_method names it. An
+    OpenAI-compatible service's answer comes back as the tool call's arguments, every other
+    provider's as a `schema` instance; either needs validating."""
+
+    method = structured_output_method(model)
+    if method == "function_calling":
+        # LangChain names the tool after the schema's title, which a structured output leaves out.
+        named = {**schema.model_json_schema(), "title": schema.__name__}
+        return chat_model.with_structured_output(named, method=method)
+    return chat_model.with_structured_output(schema, method=method)
 
 
 def caches_by_breakpoint(model: object) -> bool:

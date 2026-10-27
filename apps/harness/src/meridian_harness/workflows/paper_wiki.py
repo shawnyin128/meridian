@@ -20,9 +20,10 @@ from meridian_harness.evals.paper_wiki import evaluate_paper_wiki_draft
 from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
+    StructuredOutput,
     create_chat_model,
     runs_on_cli,
-    structured_output_method,
+    with_closed_output,
 )
 from meridian_harness.protocol import ProtocolViolation
 
@@ -33,7 +34,7 @@ def _require_unique(values: list[str], label: str) -> None:
         raise ValueError(f"{label} must be unique")
 
 
-class PageAnchored(BaseModel):
+class PageAnchored(StructuredOutput):
     """Base contract for content grounded in explicit PDF pages."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -74,7 +75,7 @@ class RetrievalFit(PageAnchored):
     use_because: str = Field(min_length=1, max_length=1_500)
 
 
-class RetrievalScopeNotes(BaseModel):
+class RetrievalScopeNotes(StructuredOutput):
     """Fit-distance guidance that is explicitly Wiki synthesis."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -84,7 +85,7 @@ class RetrievalScopeNotes(BaseModel):
     weak_fit: str = Field(min_length=1, max_length=1_000)
 
 
-class RetrievalGuide(BaseModel):
+class RetrievalGuide(StructuredOutput):
     """Retrieval examples and scope-distance notes for the canonical page."""
 
     model_config = ConfigDict(extra="forbid")
@@ -124,7 +125,7 @@ class ImplementationHook(PageAnchored):
     first_check: str = Field(min_length=1, max_length=2_000)
 
 
-class UserObservation(BaseModel):
+class UserObservation(StructuredOutput):
     """One personal observation with explicit reading-record anchors."""
 
     model_config = ConfigDict(extra="forbid")
@@ -153,7 +154,7 @@ class UserObservation(BaseModel):
         return value
 
 
-class PaperWikiDraft(BaseModel):
+class PaperWikiDraft(StructuredOutput):
     """Closed V2 semantic output accepted from the Paper Wiki model node."""
 
     model_config = ConfigDict(extra="forbid")
@@ -379,10 +380,7 @@ def build_draft_chain(model: object, limits: object) -> DraftChain:
     """Compose the LangChain prompt with provider-native structured output."""
 
     chat_model = create_chat_model(model, limits)
-    structured_model = chat_model.with_structured_output(
-        PaperWikiDraft, method=structured_output_method(model),
-    )
-    return PAPER_WIKI_PROMPT | structured_model
+    return PAPER_WIKI_PROMPT | with_closed_output(chat_model, PaperWikiDraft, model)
 
 
 def build_cli_draft_chain(core: CoreReadContext) -> DraftChain:

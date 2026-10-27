@@ -24,11 +24,12 @@ from typing_extensions import TypedDict
 from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
+    StructuredOutput,
     caches_by_breakpoint,
     create_chat_model,
     runs_on_cli,
-    structured_output_method,
     usage_line,
+    with_closed_output,
 )
 from meridian_harness.protocol import ProtocolViolation
 
@@ -137,7 +138,7 @@ class ChatContext(BaseModel):
         return self
 
 
-class ChatAnswer(BaseModel):
+class ChatAnswer(StructuredOutput):
     """The only model-derived field allowed to cross back into Core."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -366,9 +367,7 @@ def build_chat_method(
             model = (
                 None
                 if runs_on_cli(chat_model)
-                else model_factory(chat_model, limits).with_structured_output(
-                    ChatAnswer, method=structured_output_method(chat_model),
-                )
+                else with_closed_output(model_factory(chat_model, limits), ChatAnswer, chat_model)
             )
         except ModelConfigurationError as cause:
             from meridian_harness.server import HarnessFailure

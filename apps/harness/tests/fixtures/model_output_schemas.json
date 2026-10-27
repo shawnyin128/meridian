@@ -1,0 +1,343 @@
+{
+ "ChatAnswer": {
+  "additionalProperties": false,
+  "properties": {
+   "answer": {
+    "maxLength": 20000,
+    "minLength": 1,
+    "type": "string"
+   }
+  },
+  "required": [
+   "answer"
+  ],
+  "type": "object"
+ },
+ "PaperWikiDraft": {
+  "$defs": {
+   "EvidenceEntry": {
+    "additionalProperties": false,
+    "properties": {
+     "pages": {
+      "description": "One-based PDF page numbers supporting this content",
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+     },
+     "claim": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "setting": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "finding": {
+      "maxLength": 3000,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "pages",
+     "claim",
+     "setting",
+     "finding"
+    ],
+    "type": "object"
+   },
+   "ImplementationHook": {
+    "additionalProperties": false,
+    "properties": {
+     "pages": {
+      "description": "One-based PDF page numbers supporting this content",
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+     },
+     "task": {
+      "maxLength": 1500,
+      "minLength": 1,
+      "type": "string"
+     },
+     "first_check": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "pages",
+     "task",
+     "first_check"
+    ],
+    "type": "object"
+   },
+   "MechanismComponent": {
+    "additionalProperties": false,
+    "properties": {
+     "pages": {
+      "description": "One-based PDF page numbers supporting this content",
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+     },
+     "name": {
+      "maxLength": 300,
+      "minLength": 1,
+      "type": "string"
+     },
+     "input": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "transformation": {
+      "maxLength": 3000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "output": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "dependency": {
+      "maxLength": 2000,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "pages",
+     "name",
+     "input",
+     "transformation",
+     "output",
+     "dependency"
+    ],
+    "type": "object"
+   },
+   "RetrievalFit": {
+    "additionalProperties": false,
+    "properties": {
+     "pages": {
+      "description": "One-based PDF page numbers supporting this content",
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+     },
+     "query": {
+      "maxLength": 500,
+      "minLength": 1,
+      "type": "string"
+     },
+     "use_because": {
+      "maxLength": 1500,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "pages",
+     "query",
+     "use_because"
+    ],
+    "type": "object"
+   },
+   "RetrievalGuide": {
+    "additionalProperties": false,
+    "properties": {
+     "fits": {
+      "items": {
+       "$ref": "#/$defs/RetrievalFit"
+      },
+      "maxItems": 4,
+      "minItems": 3,
+      "type": "array"
+     },
+     "scope_notes": {
+      "$ref": "#/$defs/RetrievalScopeNotes"
+     }
+    },
+    "required": [
+     "fits",
+     "scope_notes"
+    ],
+    "type": "object"
+   },
+   "RetrievalScopeNotes": {
+    "additionalProperties": false,
+    "properties": {
+     "primary_fit": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "adjacent_fit": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "weak_fit": {
+      "maxLength": 1000,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "primary_fit",
+     "adjacent_fit",
+     "weak_fit"
+    ],
+    "type": "object"
+   },
+   "SourceStatement": {
+    "additionalProperties": false,
+    "properties": {
+     "pages": {
+      "description": "One-based PDF page numbers supporting this content",
+      "items": {
+       "type": "integer"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+     },
+     "text": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "type": "string"
+     }
+    },
+    "required": [
+     "pages",
+     "text"
+    ],
+    "type": "object"
+   },
+   "UserObservation": {
+    "additionalProperties": false,
+    "properties": {
+     "text": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "reading_refs": {
+      "description": "Reading anchors: highlight:<id>, note:<id>, or remark",
+      "items": {
+       "maxLength": 200,
+       "minLength": 1,
+       "type": "string"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+     }
+    },
+    "required": [
+     "text",
+     "reading_refs"
+    ],
+    "type": "object"
+   }
+  },
+  "additionalProperties": false,
+  "properties": {
+   "problem": {
+    "$ref": "#/$defs/SourceStatement"
+   },
+   "what_to_remember": {
+    "items": {
+     "$ref": "#/$defs/SourceStatement"
+    },
+    "maxItems": 4,
+    "minItems": 1,
+    "type": "array"
+   },
+   "retrieval": {
+    "$ref": "#/$defs/RetrievalGuide"
+   },
+   "mechanism": {
+    "items": {
+     "$ref": "#/$defs/MechanismComponent"
+    },
+    "maxItems": 8,
+    "minItems": 1,
+    "type": "array"
+   },
+   "mechanism_details_to_verify": {
+    "items": {
+     "$ref": "#/$defs/SourceStatement"
+    },
+    "maxItems": 10,
+    "minItems": 1,
+    "type": "array"
+   },
+   "evidence": {
+    "items": {
+     "$ref": "#/$defs/EvidenceEntry"
+    },
+    "maxItems": 10,
+    "minItems": 1,
+    "type": "array"
+   },
+   "implementation_hooks": {
+    "items": {
+     "$ref": "#/$defs/ImplementationHook"
+    },
+    "maxItems": 8,
+    "minItems": 1,
+    "type": "array"
+   },
+   "limitations": {
+    "items": {
+     "$ref": "#/$defs/SourceStatement"
+    },
+    "maxItems": 8,
+    "type": "array"
+   },
+   "user_observations": {
+    "items": {
+     "$ref": "#/$defs/UserObservation"
+    },
+    "maxItems": 12,
+    "type": "array"
+   },
+   "open_questions": {
+    "items": {
+     "maxLength": 1000,
+     "minLength": 1,
+     "type": "string"
+    },
+    "maxItems": 8,
+    "type": "array"
+   }
+  },
+  "required": [
+   "problem",
+   "what_to_remember",
+   "retrieval",
+   "mechanism",
+   "mechanism_details_to_verify",
+   "evidence",
+   "implementation_hooks"
+  ],
+  "type": "object"
+ }
+}
