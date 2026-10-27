@@ -88,7 +88,7 @@ describe('Core chat service', () => {
     ])
   })
 
-  it('stores a mention as a run of its own, trims the turn at its ends and hands the model the whole sentence', async () => {
+  it('stores a mention as a run of its own, trims the turn at its ends and hands the model the whole sentence, naming the mentioned entity', async () => {
     const store = createFixtureStore()
     const runner: ChatHarnessRunner = {
       checkConnection: vi.fn(async () => ({
@@ -106,7 +106,7 @@ describe('Core chat service', () => {
     expect(store.chatMessages('amortize')[before]!.runs).toEqual([
       { kind: 'text', text: '看看 ' }, mention, { kind: 'text', text: ' 这条线还剩什么' },
     ])
-    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @草稿树项目 这条线还剩什么', expect.anything(), expect.any(Object))
+    expect(runner.answer).toHaveBeenCalledWith('amortize', '看看 @草稿树项目 (project draft) 这条线还剩什么', expect.anything(), expect.any(Object))
   })
 
   it('hands over a mention with the entity it names while that entity is in the vault, and as its text once it is gone', async () => {

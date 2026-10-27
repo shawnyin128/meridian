@@ -133,6 +133,24 @@ class ProtocolTests(TestCase):
         self.assertEqual(lines[-1], "ERROR request 3 failed: boom")
         self.assertEqual({line.split(" ", 1)[0] for line in lines[:-1]}, {"WARNING"})
 
+    def test_stderr_carries_the_harness_info_lines_and_no_library_info_lines(self) -> None:
+        stderr = StringIO()
+        root = logging.getLogger()
+        harness = logging.getLogger("meridian_harness")
+        before = (set(root.handlers), harness.level)
+        try:
+            with redirect_stderr(stderr):
+                log_to_stderr()
+                logging.getLogger("meridian_harness.workflows.chat").info("anthropic m: 1.0 s")
+                logging.getLogger("httpx").info("HTTP Request: POST https://api.test")
+        finally:
+            logging.captureWarnings(False)
+            for handler in set(root.handlers) - before[0]:
+                root.removeHandler(handler)
+            harness.setLevel(before[1])
+
+        self.assertEqual(stderr.getvalue().splitlines(), ["INFO anthropic m: 1.0 s"])
+
     def test_request_and_cancel_reject_unknown_fields(self) -> None:
         request_messages = run_server([{
             "type": "request",

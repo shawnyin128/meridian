@@ -2,7 +2,7 @@ import { createHash, randomUUID } from 'node:crypto'
 import { z, ZodError } from 'zod'
 import { HarnessModelConnectionCheckResultSchema } from '../../shared/contract.js'
 import type {
-  CallFailure, ChatAnswerModel, HarnessCliModel, HarnessModelConnectionCheckResult,
+  CallFailure, ChatAnswerModel, ChatRun, HarnessCliModel, HarnessModelConnectionCheckResult,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import type { CoreLogLevel } from '../core-log.js'
@@ -34,11 +34,23 @@ const MODEL_CONNECTION_REDACTIONS = [
 ] as const
 const MODEL_CONNECTION_TOKEN = /\b(?:sk-[A-Za-z0-9_-]{8,}|AIza[A-Za-z0-9_-]{20,})\b/g
 
+/**
+ * The longest message the model is asked: the 20,000 characters the user typed, which
+ * ChatSendParamsSchema bounds, with the kind and id of each entity they mention on top, at most as
+ * long as a turn's whole prompt.
+ */
+const MODEL_TEXT_CHARACTERS = 200_000
 const ChatContextParamsSchema = z.object({
   id: z.string().min(1),
-  currentText: z.string().min(1).max(20_000),
+  currentText: z.string().min(1).max(MODEL_TEXT_CHARACTERS),
 }).strict()
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(MAX_ANSWER_CHARACTERS) }).strict()
+/** How many mentioned Wiki pages, and claims of them, a turn's context holds. */
+const MENTIONED_WIKI_PAGES = 5
+const MENTIONED_WIKI_CLAIMS = 40
+const MENTIONED_CLAIM_CHARACTERS = 1_000
+/** How many claims of each mentioned page a context keeps when its claims must shrink to fit. */
+const MENTIONED_CLAIMS_KEPT = MENTIONED_WIKI_CLAIMS / MENTIONED_WIKI_PAGES
 /** The model IDs a provider's model-list call answered with, as Harness hands them over. */
 const ModelListSchema = z.object({ models: z.array(z.string().trim().min(1).max(200)).max(1_000) }).strict()
 /** How long one model-list read may take, Harness's own provider timeout included. */
@@ -62,7 +74,7 @@ const modelListFailure = (cause: unknown): CallFailure => {
 const ChatModelInvokeParamsSchema = z.object({
   system: z.string().min(1).max(500_000),
   prompt: z.string().min(1).max(200_000),
-  message: z.string().min(1).max(20_000),
+  message: z.string().min(1).max(MODEL_TEXT_CHARACTERS),
   context: z.record(z.string(), z.unknown()),
 }).strict()
 export const CHAT_CONTEXT_BUDGETS = Object.freeze({
@@ -75,13 +87,27 @@ export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   abstractCharacters: 8_000,
   authors: 50,
   authorCharacters: 200,
+  /** The characters of a whole context the Harness takes. */
+  contextCharacters: 140_000,
 })
 
 type StoredChatMessage = ReturnType<VaultStore['chatMessages']>[number]
 type StoredPaperReading = ReturnType<VaultStore['paperReading']>
 
-const messageText = (message: StoredChatMessage) =>
-  message.runs.map((run) => run.text).join('').trim()
+/** How the model reads a mention of each kind of entity: its kind, and the id the vault lookups take. */
+const MENTIONED: Record<string, (id: string) => string> = {
+  page: (id) => `Wiki page ${id}`,
+  paper: (id) => `paper papers/${id}`,
+  project: (id) => `project ${id}`,
+}
+
+/** The text of `runs` as the model reads it: each mention of an entity followed by the entity's kind and id in parentheses. */
+export const modelText = (runs: readonly ChatRun[]) => runs.map((run) => {
+  const named = run.kind === 'mention' && run.target !== undefined ? MENTIONED[run.target.kind]?.(run.target.id) : undefined
+  return named === undefined ? run.text : `${run.text} (${named})`
+}).join('')
+
+const messageText = (message: StoredChatMessage) => modelText(message.runs).trim()
 
 type Turn = { role: 'you' | 'ai'; text: string }
 /** What a CLI session of a chat holds of `messages`: what was said and answered, without the status lines. */
@@ -189,6 +215,11 @@ function failedConnectionCheck(
     maxOutputTokens: 1 as const,
   }
 }
+
+type WikiClaim = { ref: string; page: string; text: string }
+/** The characters the Harness counts of `claims`. */
+const claimCharacters = (claims: readonly WikiClaim[]) =>
+  claims.reduce((sum, claim) => sum + claim.page.length + claim.text.length, 0)
 
 /** Preserve the newest whole turns and a bounded tail of the oldest included turn. */
 export function packChatHistory(messages: readonly StoredChatMessage[]) {
@@ -328,6 +359,63 @@ export function createChatHarnessRunner(options: {
   }
   const paperPages = async (paperId: string) => (await paperSource(paperId)).pages
 
+  /**
+   * The claims of the aggregation pages chat `chatId` mentioned, the latest mentioned first, at most
+   * MENTIONED_WIKI_PAGES pages and MENTIONED_WIKI_CLAIMS claims, each with its ref and its page's title,
+   * in `room` characters as the Harness counts them. Claims that do not fit leave in this order: the
+   * pages mentioned last, down to the first-mentioned one; then each page's claims past its first
+   * MENTIONED_CLAIMS_KEPT; then the last claims left.
+   */
+  const mentionedClaims = async (chatId: string, room: number) => {
+    const cards = new Map(options.store.wikiCards().map((card) => [card.id, card]))
+    const pages = [...new Set(options.store.chatMessages(chatId).flatMap((message) => message.runs)
+      .flatMap((run) => (run.target?.kind === 'page' && cards.has(run.target.id) ? [run.target.id] : []))
+      .reverse())].slice(0, MENTIONED_WIKI_PAGES)
+    let byPage: WikiClaim[][] = []
+    let held = 0
+    for (const id of pages) {
+      const page = await options.store.wikiAggregation(id)
+      const claims = page.claims.slice(0, MENTIONED_WIKI_CLAIMS - held).map((claim) => ({
+        ref: `${id}#${claim.id}`, page: page.title, text: clipMiddle(claim.text, MENTIONED_CLAIM_CHARACTERS),
+      }))
+      held += claims.length
+      if (claims.length > 0) byPage.push(claims)
+    }
+    while (byPage.length > 1 && claimCharacters(byPage.flat()) > room) byPage.shift()
+    if (claimCharacters(byPage.flat()) > room) byPage = byPage.map((claims) => claims.slice(0, MENTIONED_CLAIMS_KEPT))
+    const claims = byPage.flat()
+    while (claims.length > 0 && claimCharacters(claims) > room) claims.pop()
+    return claims
+  }
+
+  /** The context of paper `paperId` a turn of its chat reads: its metadata, source pages and reading state, each within its budget. */
+  const paperContext = async (paperId: string) => {
+    const paper = options.store.getPaper(paperId)
+    const reading = options.store.paperReading(paperId)
+    let pages: Array<{ number: number; text: string }> = []
+    let pageCount = paper.pageCount
+    try {
+      pages = await paperPages(paperId)
+      pageCount = await citablePages(paper, () => options.store.paperSource(paperId))
+    } catch {
+      // Metadata and personal reading state remain useful when the source PDF is unavailable.
+    }
+    return {
+      id: paper.id,
+      title: paper.title,
+      authors: (paper.authors ?? [])
+        .slice(0, CHAT_CONTEXT_BUDGETS.authors)
+        .map((author) => clipMiddle(author, CHAT_CONTEXT_BUDGETS.authorCharacters)),
+      ...(paper.year === undefined ? {} : { year: paper.year }),
+      ...(paper.abstract === undefined ? {} : {
+        abstract: clipMiddle(paper.abstract, CHAT_CONTEXT_BUDGETS.abstractCharacters),
+      }),
+      pages,
+      pageCount,
+      reading: packPaperReading(reading),
+    }
+  }
+
   const rpc = createHarnessRpc({
     launch: options.launch ?? launchHarnessProcess,
     requiredCapabilities: ['chat', 'model-check'],
@@ -337,36 +425,14 @@ export function createChatHarnessRunner(options: {
         const { id, currentText } = ChatContextParamsSchema.parse(params)
         const session = options.store.chatSession(id)
         const history = packChatHistory(messagesBefore(options.store.chatMessages(id), currentText))
-        if (session.paperId === undefined) return { title: session.title, history }
-        const paper = options.store.getPaper(session.paperId)
-        const reading = options.store.paperReading(session.paperId)
-        let pages: Array<{ number: number; text: string }> = []
-        let pageCount = paper.pageCount
-        try {
-          const paperId = session.paperId
-          pages = await paperPages(paperId)
-          pageCount = await citablePages(paper, () => options.store.paperSource(paperId))
-        } catch {
-          // Metadata and personal reading state remain useful when the source PDF is unavailable.
-        }
-        return {
-          title: session.title,
-          history,
-          paper: {
-            id: paper.id,
-            title: paper.title,
-            authors: (paper.authors ?? [])
-              .slice(0, CHAT_CONTEXT_BUDGETS.authors)
-              .map((author) => clipMiddle(author, CHAT_CONTEXT_BUDGETS.authorCharacters)),
-            ...(paper.year === undefined ? {} : { year: paper.year }),
-            ...(paper.abstract === undefined ? {} : {
-              abstract: clipMiddle(paper.abstract, CHAT_CONTEXT_BUDGETS.abstractCharacters),
-            }),
-            pages,
-            pageCount,
-            reading: packPaperReading(reading),
-          },
-        }
+        const paper = session.paperId === undefined ? undefined : await paperContext(session.paperId)
+        const used = session.title.length + history.reduce((sum, turn) => sum + turn.text.length, 0) + (paper === undefined ? 0 : (
+          paper.title.length + paper.authors.join('').length + (paper.abstract?.length ?? 0)
+          + paper.pages.reduce((sum, page) => sum + page.text.length, 0) + paper.reading.remark.length
+          + paper.reading.highlights.reduce((sum, item) => sum + item.quote.length + item.note.length, 0)
+          + paper.reading.notes.reduce((sum, note) => sum + note.text.length, 0)))
+        const wiki = await mentionedClaims(id, CHAT_CONTEXT_BUDGETS.contextCharacters - used)
+        return { title: session.title, history, ...(paper === undefined ? {} : { paper }), wiki }
       },
     },
   })

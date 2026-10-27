@@ -7,7 +7,8 @@ from threading import Event
 from unittest import mock
 
 from langchain_core.runnables import Runnable, RunnableLambda
-from provider_stand_in import ProviderStandIn
+from provider_stand_in import AnthropicStandIn, ProviderStandIn
+from schema_pin import developer_text, released_schema
 
 from meridian_harness.protocol import ProtocolViolation
 from meridian_harness.server import CoreCallbackError, HarnessFailure, RequestContext
@@ -271,6 +272,47 @@ class PaperWikiWorkflowTests(unittest.TestCase):
                     self.assertNotIn("response_format", request)
                     self.assertEqual(request["tools"][0]["function"]["name"], "PaperWikiDraft")
                     self.assertIn("PaperWikiDraft", json.dumps(request["tool_choice"]))
+                self.assertEqual(developer_text(request, PaperWikiDraft), [])
+
+    def test_the_draft_schema_is_the_released_one_without_titles_or_docstrings(self) -> None:
+        self.assertEqual(PaperWikiDraft.model_json_schema(), released_schema("PaperWikiDraft"))
+        with AnthropicStandIn(_valid_draft()) as service:
+            model = {**service.runtime, "model": "stand-in-model"}
+            draft = build_draft_chain(model, _params()["limits"]).invoke({"scope_json": "{}"})
+        self.assertEqual(PaperWikiDraft.model_validate(draft).model_dump(), _valid_draft())
+        (body,) = service.requests
+        self.assertEqual(body["output_config"]["format"]["type"], "json_schema")
+        self.assertEqual(developer_text(body, PaperWikiDraft), [])
+
+    def test_an_api_run_logs_its_input_tokens_with_the_cached_ones(self) -> None:
+        usage = {
+            "input_tokens": 300, "output_tokens": 900,
+            "cache_read_input_tokens": 16_000, "cache_creation_input_tokens": 0,
+        }
+        with (
+            AnthropicStandIn(_valid_draft(), usage) as service,
+            self.assertLogs("meridian_harness", "INFO") as logged,
+        ):
+            build_paper_wiki_method()(
+                RequestContext(40, Event(), _read), {**_params(), "model": service.runtime},
+            )
+
+        (line,) = logged.output
+        self.assertRegex(
+            line,
+            r"^INFO:meridian_harness\.workflows\.paper_wiki:anthropic stand-in-model: \d+\.\d s, "
+            r"16300 input tokens \(16000 cached\), 900 output tokens$",
+        )
+
+    def test_a_cli_run_leaves_its_usage_line_to_core(self) -> None:
+        def read(method: str, params: object) -> object:
+            return {"output": _valid_draft()} if method == "model.invoke" else _read(method, params)
+
+        with self.assertNoLogs("meridian_harness", "INFO"):
+            build_paper_wiki_method()(
+                RequestContext(41, Event(), read),
+                {**_params(), "model": {"source": "cli", "cli": "claude"}},
+            )
 
     def test_rejects_a_source_page_outside_the_authorized_scope(self) -> None:
         def draft(_model: object, _limits: object) -> Runnable[dict[str, object], PaperWikiDraft]:

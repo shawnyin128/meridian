@@ -359,11 +359,13 @@ class _LevelOnEachLine(logging.Formatter):
 
 
 def log_to_stderr() -> None:
-    """Write log records of level WARNING and above, and Python warnings, to stderr, each line
-    starting with the record's level name."""
+    """Write the Harness's own log records of level INFO and above, every other record of level
+    WARNING and above, and Python warnings, to stderr, each line starting with the record's level
+    name."""
     handler = logging.StreamHandler(sys.stderr)
     handler.setFormatter(_LevelOnEachLine())
     logging.getLogger().addHandler(handler)
+    logging.getLogger("meridian_harness").setLevel(logging.INFO)
     logging.captureWarnings(True)
 
 

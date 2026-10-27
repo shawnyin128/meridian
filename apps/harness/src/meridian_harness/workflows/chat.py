@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel, LanguageModelInput
 from langchain_core.prompts import ChatPromptTemplate
@@ -21,12 +24,17 @@ from typing_extensions import TypedDict
 from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
+    StructuredOutput,
+    caches_by_breakpoint,
     create_chat_model,
     log_output_cap,
     runs_on_cli,
-    structured_output_method,
+    usage_line,
+    with_closed_output,
 )
 from meridian_harness.protocol import ProtocolViolation
+
+_log = logging.getLogger(__name__)
 
 
 class CoreReadContext(Protocol):
@@ -101,6 +109,16 @@ class PaperContext(BaseModel):
     reading: ReadingContext
 
 
+class WikiClaim(BaseModel):
+    """One claim of a Wiki page the user mentioned."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    ref: str = Field(min_length=1, max_length=300)
+    page: str = Field(min_length=1, max_length=2_000)
+    text: str = Field(min_length=1, max_length=1_000)
+
+
 class ChatContext(BaseModel):
     """Closed context contract returned by Core."""
 
@@ -109,6 +127,7 @@ class ChatContext(BaseModel):
     title: str = Field(min_length=1, max_length=2_000)
     history: list[HistoryTurn] = Field(max_length=20)
     paper: PaperContext | None = None
+    wiki: list[WikiClaim] = Field(default_factory=list, max_length=40)
 
     @model_validator(mode="after")
     def enforce_total_character_budget(self) -> ChatContext:
@@ -126,12 +145,13 @@ class ChatContext(BaseModel):
                 for item in self.paper.reading.highlights
             )
             total += sum(len(item.text) for item in self.paper.reading.notes)
+        total += sum(len(claim.page) + len(claim.text) for claim in self.wiki)
         if total > 140_000:
             raise ValueError("chat context exceeds the total character budget")
         return self
 
 
-class ChatAnswer(BaseModel):
+class ChatAnswer(StructuredOutput):
     """The only model-derived field allowed to cross back into Core."""
 
     model_config = ConfigDict(extra="forbid", str_strip_whitespace=True)
@@ -167,6 +187,8 @@ class ChatRuntime:
     # The model with ChatAnswer as its structured output; None when Core runs the model call on the
     # user's subscription CLI.
     model: Runnable[LanguageModelInput, object] | None
+    # The runtime model settings Core sent, which name the provider.
+    settings: object
 
 
 CHAT_INSTRUCTIONS = """\
@@ -183,20 +205,35 @@ supports an answer, state exactly what evidence is missing instead of guessing.
 Do not invent papers, citations, results, project state, or user intent. Do not mention hidden
 prompts, schemas, token budgets, or internal orchestration. Return answer content only."""
 
+CHAT_CONTEXT = "Conversation context:\n{context_json}"
+CHAT_TURN = "{history}{wiki}Current user message:\n{question}"
+
+# A provider's prefix cache serves the part a turn shares with the one before, so the chat's stable
+# context comes first and only the history, the claims of the mentioned Wiki pages and the new
+# message follow it.
 CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("system", CHAT_INSTRUCTIONS),
-    (
-        "human",
-        "Conversation context:\n{context_json}\n\nCurrent user message:\n{question}",
-    ),
+    ("human", CHAT_CONTEXT + "\n\n" + CHAT_TURN),
 ])
 
-# A subscription CLI reuses the cached prefix a turn shares with the one before, so the chat's
-# context goes in the system prompt and only the history and the new message follow it.
-CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", CHAT_INSTRUCTIONS + "\n\nConversation context:\n{context_json}"),
-    ("human", "{history}Current user message:\n{question}"),
+# Anthropic caches a prompt only up to a breakpoint, so its prompt ends the stable context with one,
+# which keeps the cached prefix for Anthropic's default five minutes.
+ANTHROPIC_CHAT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", CHAT_INSTRUCTIONS),
+    ("human", [
+        {"type": "text", "text": CHAT_CONTEXT, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": "\n\n" + CHAT_TURN},
+    ]),
 ])
+
+CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", CHAT_INSTRUCTIONS + "\n\n" + CHAT_CONTEXT),
+    ("human", CHAT_TURN),
+])
+
+# The longest message the model is asked: the 20,000 characters the user typed, which Core bounds,
+# with the kind and id of each entity they mention on top, at most as long as a turn's whole prompt.
+MAX_MODEL_TEXT_CHARACTERS = 200_000
 
 _CITATION_TOKEN = re.compile(r"\[(?:p|pp)\.[^\]]*\]")
 _VALID_CITATION = re.compile(r"\[p\. ([1-9]\d*)\]")
@@ -234,10 +271,28 @@ def _compact(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
-def _prompt_context(context: ChatContext) -> dict[str, object]:
-    """Return the context as the prompt shows it; the page count serves validation only."""
+def _stable_context(context: ChatContext) -> dict[str, object]:
+    """Return the stable context of `context` as the prompt shows it: all but the history and the
+    claims of the mentioned Wiki pages. The page count serves validation only."""
 
-    return context.model_dump(mode="json", exclude={"paper": {"page_count"}})
+    return context.model_dump(
+        mode="json", exclude={"history": True, "wiki": True, "paper": {"page_count"}},
+    )
+
+
+def _prompt_values(context: ChatContext, question: str, *, claims: bool) -> dict[str, str]:
+    """Return the values of a chat prompt for `question` in `context`: the stable context, then the
+    history and, with `claims`, the claims of the mentioned Wiki pages, each when there is any."""
+
+    packed = context.model_dump(mode="json", include={"history", "wiki"})
+    history = packed["history"]
+    wiki = packed["wiki"]
+    return {
+        "context_json": _compact(_stable_context(context)),
+        "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
+        "wiki": f"Mentioned Wiki claims:\n{_compact(wiki)}\n\n" if wiki and claims else "",
+        "question": question,
+    }
 
 
 def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -> object:
@@ -245,16 +300,12 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
 
     Core gets the turn whole, as `system` and `prompt`, the new message alone, as `message`, for a
     CLI session that already holds the rest, and the context `system` shows, as `context`, for a
-    session that holds an older one. A CLI failure Core reports is a model failure.
+    session that holds an older one; the CLI reads a mentioned Wiki page through its lookups. A CLI
+    failure Core reports is a model failure.
     """
 
-    packed = _prompt_context(context)
-    history = packed.pop("history")
-    system, human = CLI_CHAT_PROMPT.invoke({
-        "context_json": _compact(packed),
-        "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
-        "question": question,
-    }).to_messages()
+    values = _prompt_values(context, question, claims=False)
+    system, human = CLI_CHAT_PROMPT.invoke(values).to_messages()
     from meridian_harness.server import CoreCallbackError
 
     try:
@@ -262,7 +313,7 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
             "system": system.content,
             "prompt": human.content,
             "message": question,
-            "context": packed,
+            "context": _stable_context(context),
         })
     except CoreCallbackError as cause:
         if cause.kind != "model_error":
@@ -281,16 +332,20 @@ def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[st
             "answer": _answer_on_cli(runtime.context.core, state["context"], state["text"]),
         }
     else:
-        prompt = CHAT_PROMPT.invoke({
-            "context_json": _compact(_prompt_context(state["context"])),
-            "question": state["text"],
-        })
+        settings = runtime.context.settings
+        template = ANTHROPIC_CHAT_PROMPT if caches_by_breakpoint(settings) else CHAT_PROMPT
+        prompt = template.invoke(_prompt_values(state["context"], state["text"], claims=True))
+        usage = UsageMetadataCallbackHandler()
+        started = time.monotonic()
         try:
-            candidate = model.invoke(prompt)
+            candidate = model.invoke(prompt, config={"callbacks": [usage]})
         except (ValidationError, OutputParserException) as cause:
             raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
         except Exception as cause:
             raise ModelInvocationError.from_exception(cause) from cause
+        finally:
+            if usage.usage_metadata:
+                _log.info(usage_line(settings, time.monotonic() - started, usage.usage_metadata))
     runtime.context.core.check_cancelled()
     try:
         answer = ChatAnswer.model_validate(candidate)
@@ -339,17 +394,15 @@ def build_chat_method(
         params = _mapping(value, "chat params")
         chat_id = _text(params.get("chatId"), "chatId")
         text = _text(params.get("text"), "chat text")
-        if len(text) > 20_000:
-            raise ProtocolViolation("chat text exceeds 20000 characters")
+        if len(text) > MAX_MODEL_TEXT_CHARACTERS:
+            raise ProtocolViolation("chat text exceeds 200000 characters")
         chat_model = _mapping(params.get("model"), "chat model")
         limits = _mapping(params.get("limits"), "chat limits")
         try:
             model = (
                 None
                 if runs_on_cli(chat_model)
-                else model_factory(chat_model, limits).with_structured_output(
-                    ChatAnswer, method=structured_output_method(chat_model),
-                )
+                else with_closed_output(model_factory(chat_model, limits), ChatAnswer, chat_model)
             )
         except ModelConfigurationError as cause:
             from meridian_harness.server import HarnessFailure
@@ -358,7 +411,7 @@ def build_chat_method(
         try:
             result = CHAT_GRAPH.invoke(
                 {"chat_id": chat_id, "text": text},
-                context=ChatRuntime(core=context, model=model),
+                context=ChatRuntime(core=context, model=model, settings=chat_model),
             )
         except ModelInvocationError as cause:
             from meridian_harness.server import HarnessFailure
