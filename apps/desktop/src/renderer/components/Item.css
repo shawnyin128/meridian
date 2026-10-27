@@ -88,3 +88,6 @@
   transition:opacity var(--t-fast) var(--e-out)}
 [data-row-actions]:hover .row-actions,[data-row-actions]:focus-within .row-actions,
 .row-actions:has([data-state="open"],[aria-expanded="true"],.busy,[aria-pressed="true"]){opacity:1;pointer-events:auto}
+/* A host inside another, such as a chip in a table row, shows its slot only while it is itself hovered or focused. */
+[data-row-actions] [data-row-actions]:not(:hover,:focus-within) .row-actions:not(:has([data-state="open"],[aria-expanded="true"],.busy,[aria-pressed="true"])){
+  opacity:0;pointer-events:none}

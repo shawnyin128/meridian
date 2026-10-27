@@ -305,8 +305,10 @@ Current shared contracts:
 - `TopicChips`: the one topic editor, offering the Wiki's topic pages, for a paper in the paper table and
   the detail panel and for a project in its property rail.
 - `ChipList`: the one list of removable chips. Each chip's name opens what it names, and its pencil and
-  × sit in the chip's row-actions slot; the `+` after the chips is AddAction's chip-sized circle, in the
-  row's actions slot with `reveal="hover"`; with `label` the list is a relation row (`wkrel`). It draws a
+  × sit in the chip's row-actions slot, over the end of the name, which fades under them while the chip is
+  hovered or holds focus; at rest a chip is as wide as its name and padding. The `+` after the chips is
+  AddAction's chip-sized circle, in the row's actions slot with `reveal="hover"`; with `label` the list is a
+  relation row (`wkrel`). It draws a
   paper's topics and projects, a project's areas and relations, and an idea's relations. `ChipList.css`
   holds the chip base every row of chips uses: a chip's spacing (`tagchip`), its name button
   (`tagchip-open`) and the relation row with its label (`wkrel`).

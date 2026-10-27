@@ -115,6 +115,20 @@ describe('行尾操作槽', () => {
     expect(shown('<button type="button" class="icbtn" aria-pressed="false"></button>')).toBe('0 none')
   })
 
+  it('行里套着的 chip 有自己的槽:悬停行里别处它不显出,悬停或聚焦这个 chip 才显出', () => {
+    const shown = (act: () => void) => {
+      document.body.innerHTML = '<table><tbody><tr class="table-row" data-row-actions=""><td data-point>EAGLE</td><td><span class="tag tagchip" data-row-actions=""><span class="fade-text tagchip-text" data-chip>推测解码</span><span class="row-actions"><button type="button" class="icbtn xs rx" data-focus></button></span></span></td></tr></tbody></table>'
+      act()
+      const style = getComputedStyle(document.querySelector('.row-actions'))
+      return `${style.opacity} ${style.pointerEvents}`
+    }
+    expect([
+      shown(() => document.querySelector('[data-point]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))),
+      shown(() => document.querySelector('[data-chip]').dispatchEvent(new MouseEvent('mouseover', { bubbles: true }))),
+      shown(() => document.querySelector('[data-focus]').focus()),
+    ]).toEqual(['0 none', '1 auto', '1 auto'])
+  })
+
   it('表格行尾放操作槽的那一格贴在表格右边，表格横向滚动时也看得见', () => {
     document.body.innerHTML = '<div class="table-scroll table-scroll--fill"><table class="table ptable"><thead><tr><th>标题</th><th class="table-actions"></th></tr></thead><tbody><tr class="table-row" data-row-actions=""><td class="table-cell--title">EAGLE</td><td class="table-actions"><span class="row-actions"></span></td></tr></tbody></table></div>'
     for (const cell of ['td.table-actions', 'th.table-actions']) {

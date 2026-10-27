@@ -7,6 +7,17 @@
 .tagchip-open{display:flex;min-width:0;padding:0;border:0;background:none;color:inherit;font:inherit;cursor:inherit}
 .tagchip-open:hover{color:var(--ink)}
 /*
+ * A chip's actions lie at its end rather than beside its name, so at rest the chip is as wide as its
+ * name and padding. While they show, the name gives them that room and fades at its new end, and the
+ * chip keeps its width: a percentage max-width does not count toward the chip's own width. The room is
+ * the actions' width less the padding they lie over: an inline icon button (16px) each, the slot's gap
+ * apart, inset from the chip's edge.
+ */
+.tagchip[data-row-actions]{--tagchip-actions:calc(16px + var(--sp-4) - var(--sp-8));position:relative;justify-content:flex-start}
+.tagchip[data-row-actions]:has(.tagchip-edit){--tagchip-actions:calc(2 * 16px + 2 * var(--sp-4) - var(--sp-8))}
+.tagchip[data-row-actions]>.row-actions{position:absolute;top:0;bottom:0;right:var(--sp-4)}
+.tagchip[data-row-actions]:is(:hover,:focus-within)>:not(.row-actions){max-width:calc(100% - var(--tagchip-actions))}
+/*
  * A relation row: its label, then its chips, spaced by the row's gap and wrapping when they run out of
  * room. A chip there shows the arrow unless it opens something, its name or itself being a button. A
  * chip that can be dragged takes the drag cursors of DragHandle.css instead.
