@@ -145,4 +145,22 @@ describe('a saved design in the vault', () => {
     expect(() => saveDesignAsIdea(store, chat, message, again.fingerprint)).toThrow(expect.objectContaining({ reason: 'refused' }))
     expect(store.listIdeas().filter((held) => held.title === DESIGN.claim.text)).toHaveLength(1)
   })
+
+  it('stores the design file relative to the vault, so a moved vault still finds it and knows it is saved', () => {
+    vault = mkdtempSync(join(tmpdir(), 'meridian-design-save-'))
+    cpSync(resolve(import.meta.dirname, '../fixtures/vault'), join(vault, 'before'), { recursive: true })
+    const store = createVaultStore(join(vault, 'before'), () => '2026-10-27')
+    const { chat, message } = designChat(store)
+    const idea = saveDesignAsIdea(store, chat, message, designPreview(store, chat, message).fingerprint)
+    const stored = JSON.parse(readFileSync(join(vault, 'before', '.meridian', 'idea-files.json'), 'utf8')) as Array<{ path: string }>
+    expect(stored.map((file) => file.path)).toEqual([`.meridian/designs/${chat}-${message}.md`])
+
+    cpSync(join(vault, 'before'), join(vault, 'after'), { recursive: true })
+    rmSync(join(vault, 'before'), { recursive: true, force: true })
+    const moved = createVaultStore(join(vault, 'after'), () => '2026-10-27')
+    const path = join(vault, 'after', '.meridian', 'designs', `${chat}-${message}.md`)
+    expect(moved.listIdeaFiles().map((file) => file.attachment.path)).toEqual([path])
+    expect(readFileSync(path, 'utf8')).toContain('type: experiment-design')
+    expect(designPreview(moved, chat, message).saved).toBe(idea.id)
+  })
 })
