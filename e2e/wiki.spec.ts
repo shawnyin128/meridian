@@ -418,14 +418,14 @@ test('点到正文外面就存下改动;没改就只收起,什么也不写', asy
   const changes = (await call<unknown[]>(win, 'changelog.list', {})).length
   const body = shown(win).locator('.wkmain > .md').last()
   await body.locator('p').first().click()
-  await shown(win).locator('.desk-head .t').click()
+  await shown(win).locator('.wkpage .section-heading--group', { hasText: '属性' }).click()
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
   expect(await call<unknown[]>(win, 'changelog.list', {})).toHaveLength(changes)
 
   await body.locator('p').first().click()
   await win.keyboard.press('ControlOrMeta+End')
   await win.keyboard.type('\n\n点外面存下的一句。')
-  await shown(win).locator('.desk-head .t').click()
+  await shown(win).locator('.wkpage .section-heading--group', { hasText: '属性' }).click()
   await expect(shown(win).locator('.md.src')).toHaveCount(0)
   await expect(body).toContainText('点外面存下的一句。')
   expect((await aggFromCore(win, 'topics/quantization')).body).toBe(`${before}\n\n点外面存下的一句。`.trim())

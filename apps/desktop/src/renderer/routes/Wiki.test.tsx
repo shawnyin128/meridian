@@ -112,6 +112,7 @@ vi.mock('../ipc.js', () => ({
     merge: fixture.merge,
   },
   changelog: { undo: fixture.undo },
+  library: { location: () => new Promise(() => {}) },
 }))
 
 vi.mock('../shell/AppShell.js', () => ({
@@ -136,6 +137,7 @@ vi.mock('../components/wiki/WikiClaims.js', () => ({
 }))
 
 const { Wiki } = await import('./Wiki.js')
+const { DraftsProvider } = await import('../hooks/useDrafts.js')
 
 describe('Wiki keyboard reach', () => {
   let root: Root | null = null
@@ -193,6 +195,72 @@ describe('Wiki keyboard reach', () => {
       await Promise.resolve()
     })
   }
+
+  /** Sets an input's value through the native setter React tracks, then dispatches input. */
+  const setValue = (input: HTMLInputElement, value: string) => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!.call(input, value)
+    input.dispatchEvent(new Event('input', { bubbles: true }))
+  }
+  /** The page head's title as a rename field, null when the title does not rename. */
+  const titleField = () => host.querySelector<HTMLElement>('.desk-head .page-title-field')
+  const flush = () => act(async () => { await new Promise((done) => setTimeout(done, 0)) })
+  /** Mounts the Wiki again under the drafts every field shares, as the App does. */
+  const withDrafts = () => act(async () => {
+    root!.render(<DraftsProvider><MessagesProvider><Wiki /></MessagesProvider></DraftsProvider>)
+    await new Promise((done) => setTimeout(done, 0))
+  })
+  /** Opens the page title's field, types `name` into it and presses `key`. */
+  const renameTitle = async (name: string, key = 'Enter') => {
+    act(() => titleField()!.querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+    await vi.waitFor(() => expect(titleField()!.querySelector('.metadata-input')).not.toBeNull())
+    const input = titleField()!.querySelector<HTMLInputElement>('.metadata-input')!
+    act(() => setValue(input, name))
+    act(() => { input.dispatchEvent(new KeyboardEvent('keydown', { key, bubbles: true, cancelable: true })) })
+    await flush()
+  }
+
+  it('主题页的标题点了就地改名，走的和卡片菜单的重命名是同一个写入；Esc 什么也不改；空名留着框、标成不合法', async () => {
+    fixture.apply.mockResolvedValue({ change: 'c-1' })
+    await withDrafts()
+    await choose(await cardMenu('topics/sd'), '重命名')
+    await vi.waitFor(() => expect(host.querySelector('[data-wk="topics/sd"] .metadata-input')).not.toBeNull())
+    const cardInput = host.querySelector<HTMLInputElement>('[data-wk="topics/sd"] .metadata-input')!
+    act(() => setValue(cardInput, '投机解码'))
+    act(() => { cardInput.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
+    await flush()
+    const fromCard = fixture.apply.mock.calls.at(-1)
+    fixture.apply.mockClear()
+
+    await press(host.querySelector<HTMLElement>('[data-wk="topics/sd"] .tt')!)
+    await flush()
+    expect(titleField()!.querySelector('.metadata-editable')!.textContent).toBe('推测解码')
+    await renameTitle('投机解码')
+    expect(fixture.apply.mock.calls).toEqual([fromCard])
+    expect(fromCard![0]).toEqual({
+      source: 'user', title: '把 推测解码 改名为 投机解码',
+      ops: [{ op: 'setAggregationMetadata', page: 'topics/sd', title: '投机解码', splitOn: null }],
+    })
+
+    await renameTitle('不要的名字', 'Escape')
+    expect(titleField()!.querySelector('input')).toBeNull()
+    expect(fixture.apply).toHaveBeenCalledOnce()
+
+    await renameTitle('   ')
+    expect(titleField()!.querySelector('input')!.getAttribute('aria-invalid')).toBe('true')
+    expect(fixture.apply).toHaveBeenCalledOnce()
+  })
+
+  it('论文页的标题点了就地改名，和论文卡片菜单的重命名一样走 papers.update', async () => {
+    await withDrafts()
+    await press(host.querySelector<HTMLElement>('[data-wk="papers/p1"] .tt')!)
+    await flush()
+    await renameTitle('EAGLE-3')
+    expect(fixture.updatePaper).toHaveBeenCalledExactlyOnceWith('p1', { title: 'EAGLE-3' })
+  })
+
+  it('首页的标题不能点着改名', () => {
+    expect(titleField()).toBeNull()
+  })
 
   it('主题卡片的更多菜单是重命名、合并到…、删除；删除不弹确认，把那一页移进垃圾桶，通知带撤销', async () => {
     const items = await cardMenu('topics/sd')
