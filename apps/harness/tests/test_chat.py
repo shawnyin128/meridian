@@ -363,5 +363,198 @@ def _cli_params() -> dict[str, object]:
     return {**_params(), "model": {"source": "cli", "cli": "claude"}}
 
 
+def _design(**changes: object) -> dict[str, object]:
+    """An experiment design that passes every check, with `changes` applied at its top level."""
+
+    design: dict[str, object] = {
+        "claim": {
+            "text": "Dynamic tree width beats a fixed width at large batch.",
+            "status": "hypothesis",
+        },
+        "explanations": {
+            "m1": "Width follows acceptance, so fewer doomed branches are verified.",
+            "m2": "Only the smaller mean width helps; a fixed tree of that width ties.",
+            "m0": "Batch composition or warmup differs between the arms.",
+        },
+        "predictions": [
+            {
+                "regime": "B 16 to 64 against a fixed tree of equal mean width",
+                "m1": "gap grows with B", "m2": "no gap", "m0": None,
+                "metric": "tokens/s", "chosen": True,
+            },
+        ],
+        "experiment": {
+            "substrate": "component",
+            "keeps": "batch-dependent verification cost",
+            "untested": "arrival traffic and the scheduler",
+        },
+        "decisions": [
+            {"pattern": "output distribution differs", "outcome": "invalid",
+             "interpretation": "invalid test", "next": "repair and rerun"},
+            {"pattern": "gain at least 8% at B >= 32", "outcome": "expand",
+             "interpretation": "supports M1", "next": "full serving system"},
+            {"pattern": "95% CI within 2% at B >= 32", "outcome": "kill",
+             "interpretation": "required effect excluded", "next": "close the node"},
+            {"pattern": "CI crosses 0 and is wider than 8%", "outcome": "inconclusive",
+             "interpretation": "undecided", "next": "more request blocks"},
+        ],
+        "ledger": [
+            {"statement": "Speedup depends on acceptance.", "status": "source",
+             "anchor": {"kind": "wiki", "ref": "topics/speculative-decoding#acceptance-rate"}},
+            {"statement": "Verification dominates at large batch.", "status": "inference",
+             "anchor": None},
+        ],
+    }
+    design.update(changes)
+    return design
+
+
+def _read_with_wiki(method: str, _params: object) -> object:
+    if method != "chat.context":
+        raise AssertionError(f"Unexpected callback: {method}")
+    return {
+        "title": "Tree width",
+        "history": [],
+        "wiki": [{
+            "ref": "topics/speculative-decoding#acceptance-rate",
+            "page": "Speculative decoding",
+            "text": "Speedup depends mainly on draft acceptance.",
+        }],
+    }
+
+
+def _design_params(**changes: object) -> dict[str, object]:
+    return {**_params(), "design": True, **changes}
+
+
+class ChatDesignTests(unittest.TestCase):
+    def test_a_design_turn_returns_the_answer_and_its_design_through_a_closed_schema(self) -> None:
+        service = ProviderStandIn({"answer": "Testable.", "design": _design()})
+        method = build_chat_method(_answering("unused", service))
+
+        result = method(RequestContext(40, Event(), _read_with_wiki), _design_params())
+
+        self.assertEqual(result, {"answer": "Testable.", "design": _design()})
+        schema = service.requests[0]["text"]["format"]["schema"]
+        self.assertEqual(schema["additionalProperties"], False)
+        self.assertEqual(sorted(schema["required"]), ["answer", "design"])
+        self.assertEqual(schema["properties"]["answer"]["maxLength"], 2_000)
+        system = str(service.requests[0]["input"][0]["content"])
+        self.assertIn("prediction", system)
+        self.assertIn("an imprecise null is never a kill", system)
+
+    def test_an_ordinary_turn_keeps_the_answer_only_schema_and_prompt(self) -> None:
+        service = ProviderStandIn({"answer": "Plain."})
+        method = build_chat_method(_answering("unused", service))
+
+        result = method(RequestContext(41, Event(), _read), _params())
+
+        self.assertEqual(result, {"answer": "Plain."})
+        schema = service.requests[0]["text"]["format"]["schema"]
+        self.assertEqual(list(schema["properties"]), ["answer"])
+        self.assertNotIn("an imprecise null is never a kill", json.dumps(service.requests[0]))
+
+    def test_a_design_turn_may_answer_without_a_design(self) -> None:
+        service = ProviderStandIn({"answer": "Name the claim you want to test.", "design": None})
+        method = build_chat_method(_answering("unused", service))
+
+        self.assertEqual(
+            method(RequestContext(42, Event(), _read), _design_params()),
+            {"answer": "Name the claim you want to test.", "design": None},
+        )
+
+    def test_a_design_that_breaks_a_rule_is_a_structured_output_failure(self) -> None:
+        unchosen = [{**row, "chosen": False} for row in _design()["predictions"]]  # type: ignore[union-attr]
+        two_chosen = [*_design()["predictions"], {**_design()["predictions"][0], "regime": "B = 1"}]  # type: ignore[index]
+        decisions = list(_design()["decisions"])  # type: ignore[call-overload]
+        unanchored = [{"statement": "Speedup depends on acceptance.", "status": "source",
+                       "anchor": None}]
+        foreign = [{"statement": "Speedup depends on acceptance.", "status": "source",
+                    "anchor": {"kind": "wiki", "ref": "topics/other#made-up"}}]
+        claim_ref = "topics/speculative-decoding#acceptance-rate"
+        inferred_anchor = [{"statement": "A guess.", "status": "inference",
+                            "anchor": {"kind": "wiki", "ref": claim_ref}}]
+        paper_anchor = [{"statement": "Page two says so.", "status": "source",
+                         "anchor": {"kind": "source", "paper": "paper-1", "page": 2}}]
+        for label, design in (
+            ("no row chosen", _design(predictions=unchosen)),
+            ("two rows chosen", _design(predictions=two_chosen)),
+            ("no kill row", _design(decisions=[r for r in decisions if r["outcome"] != "kill"])),
+            ("a repeated outcome", _design(decisions=[*decisions, decisions[0]])),
+            ("a source statement without an anchor", _design(ledger=unanchored)),
+            ("an anchor the turn could not read", _design(ledger=foreign)),
+            ("an anchor on an inference", _design(ledger=inferred_anchor)),
+            ("a paper anchor in a chat without a paper", _design(ledger=paper_anchor)),
+            ("an extra field", _design(novelty="unchecked")),
+            ("an unknown outcome",
+             _design(decisions=[*decisions[:3], {**decisions[3], "outcome": "maybe"}])),
+        ):
+            with self.subTest(label):
+                service = ProviderStandIn({"answer": "Testable.", "design": design})
+                method = build_chat_method(_answering("unused", service))
+
+                with self.assertRaises(HarnessFailure) as raised:
+                    method(RequestContext(43, Event(), _read_with_wiki), _design_params())
+
+                self.assertEqual(raised.exception.kind, "model_error")
+                self.assertEqual(raised.exception.detail, "structured_output")
+                self.assertEqual(len(service.requests), 1)
+
+    def test_a_design_may_anchor_a_page_of_the_chat_paper(self) -> None:
+        paper_anchor = [{"statement": "Page two says so.", "status": "source",
+                         "anchor": {"kind": "source", "paper": "paper-1", "page": 2}}]
+        service = ProviderStandIn({"answer": "Testable.", "design": _design(ledger=paper_anchor)})
+        method = build_chat_method(_answering("unused", service))
+
+        result = method(RequestContext(44, Event(), _read_with_pages), _design_params())
+
+        self.assertEqual(result["design"]["ledger"], paper_anchor)  # type: ignore[index]
+
+    def test_a_cli_design_turn_asks_core_for_one_structured_call_with_the_whole_turn(self) -> None:
+        calls: list[dict[str, object]] = []
+        vault_anchor = [{"statement": "Read with the lookup tools.", "status": "source",
+                         "anchor": {"kind": "wiki", "ref": "methods/draft-heads"}}]
+
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke":
+                if not isinstance(params, dict):
+                    raise AssertionError("model.invoke params must be an object")
+                calls.append(params)
+                return {"output": {"answer": "Testable.", "design": _design(ledger=vault_anchor)}}
+            context = _read_with_wiki(method, params)
+            if not isinstance(context, dict):
+                raise AssertionError("chat.context must be an object")
+            return {**context, "history": [{"role": "user", "text": "Earlier question"}]}
+
+        params = {**_cli_params(), "design": True}
+        result = build_chat_method()(RequestContext(45, Event(), read), params)
+
+        self.assertEqual(result, {"answer": "Testable.", "design": _design(ledger=vault_anchor)})
+        (call,) = calls
+        self.assertEqual(set(call), {"system", "prompt", "schema"})
+        self.assertIn("an imprecise null is never a kill", str(call["system"]))
+        self.assertIn("Earlier question", str(call["prompt"]))
+        self.assertTrue(str(call["prompt"]).endswith("Current user message:\nWhat changed?"))
+        self.assertEqual(call["schema"]["additionalProperties"], False)  # type: ignore[index]
+
+    def test_a_cli_design_output_is_validated_like_any_other_design(self) -> None:
+        empty = {"answer": "Testable.", "design": _design(predictions=[])}
+        for output in (None, "A plain answer", empty):
+            with self.subTest(output=output):
+
+                def read(method: str, params: object, answer: object = output) -> object:
+                    if method == "model.invoke":
+                        return {"output": answer}
+                    return _read_with_wiki(method, params)
+
+                with self.assertRaises(HarnessFailure) as raised:
+                    build_chat_method()(
+                        RequestContext(46, Event(), read), {**_cli_params(), "design": True},
+                    )
+
+                self.assertEqual(raised.exception.kind, "model_error")
+                self.assertEqual(raised.exception.detail, "structured_output")
+
+
 if __name__ == "__main__":
     unittest.main()
