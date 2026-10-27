@@ -159,9 +159,9 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
   await expect(shown(win).locator('.desk-head .t')).toHaveText(agg.title)
   await expect(shown(win).locator('.desk-head .back')).toHaveCount(1)
   // The fixed sections come first (subpages, Paper comparison, Findings), each with its own action,
-  // and the body's header is the page name plus "Edit".
+  // and the body's header is the page name alone: the body opens for editing where it is clicked.
   expect(await shown(win).locator('.wkmain .section-heading').allTextContents())
-    .toEqual([`细分${agg.kindLabel}${agg.kindLabel}`, '论文对比论文', '结论结论', `${agg.title}编辑`])
+    .toEqual([`细分${agg.kindLabel}${agg.kindLabel}`, '论文对比论文', '结论结论', agg.title])
   // Section headers use the main-area style, 15px: the first one, subpages, has no top rule, and a later
   // one such as Paper comparison draws one.
   const mainHeads = shown(win).locator('.wkmain .section-heading')
@@ -174,7 +174,7 @@ test('根节点卡进聚合页,子聚合再进一层带上级,返回按历史退
     .toEqual(agg.body.split('\n').filter((l) => l.startsWith('## ')).map((l) => l.slice(3)))
   await expect(shown(win).locator('.wkgrid .wkcard')).toHaveCount(agg.children.length)
   await expect(shown(win).locator('.split-rail .property-value').nth(0)).toHaveText(agg.kindLabel)
-  await expect(shown(win).locator('.split-rail .property-value').nth(2))
+  await expect(shown(win).locator('.split-rail .property-value').nth(1))
     .toHaveText(`${agg.memberCount} 篇 · ${agg.childCount} 细分`)
 
   // A child aggregation goes one level deeper: the breadcrumb's middle segment is its first parent.
@@ -341,7 +341,8 @@ test('项目详情的关联 chip 也进对应的聚合页', async ({ win }) => {
   await win.locator('[data-desk="resproj"]').click()
   await win.locator('[data-proj="draft"]').click()
 
-  await shown(win).locator(`.wkrel .tagchip[data-wk="${chip.page}"]`).click()
+  // A hovered chip's actions lie over its end, which on a short name covers its middle, so click the name.
+  await shown(win).locator(`.wkrel .tagchip[data-wk="${chip.page}"] .tagchip-open`).click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText((await aggFromCore(win, chip.page!)).title)
   await shown(win).locator('.desk-head .back').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText('draft 效率')

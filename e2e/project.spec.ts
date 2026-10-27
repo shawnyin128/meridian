@@ -2,7 +2,7 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  appSwitcher, chipEdges, dshort, expect, expectChipHoverInPlace, expectChipsHug, expectWholeInRail, fixtureDay, gotoProject,
+  appSwitcher, chipEdges, dshort, expect, expectChipHoverInPlace, expectChipsHug, expectWholeInRail, fixtureDay, gotoProject, inlineFrame,
   overlaps, panelHead, parkPointer, railEdges, readDraft, settle, test, textBox, timelinePeriod, uniqueHeights, vaultToday,
   type MeridianWindow,
 } from './app.js'
@@ -1226,13 +1226,17 @@ test('科研计划:新建任务那一行和已有行同一套样子,日期、时
 
   const input = await draft.locator('input').evaluate((el) => {
     const style = getComputedStyle(el)
+    // The field's edge and fill are drawn by its frame, the box right after it.
+    const frame = getComputedStyle(el.nextElementSibling!)
     return {
-      border: style.borderTopWidth, background: style.backgroundColor,
+      frame: el.nextElementSibling!.classList.contains('form-inline-frame'),
+      border: frame.borderTopWidth, background: frame.backgroundColor,
       // The height the input takes in its row: its box less the negative margins its edge and padding lie in.
       rowHeight: el.getBoundingClientRect().height + parseFloat(style.marginTop) + parseFloat(style.marginBottom),
       lineHeight: parseFloat(style.lineHeight),
     }
   })
+  expect(input.frame).toBe(true)
   expect(input.border).toBe('1px')
   expect(input.background).toBe(await fieldRgb(win))
   expect(input.rowHeight).toBeCloseTo(input.lineHeight, 1)
@@ -1303,7 +1307,8 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
     ;(globalThis as { openedUrls?: string[] }).openedUrls = seen
     shell.openExternal = (url: string) => { seen.push(url); return Promise.resolve() }
   })
-  await chip.click()
+  // A hovered chip's actions lie over its end, which on a short name covers its middle, so click the name.
+  await chip.locator('.tagchip-open').click()
   await expect.poll(() => app.evaluate(() => (globalThis as { openedUrls?: string[] }).openedUrls))
     .toEqual(['https://wandb.ai/team/draft'])
   await win.screenshot({ path: resolve(import.meta.dirname, '../outputs/e2e/shots/project-url-chip.png') })
@@ -1582,9 +1587,12 @@ test('就地输入框:关联占位与属性栏焦点格都是共用的原位外�
   const relInput = side.locator('.wkrel .inedit')
   await relInput.focus()
   await expect(relInput).toHaveCSS('outline-style', 'none')
-  await expect(relInput).toHaveCSS('background-color', field)
-  await expect(relInput).toHaveCSS('border-top-width', '1px')
-  await expect(relInput).toHaveCSS('border-top-color', sepStrong)
+  // The field's edge and fill are drawn by its frame, the box right after it.
+  const relFrame = inlineFrame(relInput)
+  await expect(relFrame).toHaveCSS('outline-style', 'none')
+  await expect(relFrame).toHaveCSS('background-color', field)
+  await expect(relFrame).toHaveCSS('border-top-width', '1px')
+  await expect(relFrame).toHaveCSS('border-top-color', sepStrong)
 
   // .metadata-input of the property bar focus cell takes the same look (papers.spec.ts checks the same
   // class in the paper details).

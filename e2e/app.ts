@@ -407,6 +407,11 @@ export function belowHeader(content: Locator): Promise<number> {
     - el.closest('.desk')!.querySelector('.desk-head')!.getBoundingClientRect().bottom)
 }
 
+/** The frame of the in-place field `input`: the box right after it that draws the field's border and fill. */
+export function inlineFrame(input: Locator): Locator {
+  return input.locator('xpath=following-sibling::*[1][contains(concat(" ", normalize-space(@class), " "), " form-inline-frame ")]')
+}
+
 /** Finishes every running transition and animation on the element, so computed styles read next are final. */
 export function settle(locator: Locator): Promise<void> {
   return locator.evaluate((el) => { el.getAnimations().forEach((a) => { a.finish() }) })
