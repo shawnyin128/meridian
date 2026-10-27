@@ -119,7 +119,15 @@ class LabGraphTests(unittest.TestCase):
                 self.assertEqual(
                     {
                         "A validity check failed": "`repairable`, after the user confirms: repair, not a negative result",
+                        "A valid contrast favours M2, the named alternative": (
+                            "`repairable`, after the user confirms: reframe the claim as the repair, "
+                            "and propose M2 as a new `alternative` sibling node; never `dead`"
+                        ),
                         "A valid M1-specific contrast passes the expansion gate": "`supported`, plus child nodes for the expansion",
+                        "A valid M1-specific effect falls below the expansion gate": (
+                            "`supported`, with no expansion child nodes; the experiment conclusion says the effect "
+                            "is identified but below the gate, and names the gate"
+                        ),
                         "A precise null excludes the required effect (the kill criterion)": "`dead`, after the user confirms",
                         "Wide uncertainty, mixtures, or predictions every explanation shares": "stays `unresolved`",
                     },

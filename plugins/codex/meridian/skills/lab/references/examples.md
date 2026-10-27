@@ -63,7 +63,9 @@ gradient scale beyond the stated tolerance.
 | Result pattern | Node state |
 | --- | --- |
 | The target-distribution check or the gradient-scale check fails | `repairable`, after the user confirms |
+| The generic-auxiliary draft gains at least `δ` more than the latent draft, with the interval above zero | `repairable`, after the user confirms: reframe as a regularization claim, and propose a "generic auxiliary loss" `alternative` sibling |
 | Latent minus generic-auxiliary acceptance gain ≥ `δ`, with the interval above zero and fidelity loss ≤ `ε` | `supported`, plus child node "latent draft on a small LM" |
+| Latent minus generic-auxiliary gain is above zero but its interval stays below `δ`, fidelity loss ≤ `ε` | `supported`, no child node; the experiment conclusion says the gain is identified but below the `δ` gate |
 | The interval excludes a gain of `δ` with all checks passing | `dead`, after the user confirms |
 | The interval spans zero and `δ`, or the generic loss gains as much | stays `unresolved` |
 
@@ -71,7 +73,7 @@ Once the user settles it, one `meridian.lab_update` change declares it on the
 node:
 
 ```json
-{"op": "record_history", "node_id": "spec-decode.C", "message": "Decision table: validity check fails → repairable; latent−generic gain ≥ δ, interval > 0, fidelity loss ≤ ε → supported + child 'latent draft on a small LM'; interval excludes δ → dead; interval spans 0 and δ, or generic gains as much → unresolved"}
+{"op": "record_history", "node_id": "spec-decode.C", "message": "Decision table: validity check fails → repairable; generic−latent ≥ δ, interval > 0 → repairable (reframe) + sibling 'generic auxiliary loss'; latent−generic ≥ δ, interval > 0, fidelity loss ≤ ε → supported + child 'latent draft on a small LM'; latent−generic interval above 0 but below δ → supported, no child; interval excludes δ → dead; interval spans 0 and δ, or generic gains as much → unresolved"}
 ```
 
 ## Hand-off and the experiment conclusion
@@ -82,11 +84,11 @@ confirmation seeds, the compute budget and the table above into the coding
 work.
 
 Suppose the runs show a latent gain of `0.4 δ` with an interval spanning zero
-and `δ`. That matches the fourth row. The experiment record's interpretation
+and `δ`. That matches the last row. The experiment record's interpretation
 names it, the node stays `unresolved`, and the next action is more runs. An
 imprecise null is never a kill, and with the node neither `supported` nor
 `dead`, no experiment conclusion is recorded.
-Had the gain cleared `δ` with every check passing, the second row would set
-`supported`, and the experiment conclusion would read "Row 2: the latent draft
+Had the gain cleared `δ` with every check passing, the third row would set
+`supported`, and the experiment conclusion would read "Row 3: the latent draft
 beats the matched generic-auxiliary draft by at least δ acceptance on the
 synthetic generator".
