@@ -133,7 +133,7 @@ export function DiscoverySettings() {
       <GroupedList>
         {(profiles ?? []).map((profile) => (
           <Group
-            key={profile.id} title={profile.name} meta={m.settings.discovery.seeds(profile.seedCount + profile.positiveCount)}
+            key={profile.id} title={profile.name} meta={m.settings.discovery.seeds(new Set(profile.intents.flatMap((intent) => intent.seeds.map((seed) => seed.id))).size)}
             actions={(
               <Button
                 size="compact" variant="ghost" disabled={refreshing !== null || profile.intentCount === 0}

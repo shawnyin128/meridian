@@ -53,6 +53,7 @@ vi.mock('../../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>, opts = {}) => { api.writes.push({ result: await work, opts }); return true },
 }))
 
+const PROFILES = structuredClone(api.profiles)
 const { DiscoverySettings } = await import('./DiscoverySettings.js')
 const { DraftsProvider } = await import('../../hooks/useDrafts.js')
 
@@ -65,6 +66,7 @@ describe('DiscoverySettings', () => {
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     host = document.createElement('div')
     document.body.append(host)
+    api.profiles = structuredClone(PROFILES)
     api.setIntent.mockClear()
     api.direction.mockClear()
     api.writes = []
@@ -85,6 +87,21 @@ describe('DiscoverySettings', () => {
   }
   const textButton = (item: Element, text: string) => [...item.querySelectorAll<HTMLButtonElement>('button')]
     .find((button) => button.textContent === text)
+
+  it('项目的「N 篇种子」数它已确认方向自己的种子，同一篇只数一次，不数候选和旧版本的更多类似', async () => {
+    api.profiles = [{
+      ...PROFILES[0]!, seedCount: 3, positiveCount: 4,
+      intents: [
+        { id: 'core', label: '动态树宽', core: true, enabled: true, seedCount: 2, seeds: [{ id: 'ARXIV:1', title: 'A' }, { id: 'ARXIV:2', title: 'B' }] },
+        { id: 'side', label: '草稿头', core: false, enabled: false, seedCount: 2, seeds: [{ id: 'ARXIV:2', title: 'B' }, { id: 'ARXIV:3', title: 'C' }] },
+      ],
+    }]
+    const root = createRoot(host)
+    await render(root)
+    expect(host.textContent).toContain('3 篇种子')
+    expect(host.textContent).not.toContain('7 篇种子')
+    await act(async () => { root.unmount() })
+  })
 
   it('候选方向排在它的项目最前：候选标签、名称和种子，行上是共享的添加和「忽略」文字按钮，没有开关和垃圾桶', async () => {
     const root = createRoot(host)
