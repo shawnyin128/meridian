@@ -365,8 +365,10 @@ export async function expectChipsHug(scope: Locator): Promise<Awaited<ReturnType
 }
 
 /**
- * Hovers `chip`, one of `chips`, and expects its actions to show inside the chip at its end, after its
- * name, which fades out where they start, while no chip of `chips` moves or changes width.
+ * Hovers `chip`, one of `chips`, and expects its actions to show just past the chip's end, over what
+ * follows it, or inside the chip's end where a box that clips the chip would cut them past it: whole
+ * inside every box that clips them, and on top where they lie. The chip's name keeps its look, and no
+ * chip of `chips` moves or changes width.
  */
 export async function expectChipHoverInPlace(chips: Locator, chip: Locator): Promise<void> {
   const boxes = () => chips.evaluateAll((els) => els.map((el) => {
@@ -374,17 +376,55 @@ export async function expectChipHoverInPlace(chips: Locator, chip: Locator): Pro
     return [Math.round(box.left * 10) / 10, Math.round(box.top * 10) / 10, Math.round(box.width * 10) / 10]
   }))
   const actions = chip.locator(':scope > .row-actions')
-  await chip.scrollIntoViewIfNeeded()
+  const text = chip.locator('.tagchip-text')
+  // Centred in its table, the chip lies clear of the sticky columns, which cover whatever scrolls under them.
+  await chip.evaluate((el) => {
+    el.scrollIntoView({ block: 'center' })
+    const box = el.closest('.table-scroll')
+    if (box === null) return
+    const at = el.getBoundingClientRect()
+    const frame = box.getBoundingClientRect()
+    box.scrollLeft += (at.left + at.right) / 2 - (frame.left + frame.right) / 2
+  })
   const before = await boxes()
+  const rest = await text.evaluate((el) => getComputedStyle(el).maskImage)
   await chip.hover()
   await settle(actions)
   await expect(actions).toHaveCSS('opacity', '1')
-  await expect(chip.locator('.tagchip-text')).not.toHaveCSS('mask-image', 'none')
-  const [outer, name, inner] = await Promise.all([
-    chip.boundingBox(), chip.locator(':scope > :not(.row-actions)').boundingBox(), actions.boundingBox(),
-  ])
-  expect(inner!.x).toBeGreaterThanOrEqual(name!.x + name!.width - 0.5)
-  expect(inner!.x + inner!.width).toBeLessThanOrEqual(outer!.x + outer!.width)
+  await expect(text).toHaveCSS('mask-image', rest)
+  const placed = await actions.evaluate((slot) => {
+    const box = slot.getBoundingClientRect()
+    const own = slot.parentElement!.getBoundingClientRect()
+    // A box clips the slot when it is the slot's containing block or holds it; the right edge of the
+    // nearest one, inside its border, is where the slot would be cut.
+    let clip = Infinity
+    const cuts: string[] = []
+    for (let el = (slot as HTMLElement).offsetParent as HTMLElement | null; el !== null; el = el.parentElement) {
+      if (getComputedStyle(el).overflowX === 'visible') continue
+      const frame = el.getBoundingClientRect()
+      const left = frame.left + el.clientLeft
+      const top = frame.top + el.clientTop
+      if (clip === Infinity) clip = left + el.clientWidth
+      if (box.left < left - 0.5 || box.right > left + el.clientWidth + 0.5 || box.top < top - 0.5 || box.bottom > top + el.clientHeight + 0.5) {
+        cuts.push(el.className)
+      }
+    }
+    const tops = [...slot.querySelectorAll('button')].map((button) => {
+      const at = button.getBoundingClientRect()
+      const hit = document.elementFromPoint(at.left + at.width / 2, at.top + at.height / 2)
+      return slot.contains(hit) ? 'on top' : `at ${Math.round(at.left)},${Math.round(at.top)} under ${hit?.closest('button,td,span')?.className ?? hit?.tagName ?? 'nothing'}`
+    })
+    return {
+      outside: Math.abs(box.left - own.right) <= 0.5,
+      inside: box.left >= own.left - 0.5 && box.right <= own.right + 0.5,
+      wouldCut: own.right + box.width > clip + 0.5,
+      cuts, tops,
+    }
+  })
+  expect(placed.cuts).toEqual([])
+  expect(placed.tops).toEqual(placed.tops.map(() => 'on top'))
+  expect(placed.outside ? 'past its end' : placed.inside && placed.wouldCut ? 'inside its end' : 'elsewhere')
+    .toBe(placed.wouldCut ? 'inside its end' : 'past its end')
   expect(await boxes()).toEqual(before)
 }
 

@@ -44,8 +44,9 @@ export type ChipListAdd = {
 /**
  * The one list of removable chips, each a neutral chip. A chip's name opens what it names when it has
  * `onOpen`; its pencil and its ×, which hand the chip to `edit.onEdit` and `remove.onRemove`, sit in the
- * chip's row-actions slot at the chip's end and show while the chip itself is hovered or holds focus,
- * when the name gives them its end and fades there; at rest the chip is as wide as its name and padding.
+ * chip's row-actions slot and show just past the chip's end while the chip or they are hovered or hold
+ * focus, over whatever follows the chip, which keeps its width; at rest the chip is as wide as its name
+ * and padding.
  * With `reorder`, each chip is dragged by itself and takes the reorder's item attributes. `add` ends
  * the list with the ＋ that adds a value, at the chip's height; with `reveal="hover"` the ＋ sits in
  * the row's actions slot and shows with the row's other actions, as in a table row. With `label` the

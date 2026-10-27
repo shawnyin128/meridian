@@ -341,8 +341,7 @@ test('项目详情的关联 chip 也进对应的聚合页', async ({ win }) => {
   await win.locator('[data-desk="resproj"]').click()
   await win.locator('[data-proj="draft"]').click()
 
-  // A hovered chip's actions lie over its end, which on a short name covers its middle, so click the name.
-  await shown(win).locator(`.wkrel .tagchip[data-wk="${chip.page}"] .tagchip-open`).click()
+  await shown(win).locator(`.wkrel .tagchip[data-wk="${chip.page}"]`).click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText((await aggFromCore(win, chip.page!)).title)
   await shown(win).locator('.desk-head .back').click()
   await expect(shown(win).locator('.desk-head .t')).toHaveText('draft 效率')
