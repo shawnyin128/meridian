@@ -620,6 +620,16 @@ Read `references/framework.md` for fork axes, substrate levels and analogy
 checks, `references/rubric.md` to check a design before presenting it, and
 `references/examples.md` for a worked speculative-decoding design.
 
+A design the user saved from an App chat is an idea whose file has the
+frontmatter `type: experiment-design`. When the user starts that idea, build
+its two nodes from the file, using its table, in one ask that confirms
+`create_node`: a hypothesis node for the claim, placed as the file's Lab nodes
+section says (under the named project's active node, or as a root) by the rules
+of New Idea Placement, and an experiment child node for the smallest
+experiment, whose one `record_history` line is the file's declared decision
+table. Create no node for M2 or M0; propose the `alternative` sibling only when
+the M2 row later matches.
+
 ### Research Prior Classification
 
 Use when a Lab plan, approach node, experiment design, prompt, metric, baseline,

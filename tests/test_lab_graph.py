@@ -142,6 +142,11 @@ class LabGraphTests(unittest.TestCase):
                     self.assertIn(f"references/{reference}", design)
                     self.assertIn(marker, (skill_root / "references" / reference).read_text(encoding="utf-8"))
 
+                self.assertIn("frontmatter `type: experiment-design`", design)
+                self.assertIn("build its two nodes from the file, using its table", design)
+                self.assertIn("an experiment child node for the smallest experiment", design)
+                self.assertIn("Create no node for M2 or M0", design)
+
                 completion = " ".join(skill.split("- **Completion.**", 1)[1].split("\n- **Tasks.**", 1)[0].split())
                 self.assertIn("the row of its declared decision table that the result matched sets the state", completion)
                 conclusion = " ".join(skill.split("- **Experiment conclusion.**", 1)[1].split("\n- **Leaving.**", 1)[0].split())
