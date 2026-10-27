@@ -49,7 +49,7 @@ describe('idea files', () => {
     expect(existsSync(join(vault, '.meridian/idea-files.json'))).toBe(false)
   })
 
-  it('sends a removed file to Trash as an attachment and puts it back in its place', () => {
+  it('sends a removed file to Trash as an idea file and puts it back in its place', () => {
     const idea = store.createIdea(undefined, '熵正则路由', '正文')
     const first = store.addIdeaFile(idea.id, PROPOSAL)
     const second = store.addIdeaFile(idea.id, SKETCH)
@@ -57,7 +57,7 @@ describe('idea files', () => {
 
     expect(store.listIdeaFiles()).toEqual([second])
     const entry = store.listTrash()[0]!
-    expect(entry).toMatchObject({ kind: 'attachment', title: 'proposal.md', restorable: true })
+    expect(entry).toMatchObject({ kind: 'ideaFile', title: 'proposal.md', restorable: true })
     const reopened = open()
     reopened.restoreTrash(entry.id)
     expect(reopened.listIdeaFiles()).toEqual([second, first])

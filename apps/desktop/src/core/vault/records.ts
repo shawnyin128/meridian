@@ -120,7 +120,7 @@ export type PaperReadingRecord = z.infer<typeof PaperReadingRecordSchema>
  * restoring puts it back; a chat entry holds the whole chat and its index in the chat list the same way,
  * and an attachment entry its index in the project's attachments. An attachment entry an older version
  * wrote has no index and goes back at the end. An idea file entry holds the file and its index among
- * idea `ideaId`'s files, and lists as an attachment.
+ * idea `ideaId`'s files.
  */
 export const TrashRecordSchema = z.discriminatedUnion('kind', [
   TrashBase.extend({

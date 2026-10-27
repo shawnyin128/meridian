@@ -1684,12 +1684,12 @@ export const WatchDeleteParamsSchema = z.object({ id: z.string() }).strict()
  * `kind` preserves the former type and `title` its display name. `deletedAt` is
  * UTC midnight for the vault date and starts retention. `restorable` is false
  * when the original destination is missing, such as an attachment whose project
- * remains deleted, or taken, such as a paper whose page's place another page
- * holds, or a paper chat whose paper has started another chat.
+ * remains deleted or an idea file whose idea does, or taken, such as a paper whose page's place another page
+ * holds, or a paper chat whose paper has started another chat. `ideaFile` is a file an idea held.
  */
 export const TrashEntrySchema = z.object({
   id: z.string(),
-  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'project', 'idea', 'chat', 'page']),
+  kind: z.enum(['inbox', 'later', 'paper', 'attachment', 'ideaFile', 'project', 'idea', 'chat', 'page']),
   title: z.string(),
   deletedAt: z.number().int(),
   restorable: z.boolean(),

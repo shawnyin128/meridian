@@ -6,7 +6,7 @@ import type {
   ColourThemeFile,
   ConclusionState, ContractMethod, Facet, FieldValue, PluginVersion, SemanticKeyCheckResult, SemanticKeyStatus,
   DeliverySettings, DiscoveryDirectionParams, DiscoveryFeedback, DiscoveryFetchResult, DiscoveryIntentAction, DiscoveryProfile,
-  ExtensionStatus, FeedEntry, FeedFields,
+  ExtensionStatus, FeedEntry, FeedFields, IdeaFile,
   InboxDownloadResult, InboxEntry, InboxListParams, JobsStatus, LaterEntry, ListParams,
   HarnessAddModelParams, HarnessApplyPaperWikiResult, HarnessCancelResult, HarnessCli, HarnessModelConnectionCheckResult,
   HarnessFailureDetail, HarnessSourceModels, HarnessUpdateModelParams,
@@ -334,6 +334,10 @@ export const idea = {
     call<ResearchIdeaPlaceOnGraphResult>('idea.placeOnGraph', { id, placement }),
   delete: (id: string) => call<TrashedEntry>('idea.delete', { id }),
   reorder: (order: string[]) => call<void>('idea.reorder', { order }),
+  /** The files of every idea not in the trash, each idea's newest first. */
+  files: () => call<IdeaFile[]>('idea.files', {}),
+  addFile: (id: string, attachment: AttachmentFields) => call<IdeaFile>('idea.addFile', { id, attachment }),
+  deleteFile: (id: string, fileId: string) => call<TrashedEntry>('idea.deleteFile', { id, fileId }),
 }
 
 export const inbox = {

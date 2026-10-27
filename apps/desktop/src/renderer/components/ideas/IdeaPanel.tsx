@@ -1,4 +1,4 @@
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type { ResearchIdea } from '../../../shared/contract.js'
 import { MANUAL_SOURCE } from '../../../shared/vocabulary.js'
 import { useFormat } from '../../lib/format.js'
@@ -12,6 +12,8 @@ import { SLOT } from '../TitleNote.js'
 import { Tag } from '../Tag.js'
 import { Button } from '../Button.js'
 import { Markdown } from '../Markdown.js'
+import { Attachments } from '../Attachments.js'
+import { AgentLabel, SourceLabel } from '../SourceLabel.js'
 import './IdeaPanel.css'
 
 /** Whether `idea` is one the user wrote down on their own, from no chat and no agent: such an idea shows no source. */
@@ -61,6 +63,23 @@ export function IdeaSource({ idea, sourceProject, message = (source) => source, 
   )
 }
 
+/**
+ * The label of where an idea came from, the one way the idea list and its panel show it: the agent
+ * label for a coding agent's idea, the paper-reading label for one saved from a paper's reading chat,
+ * the chat label for one saved from any other chat, and nothing for the user's own. `className`
+ * places it.
+ */
+export function IdeaSourceKind({ idea, className }: { idea: ResearchIdea; className?: string }) {
+  const m = useMessages()
+  if (idea.source.agent === true) return <AgentLabel {...(className === undefined ? {} : { className })} />
+  if (ownIdea(idea)) return null
+  return (
+    <SourceLabel className={className}>
+      {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
+    </SourceLabel>
+  )
+}
+
 /** The neutral tag that follows an idea's source wherever it shows, once the chat the idea came from is deleted. */
 export function SourceChatDeleted({ className }: { className?: string }) {
   const m = useMessages()
@@ -73,9 +92,10 @@ const TITLE_RENAME = 'title-rename'
 /**
  * The one detail panel of an idea, on the Ideas screen and on the project page, inside the host's
  * SidePanel: the head with the title, the host's `actions` and the close button, then in the body
- * the kind and archived tags with the created date and,
- * when it differs, the updated date, the content, rendered as Markdown, the host's own sections
- * (`children`), then the source, which an idea the user wrote down on their own does not have.
+ * the kind tag, the source label (see IdeaSourceKind) and the archived tag with the created date and,
+ * when it differs, the updated date, the content, rendered as Markdown, the idea's attachments when
+ * the host gives `files`, the host's own sections (`children`), then the source, which an idea the
+ * user wrote down on their own does not have.
  * `body`, when given, takes the content's place, such as the content edited in place.
  * `onOpenSourceChat` adds, to the source heading, the button that opens the conversation the idea
  * came from; `sourceChatDeleted` says that conversation is deleted, so there is no such button and the
@@ -83,13 +103,14 @@ const TITLE_RENAME = 'title-rename'
  * `onRename` makes a click on the title rename the idea in place, saved through it.
  */
 export function IdeaPanel({
-  idea, sourceProject, actions, body, onClose, onRename, onOpenSourceChat, sourceChatDeleted = false, onOpenSourcePaper, children,
+  idea, sourceProject, actions, body, files, onClose, onRename, onOpenSourceChat, sourceChatDeleted = false, onOpenSourcePaper, children,
 }: {
   idea: ResearchIdea
   /** The name of the project the idea was sparked in; when given, it leads the source, which then shows for the user's own idea too. */
   sourceProject?: string | undefined
   actions?: ReactNode
   body?: ReactNode
+  files?: ComponentProps<typeof Attachments> | undefined
   onClose: () => void
   onRename?: ((title: string) => boolean | Promise<boolean>) | undefined
   onOpenSourceChat?: (chatId: string) => void
@@ -111,6 +132,7 @@ export function IdeaPanel({
       <PanelBody>
         <div className="idea-panel-meta">
           <Tag>{m.project.idea.kind}</Tag>
+          <IdeaSourceKind idea={idea} />
           {idea.archived ? <Tag>{m.common.archived}</Tag> : null}
           <span className="idea-panel-dates">
             {m.common.createdOn(fmt.date(idea.created))}
@@ -123,6 +145,7 @@ export function IdeaPanel({
             <div className="md idea-panel-body"><Markdown src={idea.body} /></div>
           </>
         )}
+        {files === undefined ? null : <Attachments {...files} />}
         {children}
         {ownIdea(idea) && sourceProject === undefined ? null : (
           <>

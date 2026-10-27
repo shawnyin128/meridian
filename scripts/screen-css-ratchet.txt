@@ -237,11 +237,6 @@ components/project/ProjectSections.css:4: .agstep .agt { font-size }
 components/project/ProjectSections.css:4: .agstep .agt { color }
 components/project/ProjectSections.css:4: .agstep .agt { width }
 components/project/ProjectSections.css:6: .memo { font-size }
-components/project/ProjectSections.css:12: .attachments { border-radius }
-components/project/ProjectSections.css:12: .attachments { transition }
-components/project/ProjectSections.css:12: .attachments { outline }
-components/project/ProjectSections.css:13: .attachments.drag { background }
-components/project/ProjectSections.css:13: .attachments.drag { outline-color }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-kind-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-date-width }
 components/project/ProjectSignals.css:2: .project-signal-columns { --project-signal-gap }

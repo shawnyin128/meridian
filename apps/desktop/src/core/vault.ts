@@ -1153,8 +1153,8 @@ export interface VaultStore {
   addIdeaFile(ideaId: string, attachment: AttachmentFields): IdeaFile
 
   /**
-   * Moves file `fileId` of idea `ideaId` to the trash, which lists it as an attachment and puts it
-   * back in its place among that idea's files. Throws `not-found` when the idea holds no such file.
+   * Moves file `fileId` of idea `ideaId` to the trash, which puts it back in its place among that
+   * idea's files. Throws `not-found` when the idea holds no such file.
    */
   deleteIdeaFile(ideaId: string, fileId: string): void
 

@@ -69,7 +69,7 @@ import {
 } from './wiki/index.js'
 
 /** Trash entry with all content needed for restoration. `restorable` is derived from destination availability. */
-type TrashRecord = Omit<TrashEntry, 'restorable' | 'kind'> & (
+type TrashRecord = Omit<TrashEntry, 'restorable'> & (
   | {
     kind: 'paper'; paper: PaperRow; source: string; page: WikiPaperRecord
     reading: PaperReading | undefined
@@ -2259,7 +2259,7 @@ export function createFixtureStore(
       // nor a paper chat while its paper's chat holds messages.
       return trash.map((item) => ({
         id: item.id,
-        kind: item.kind === 'ideaFile' ? 'attachment' as const : item.kind,
+        kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)

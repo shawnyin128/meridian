@@ -1,9 +1,10 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
-import type { ReactNode } from 'react'
+import type { ComponentProps, ReactNode } from 'react'
 import type {
   ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
   ProjectFields, ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
 } from '../../shared/contract.js'
+import { attachmentSizeText } from '../../shared/attachment-size.js'
 import { projectControlState } from '../../shared/project-control.js'
 import { researchPathState } from '../../shared/research-path.js'
 import { withTaskNodes } from '../../shared/task-nodes.js'
@@ -40,14 +41,15 @@ import {
 import { ProjectIdentityFields, ProjectPriorityTag } from '../components/project/ProjectIdentity.js'
 import { Property, PropertyList } from '../components/PropertyList.js'
 import {
-  attachmentSizeText, PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
-  ProjectTopicsField, ProjectAttachments, ProjectMemo, ProjectRelations, ProjectUrlDraft,
+  PROJECT_PAPER_GROUP, PROJECT_RELATION_GROUPS, PROJECT_URL_GROUP, ProjectAgentSessions,
+  ProjectTopicsField, ProjectMemo, ProjectRelations, ProjectUrlDraft,
 } from '../components/project/ProjectSections.js'
 import { NodeAssignment } from '../components/project/NodeAssignment.js'
 import { EntityLink } from '../components/EntityLink.js'
 import { ProjectConclusionPanel, ProjectConclusionRow } from '../components/project/ProjectConclusions.js'
 import { ProjectTimeline } from '../components/project/ProjectTimeline.js'
 import { nodeMode, ResearchGraph, ResearchNodePanel } from '../components/project/ResearchGraph.js'
+import { Attachments } from '../components/Attachments.js'
 import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { newPlanRow, ProjectPlan, ProjectTaskPanel } from '../components/project/ProjectPlan.js'
@@ -69,6 +71,7 @@ import { Tag } from '../components/Tag.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
+import { useIdeaFiles } from '../hooks/useIdeaFiles.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useScreenPoll } from '../hooks/useScreenPoll.js'
@@ -115,10 +118,12 @@ export function WorkspaceRoot({ state, name, root, onOpen }: {
  * renamed in the panel's head.
  */
 export function ProjectIdeaPanel({
-  idea, graph, workspaceManaged, related = false, sourceChatDeleted = false,
+  idea, graph, workspaceManaged, related = false, sourceChatDeleted = false, files,
   onClose, onRename, onOpenIdea, onOpenPaper, onCreateNode, onOpenNode, onSetNode,
 }: {
   idea: ResearchIdea
+  /** The idea's attachments section. */
+  files?: ComponentProps<typeof IdeaPanel>['files']
   graph: ResearchGraphData
   workspaceManaged: boolean
   related?: boolean
@@ -139,7 +144,7 @@ export function ProjectIdeaPanel({
   const nodeDraft = useDraftSlot<HTMLDivElement>(draft !== null, () => setDraft({ label: idea.title, after: '' }))
   return (
     <IdeaPanel
-      idea={idea} onClose={onClose} onRename={onRename} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
+      idea={idea} files={files} onClose={onClose} onRename={onRename} onOpenSourcePaper={onOpenPaper} sourceChatDeleted={sourceChatDeleted}
       actions={(
         <IconButton label={m.project.idea.openIdea} size="nested" className="project-idea-open-idea" onClick={onOpenIdea}>
           <IconOpen />
@@ -422,6 +427,7 @@ export function ProjectDetail({
   const { open: jumpTo } = useJump()
   const openWikiPage = (page: string) => jumpTo('wiki', page)
   const { error, failure, load, report } = useScreenLoad(['ideas'])
+  const ideaFiles = useIdeaFiles(load)
   const write = useVaultWrite()
   const undo = useUndo()
   const heldPapers = project?.papers
@@ -683,8 +689,7 @@ export function ProjectDetail({
    * is recorded; the file itself is not copied.
    */
   const addAttachments = (dropped: File[]) => {
-    const local = dropped.filter((file) => files.pathOf(file) !== '')
-    if (local.length < dropped.length) notice.refusal(m.project.attachments.localOnly)
+    const local = ideaFiles.local(dropped)
     if (local.length === 0) return
     let chain = Promise.resolve(project)
     for (const file of local) {
@@ -1044,6 +1049,7 @@ export function ProjectDetail({
                 graph={displayedGraph}
                 workspaceManaged={project.workspace !== undefined}
                 related={selectedIdea.project !== projectId} sourceChatDeleted={chatDeleted(selectedIdea)}
+                files={ideaFiles.section(selectedIdea.id)}
                 onClose={clearIdea}
                 onRename={(title) => write(ideaApi.update(selectedIdea.id, { title }))}
                 onOpenIdea={() => jumpTo('ideas', selectedIdea.id)}
@@ -1281,14 +1287,17 @@ export function ProjectDetail({
                   )}
                 />
 
-                <ProjectAttachments
-                  attachments={project.attachments} onAdd={addAttachments}
-                  onReveal={(path) => void files.reveal(path).then((found) => {
-                    if (!found) notice.refusal(m.project.attachments.missing)
-                  })}
-                  onRemove={(attachmentId) => applyRemoval(
-                    projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed,
-                  )}
+                <Attachments
+                  attachments={[
+                    ...project.attachments,
+                    ...(linkedIdeas ?? []).filter((idea) => idea.project === projectId).flatMap((idea) => ideaFiles.of(idea.id)),
+                  ]}
+                  onAdd={addAttachments} onReveal={ideaFiles.reveal}
+                  onRemove={(attachmentId) => {
+                    const idea = ideaFiles.ideaOf(attachmentId)
+                    if (idea !== undefined) ideaFiles.remove(idea, attachmentId)
+                    else applyRemoval(projectApi.deleteAttachment(projectId, attachmentId), m.common.trashed)
+                  }}
                 />
               </div>
             )

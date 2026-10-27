@@ -3182,7 +3182,7 @@ export function createVaultStore(
       // nor a paper chat while its paper's chat holds messages.
       return trash.filter((item) => !returned(item)).map((item) => ({
         id: item.id,
-        kind: item.kind === 'ideaFile' ? 'attachment' as const : item.kind,
+        kind: item.kind,
         title: item.title,
         deletedAt: item.deletedAt,
         restorable: item.kind === 'attachment' ? projectById.has(item.projectId)

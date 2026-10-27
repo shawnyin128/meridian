@@ -61,6 +61,9 @@ const api = vi.hoisted(() => ({
   unreadable: {} as Record<string, CallFailure>,
   promote: vi.fn(async () => ({ idea: {}, project: {} })),
   remove: vi.fn(async () => ({ trash: 'trash-idea' })),
+  /** The idea files `idea.files` answers with. */
+  files: [] as { idea: string; attachment: { id: string; name: string; size: string; path: string } }[],
+  removeFile: vi.fn(async () => ({ trash: 'trash-file' })),
   restored: [] as string[],
   writes: [] as { result: unknown; opts: { note?: unknown; action?: (result: never) => { label: string; onAction: () => void } } }[],
   reorder: vi.fn(async () => {}),
@@ -85,7 +88,10 @@ vi.mock('../ipc.js', () => ({
     delete: api.remove,
     reorder: api.reorder,
     create: api.create,
+    files: async () => structuredClone(api.files),
+    deleteFile: api.removeFile,
   },
+  files: { pathOf: () => '', reveal: async () => true },
   project: {
     list: async () => structuredClone(api.projects),
     get: async (id: string) => {
@@ -105,6 +111,7 @@ vi.mock('../shell/AppShell.js', () => ({
   useJump: () => ({ jump: api.jump, open: api.open, returnTo: api.returnTo }),
   useScreenEntry: () => 0,
   useVaultRevision: () => ({ revision: api.revision, bump: vi.fn() }),
+  useNotice: () => ({ success: vi.fn(), refusal: vi.fn() }),
 }))
 vi.mock('../hooks/useVaultWrite.js', () => ({
   useVaultWrite: () => async (work: Promise<unknown>, opts = {}) => { api.writes.push({ result: await work, opts }); return true },
@@ -389,7 +396,7 @@ describe('Ideas', () => {
       expect(host.querySelector('[data-idea="idea-own"]')!.textContent).not.toContain('手动添加')
       await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-own"]')!.click() })
       expect([...host.querySelectorAll('.idea-detail-panel .panel-body > .section-heading')].map((h) => h.firstChild!.textContent))
-        .toEqual(['内容', '关联', '所在项目'])
+        .toEqual(['内容', '附件', '关联', '所在项目'])
       expect(host.querySelector('.idea-detail-panel')!.textContent).not.toContain('手动添加')
     } finally {
       api.ideas = api.ideas.filter((idea) => idea.id !== OWN.id)
@@ -495,7 +502,7 @@ describe('Ideas', () => {
     expect([...detail.querySelectorAll('.panel-head button')].map((item) => [item.textContent || item.getAttribute('aria-label'), item.className]))
       .toEqual([['用可学习性信号动态分配 draft model 的蒸馏预算', 'metadata-editable'], ['收起详情', 'icbtn sm panel-close']])
     expect([...detail.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
-      .toEqual(['内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
+      .toEqual(['内容', '附件附件', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
     const content = () => detail.querySelector<HTMLElement>('.idea-panel-body')!
     const contentButtons = () => [...detail.querySelectorAll<HTMLButtonElement>('.section-heading--group')][0]!
@@ -589,6 +596,25 @@ describe('Ideas', () => {
     expect(api.restored).toEqual(['trash-idea'])
   })
 
+  it('想法详情在内容后面列出它的附件；删一个经 idea.deleteFile 移入垃圾桶，提示里的撤销把它放回', async () => {
+    api.files = [
+      { idea: 'idea-independent', attachment: { id: 'att-2', name: 'proposal.md', size: '14 KB', path: '/research/proposal.md' } },
+      { idea: 'idea-linked', attachment: { id: 'att-3', name: 'other.md', size: '1 KB', path: '/research/other.md' } },
+    ]
+    await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
+    await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-independent"]')!.click() })
+    const panel = host.querySelector('.idea-detail-panel')!
+    expect([...panel.querySelectorAll('.attrow .an')].map((name) => name.textContent)).toEqual(['proposal.md'])
+    await act(async () => { panel.querySelector<HTMLButtonElement>('.attrow .ax')!.click() })
+    expect(api.removeFile).toHaveBeenCalledWith('idea-independent', 'att-2')
+    const removed = api.writes.at(-1)!
+    const action = removed.opts.action!(removed.result as never)
+    expect([removed.opts.note, action.label]).toEqual(['已移入垃圾桶', '撤销'])
+    await act(async () => { action.onAction() })
+    expect(api.restored).toContain('trash-file')
+    api.files = []
+  })
+
   it('在已完成项目里做完的想法，取消归档按不了，菜单项后面不写原因', async () => {
     await act(async () => { root.render(<MessagesProvider><Ideas /></MessagesProvider>) })
     await act(async () => {
@@ -654,9 +680,9 @@ describe('Ideas', () => {
       ])
     }
     expect(await headings('idea-linked'))
-      .toEqual([['内容', []], ['关联', ['关联']], ['所在项目', ['打开项目']], ['来源', ['打开来源对话']]])
+      .toEqual([['内容', []], ['附件', ['附件']], ['关联', ['关联']], ['所在项目', ['打开项目']], ['来源', ['打开来源对话']]])
     expect(await headings('idea-independent'))
-      .toEqual([['内容', []], ['关联', ['关联']], ['所在项目', ['转为项目']], ['来源', ['打开来源对话']]])
+      .toEqual([['内容', []], ['附件', ['附件']], ['关联', ['关联']], ['所在项目', ['转为项目']], ['来源', ['打开来源对话']]])
   })
 
   it('来源对话删掉了的想法，卡片的来源后面和详情的来源后面都写着对话已删除，详情没有打开来源对话；对话还在的照常能打开', async () => {

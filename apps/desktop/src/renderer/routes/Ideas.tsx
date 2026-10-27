@@ -16,7 +16,7 @@ import { Group, GroupedList } from '../components/GroupedList.js'
 import { EmptyState } from '../components/EmptyState.js'
 import { AddAction } from '../components/AddAction.js'
 import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
-import { IdeaPanel, IdeaSource, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
+import { IdeaPanel, IdeaSource, IdeaSourceKind, ideaSourceLabel, ownIdea, SourceChatDeleted } from '../components/ideas/IdeaPanel.js'
 import { IdeaNodeCandidate } from '../components/ideas/IdeaNodeCandidate.js'
 import { IdeaRelations } from '../components/ideas/IdeaRelations.js'
 import { nodeMode } from '../components/project/ResearchGraph.js'
@@ -40,12 +40,12 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
+import { useIdeaFiles } from '../hooks/useIdeaFiles.js'
 import { useSourceChatDeleted } from '../hooks/useSourceChatDeleted.js'
 import { useDragReorder, type Reorderable } from '../hooks/useDragReorder.js'
 import { DragHandle } from '../components/DragHandle.js'
 import { failureOf } from '../lib/failure-label.js'
 import { useMessages } from '../messages/useMessages.js'
-import { AgentLabel, SourceLabel } from '../components/SourceLabel.js'
 import { Tag } from '../components/Tag.js'
 import { FadeText } from '../components/FadeText.js'
 import { Button } from '../components/Button.js'
@@ -120,13 +120,7 @@ function IdeaOrigin({ idea, sourceProject, chatDeleted }: { idea: ResearchIdea; 
       <FadeText className="idea-card-source" label={m.project.idea.sourceTag(ideaSourceLabel(idea, sourceProject))}>
         <IdeaSource idea={idea} sourceProject={sourceProject} message={m.project.idea.sourceTag} />
       </FadeText>
-      {idea.source.agent === true
-        ? <AgentLabel className="idea-source-kind" />
-        : ownIdea(idea) ? null : (
-          <SourceLabel className="idea-source-kind">
-            {idea.source.paperTitle === undefined ? m.ideas.sourceKind.chat : m.ideas.sourceKind.paperReading}
-          </SourceLabel>
-        )}
+      <IdeaSourceKind idea={idea} className="idea-source-kind" />
       {chatDeleted ? <SourceChatDeleted /> : null}
     </>
   )
@@ -295,10 +289,12 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, onRe
 }
 
 function IdeaDetailPanel({
-  idea, sourceChatDeleted, linked, projects, pageTitles, candidate, onClose, onRename, onSave, onRelations, onProject, onPromote, onPlace,
+  idea, sourceChatDeleted, linked, projects, pageTitles, candidate, files, onClose, onRename, onSave, onRelations, onProject, onPromote, onPlace,
   onOpen, onError,
 }: {
   idea: ResearchIdea
+  /** The idea's attachments section. */
+  files: ComponentProps<typeof IdeaPanel>['files']
   /** Whether the chat the idea came from is deleted. */
   sourceChatDeleted: boolean
   linked: ProjectSummary | undefined
@@ -333,7 +329,7 @@ function IdeaDetailPanel({
   return (
     <SidePanel surface="card" label={m.ideas.detailHeading} className="idea-detail-panel">
       <IdeaPanel
-        idea={idea} onClose={onClose} onRename={onRename} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
+        idea={idea} files={files} onClose={onClose} onRename={onRename} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
         sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         body={(
@@ -404,6 +400,7 @@ export function Ideas() {
   const [draft, setDraft] = useDraft<IdeaDraftText>(['ideas'], 'new')
   const draftSlot = useDraftSlot(draft !== null, () => setDraft({ title: '', body: '' }))
   const { error, load, report } = useScreenLoad()
+  const ideaFiles = useIdeaFiles(load)
   const closeDetail = useCallback(() => setSelectedId(null), [])
 
   useEffect(() => {
@@ -607,6 +604,7 @@ export function Ideas() {
           {selected === undefined ? null : (
             <IdeaDetailPanel
               idea={selected}
+              files={ideaFiles.section(selected.id)}
               sourceChatDeleted={chatDeleted(selected)}
               linked={selected.project === undefined ? undefined : projectsById.get(selected.project)}
               projects={projects}

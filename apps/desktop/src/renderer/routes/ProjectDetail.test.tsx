@@ -918,3 +918,71 @@ describe('项目页上点标题就地改名', () => {
     expect(writes('idea.update')).toEqual([{ id: 'idea-1', patch: { title: '动态预算校准' } }])
   })
 })
+
+describe('项目页的附件', () => {
+  const carried: ResearchIdea = {
+    id: 'idea-1', title: '熵正则路由', body: '用熵正则代替负载均衡 loss。',
+    source: { chatId: 'chat-1', chatTitle: '论文讨论' }, project: 'draft',
+    archived: false, created: '2026-09-17', updated: '2026-09-18',
+  }
+  const related: ResearchIdea = {
+    id: 'idea-2', title: '只是相关的想法', body: '正文。', source: { chatId: 'chat-1', chatTitle: '论文讨论' },
+    relations: { projects: ['draft'], pages: [] }, archived: false, created: '2026-09-17', updated: '2026-09-18',
+  }
+  let calls: [string, Record<string, unknown>][] = []
+  let unmount = () => {}
+
+  beforeEach(() => {
+    globalThis.IS_REACT_ACT_ENVIRONMENT = true
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
+    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
+    shell.shown = true
+    calls = []
+    vi.stubGlobal('meridian', {
+      platform: 'darwin',
+      call: (method: string, params: Record<string, unknown>) => {
+        calls.push([method, params])
+        if (method === 'project.get') {
+          return Promise.resolve(project({ attachments: [{ id: 'att-1', name: 'run.log', size: '2 KB', path: '/work/run.log' }] }))
+        }
+        if (method === 'idea.list') return Promise.resolve([structuredClone(carried), structuredClone(related)])
+        if (method === 'idea.files') {
+          return Promise.resolve([
+            { idea: 'idea-1', attachment: { id: 'att-7', name: 'proposal.md', size: '14 KB', path: '/research/proposal.md' } },
+            { idea: 'idea-2', attachment: { id: 'att-8', name: 'other.md', size: '1 KB', path: '/research/other.md' } },
+          ])
+        }
+        if (method === 'idea.deleteFile') return Promise.resolve({ trash: 'trash-9' })
+        if (method === 'chat.list') return Promise.resolve([])
+        if (method === 'library.location') return Promise.resolve({ root: '/vaults/project-test' })
+        return new Promise(() => {})
+      },
+    })
+  })
+
+  afterEach(() => {
+    unmount()
+    window.localStorage.clear()
+    vi.unstubAllGlobals()
+  })
+
+  it('列出项目自己的附件和在这里做的想法的文件，不列只是相关的想法的；删想法的文件经 idea.deleteFile，不动项目', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const root = createRoot(host)
+    await act(async () => {
+      root.render(withMessages(
+        <DraftsProvider>
+          <ProjectScreen projectId="draft" onBack={() => {}} onReturn={() => {}} tab="task" onTab={() => {}} record="tl" onRecord={() => {}} />
+        </DraftsProvider>,
+      ))
+    })
+    unmount = () => { act(() => root.unmount()); host.remove() }
+    const names = () => [...host.querySelectorAll('.attachment-list .attrow .an')].map((name) => name.textContent)
+    await vi.waitFor(() => expect(names()).toEqual(['run.log', 'proposal.md']))
+
+    await act(async () => { host.querySelectorAll<HTMLButtonElement>('.attachment-list .attrow .ax')[1]!.click() })
+    const writes = calls.filter(([method]) => method === 'idea.deleteFile' || method === 'project.deleteAttachment')
+    expect(writes).toEqual([['idea.deleteFile', { id: 'idea-1', fileId: 'att-7' }]])
+  })
+})

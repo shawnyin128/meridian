@@ -36,7 +36,7 @@ describe('IdeaPanel', () => {
     host.remove()
   })
 
-  const headings = () => [...host.querySelectorAll('.section-heading')].map((heading) => heading.textContent)
+  const headings = () => [...host.querySelectorAll('.section-heading [role="heading"]')].map((heading) => heading.textContent)
 
   it('面板头写标题，跟着宿主的操作和关闭；正文里再是类型标签、内容、宿主自己的分节，最后是来源', () => {
     const onClose = vi.fn()
@@ -51,7 +51,7 @@ describe('IdeaPanel', () => {
     expect(head.querySelector('.panel-head-title')!.textContent).toBe(IDEA.title)
     expect([...head.querySelectorAll('button')].map((button) => button.textContent || button.getAttribute('aria-label')))
       .toEqual(['打开想法', '收起详情'])
-    expect([...host.querySelectorAll('.idea-panel-meta .tag')].map((tag) => tag.textContent)).toEqual(['想法', '已归档'])
+    expect([...host.querySelectorAll('.idea-panel-meta .tag')].map((tag) => tag.textContent)).toEqual(['想法', '论文阅读', '已归档'])
     expect(headings()).toEqual(['内容', '来源'])
     expect(host.querySelector('.idea-panel-body')!.textContent).toBe('先做一个最小探针。')
     const order = [...host.querySelectorAll('.idea-panel-body, .probe, .idea-panel-source')].map((el) => el.className)
@@ -67,7 +67,7 @@ describe('IdeaPanel', () => {
     const body = host.querySelector('.panel-body')!
     expect([body.previousElementSibling, body.firstElementChild]).toEqual([host.querySelector('.panel-head'), meta])
     expect(meta.querySelector('.idea-panel-dates')!.textContent).toBe('创建于 9月17日 · 更新于 9月18日')
-    expect([...meta.children].map((child) => child.className.split(' ')[0])).toEqual(['tag', 'tag', 'idea-panel-dates'])
+    expect([...meta.children].map((child) => child.className.split(' ')[0])).toEqual(['tag', 'tag', 'tag', 'idea-panel-dates'])
     expect(body.lastElementChild).toBe(host.querySelector('.idea-panel-source'))
   })
 
@@ -82,6 +82,49 @@ describe('IdeaPanel', () => {
     expect(headings()).toEqual(['内容'])
     expect(host.querySelector('.idea-panel-source')).toBeNull()
     expect(host.textContent).not.toContain('手动添加')
+  })
+
+  it('类型标签后面跟着来源标签，和想法列表一样：对话、论文阅读、agent；自己写下的想法没有', () => {
+    const kinds = (idea: ResearchIdea) => {
+      act(() => root.render(<MessagesProvider><IdeaPanel idea={idea} onClose={vi.fn()} /></MessagesProvider>))
+      return [...host.querySelectorAll('.idea-panel-meta .tag')].map((tag) => tag.textContent)
+    }
+    const open = { ...IDEA, archived: false }
+    expect(kinds({ ...open, source: { chatId: 'chat-1', chatTitle: '论文讨论' } })).toEqual(['想法', '对话'])
+    expect(kinds(open)).toEqual(['想法', '论文阅读'])
+    expect(kinds({ ...open, source: { chatTitle: '缓存淘汰的实现讨论', agent: true } })).toEqual(['想法', 'agent'])
+    expect(kinds({ ...open, source: { chatTitle: '手动添加' } })).toEqual(['想法'])
+  })
+
+  it('宿主给了想法的文件时，内容后面是附件一节：列出每个文件，带添加附件；删除把文件 id 交给宿主，点文件名定位它', () => {
+    const onAdd = vi.fn()
+    const onRemove = vi.fn()
+    const onReveal = vi.fn()
+    act(() => root.render(
+      <MessagesProvider>
+        <IdeaPanel
+          idea={IDEA} onClose={vi.fn()}
+          files={{
+            attachments: [
+              { id: 'att-2', name: 'proposal.md', size: '14 KB', path: '/research/proposal.md' },
+              { id: 'att-1', name: 'sketch.pdf', size: '1.2 MB', path: '/research/sketch.pdf' },
+            ],
+            onAdd, onRemove, onReveal,
+          }}
+        >
+          <section className="probe">关联</section>
+        </IdeaPanel>
+      </MessagesProvider>,
+    ))
+    expect(headings()).toEqual(['内容', '附件', '来源'])
+    const order = [...host.querySelectorAll('.idea-panel-body, .attachments, .probe')].map((el) => el.className.split(' ')[0])
+    expect(order).toEqual(['md', 'attachments', 'probe'])
+    expect([...host.querySelectorAll('.attrow .an')].map((name) => name.textContent)).toEqual(['proposal.md', 'sketch.pdf'])
+    expect([...host.querySelectorAll('.section-heading .add-action')].map((add) => add.getAttribute('aria-label'))).toEqual(['添加附件'])
+    act(() => host.querySelectorAll<HTMLButtonElement>('.attrow .ax')[1]!.click())
+    expect(onRemove).toHaveBeenCalledWith('att-1')
+    act(() => host.querySelector<HTMLButtonElement>('.attrow .an')!.click())
+    expect(onReveal).toHaveBeenCalledWith('/research/proposal.md')
   })
 
   it('内容按 Markdown 显示;宿主给了自己的内容一节时换掉它', () => {
