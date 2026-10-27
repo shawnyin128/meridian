@@ -824,20 +824,20 @@ export function ProjectDetail({
                         onChange={(event) => setSshPort(event.target.value)} onBlur={reach.settle}
                       />
                     </FieldRow>
-                    {reach.state === 'ready'
-                      ? (
-                        <FieldRow label={m.project.workspace.pathLabel}>
-                          <DirectoryField
-                            value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
-                            chooseLabel={m.project.workspace.chooseLocal}
-                            onChoose={() => setPickingSsh(true)}
-                            onChange={(event) => setSshPath(event.target.value)}
-                          />
-                        </FieldRow>
-                      )
-                      : reach.state === 'failed'
-                        ? <InlineMessage tone="error" variant="line">{reach.issue}</InlineMessage>
-                        : reach.state === 'checking' ? <LoadingPlaceholder shape="ring" holds="field" /> : null}
+                    <FieldRow label={m.project.workspace.pathLabel}>
+                      {reach.state === 'failed'
+                        ? <InlineMessage tone="error" variant="field">{reach.issue}</InlineMessage>
+                        : reach.state === 'checking'
+                          ? <LoadingPlaceholder shape="ring" holds="field" />
+                          : (
+                            <DirectoryField
+                              value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
+                              chooseLabel={m.project.workspace.chooseLocal} disabled={reach.state === 'idle'}
+                              onChoose={() => setPickingSsh(true)}
+                              onChange={(event) => setSshPath(event.target.value)}
+                            />
+                          )}
+                    </FieldRow>
                   </FieldRows>
                 </form>
               )}

@@ -1880,12 +1880,21 @@ test('SSH 工作区连不上主机时写出原因,连上后文件夹按钮叠开
   const dialog = win.locator('.workspace-dialog')
   await dialog.locator('.workspace-kinds button', { hasText: 'SSH' }).click()
   const host = dialog.locator('#workspaceSsh input').first()
+  const geometry = async () => ({
+    hostLeft: (await host.boundingBox())!.x,
+    footTop: (await dialog.locator('.modal-actions').boundingBox())!.y,
+  })
   await host.fill('nope')
-  await expect(dialog.locator('#workspaceSsh [role="alert"]')).toContainText('Could not resolve hostname nope')
+  await expect(dialog.locator('#workspaceSsh .field-row-field .loading-placeholder')).toHaveCount(1)
+  const checking = await geometry()
+  await expect(dialog.locator('#workspaceSsh .field-row-field [role="alert"]')).toContainText('Could not resolve hostname nope')
   await expect(dialog.locator('#workspaceSsh .directory-field')).toHaveCount(0)
+  const failed = await geometry()
   await host.fill('gpu')
   await win.locator('.pickhits .rrow', { hasText: 'gpu-lab' }).click()
   await expect(host).toHaveValue('gpu-lab')
+  await expect(dialog.locator('#workspaceSsh .directory-field input')).toBeEnabled()
+  expect([failed, await geometry()]).toEqual([checking, checking])
   await dialog.locator('#workspaceSsh .directory-field-action').click()
   const picker = win.locator('.ssh-folder-picker')
   await expect(picker.locator('.modal-title')).toHaveText('gpu-lab')

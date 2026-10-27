@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import type { InputHTMLAttributes } from 'react'
 import type { SshFolders } from '../../shared/contract.js'
 import { useCandidateKeys } from '../hooks/useCandidateKeys.js'
+import { useDebounced } from '../hooks/useDebounced.js'
 import { ssh } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import { commitKeys } from '../lib/keyboard.js'
@@ -122,23 +123,12 @@ export function useSshReach(target: SshTarget | null): SshReach & { settle: () =
   const { folder, issue, connect, reset } = useSshFolders()
   const host = target?.host ?? ''
   const port = target?.port
-  const pending = useRef<(() => void) | null>(null)
+  const key = `${host}\n${port ?? ''}`
+  const [settledKey, settle] = useDebounced(key, SETTLE_MS)
+  useEffect(() => { reset() }, [key, reset])
   useEffect(() => {
-    reset()
-    if (host === '') return
-    const check = () => {
-      window.clearTimeout(timer)
-      pending.current = null
-      connect({ host, ...(port === undefined ? {} : { port }) })
-    }
-    const timer = window.setTimeout(check, SETTLE_MS)
-    pending.current = check
-    return () => {
-      window.clearTimeout(timer)
-      pending.current = null
-    }
-  }, [host, port, connect, reset])
-  const settle = useCallback(() => pending.current?.(), [])
+    if (host !== '' && settledKey === key) connect({ host, ...(port === undefined ? {} : { port }) })
+  }, [settledKey, key, host, port, connect])
 
   if (host === '') return { state: 'idle', issue: null, settle }
   if (folder !== null) return { state: 'ready', issue: null, settle }

@@ -128,13 +128,19 @@ async function reachHost(dialog: HTMLElement, host: string, port?: string): Prom
   await answer(folder('/home/researcher', ['projects']))
 }
 
-/** What the slot under the port field holds: the path row, the busy ring, the failure or nothing, with the failure's text. */
+/**
+ * What the path row's field cell of the SSH form holds: the path field, usable or held, the busy ring,
+ * or the failure with its text; `no row` when the form has no such row.
+ */
 const slot = (dialog: HTMLElement) => {
-  const form = dialog.querySelector('#workspaceSsh')!
-  if (form.querySelector('.directory-field') !== null) return ['path']
-  if (form.querySelector('.loading-placeholder') !== null) return ['checking']
-  const alert = form.querySelector('[role="alert"]')
-  return alert === null ? ['none'] : ['failed', alert.textContent]
+  const cell = [...dialog.querySelectorAll('#workspaceSsh .field-row')]
+    .find((row) => row.querySelector('.field-row-label')?.textContent === '项目路径')?.querySelector('.field-row-field')
+  if (cell === undefined || cell === null) return ['no row']
+  const field = cell.querySelector<HTMLInputElement>('.directory-field input')
+  if (field !== null) return [field.disabled ? 'held' : 'path']
+  if (cell.querySelector('.loading-placeholder') !== null) return ['checking']
+  const alert = cell.querySelector('[role="alert"]')
+  return alert === null ? ['empty'] : ['failed', alert.textContent]
 }
 
 /** Opens the folder picker from the SSH form's folder button, which holds focus the way a click leaves it. */
@@ -201,12 +207,12 @@ describe('项目工作区对话框', () => {
     expect(document.querySelector('.workspace-dialog')).toBeNull()
   })
 
-  it('SSH 表单先是主机和端口；连上主机后才出现一行跟本地目录一样的项目路径，填了路径添加才按得动', async () => {
+  it('SSH 表单一直是主机、端口和项目路径三行；没填主机时路径框按不动，连上后是一行跟本地目录一样的项目路径，填了路径添加才按得动', async () => {
     const dialog = await openWorkspaceDialog()
     const local = pathRow(dialog.querySelector('#workspaceLocal .directory-field')!)
     await chooseSsh(dialog)
     const labels = () => [...dialog.querySelectorAll('#workspaceSsh .field-row-label')].map((label) => label.textContent)
-    expect([labels(), slot(dialog), submit(dialog).disabled]).toEqual([['主机', '端口'], ['none'], true])
+    expect([labels(), slot(dialog), submit(dialog).disabled]).toEqual([['主机', '端口', '项目路径'], ['held'], true])
     await reachHost(dialog, 'gpu-lab')
     expect(labels()).toEqual(['主机', '端口', '项目路径'])
     expect(pathRow(dialog.querySelector('#workspaceSsh .directory-field')!)).toEqual(local)
@@ -215,7 +221,7 @@ describe('项目工作区对话框', () => {
     expect(submit(dialog).disabled).toBe(false)
   })
 
-  it('主机或端口停下 600ms 才检查连接；检查时这一格转圈，连不上写出 Core 给的原因，改了主机又回到检查，连上后出现项目路径', async () => {
+  it('主机或端口停下 600ms 才检查连接；检查时项目路径那格转圈，连不上那格写出 Core 给的原因，改了主机又回到检查，连上后那格是路径框', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
     const [hostField, portField] = sshFields(dialog)
@@ -243,7 +249,7 @@ describe('项目工作区对话框', () => {
 
       act(() => setValue(hostField!, ''))
       act(() => { vi.advanceTimersByTime(600) })
-      expect([slot(dialog), api.listings.length]).toEqual([['none'], 2])
+      expect([slot(dialog), api.listings.length]).toEqual([['held'], 2])
     } finally {
       vi.useRealTimers()
     }
