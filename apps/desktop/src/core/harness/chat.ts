@@ -249,8 +249,9 @@ export function chatHarnessError(cause: unknown): Error {
  * A single-purpose chat client with a least-privilege callback surface. A turn runs on the model its
  * chat chose, as `choiceOf` gives it, or on the default. A turn on a subscription CLI also gets its
  * one model call from Core, which `cli` runs in the chat's CLI session that `sessions` keeps, with the
- * internal MCP server's vault lookups, scoped to the chat's paper in a paper chat; a turn whose CLI
- * call fails fails for the CLI problem it met.
+ * internal MCP server's vault lookups, with a search and a page read of the chat's paper in a paper
+ * chat whose context cannot hold the whole paper; a turn whose CLI call fails fails for the CLI
+ * problem it met.
  */
 export function createChatHarnessRunner(options: {
   store: VaultStore
@@ -264,24 +265,27 @@ export function createChatHarnessRunner(options: {
   launch?: () => HarnessChild
   onLog?: (level: CoreLogLevel, line: string) => void
 }) {
-  const sourceText = new Map<string, Promise<Array<{ number: number; text: string }>>>()
-  const paperPages = (paperId: string) => {
+  /** The source pages of each paper as far as the chat context's budget holds them, and whether it holds them all. */
+  const sourceText = new Map<string, Promise<{ pages: Array<{ number: number; text: string }>; whole: boolean }>>()
+  const paperSource = (paperId: string) => {
     const cached = sourceText.get(paperId)
     if (cached !== undefined) return cached
     const created = Promise.resolve().then(async () => {
       const source = options.store.paperSource(paperId)
       const pages = await extractPdfPages(source)
       let remaining = CHAT_CONTEXT_BUDGETS.sourceCharacters
-      return pages.flatMap((page) => {
+      const held = pages.flatMap((page) => {
         if (remaining <= 0) return []
         const text = page.text.slice(0, remaining)
         remaining -= text.length
         return text === '' ? [] : [{ number: page.number, text }]
       })
+      return { pages: held, whole: pages.reduce((sum, page) => sum + page.text.length, 0) <= CHAT_CONTEXT_BUDGETS.sourceCharacters }
     })
     sourceText.set(paperId, created)
     return created
   }
+  const paperPages = async (paperId: string) => (await paperSource(paperId)).pages
 
   const rpc = createHarnessRpc({
     launch: options.launch ?? launchHarnessProcess,
@@ -351,6 +355,8 @@ export function createChatHarnessRunner(options: {
       called = true
       const { system, prompt, message } = ChatModelInvokeParamsSchema.parse(params)
       const paperId = options.store.chatSession(chatId).paperId
+      // A context that holds the whole paper leaves its search and page read nothing to add.
+      const wholePaper = paperId !== undefined && await paperSource(paperId).then(({ whole }) => whole, () => false)
       const resumed = options.sessions.resumable(chatId, model, turnsDigest(before))
       const start = resumed === null && model.cli === 'claude' ? randomUUID() : undefined
       let id = resumed?.id ?? start
@@ -366,7 +372,7 @@ export function createChatHarnessRunner(options: {
           prompt: resumed === null ? prompt : message,
           session: resumed !== null ? { resume: resumed.id } : start === undefined ? {} : { start },
           folder: options.sessions.folder(chatId),
-          lookup: paperId === undefined ? {} : { paperId },
+          lookup: paperId === undefined || wholePaper ? {} : { paperId },
           timeoutMs: CLI_CALL_TIMEOUT_MS,
           signal,
           onSession: (named) => {
