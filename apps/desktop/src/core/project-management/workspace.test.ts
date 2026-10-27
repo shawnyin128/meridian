@@ -7,7 +7,8 @@ import type { ResearchIdea } from '../../shared/contract.js'
 import type { ProjectRecord } from './page.js'
 import {
   PROJECT_PLAN_SCHEMA, WORKSPACE_CHANGES_SCHEMA, WORKSPACE_SCHEMA, projectWorkspaceRoot,
-  projectWorkspaceSsh, readProjectWorkspace, sshConfigHosts, sshFolders, writeProjectWorkspace,
+  projectWorkspaceSsh, readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeas, readWorkspaceAgentTasks,
+  readWorkspaceSpaces, sshConfigHosts, sshFolders, writeProjectWorkspace,
   writeProjectWorkspaceState, type SshCommand, type SshExecutor,
 } from './workspace.js'
 
@@ -831,5 +832,102 @@ describe('choosing a folder on an SSH host', () => {
         else process.env[key] = value
       }
     }
+  })
+})
+
+describe('project spaces of one workspace', () => {
+  /** Project `id` bound to the local workspace `root`, in its nested space `space` when given. */
+  const spaced = (root: string, id: string, space?: string): ProjectRecord => ({
+    ...project(root), id, name: `Project ${id}`, ...(space === undefined ? {} : { workspaceSpace: space }),
+  })
+
+  it('lists the root space and each nested one by folder name, and reports an unreadable manifest on its own', async () => {
+    const root = temporary()
+    await writeProjectWorkspace(spaced(root, 'p1'))
+    await writeProjectWorkspace(spaced(root, 'p3', 'p3'))
+    await writeProjectWorkspace(spaced(root, 'p2', 'p2'))
+    mkdirSync(join(root, '.meridian/projects/broken'), { recursive: true })
+    writeFileSync(join(root, '.meridian/projects/broken/workspace.json'), '{"schema_version": "meridian.workspace.v9"}')
+    mkdirSync(join(root, '.meridian/projects/half'), { recursive: true })
+    vi.spyOn(console, 'error').mockImplementation(() => {})
+    expect(await readWorkspaceSpaces({ kind: 'local', root })).toEqual([
+      { space: { kind: 'root' }, project: { id: 'p1', name: 'Project p1' } },
+      { space: { kind: 'nested', id: 'broken' }, issue: expect.stringContaining('请更新 App') as unknown },
+      { space: { kind: 'nested', id: 'p2' }, project: { id: 'p2', name: 'Project p2' } },
+      { space: { kind: 'nested', id: 'p3' }, project: { id: 'p3', name: 'Project p3' } },
+    ])
+    expect(await readWorkspaceSpaces({ kind: 'local', root: temporary() })).toEqual([])
+  })
+
+  it('reads and writes a nested space without touching the root space, and the agent surfaces of each stay apart', async () => {
+    const root = temporary()
+    await writeProjectWorkspace(spaced(root, 'p1'))
+    const rootFiles = ['workspace.json', 'control/plan.json', 'control/changes.json']
+      .map((name) => readFileSync(join(root, '.meridian', name), 'utf8'))
+    await writeProjectWorkspace(spaced(root, 'p2', 'p2'))
+    expect(['workspace.json', 'control/plan.json', 'control/changes.json']
+      .map((name) => readFileSync(join(root, '.meridian', name), 'utf8'))).toEqual(rootFiles)
+    const write = (file: string, value: unknown) => {
+      mkdirSync(join(root, file, '..'), { recursive: true })
+      writeFileSync(join(root, file), JSON.stringify(value))
+    }
+    for (const [folder, tag] of [['.meridian', 'root'], ['.meridian/projects/p2', 'nested']] as const) {
+      write(`${folder}/graph/graph.json`, { schema: 'meridian.lab.graph.v1', edges: [], nodes: [{ id: `${tag}.A`, title: tag, state: 'unresolved' }] })
+      write(`${folder}/events/events.json`, {
+        schema_version: 'meridian.workspace-events.v1',
+        events: [{ id: 'e', date: '2026-10-20', text: `${tag} result`, source: `${folder}/experiments/x.md` }],
+      })
+      write(`${folder}/ideas/ideas.json`, { schema_version: 'meridian.workspace-agent-ideas.v1', ideas: [{ id: 'i', date: '2026-10-20', title: tag, body: 'b' }] })
+      write(`${folder}/tasks/tasks.json`, { schema_version: 'meridian.workspace-agent-tasks.v1', tasks: [{ id: 't', date: '2026-10-20', title: tag }] })
+    }
+    const first = readLocalProjectWorkspace(spaced(root, 'p1'))
+    const second = readLocalProjectWorkspace(spaced(root, 'p2', 'p2'))
+    expect(first?.graph?.nodes.map((node) => node.id)).toEqual(['root.A'])
+    expect(second?.graph?.nodes.map((node) => node.id)).toEqual(['nested.A'])
+    // An event without a kind whose source is the space's own experiment is a result.
+    expect(second?.events).toMatchObject([{ text: 'nested result', kind: 'result' }])
+    expect(second?.planPath).toBe(join(root, '.meridian/projects/p2/control/plan.json'))
+    expect(readWorkspaceAgentIdeas(root).map((idea) => idea.title)).toEqual(['root'])
+    expect(readWorkspaceAgentIdeas(root, 'p2').map((idea) => idea.title)).toEqual(['nested'])
+    expect(readWorkspaceAgentTasks(root, 'p2').map((task) => task.title)).toEqual(['nested'])
+  })
+
+  it('refuses a space whose journal another project wrote, unless the project takes it over', async () => {
+    const root = temporary()
+    await writeProjectWorkspace(spaced(root, 'p2', 'p2'))
+    await expect(writeProjectWorkspace(spaced(root, 'p9', 'p2'))).rejects.toThrow('变动列表不属于当前项目')
+    await writeProjectWorkspaceState(spaced(root, 'p9', 'p2'), [], undefined, true)
+    expect(JSON.parse(readFileSync(join(root, '.meridian/projects/p2/control/changes.json'), 'utf8')))
+      .toMatchObject({ project_id: 'p9' })
+  })
+
+  it('reads and writes a nested space over SSH in that space\'s folder', async () => {
+    const calls: { command: string; input?: Buffer }[] = []
+    const ssh: SshExecutor = async (_target, command, input) => {
+      calls.push({ command, ...(input === undefined ? {} : { input }) })
+      return calls.length === 1 ? Buffer.from([
+        '.meridian/projects/p2/workspace.json', '.meridian/projects/p2/control/plan.json',
+        '.meridian/projects/p2/control/changes.json', '.meridian/projects/p2/graph/graph.json',
+        '.meridian/projects/p2/events/events.json',
+      ].map((name) => `${name} -1\n`).join('')) : Buffer.alloc(0)
+    }
+    await writeProjectWorkspace({ ...sshProject(), id: 'p2', workspaceSpace: 'p2' }, ssh)
+    expect(calls[1]!.command).toContain(`space="$root"/'.meridian/projects/p2'`)
+    expect(calls[1]!.command).toContain('mv "$plan_tmp" "$space/control/plan.json"')
+    expect(calls[1]!.input?.toString('utf8')).toContain('".meridian/projects/p2/control/plan.json"')
+  })
+
+  it.each(REMOTE_SHELLS)('lists the spaces of a real folder when the remote login shell is %s, a folder without spaces included', async (shell) => {
+    const root = realpathSync(temporary())
+    const local: SshExecutor = async (_target, command) => execFileSync(shell, ['-c', command], {
+      env: { HOME: root, PATH: process.env['PATH'] ?? '' }, stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    expect(await readWorkspaceSpaces({ kind: 'ssh', host: 'gpu-lab', path: root }, local)).toEqual([])
+    await writeProjectWorkspace(spaced(root, 'p1'))
+    await writeProjectWorkspace(spaced(root, 'p2', 'p2'))
+    expect(await readWorkspaceSpaces({ kind: 'ssh', host: 'gpu-lab', path: root }, local)).toEqual([
+      { space: { kind: 'root' }, project: { id: 'p1', name: 'Project p1' } },
+      { space: { kind: 'nested', id: 'p2' }, project: { id: 'p2', name: 'Project p2' } },
+    ])
   })
 })

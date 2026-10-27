@@ -541,6 +541,43 @@ describe('project page', () => {
     expect(readProjectPage(file, 'project-1')).toEqual(project)
   })
 
+  it('项目在工作区的嵌套空间里时,连接存在 shared_workspace 下,读回原样;旧版 App 读这页看不到 workspace_root,其余照常', () => {
+    const local: ProjectRecord = { ...PROJECT, workspaceRoot: '/repos/shared', workspaceSpace: 'project-2' }
+    writePage(file, projectPageText(local), staging)
+    expect(readFileSync(file, 'utf8')).toContain('shared_workspace:\n  root: "/repos/shared"\n  space: "project-2"\n')
+    expect(readProjectPage(file, 'project-1')).toEqual(local)
+    const read = readAs0021004(file)
+    expect(read.error).toBeUndefined()
+    expect(read.data?.workspace_root).toBeUndefined()
+    expect(read.data?.workspace_ssh).toBeUndefined()
+    const remote: ProjectRecord = { ...PROJECT, workspaceSsh: { host: 'gpu-lab', path: '/srv/shared', port: 2222 }, workspaceSpace: 'project-2' }
+    writePage(file, projectPageText(remote), staging)
+    expect(readProjectPage(file, 'project-1')).toEqual(remote)
+  })
+
+  it('连接改回根空间时 shared_workspace 删掉;旧版 App 后来写的 workspace_root 比 shared_workspace 优先', () => {
+    writePage(file, projectPageText({ ...PROJECT, workspaceRoot: '/repos/shared', workspaceSpace: 'project-2' }), staging)
+    writeProjectFields(file, { ...PROJECT, workspaceRoot: '/repos/own' }, ['workspaceRoot', 'workspaceSsh', 'workspaceSpace'], staging)
+    expect(readFileSync(file, 'utf8')).not.toContain('shared_workspace')
+    expect(readProjectPage(file, 'project-1')).toMatchObject({ workspaceRoot: '/repos/own' })
+    writePage(file, projectPageText({ ...PROJECT, workspaceRoot: '/repos/shared', workspaceSpace: 'project-2' })
+      .replace('shared_workspace:', 'workspace_root: "/repos/old"\nshared_workspace:'), staging)
+    const read = readProjectPage(file, 'project-1')
+    expect(read.workspaceRoot).toBe('/repos/old')
+    expect(read.workspaceSpace).toBeUndefined()
+  })
+
+  it('读不了的 shared_workspace 单独报出,项目按未连接读,页上其余照常', () => {
+    const error = vi.spyOn(console, 'error').mockImplementation(() => {})
+    writePage(file, projectPageText({ ...PROJECT, workspaceRoot: '/repos/shared', workspaceSpace: 'project-2' })
+      .replace('space: "project-2"', 'space: "../escape"'), staging)
+    const read = readProjectPage(file, 'project-1')
+    expect(read.workspaceRoot).toBeUndefined()
+    expect(read.workspaceSpace).toBeUndefined()
+    expect(read.name).toBe(PROJECT.name)
+    expect(error).toHaveBeenCalledWith(expect.stringContaining('shared_workspace cannot be read by this version'))
+  })
+
   it('有 topic_pages 的页,0.0.21.4 的 App 照样读得出,读到的领域是 topic 与 topics 里的标题', () => {
     writePage(file, projectPageText({
       ...PROJECT, topics: ['speculative decoding', 'KV cache'],

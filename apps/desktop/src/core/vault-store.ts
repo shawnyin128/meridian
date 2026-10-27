@@ -6,10 +6,10 @@ import type {
   PaperReading, PaperRow, Proposal,
   ProjectConclusion, ProjectDetail, ProjectWorkspaceBinding, ProposalRecord, ReadingMutation, RelationFields, ResearchGraph,
   ResearchIdea, Task, TaskFields,
-  WikiAggregationCard, WikiSignal,
+  WikiAggregationCard, WikiSignal, WorkspaceSpace, WorkspaceSpaceChoice,
 } from '../shared/contract.js'
 import {
-  DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
+  DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema, WorkspaceSpaceIdSchema,
 } from '../shared/contract.js'
 import { attachmentSizeText } from '../shared/attachment-size.js'
 import { projectControlState } from '../shared/project-control.js'
@@ -34,7 +34,7 @@ import {
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
-  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeaFiles, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
+  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeaFiles, readWorkspaceSpaces, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, servedTopics, storedTopics, titledTopics, topicPinsOf, topicScopeOf, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
@@ -335,6 +335,9 @@ export function createDesktopVaultStore(
   prepareFallbackLibrary(root)
   return createVaultStore(root, today, now, appliedProposalBodies)
 }
+
+/** The project fields that hold its workspace binding, written together whenever it changes. */
+const BINDING_FIELDS: (keyof ProjectRecord)[] = ['workspaceRoot', 'workspaceSsh', 'workspaceSpace']
 
 /**
  * Builds a VaultStore over the vault at `root`. The knowledge the vault holds —
@@ -781,6 +784,50 @@ export function createVaultStore(
   const projectNames = (): Record<string, string> =>
     Object.fromEntries([...projectById.values()].map((p) => [p.id, p.name]))
 
+  /** Whether projects `a` and `b` are bound to one workspace, the same local folder or SSH host, port and path. */
+  const sameWorkspace = (a: ProjectRecord, b: ProjectRecord): boolean => (
+    a.workspaceRoot !== undefined
+      ? b.workspaceRoot !== undefined && resolve(a.workspaceRoot) === resolve(b.workspaceRoot)
+      : a.workspaceSsh !== undefined && b.workspaceSsh !== undefined && a.workspaceSsh.host === b.workspaceSsh.host
+        && a.workspaceSsh.path === b.workspaceSsh.path && a.workspaceSsh.port === b.workspaceSsh.port
+  )
+
+  /**
+   * Puts `next`, bound to a workspace that already holds the project spaces `held`, into the space
+   * `space` picks, and returns whether `next` takes over a space another project wrote. `new` is the
+   * root space of a workspace without one and `.meridian/projects/<project id>/` otherwise, which
+   * `refuseNewSpace` may refuse with its reason. Throws `refused` for a space that cannot be read, that
+   * another project of this vault is bound to, or, for `new`, that already exists; and `not-found` for
+   * a space the workspace does not hold.
+   */
+  const placeInSpace = (
+    next: ProjectRecord, held: readonly WorkspaceSpace[], space: WorkspaceSpaceChoice,
+    refuseNewSpace: (() => string | undefined) | undefined,
+  ): boolean => {
+    if (space.kind === 'new') {
+      if (held.length === 0) return false
+      const id = WorkspaceSpaceIdSchema.safeParse(next.id)
+      if (!id.success) throw new CallError('invalid', `项目 id 不能用作项目空间的文件夹名：${next.id}`)
+      if (held.some((found) => found.space.kind === 'nested' && found.space.id === id.data)) {
+        throw new CallError('refused', '工作区里已有这个项目的空间')
+      }
+      const reason = refuseNewSpace?.()
+      if (reason !== undefined) throw new CallError('refused', reason)
+      next.workspaceSpace = id.data
+      return false
+    }
+    const found = held.find((candidate) => candidate.space.kind === space.kind
+      && (space.kind === 'root' || (candidate.space.kind === 'nested' && candidate.space.id === space.id)))
+    if (found === undefined) throw new CallError('not-found', '工作区里没有这个项目空间')
+    if (found.project === undefined) throw new CallError('refused', `这个项目空间读不了：${found.issue ?? ''}`)
+    if (space.kind === 'nested') next.workspaceSpace = space.id
+    const owner = found.project.id === next.id ? undefined : projectById.get(found.project.id)
+    if (owner !== undefined && owner.workspaceSpace === next.workspaceSpace && sameWorkspace(owner, next)) {
+      throw new CallError('refused', `这个项目空间属于项目「${owner.name}」`)
+    }
+    return found.project.id !== next.id
+  }
+
   /**
    * The research graph `project`'s workspace holds: a local workspace's as it stands, an SSH one's as
    * `graphs` holds it. Throws when the workspace is an SSH one `graphs` does not hold.
@@ -1001,6 +1048,7 @@ export function createVaultStore(
     delete stored.created
     delete stored.workspaceRoot
     delete stored.workspaceSsh
+    delete stored.workspaceSpace
     delete stored.agentTasks
     delete stored.topics
     delete stored.topicPins
@@ -1130,7 +1178,7 @@ export function createVaultStore(
     const ids = { ...state.agentIdeaIds }
     const added: ResearchIdea[] = []
     for (const project of projects()) {
-      const fresh = readWorkspaceAgentIdeas(project.workspaceRoot).filter((found) => !taken.has(`${project.id}:${found.id}`))
+      const fresh = readWorkspaceAgentIdeas(project.workspaceRoot, project.workspaceSpace).filter((found) => !taken.has(`${project.id}:${found.id}`))
       for (const found of fresh) {
         taken.add(`${project.id}:${found.id}`)
         const idea = createResearchIdea(nextId('idea'), found.title, found.body, {
@@ -1164,9 +1212,9 @@ export function createVaultStore(
     const added: IdeaFileRecord[] = []
     for (const project of projects()) {
       const root = project.workspaceRoot
-      const requests = readWorkspaceAgentIdeaFiles(root).filter((request) => !taken.has(`${project.id}:${request.id}`))
+      const requests = readWorkspaceAgentIdeaFiles(root, project.workspaceSpace).filter((request) => !taken.has(`${project.id}:${request.id}`))
       if (root === undefined || requests.length === 0) continue
-      const agentIdeas = readWorkspaceAgentIdeas(root)
+      const agentIdeas = readWorkspaceAgentIdeas(root, project.workspaceSpace)
       const ideaOf = (named: string): string | undefined => {
         const key = `${project.id}:${named}`
         const found = agentIdeas.find((agentIdea) => agentIdea.id === named)
@@ -2093,36 +2141,37 @@ export function createVaultStore(
       return projectById.has(id)
     },
 
-    bindProjectWorkspace(id, binding: ProjectWorkspaceBinding | null) {
+    bindProjectWorkspace(id, binding: ProjectWorkspaceBinding | null, space, refuseNewSpace) {
       const project = projectOf(id)
-      if (binding === null) {
-        const next = { ...project }
-        delete next.workspaceRoot
-        delete next.workspaceSsh
-        return writeProject(next, ['workspaceRoot', 'workspaceSsh'])
-      }
       const next = { ...project }
+      delete next.workspaceRoot
+      delete next.workspaceSsh
+      delete next.workspaceSpace
+      if (binding === null) return writeProject(next, BINDING_FIELDS)
       if (binding.kind === 'local') {
         next.workspaceRoot = projectWorkspaceRoot(binding.root)
-        delete next.workspaceSsh
       } else {
         const remote = projectWorkspaceSsh(binding)
         next.workspaceSsh = {
           host: remote.host, path: remote.path,
           ...(remote.port === undefined ? {} : { port: remote.port }),
         }
-        delete next.workspaceRoot
       }
+      const placed = space === undefined
+        ? Promise.resolve(false)
+        : readWorkspaceSpaces(binding).then((held) => placeInSpace(next, held, space, refuseNewSpace))
       // The first connection must complete the protocol; do not persist a broken connection on failure.
-      return writeProjectWorkspaceState(next, ideas).then(() => {
+      return placed.then((adopt) => writeProjectWorkspaceState(next, ideas, undefined, adopt)).then(() => {
         const current = projectOf(id)
         const bound: ProjectRecord = { ...current }
         delete bound.workspaceRoot
         delete bound.workspaceSsh
+        delete bound.workspaceSpace
         if (next.workspaceRoot !== undefined) bound.workspaceRoot = next.workspaceRoot
         if (next.workspaceSsh !== undefined) bound.workspaceSsh = next.workspaceSsh
+        if (next.workspaceSpace !== undefined) bound.workspaceSpace = next.workspaceSpace
         // A write that landed while the workspace was connected is synced again with the binding.
-        return writeProject(bound, ['workspaceRoot', 'workspaceSsh'], current !== project)
+        return writeProject(bound, BINDING_FIELDS, current !== project)
       })
     },
 
@@ -2159,7 +2208,7 @@ export function createVaultStore(
     agentTaskRequests(projectId) {
       return projects().filter((project) => projectId === undefined || project.id === projectId).flatMap((project) => {
         const taken = project.agentTasks ?? {}
-        return readWorkspaceAgentTasks(project.workspaceRoot)
+        return readWorkspaceAgentTasks(project.workspaceRoot, project.workspaceSpace)
           .filter((request) => taken[request.id] === undefined)
           .map((request) => ({ project: project.id, request }))
       })

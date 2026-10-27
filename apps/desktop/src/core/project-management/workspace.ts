@@ -1,12 +1,13 @@
 import { createHash, randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import {
-  existsSync, globSync, mkdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync,
+  existsSync, globSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync,
 } from 'node:fs'
 import { dirname, isAbsolute, join, posix, resolve } from 'node:path'
 import { z } from 'zod'
+import { WorkspaceSpaceIdSchema } from '../../shared/contract.js'
 import type {
-  ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea, SshFolders,
+  ProjectWorkspace, ProjectWorkspaceBinding, ResearchGraph, ResearchIdea, SshFolders, WorkspaceSpace,
 } from '../../shared/contract.js'
 import { CallError } from '../call-error.js'
 import { readRecord, readStoredList, withUnknownFields, type UnknownField } from '../vault/stored-records.js'
@@ -17,22 +18,49 @@ export const PROJECT_PLAN_SCHEMA = 'meridian.project-plan.v1'
 export const WORKSPACE_EVENTS_SCHEMA = 'meridian.workspace-events.v1'
 export const WORKSPACE_CHANGES_SCHEMA = 'meridian.workspace-changes.v1'
 
-const MANIFEST = '.meridian/workspace.json'
-const PLAN = '.meridian/control/plan.json'
-const GRAPH = '.meridian/graph/graph.json'
-const EVENTS = '.meridian/events/events.json'
-const CHANGES = '.meridian/control/changes.json'
-const AGENT_IDEAS = '.meridian/ideas/ideas.json'
-// Not declared in the manifest, as the tasks file is not.
-const AGENT_IDEA_FILES = '.meridian/ideas/files.json'
 export const WORKSPACE_AGENT_IDEA_FILES_SCHEMA = 'meridian.workspace-agent-idea-files.v1'
-// Not declared in the manifest: a 0.0.14 plugin rejects a manifest naming a surface it does not know.
-const AGENT_TASKS = '.meridian/tasks/tasks.json'
 export const WORKSPACE_AGENT_TASKS_SCHEMA = 'meridian.workspace-agent-tasks.v1'
-const EXPERIMENTS_PREFIX = '.meridian/experiments/'
 const WorkspaceEventKindSchema = z.enum(['start', 'reopen', 'result', 'decision', 'complete', 'note'])
 export const WORKSPACE_AGENT_IDEAS_SCHEMA = 'meridian.workspace-agent-ideas.v1'
-const REMOTE_FILES = [MANIFEST, PLAN, CHANGES, GRAPH, EVENTS] as const
+/** The first project's space; later projects' spaces are folders of NESTED_SPACES. */
+const ROOT_SPACE = '.meridian'
+const NESTED_SPACES = '.meridian/projects'
+
+/** The files of one project space, relative to the workspace root, with `/` between their parts. */
+type SpacePaths = {
+  folder: string
+  manifest: string
+  plan: string
+  graph: string
+  events: string
+  changes: string
+  ideas: string
+  ideaFiles: string
+  tasks: string
+  experiments: string
+  /** The files a read of the space's state takes, in the order an SSH read prints them. */
+  read: readonly string[]
+}
+
+/** The files of the root space when `space` is undefined, else of the nested space `space`. */
+function spacePaths(space: string | undefined): SpacePaths {
+  const folder = space === undefined ? ROOT_SPACE : `${NESTED_SPACES}/${WorkspaceSpaceIdSchema.parse(space)}`
+  const manifest = `${folder}/workspace.json`
+  const plan = `${folder}/control/plan.json`
+  const changes = `${folder}/control/changes.json`
+  const graph = `${folder}/graph/graph.json`
+  const events = `${folder}/events/events.json`
+  return {
+    folder, manifest, plan, graph, events, changes,
+    ideas: `${folder}/ideas/ideas.json`,
+    // Not declared in the manifest, as the tasks file is not.
+    ideaFiles: `${folder}/ideas/files.json`,
+    // Not declared in the manifest: a 0.0.14 plugin rejects a manifest naming a surface it does not know.
+    tasks: `${folder}/tasks/tasks.json`,
+    experiments: `${folder}/experiments/`,
+    read: [manifest, plan, changes, graph, events],
+  }
+}
 const MAX_RETAINED_CHANGES = 500
 const WorkspaceChangeKindSchema = z.enum([
   'project.snapshot',
@@ -45,17 +73,21 @@ const WorkspaceChangeKindSchema = z.enum([
   'idea.node_changed',
 ])
 
-const ManifestSchema = z.object({
-  schema_version: z.literal(WORKSPACE_SCHEMA),
-  project: z.object({ id: z.string(), name: z.string() }),
-  surfaces: z.object({
-    plan: z.object({ path: z.literal(PLAN), writer: z.literal('meridian-app') }),
-    changes: z.object({ path: z.literal(CHANGES), writer: z.literal('meridian-app') }).optional(),
-    graph: z.object({ path: z.literal(GRAPH), writer: z.literal('workspace') }),
-    events: z.object({ path: z.literal(EVENTS), writer: z.literal('workspace') }),
-    ideas: z.object({ path: z.literal(AGENT_IDEAS), writer: z.literal('workspace') }).optional(),
-  }),
-})
+/** The manifest of the space whose files `paths` names: its surfaces lie in that space's folder. */
+function manifestSchema(paths: SpacePaths) {
+  return z.object({
+    schema_version: z.literal(WORKSPACE_SCHEMA),
+    project: z.object({ id: z.string(), name: z.string() }),
+    surfaces: z.object({
+      plan: z.object({ path: z.literal(paths.plan), writer: z.literal('meridian-app') }),
+      changes: z.object({ path: z.literal(paths.changes), writer: z.literal('meridian-app') }).optional(),
+      graph: z.object({ path: z.literal(paths.graph), writer: z.literal('workspace') }),
+      events: z.object({ path: z.literal(paths.events), writer: z.literal('workspace') }),
+      ideas: z.object({ path: z.literal(paths.ideas), writer: z.literal('workspace') }).optional(),
+    }),
+  })
+}
+type Manifest = z.infer<ReturnType<typeof manifestSchema>>
 
 const IdeaProjectionSchema = z.object({
   id: z.string(),
@@ -152,16 +184,16 @@ function jsonBytes(value: unknown): Buffer {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8')
 }
 
-function manifestOf(project: ProjectRecord): z.infer<typeof ManifestSchema> {
+function manifestOf(project: ProjectRecord, paths: SpacePaths): Manifest {
   return {
     schema_version: WORKSPACE_SCHEMA,
     project: { id: project.id, name: project.name },
     surfaces: {
-      plan: { path: PLAN, writer: 'meridian-app' },
-      changes: { path: CHANGES, writer: 'meridian-app' },
-      graph: { path: GRAPH, writer: 'workspace' },
-      events: { path: EVENTS, writer: 'workspace' },
-      ideas: { path: AGENT_IDEAS, writer: 'workspace' },
+      plan: { path: paths.plan, writer: 'meridian-app' },
+      changes: { path: paths.changes, writer: 'meridian-app' },
+      graph: { path: paths.graph, writer: 'workspace' },
+      events: { path: paths.events, writer: 'workspace' },
+      ideas: { path: paths.ideas, writer: 'workspace' },
     },
   }
 }
@@ -313,9 +345,10 @@ function changesOf(
   nextPlan: JsonObject,
   prior: { value: WorkspaceChanges; unknown: UnknownField[] } | undefined,
   ideas: readonly ResearchIdea[],
+  adopt: boolean,
 ): WorkspaceChanges {
   const projected = ideaProjections(project, ideas)
-  const base: WorkspaceChanges = prior?.value ?? {
+  const held: WorkspaceChanges = prior?.value ?? {
     schema_version: WORKSPACE_CHANGES_SCHEMA,
     project_id: project.id,
     epoch: randomUUID(),
@@ -323,7 +356,8 @@ function changesOf(
     ideas: [],
     changes: [],
   }
-  if (base.project_id !== project.id) throw new Error('变动列表不属于当前项目')
+  if (held.project_id !== project.id && !adopt) throw new Error('变动列表不属于当前项目')
+  const base = { ...held, project_id: project.id }
   const at = new Date().toISOString()
   const additions = pendingChanges(project, priorPlan, nextPlan, base.ideas, projected)
     .map((change, index): WorkspaceChange => ({
@@ -560,8 +594,8 @@ function sshBindingOf(project: ProjectRecord): SshBinding | undefined {
   return project.workspaceSsh === undefined ? undefined : projectWorkspaceSsh(project.workspaceSsh)
 }
 
-function readRemoteCommand(root: string): string {
-  const files = REMOTE_FILES.map(quoteShell).join(' ')
+function readRemoteCommand(root: string, names: readonly string[]): string {
+  const files = names.map(quoteShell).join(' ')
   return [
     'set -eu',
     `root=${quoteShell(root)}`,
@@ -580,10 +614,10 @@ function readRemoteCommand(root: string): string {
   ].join('\n')
 }
 
-function parseRemoteFiles(payload: Buffer): Map<string, string> {
+function parseRemoteFiles(payload: Buffer, names: readonly string[]): Map<string, string> {
   const files = new Map<string, string>()
   let offset = 0
-  for (const expected of REMOTE_FILES) {
+  for (const expected of names) {
     const lineEnd = payload.indexOf(10, offset)
     if (lineEnd < 0) throw new Error('SSH 工作区响应不完整')
     const header = payload.subarray(offset, lineEnd).toString('utf8')
@@ -604,30 +638,31 @@ function parseRemoteFiles(payload: Buffer): Map<string, string> {
   return files
 }
 
-async function readRemoteFiles(binding: SshBinding, ssh: SshExecutor): Promise<Map<string, string>> {
-  return parseRemoteFiles(await ssh(binding, readRemoteCommand(binding.path)))
+async function readRemoteFiles(binding: SshBinding, names: readonly string[], ssh: SshExecutor): Promise<Map<string, string>> {
+  return parseRemoteFiles(await ssh(binding, readRemoteCommand(binding.path, names)), names)
 }
 
 async function writeRemoteFiles(
-  binding: SshBinding, plan: Buffer, changes: Buffer, manifest: Buffer, ssh: SshExecutor,
+  binding: SshBinding, paths: SpacePaths, plan: Buffer, changes: Buffer, manifest: Buffer, ssh: SshExecutor,
 ): Promise<void> {
   const token = randomUUID()
   const command = [
     'set -eu',
     `root=${quoteShell(binding.path)}`,
+    `space="$root"/${quoteShell(paths.folder)}`,
     '[ -d "$root" ] || { printf "%s\\n" "远端项目目录不存在" >&2; exit 44; }',
     'umask 077',
-    'mkdir -p "$root/.meridian/control"',
-    `plan_tmp="$root/.meridian/control/.${token}.tmp"`,
-    `changes_tmp="$root/.meridian/control/.${token}.changes.tmp"`,
-    `manifest_tmp="$root/.meridian/.${token}.tmp"`,
+    'mkdir -p "$space/control"',
+    `plan_tmp="$space/control/.${token}.tmp"`,
+    `changes_tmp="$space/control/.${token}.changes.tmp"`,
+    `manifest_tmp="$space/.${token}.tmp"`,
     'trap \'rm -f "$plan_tmp" "$changes_tmp" "$manifest_tmp"\' 0 1 2 3 15',
     `dd bs=1 count=${plan.byteLength} of="$plan_tmp" 2>/dev/null`,
     `dd bs=1 count=${changes.byteLength} of="$changes_tmp" 2>/dev/null`,
     `dd bs=1 count=${manifest.byteLength} of="$manifest_tmp" 2>/dev/null`,
-    'mv "$plan_tmp" "$root/.meridian/control/plan.json"',
-    'mv "$changes_tmp" "$root/.meridian/control/changes.json"',
-    'mv "$manifest_tmp" "$root/.meridian/workspace.json"',
+    'mv "$plan_tmp" "$space/control/plan.json"',
+    'mv "$changes_tmp" "$space/control/changes.json"',
+    'mv "$manifest_tmp" "$space/workspace.json"',
     'trap - 0 1 2 3 15',
   ].join('\n')
   await ssh(binding, command, Buffer.concat([plan, changes, manifest]))
@@ -675,32 +710,37 @@ export function writeProjectWorkspace(project: ProjectRecord, ssh: SshExecutor =
 }
 
 /**
- * Materializes the App-owned plan, linked-idea index, and incremental change journal, and settles to
- * the plan's revision. A local workspace is written at once; an SSH one is read and written after
- * the project's SSH calls made before it.
+ * Materializes the App-owned plan, linked-idea index, and incremental change journal in the project's
+ * space, and settles to the plan's revision. A local workspace is written at once; an SSH one is read
+ * and written after the project's SSH calls made before it. `adopt` lets the project take over a
+ * space whose change journal another project wrote, keeping that journal's changes; otherwise such
+ * a space is refused.
  */
 export async function writeProjectWorkspaceState(
   project: ProjectRecord,
   ideas: readonly ResearchIdea[],
   ssh: SshExecutor = systemSsh,
+  adopt = false,
 ): Promise<string> {
+  const paths = spacePaths(project.workspaceSpace)
   const planned = planOf(project)
-  const manifest = manifestOf(project)
+  const manifest = manifestOf(project, paths)
   const remote = sshBindingOf(project)
   if (remote !== undefined) {
     return inTurn(project.id, async () => {
-      const files = await readRemoteFiles(remote, ssh)
-      const prior = files.get(MANIFEST)
-      if (prior !== undefined) ManifestSchema.parse(JSON.parse(prior))
+      const files = await readRemoteFiles(remote, paths.read, ssh)
+      const prior = files.get(paths.manifest)
+      if (prior !== undefined) manifestSchema(paths).parse(JSON.parse(prior))
       const changes = changesOf(
         project,
-        parsedObject(files.get(PLAN)),
+        parsedObject(files.get(paths.plan)),
         planned.value,
-        parsedChanges(`${remote.host}:${CHANGES}`, files.get(CHANGES)),
+        parsedChanges(`${remote.host}:${paths.changes}`, files.get(paths.changes)),
         ideas,
+        adopt,
       )
       await writeRemoteFiles(
-        remote, jsonBytes(planned.value), jsonBytes(changes), jsonBytes(manifest), ssh,
+        remote, paths, jsonBytes(planned.value), jsonBytes(changes), jsonBytes(manifest), ssh,
       )
       return planned.revision
     })
@@ -708,16 +748,17 @@ export async function writeProjectWorkspaceState(
 
   if (project.workspaceRoot === undefined) throw new CallError('refused', '项目尚未连接工作区')
   const root = projectWorkspaceRoot(project.workspaceRoot)
-  const manifestFile = join(root, MANIFEST)
-  if (existsSync(manifestFile)) ManifestSchema.parse(JSON.parse(readFileSync(manifestFile, 'utf8')))
-  const planFile = join(root, PLAN)
-  const changesFile = join(root, CHANGES)
+  const manifestFile = join(root, paths.manifest)
+  if (existsSync(manifestFile)) manifestSchema(paths).parse(JSON.parse(readFileSync(manifestFile, 'utf8')))
+  const planFile = join(root, paths.plan)
+  const changesFile = join(root, paths.changes)
   const changes = changesOf(
     project,
     existsSync(planFile) ? parsedObject(readFileSync(planFile, 'utf8')) : undefined,
     planned.value,
     existsSync(changesFile) ? parsedChanges(changesFile, readFileSync(changesFile, 'utf8')) : undefined,
     ideas,
+    adopt,
   )
   atomicJson(planFile, planned.value)
   atomicJson(changesFile, changes)
@@ -885,18 +926,18 @@ function readGraphJson(text: string | undefined, issues: string[]): {
 }
 
 /**
- * Legacy rule for a workspace event written before `kind` existed: source evidence under
- * `.meridian/experiments/` is a result, anything else is a general note.
+ * Legacy rule for a workspace event written before `kind` existed: source evidence under the space's
+ * `experiments/` folder, `experiments` here, is a result, anything else is a general note.
  */
-function legacyEventKind(source: string): 'result' | 'note' {
-  return source.startsWith(EXPERIMENTS_PREFIX) ? 'result' : 'note'
+function legacyEventKind(source: string, experiments: string): 'result' | 'note' {
+  return source.startsWith(experiments) ? 'result' : 'note'
 }
 
 /**
  * Reads the events file `text` event by event: each event this version cannot read is reported in
  * `issues` with its position and skipped. Throws when `text` is not an events file.
  */
-function readEventsJson(text: string | undefined, issues: string[]): ProjectWorkspace['events'] {
+function readEventsJson(text: string | undefined, experiments: string, issues: string[]): ProjectWorkspace['events'] {
   if (text === undefined) return []
   const parsed = WorkspaceEventFileSchema.parse(JSON.parse(text))
   return parsed.events.flatMap((raw, index) => {
@@ -911,7 +952,7 @@ function readEventsJson(text: string | undefined, issues: string[]): ProjectWork
       text: event.text,
       origin: 'agent' as const,
       ...(event.node === undefined ? {} : { node: event.node }),
-      kind: event.kind ?? legacyEventKind(event.source),
+      kind: event.kind ?? legacyEventKind(event.source, experiments),
       ...(event.detail === undefined ? {} : { detail: event.detail }),
       ...(event.at === undefined ? {} : { at: event.at }),
     }]
@@ -920,18 +961,19 @@ function readEventsJson(text: string | undefined, issues: string[]): ProjectWork
 
 function projectWorkspaceFromFiles(
   base: Pick<ProjectWorkspace, 'kind' | 'root' | 'host' | 'port' | 'planPath'>,
+  paths: SpacePaths,
   files: Map<string, string>,
 ): ProjectWorkspace {
-  const manifestText = files.get(MANIFEST)
+  const manifestText = files.get(paths.manifest)
   if (manifestText === undefined) throw new Error('工作区尚未初始化')
-  const manifest = ManifestSchema.parse(JSON.parse(manifestText))
+  const manifest = manifestSchema(paths).parse(JSON.parse(manifestText))
   const planText = files.get(manifest.surfaces.plan.path)
   if (planText === undefined) throw new Error('工作区缺少项目计划')
   const plan = obj(JSON.parse(planText))
   const revision = str(plan?.['revision'])
   const issues: string[] = []
   const external = readSurface('科研图', () => readGraphJson(files.get(manifest.surfaces.graph.path), issues), issues)
-  const events = readSurface('科研记录', () => readEventsJson(files.get(manifest.surfaces.events.path), issues), issues)
+  const events = readSurface('科研记录', () => readEventsJson(files.get(manifest.surfaces.events.path), paths.experiments, issues), issues)
   return {
     ...base,
     state: 'ready',
@@ -962,8 +1004,8 @@ function readSurface<T>(label: string, read: () => T, issues: string[]): T | und
   }
 }
 
-function localFiles(root: string): Map<string, string> {
-  return new Map(REMOTE_FILES.flatMap((name) => {
+function localFiles(root: string, names: readonly string[]): Map<string, string> {
+  return new Map(names.flatMap((name) => {
     const file = join(root, name)
     return existsSync(file) ? [[name, readFileSync(file, 'utf8')]] : []
   }))
@@ -999,14 +1041,14 @@ const AgentTasksFileSchema = z.object({
 export type WorkspaceAgentTask = z.infer<typeof AgentTaskSchema>
 
 /**
- * Returns the tasks coding agents asked to add in the local workspace at `root` that this version can
- * read, in file order. It is empty when `root` is undefined (unbound or SSH) and when the file is
+ * Returns the tasks coding agents asked to add in the space `space` (the root space when undefined) of the local
+ * workspace at `root` that this version can read, in file order. It is empty when `root` is undefined (unbound or SSH) and when the file is
  * absent. A task that breaks the schema is reported on stderr with its position and reason and
  * skipped; a file that is not a tasks file is reported and read as empty. The file is never written.
  */
-export function readWorkspaceAgentTasks(root: string | undefined): WorkspaceAgentTask[] {
+export function readWorkspaceAgentTasks(root: string | undefined, space?: string): WorkspaceAgentTask[] {
   if (root === undefined) return []
-  const file = join(root, AGENT_TASKS)
+  const file = join(root, spacePaths(space).tasks)
   if (!existsSync(file)) return []
   try {
     const { tasks } = AgentTasksFileSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
@@ -1021,14 +1063,14 @@ export function readWorkspaceAgentTasks(root: string | undefined): WorkspaceAgen
 export type WorkspaceAgentIdea = z.infer<typeof AgentIdeaSchema>
 
 /**
- * Returns the ideas coding agents recorded in the local workspace at `root` that this version can
- * read, in file order. It is empty when `root` is undefined (unbound or SSH) and when the file is
+ * Returns the ideas coding agents recorded in the space `space` (the root space when undefined) of the local
+ * workspace at `root` that this version can read, in file order. It is empty when `root` is undefined (unbound or SSH) and when the file is
  * absent. An idea that breaks the schema is reported on stderr with its position and reason and
  * skipped; a file that is not an ideas file is reported and read as empty. The file is never written.
  */
-export function readWorkspaceAgentIdeas(root: string | undefined): WorkspaceAgentIdea[] {
+export function readWorkspaceAgentIdeas(root: string | undefined, space?: string): WorkspaceAgentIdea[] {
   if (root === undefined) return []
-  const file = join(root, AGENT_IDEAS)
+  const file = join(root, spacePaths(space).ideas)
   if (!existsSync(file)) return []
   try {
     const { ideas } = AgentIdeasFileSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
@@ -1055,14 +1097,14 @@ const AgentIdeaFilesFileSchema = z.object({
 export type WorkspaceAgentIdeaFile = z.infer<typeof AgentIdeaFileSchema>
 
 /**
- * Returns the idea files coding agents attached in the local workspace at `root` that this version
- * can read, in file order, as readWorkspaceAgentIdeas reads ideas: empty when `root` is undefined or
+ * Returns the idea files coding agents attached in the space `space` (the root space when undefined)
+ * of the local workspace at `root` that this version can read, in file order, as readWorkspaceAgentIdeas reads ideas: empty when `root` is undefined or
  * the file is absent, a file that breaks the schema reported on stderr and skipped. The file is never
  * written.
  */
-export function readWorkspaceAgentIdeaFiles(root: string | undefined): WorkspaceAgentIdeaFile[] {
+export function readWorkspaceAgentIdeaFiles(root: string | undefined, space?: string): WorkspaceAgentIdeaFile[] {
   if (root === undefined) return []
-  const file = join(root, AGENT_IDEA_FILES)
+  const file = join(root, spacePaths(space).ideaFiles)
   if (!existsSync(file)) return []
   try {
     const { files } = AgentIdeaFilesFileSchema.parse(JSON.parse(readFileSync(file, 'utf8')))
@@ -1083,7 +1125,8 @@ export async function readProjectWorkspace(
 ): Promise<ProjectWorkspace | undefined> {
   const remote = sshBindingOf(project)
   if (remote === undefined) return readLocalProjectWorkspace(project)
-  const planPath = `${remote.host}:${posix.join(remote.path, PLAN)}`
+  const paths = spacePaths(project.workspaceSpace)
+  const planPath = `${remote.host}:${posix.join(remote.path, paths.plan)}`
   const base = {
     kind: 'ssh' as const,
     root: remote.path,
@@ -1092,7 +1135,7 @@ export async function readProjectWorkspace(
     planPath,
   }
   try {
-    return projectWorkspaceFromFiles(base, await inTurn(project.id, () => readRemoteFiles(remote, ssh)))
+    return projectWorkspaceFromFiles(base, paths, await inTurn(project.id, () => readRemoteFiles(remote, paths.read, ssh)))
   } catch (error) {
     return {
       ...base,
@@ -1107,10 +1150,11 @@ export async function readProjectWorkspace(
 export function readLocalProjectWorkspace(project: ProjectRecord): ProjectWorkspace | undefined {
   if (project.workspaceRoot === undefined) return undefined
   const root = project.workspaceRoot
-  const base = { kind: 'local' as const, root, planPath: join(root, PLAN) }
+  const paths = spacePaths(project.workspaceSpace)
+  const base = { kind: 'local' as const, root, planPath: join(root, paths.plan) }
   if (!existsSync(root)) return { ...base, state: 'missing', events: [], issue: '项目目录不存在' }
   try {
-    return projectWorkspaceFromFiles(base, localFiles(root))
+    return projectWorkspaceFromFiles(base, paths, localFiles(root, paths.read))
   } catch (error) {
     return {
       ...base,
@@ -1119,4 +1163,112 @@ export function readLocalProjectWorkspace(project: ProjectRecord): ProjectWorksp
       issue: error instanceof Error ? error.message : String(error),
     }
   }
+}
+
+/** The space a manifest found at `space` (the root space when undefined) describes, given its `text`. */
+function spaceOf(space: string | undefined, text: string): WorkspaceSpace {
+  const ref = space === undefined ? { kind: 'root' as const } : { kind: 'nested' as const, id: space }
+  try {
+    const { project } = manifestSchema(spacePaths(space)).parse(JSON.parse(text))
+    return { space: ref, project: { id: project.id, name: project.name } }
+  } catch (error) {
+    const why = error instanceof z.ZodError ? UNKNOWN_FORMAT : error instanceof Error ? error.message : String(error)
+    return { space: ref, issue: why }
+  }
+}
+
+const NESTED_MANIFEST = /^\.meridian\/projects\/([^/]+)\/workspace\.json$/
+
+/**
+ * The space a manifest at workspace-relative `name` belongs to: undefined for the root space, the
+ * folder id for a nested one, or null when `name` is no space's manifest this version can use.
+ */
+function spaceAt(name: string): string | undefined | null {
+  if (name === spacePaths(undefined).manifest) return undefined
+  const id = NESTED_MANIFEST.exec(name)?.[1]
+  return id !== undefined && WorkspaceSpaceIdSchema.safeParse(id).success ? id : null
+}
+
+/** Lists the project spaces of the local workspace at `root`; see readWorkspaceSpaces. */
+function localWorkspaceSpaces(root: string): WorkspaceSpace[] {
+  const canonical = projectWorkspaceRoot(root)
+  const names = [spacePaths(undefined).manifest]
+  const nested = join(canonical, NESTED_SPACES)
+  if (existsSync(nested) && statSync(nested).isDirectory()) {
+    names.push(...readdirSync(nested, { withFileTypes: true })
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => `${NESTED_SPACES}/${entry.name}/workspace.json`)
+      .sort())
+  }
+  return names.flatMap((name) => {
+    const file = join(canonical, name)
+    if (!existsSync(file)) return []
+    const space = spaceAt(name)
+    if (space === null) {
+      console.error(`[workspace] ${file}: the folder name cannot name a project space and is left out`)
+      return []
+    }
+    return [spaceOf(space, readFileSync(file, 'utf8'))]
+  })
+}
+
+/** Prints, for each space manifest of the remote workspace `root`, its relative path and size, then its bytes. */
+function listRemoteSpacesCommand(root: string): string {
+  return [
+    'set -eu',
+    `cd -- ${quoteShell(root)} 2>/dev/null || { printf "%s\\n" "远端项目目录不存在" >&2; exit 44; }`,
+    'emit() {',
+    "  bytes=$(wc -c < \"$1\" | tr -d '[:space:]')",
+    '  printf "%s %s\\n" "$1" "$bytes"',
+    '  cat "$1"',
+    '  printf "\\n"',
+    '}',
+    `if [ -f ${quoteShell(spacePaths(undefined).manifest)} ]; then emit ${quoteShell(spacePaths(undefined).manifest)}; fi`,
+    // Not a glob: a zsh login shell fails a glob that matches nothing.
+    `if [ -d ${quoteShell(NESTED_SPACES)} ]; then`,
+    `  find ${quoteShell(NESTED_SPACES)} -mindepth 2 -maxdepth 2 -type f -name workspace.json | LC_ALL=C sort | while IFS= read -r file; do emit "$file"; done`,
+    'fi',
+  ].join('\n')
+}
+
+/** The manifests `payload`, as listRemoteSpacesCommand prints them, holds, by relative path. Throws on a malformed payload. */
+function parseRemoteSpaces(payload: Buffer): [string, string][] {
+  const found: [string, string][] = []
+  let offset = 0
+  while (offset < payload.length) {
+    const lineEnd = payload.indexOf(10, offset)
+    if (lineEnd < 0) throw new Error('SSH 工作区响应不完整')
+    const header = payload.subarray(offset, lineEnd).toString('utf8')
+    const split = header.lastIndexOf(' ')
+    const size = split < 0 ? Number.NaN : Number(header.slice(split + 1))
+    if (!Number.isInteger(size) || size < 0) throw new Error('SSH 工作区响应无效')
+    const end = lineEnd + 1 + size
+    if (end > payload.length || payload[end] !== 10) throw new Error('SSH 工作区响应不完整')
+    found.push([header.slice(0, split), payload.subarray(lineEnd + 1, end).toString('utf8')])
+    offset = end + 1
+  }
+  return found
+}
+
+/**
+ * Reads the project spaces the workspace `binding` names already holds, without writing to it: the
+ * root space when `.meridian/workspace.json` exists, then each `.meridian/projects/<id>/` with a
+ * manifest, by folder name. Each names the project its manifest names, or, when that manifest cannot
+ * be read, the reason; one unreadable space never hides the others. A folder whose name cannot name
+ * a space is reported on stderr and left out. Rejects when the folder is missing or, over SSH,
+ * cannot be read.
+ */
+export async function readWorkspaceSpaces(
+  binding: ProjectWorkspaceBinding, ssh: SshExecutor = systemSsh,
+): Promise<WorkspaceSpace[]> {
+  if (binding.kind === 'local') return localWorkspaceSpaces(binding.root)
+  const remote = projectWorkspaceSsh(binding)
+  return parseRemoteSpaces(await ssh(remote, listRemoteSpacesCommand(remote.path))).flatMap(([name, text]) => {
+    const space = spaceAt(name)
+    if (space === null) {
+      console.error(`[workspace] ${remote.host}:${name}: the folder name cannot name a project space and is left out`)
+      return []
+    }
+    return [spaceOf(space, text)]
+  })
 }

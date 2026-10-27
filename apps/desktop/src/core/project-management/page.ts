@@ -1,7 +1,7 @@
 import { readFileSync } from 'node:fs'
 import { z } from 'zod'
 import type { ProjectDetail } from '../../shared/contract.js'
-import { ProjectDetailSchema, TaskSchema, VerifiedConclusionSchema } from '../../shared/contract.js'
+import { ProjectDetailSchema, TaskSchema, VerifiedConclusionSchema, WorkspaceSpaceIdSchema } from '../../shared/contract.js'
 import { DEFAULT_PROJECT_TOPIC } from '../../shared/vocabulary.js'
 import { readRecord, readStoredList, withUnknownFields, type StoredList } from '../vault/stored-records.js'
 import { spliceLines } from '../vault/writer.js'
@@ -74,6 +74,7 @@ const PAGE_KEYS = {
   agentSessions: 'agent_sessions',
   workspaceRoot: 'workspace_root',
   workspaceSsh: 'workspace_ssh',
+  workspaceSpace: 'shared_workspace',
   verifiedConclusions: 'verified_conclusions',
   agentTasks: 'agent_tasks',
   taskNodes: 'task_nodes',
@@ -96,6 +97,12 @@ export type ProjectRecord = Omit<
   topicPins?: TopicPin[] | undefined
   workspaceRoot?: string
   workspaceSsh?: { host: string; path: string; port?: number | undefined }
+  /**
+   * The nested space `.meridian/projects/<id>/` of the bound workspace that holds the project's
+   * records, absent for its root space. While it is set the page keeps the binding under
+   * `shared_workspace`, which an older App does not read, instead of `workspace_root`/`workspace_ssh`.
+   */
+  workspaceSpace?: string
   /** Each agent task request taken into the plan, by request id, with the id of the task it became. */
   agentTasks?: Record<string, string>
 }
@@ -135,6 +142,8 @@ const ProjectPageSchema = z.object({
     path: z.string().min(1),
     port: z.number().int().min(1).max(65_535).optional(),
   }).strict().optional(),
+  /** Read on its own by bindingOf, so a binding this version cannot read leaves the rest of the page readable. */
+  shared_workspace: z.unknown().optional(),
   start: detail.start,
   due: detail.due,
   papers: detail.papers.default([]),
@@ -382,6 +391,55 @@ function taskOriginsOf(tasks: ProjectRecord['tasks']): Record<string, string> | 
   return Object.keys(origins).length === 0 ? undefined : origins
 }
 
+/** A `shared_workspace` binding: a local or SSH workspace and the nested space in it. */
+const SharedWorkspaceSchema = z.union([
+  z.object({ root: z.string().min(1), space: WorkspaceSpaceIdSchema }),
+  z.object({
+    host: z.string().min(1),
+    path: z.string().min(1),
+    port: z.number().int().min(1).max(65_535).optional(),
+    space: WorkspaceSpaceIdSchema,
+  }),
+])
+
+/**
+ * The workspace binding page `page` (at `file`) holds. `workspace_root` and `workspace_ssh`, the
+ * keys an older App writes, win over `shared_workspace`; a `shared_workspace` this version cannot
+ * read is reported on stderr and the project read as unbound.
+ */
+function bindingOf(file: string, page: z.infer<typeof ProjectPageSchema>): Pick<ProjectRecord, 'workspaceRoot' | 'workspaceSsh' | 'workspaceSpace'> {
+  if (page.workspace_root !== undefined || page.workspace_ssh !== undefined) {
+    return {
+      ...(page.workspace_root === undefined ? {} : { workspaceRoot: page.workspace_root }),
+      ...(page.workspace_ssh === undefined ? {} : { workspaceSsh: page.workspace_ssh }),
+    }
+  }
+  if (page.shared_workspace === undefined) return {}
+  const read = SharedWorkspaceSchema.safeParse(page.shared_workspace)
+  if (!read.success) {
+    console.error(`[project] ${file}: shared_workspace cannot be read by this version and the project is read as unbound (the App may need an update): ${read.error.message.slice(0, 300)}`)
+    return {}
+  }
+  if ('root' in read.data) return { workspaceRoot: read.data.root, workspaceSpace: read.data.space }
+  const { space, ...ssh } = read.data
+  return { workspaceSsh: ssh, workspaceSpace: space }
+}
+
+/** The keys a page keeps `project`'s workspace binding under; see ProjectRecord.workspaceSpace. */
+function bindingFront(project: ProjectRecord): Record<string, Json> {
+  const { workspaceRoot: root, workspaceSsh: ssh, workspaceSpace: space } = project
+  // An SSH binding's port is absent rather than undefined, as for every optional field frontOf writes.
+  if (space === undefined) {
+    return {
+      ...(root === undefined ? {} : { workspace_root: root }),
+      ...(ssh === undefined ? {} : { workspace_ssh: ssh }),
+    } as Record<string, Json>
+  }
+  if (root !== undefined) return { shared_workspace: { root, space } }
+  if (ssh !== undefined) return { shared_workspace: { ...ssh, space } } as Record<string, Json>
+  return {}
+}
+
 /** Frontmatter representation of a project. */
 function frontOf(project: ProjectRecord): Record<string, Json> {
   return {
@@ -395,8 +453,7 @@ function frontOf(project: ProjectRecord): Record<string, Json> {
     focus: project.focus,
     ...(project.block === undefined ? {} : { block: project.block }),
     ...(project.conflictPage === undefined ? {} : { conflict_page: project.conflictPage }),
-    ...(project.workspaceRoot === undefined ? {} : { workspace_root: project.workspaceRoot }),
-    ...(project.workspaceSsh === undefined ? {} : { workspace_ssh: project.workspaceSsh }),
+    ...bindingFront(project),
     ...(project.verifiedConclusions === undefined ? {} : { verified_conclusions: project.verifiedConclusions }),
     start: project.start,
     due: project.due,
@@ -520,8 +577,7 @@ export function readProjectPage(file: string, id: string): ProjectRecord {
     focus: page.focus,
     ...(page.block === undefined ? {} : { block: page.block }),
     ...(page.conflict_page === undefined ? {} : { conflictPage: page.conflict_page }),
-    ...(page.workspace_root === undefined ? {} : { workspaceRoot: page.workspace_root }),
-    ...(page.workspace_ssh === undefined ? {} : { workspaceSsh: page.workspace_ssh }),
+    ...bindingOf(file, page),
     ...(page.verified_conclusions === undefined ? {} : { verifiedConclusions: page.verified_conclusions }),
     start: page.start,
     due: page.due,
@@ -617,7 +673,8 @@ export function writeProjectFields(
     const key: string = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field
     const value = front[key]
     if (value === undefined && (
-      field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh' || field === 'verifiedConclusions'
+      field === 'block' || field === 'workspaceRoot' || field === 'workspaceSsh' || field === 'workspaceSpace'
+      || field === 'verifiedConclusions'
       || field === 'taskNodes' || field === 'topics' || field === 'topicPins'
     )) {
       const removable = field in PAGE_KEYS ? PAGE_KEYS[field as keyof typeof PAGE_KEYS] : field

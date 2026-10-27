@@ -285,6 +285,31 @@ export const ProjectWorkspaceBindingSchema = z.discriminatedUnion('kind', [
   }).strict(),
 ])
 
+/** A later project's space folder under `.meridian/projects/`, named after the project it was made for. */
+export const WorkspaceSpaceIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/)
+
+/**
+ * A project space of a workspace: the first project's, `.meridian/` itself, or a later project's,
+ * `.meridian/projects/<id>/`.
+ */
+export const WorkspaceSpaceRefSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('root') }).strict(),
+  z.object({ kind: z.literal('nested'), id: WorkspaceSpaceIdSchema }).strict(),
+])
+
+/**
+ * One project space a workspace already holds, with the project its manifest names, or the reason
+ * the manifest cannot be read.
+ */
+export const WorkspaceSpaceSchema = z.object({
+  space: WorkspaceSpaceRefSchema,
+  project: z.object({ id: z.string(), name: z.string() }).strict().optional(),
+  issue: z.string().optional(),
+}).strict()
+
+/** Reads the project spaces the folder a binding names already holds, without writing to it. */
+export const ProjectWorkspaceSpacesParamsSchema = z.object({ binding: ProjectWorkspaceBindingSchema }).strict()
+
 /**
  * Lists one folder of an SSH host to choose a workspace in: the folder at `path`, or the remote home
  * when there is none. Like a binding it holds no credentials; OpenSSH supplies them.
@@ -1241,10 +1266,16 @@ export const PapersSetTopicParamsSchema = z.object({
 
 export const ProjectGetParamsSchema = z.object({ id: z.string() }).strict()
 
-/** `binding: null` disconnects the project without deleting `.meridian/` from the workspace. */
+/**
+ * `binding: null` disconnects the project without deleting `.meridian/` from the workspace. `space`
+ * picks where in the workspace the project's records live: a space it already holds, or `new`, the
+ * root space of a folder without one and `.meridian/projects/<project id>/` otherwise. Without
+ * `space` the project takes the root space.
+ */
 export const ProjectBindWorkspaceParamsSchema = z.object({
   id: z.string(),
   binding: ProjectWorkspaceBindingSchema.nullable(),
+  space: z.union([WorkspaceSpaceRefSchema, z.object({ kind: z.literal('new') }).strict()]).optional(),
 }).strict()
 
 /** Project creation accepts only a name; Core supplies all initial values. */
@@ -3099,6 +3130,9 @@ export type ResearchGraph = z.infer<typeof ResearchGraphSchema>
 export type ProjectNextAction = z.infer<typeof ProjectNextActionSchema>
 export type ProjectControl = z.infer<typeof ProjectControlSchema>
 export type ProjectWorkspaceBinding = z.infer<typeof ProjectWorkspaceBindingSchema>
+export type WorkspaceSpaceRef = z.infer<typeof WorkspaceSpaceRefSchema>
+export type WorkspaceSpace = z.infer<typeof WorkspaceSpaceSchema>
+export type WorkspaceSpaceChoice = NonNullable<z.infer<typeof ProjectBindWorkspaceParamsSchema>['space']>
 export type ProjectWorkspace = z.infer<typeof ProjectWorkspaceSchema>
 export type SshFoldersParams = z.infer<typeof SshFoldersParamsSchema>
 export type SshFolders = z.infer<typeof SshFoldersSchema>
@@ -3229,6 +3263,7 @@ export const CONTRACT_METHODS = [
   'project.create',
   'project.get',
   'project.bindWorkspace',
+  'project.workspaceSpaces',
   'ssh.hosts',
   'ssh.folders',
   'project.update',

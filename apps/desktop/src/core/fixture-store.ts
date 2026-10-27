@@ -11,6 +11,7 @@ import projects from './fixtures/projects.json' with { type: 'json' }
 import watchList from './fixtures/watches.json' with { type: 'json' }
 import wikiFixture from './fixtures/wiki.json' with { type: 'json' }
 import proposalFixture from './fixtures/proposals.json' with { type: 'json' }
+import { fixtureSshSpaces } from './fixtures/ssh.js'
 import type {
   Attachment, ChangeEntry, ChatMessage, IdeaFile, ChatSession, Conclusion, DeliverySettings, FeedEntry, InboxEntry, InboxStream,
   GraphNode, LaterEntry, PaperColumns, PaperImportResult, PaperReading, PaperRow, ProjectDetail, ReadingMutation,
@@ -1207,22 +1208,26 @@ export function createFixtureStore(
       return projectById.has(id)
     },
 
-    bindProjectWorkspace(id, binding) {
+    bindProjectWorkspace(id, binding, space) {
       const project = projectById.get(id)
       if (!project) throw new CallError('not-found', `项目不存在：${id}`)
       const next = { ...project }
+      // The fixture library writes no files: a new space goes beside the canned ones its folder holds.
+      const held = binding?.kind === 'ssh' ? fixtureSshSpaces(binding.host, binding.path) : []
+      const folder = space?.kind === 'nested' ? `.meridian/projects/${space.id}`
+        : space?.kind === 'new' && held.length > 0 ? `.meridian/projects/${id}` : '.meridian'
       if (binding === null) delete next.workspace
       else if (binding.kind === 'local') {
         next.workspace = {
           kind: 'local', root: binding.root, state: 'ready',
-          planPath: join(binding.root, '.meridian/control/plan.json'), events: [],
+          planPath: join(binding.root, folder, 'control/plan.json'), events: [],
         }
       } else {
         next.workspace = {
           kind: 'ssh', root: binding.path, host: binding.host,
           ...(binding.port === undefined ? {} : { port: binding.port }),
           state: 'ready',
-          planPath: `${binding.host}:${binding.path}/.meridian/control/plan.json`,
+          planPath: `${binding.host}:${binding.path}/${folder}/control/plan.json`,
           events: [],
         }
       }

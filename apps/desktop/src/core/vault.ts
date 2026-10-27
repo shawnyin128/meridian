@@ -6,7 +6,7 @@ import type {
   GraphNode, MilestoneFields, PageVersion,
   PaperCell, PaperColumn, PaperColumns,
   PaperFields, PaperImportResult, PaperReading, PaperRow, Proposal, ProposalOp, ProposalRecord, ProjectDetail,
-  ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation,
+  ProjectFields, ProjectOverview, ProjectSummary, ProjectWorkspaceBinding, ReadingMutation, WorkspaceSpaceChoice,
   RelationFields, ResearchGraph, ResearchIdea, SearchHit,
   TaskFields, TaskPatch, TrashEntry, Watch, WatchFields, WikiAggregation, WikiAggregationCard, WikiHome,
   WikiBacklink, WikiPaper, WikiSignal,
@@ -329,9 +329,15 @@ export interface VaultStore {
 
   /**
    * Connects a project to a local or SSH repository and materializes the App-owned planning
-   * surface. Passing null only removes the connection; files already in the repository remain.
+   * surface in the project space `space` picks (see ProjectBindWorkspaceParamsSchema), the root
+   * space when it is undefined. Choosing a space another project wrote takes it over. A new space
+   * next to existing ones is refused with the reason `refuseNewSpace` gives, if it gives one.
+   * Passing null only removes the connection; files already in the repository remain.
    */
-  bindProjectWorkspace(id: string, binding: ProjectWorkspaceBinding | null): Promise<ProjectDetail>
+  bindProjectWorkspace(
+    id: string, binding: ProjectWorkspaceBinding | null, space?: WorkspaceSpaceChoice,
+    refuseNewSpace?: () => string | undefined,
+  ): Promise<ProjectDetail>
 
   /**
    * Merges patch into the project with the given id, keeping its place among

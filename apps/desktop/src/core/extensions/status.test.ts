@@ -2,7 +2,7 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { afterEach, describe, expect, it } from 'vitest'
-import { extensionStatuses } from './status.js'
+import { extensionStatuses, newSpaceRefusal } from './status.js'
 
 const temporary: string[] = []
 
@@ -127,5 +127,24 @@ describe('extension status', () => {
     expect(extensionStatuses(home)[0]).toMatchObject({
       id: 'codex', state: 'installed', version: '0.10.0',
     })
+  })
+})
+
+describe('adding a project space beside another', () => {
+  it('一台机器上没装插件或装的都是 0.0.10 及以后时可以加;任一个客户端还是 0.0.9 时拒绝,原因写明哪个客户端、哪个版本、怎么更新', () => {
+    const home = tempHome()
+    expect(newSpaceRefusal(extensionStatuses(home))).toBeUndefined()
+    installPackage(home, 'codex', '0.0.10')
+    expect(newSpaceRefusal(extensionStatuses(home))).toBeUndefined()
+    installPackage(home, 'claude-code', '0.0.9')
+    expect(newSpaceRefusal(extensionStatuses(home))).toBe(
+      '扩展 Claude Code 还是 0.0.9，一个工作区放几个项目需要 0.0.10 或更新。到设置 · 扩展复制更新命令，更新后重启 coding agent 会话。',
+    )
+  })
+
+  it('列为已装但包不全、读不出版本的插件也拒绝', () => {
+    const home = tempHome()
+    register(home, 'claude-code', '0.0.10')
+    expect(newSpaceRefusal(extensionStatuses(home))).toContain('扩展 Claude Code 需要更新')
   })
 })

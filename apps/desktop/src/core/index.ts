@@ -82,6 +82,7 @@ import {
   ProjectCreateRelationParamsSchema,
   ProjectCreateTaskParamsSchema,
   ProjectBindWorkspaceParamsSchema,
+  ProjectWorkspaceSpacesParamsSchema,
   ProjectDeleteAttachmentParamsSchema,
   ProjectDeleteConclusionParamsSchema,
   ProjectDeleteMilestoneParamsSchema,
@@ -139,8 +140,8 @@ import { createBackground } from './background.js'
 import cannedNet from './fixtures/net.json' with { type: 'json' }
 import { configureLibrary, currentLibrary } from './library-config.js'
 import { probePdf } from './paper-library/index.js'
-import { sshConfigHosts, sshFolders } from './project-management/index.js'
-import { FIXTURE_SSH_HOSTS, fixtureSsh } from './fixtures/ssh.js'
+import { readWorkspaceSpaces, sshConfigHosts, sshFolders } from './project-management/index.js'
+import { FIXTURE_SSH_HOSTS, fixtureSsh, fixtureSshSpaces } from './fixtures/ssh.js'
 import { ARXIV_INTERVAL_MS } from './net/arxiv.js'
 import { createCannedGet, type CannedTable } from './net/canned-http.js'
 import { electronGet } from './net/electron-http.js'
@@ -152,7 +153,7 @@ import { recordChange, recordChangeIfAny, trashedEntry } from './write-receipts.
 import {
   deleteLibraryBackup, listLibraryBackups, resetLibrary, switchLibraryBackup,
 } from './workspace-layout.js'
-import { extensionStatuses } from './extensions/status.js'
+import { extensionStatuses, newSpaceRefusal } from './extensions/status.js'
 import { noteVersionChanges } from './extensions/notices.js'
 import { createPluginVersionCheck } from './extensions/latest.js'
 import { openSemanticKeyStore } from './net/semantic-key.js'
@@ -206,6 +207,8 @@ const vaultRoot = process.env['MERIDIAN_VAULT_ROOT']
 const librarySource = sourceOf(vaultRoot, process.env['MERIDIAN_VAULT_SOURCE'])
 const locationRoot = vaultRoot ?? process.env['MERIDIAN_LIBRARY_ROOT'] ?? process.cwd()
 const configHome = process.env['MERIDIAN_CONFIG_HOME'] ?? join(homedir(), '.meridian')
+/** The home whose coding agents' plugin lists Core reads: the user's, or a test library's own. */
+const agentHome = process.env['MERIDIAN_AGENT_HOME'] ?? homedir()
 const userData = process.env['MERIDIAN_USER_DATA']
 if (userData === undefined) throw new Error('Core 没有收到 App 的用户数据目录（MERIDIAN_USER_DATA）')
 teeConsole(openCoreLog({ dir: join(userData, 'logs'), redact: (text) => redactSecrets(text) }))
@@ -248,7 +251,7 @@ const noteVersions = (pluginVersion: string): void => {
     file: join(configHome, 'version-notices.json'),
     appVersion,
     pluginVersion,
-    extensions: extensionStatuses(undefined, pluginVersion),
+    extensions: extensionStatuses(agentHome, pluginVersion),
     post: (runs) => store.appendFeed({ source: 'steward', body: { kind: 'runs', runs } }),
   })
 }
@@ -490,7 +493,7 @@ function assertLibraryRestartReady(): void {
 
 registerHandler('extensions.status', (params) => {
   EmptyParamsSchema.parse(params)
-  return extensionStatuses(undefined, pluginCheck.latest())
+  return extensionStatuses(agentHome, pluginCheck.latest())
 })
 
 registerHandler('delivery.semanticKey', (params) => {
@@ -530,7 +533,7 @@ registerHandler('extensions.pluginVersion', (params) => {
 
 registerHandler('extensions.checkLatest', async (params) => {
   EmptyParamsSchema.parse(params)
-  return extensionStatuses(undefined, await pluginCheck.check())
+  return extensionStatuses(agentHome, await pluginCheck.check())
 })
 
 registerHandler('vault.today', (params) => {
@@ -679,8 +682,15 @@ registerHandler('project.get', (params) => {
   return store.getProject(id)
 })
 registerHandler('project.bindWorkspace', (params) => {
-  const { id, binding } = ProjectBindWorkspaceParamsSchema.parse(params)
-  return store.bindProjectWorkspace(id, binding)
+  const { id, binding, space } = ProjectBindWorkspaceParamsSchema.parse(params)
+  return store.bindProjectWorkspace(id, binding, space, () => newSpaceRefusal(extensionStatuses(agentHome)))
+})
+// The fixture library reads a local folder's spaces as they are and a canned host's from its canned folders.
+registerHandler('project.workspaceSpaces', async (params) => {
+  const { binding } = ProjectWorkspaceSpacesParamsSchema.parse(params)
+  return vaultRoot !== undefined || binding.kind === 'local'
+    ? readWorkspaceSpaces(binding)
+    : fixtureSshSpaces(binding.host, binding.path)
 })
 // The fixture library, which binds SSH workspaces without connecting, also browses canned hosts
 // instead of reading ~/.ssh/config or starting ssh.

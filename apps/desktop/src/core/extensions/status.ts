@@ -147,3 +147,19 @@ function inspectClient(layout: ClientLayout, home: string, pluginVersion: string
 export function extensionStatuses(home: string = homedir(), pluginVersion?: string): ExtensionStatus[] {
   return CLIENTS.map((layout) => inspectClient(layout, home, pluginVersion))
 }
+
+/** The oldest plugin that reads a workspace holding several project spaces. */
+export const SPACES_PLUGIN_VERSION = '0.0.10'
+
+/**
+ * Why a project space may not be added beside another on this machine, or undefined when it may:
+ * every client in `statuses` with the plugin installed must have it at SPACES_PLUGIN_VERSION or
+ * newer, as an older plugin sees only a workspace's first project and would record its work there.
+ */
+export function newSpaceRefusal(statuses: readonly ExtensionStatus[]): string | undefined {
+  const stale = statuses.find((status) => status.state !== 'not-installed'
+    && (status.version === undefined || olderThan(status.version, SPACES_PLUGIN_VERSION)))
+  if (stale === undefined) return undefined
+  const held = stale.version === undefined ? '需要更新' : `还是 ${stale.version}`
+  return `扩展 ${stale.name} ${held}，一个工作区放几个项目需要 ${SPACES_PLUGIN_VERSION} 或更新。到设置 · 扩展复制更新命令，更新后重启 coding agent 会话。`
+}

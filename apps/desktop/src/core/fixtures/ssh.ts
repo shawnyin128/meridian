@@ -1,4 +1,5 @@
 import { posix } from 'node:path'
+import type { WorkspaceSpace } from '../../shared/contract.js'
 import type { SshCommand } from '../project-management/index.js'
 
 /** The `Host` aliases the fixture library offers, as if read from `~/.ssh/config`. */
@@ -55,4 +56,20 @@ export const fixtureSsh: SshCommand = async ({ host }, command) => {
   const names = FOLDERS[folder]
   if (names === undefined) throw new Error(`cd: ${folder}: No such file or directory`)
   return Buffer.from([folder, ...names.map((name) => `./${name}`)].map((part) => `${part}\0`).join(''))
+}
+
+/** The project spaces the fixture hosts' folders hold, by folder; every other folder holds none. */
+const SPACES: Readonly<Record<string, readonly WorkspaceSpace[]>> = {
+  [`${HOME}/projects/spec-decoding`]: [
+    { space: { kind: 'root' }, project: { id: 'repro', name: '复现 EAGLE-2' } },
+    { space: { kind: 'nested', id: 'tree-width' }, project: { id: 'tree-width', name: '动态树宽' } },
+  ],
+}
+
+/** The project spaces the fixture host `host` holds at `path`, as readWorkspaceSpaces reads a real host's. */
+export function fixtureSshSpaces(host: string, path: string): WorkspaceSpace[] {
+  if (!FIXTURE_SSH_HOSTS.includes(host)) {
+    throw new Error(`ssh: Could not resolve hostname ${host}: nodename nor servname provided, or not known`)
+  }
+  return structuredClone([...SPACES[posix.normalize(path).replace(/(.)\/+$/, '$1')] ?? []])
 }
