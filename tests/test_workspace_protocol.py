@@ -396,6 +396,30 @@ class WorkspaceProtocolTest(unittest.TestCase):
             self.assertFalse(incremental["baseline_truncated"])
             self.assertEqual(reset["cursor_status"], "reset_required")
             self.assertEqual(idea["idea"]["body"], "Calibrate by batch.")
+            self.assertNotIn("files", idea)
+
+            with TemporaryDirectory() as vault_tmp:
+                vault = Path(vault_tmp)
+                self._write_json(
+                    vault / ".meridian/idea-files.json",
+                    [
+                        {"id": "att-3", "name": "d1.md", "size": "1 KB", "path": ".meridian/designs/d1.md", "idea": "idea-1"},
+                        {"id": "att-2", "name": "other.md", "size": "1 KB", "path": "/research/other.md", "idea": "idea-2"},
+                        {"id": "att-9", "name": ["not", "a", "name"], "idea": "idea-1"},
+                        {"id": "att-1", "name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md", "idea": "idea-1", "later": 1},
+                    ],
+                )
+                with_files = read_workspace_idea(root, "idea-1", vault=vault)
+                self.assertEqual(with_files["idea"], idea["idea"])
+                self.assertEqual(
+                    with_files["files"],
+                    [
+                        {"name": "d1.md", "size": "1 KB", "path": str(vault.resolve() / ".meridian/designs/d1.md")},
+                        {"name": "proposal.md", "size": "14 KB", "path": "/research/proposal.md"},
+                    ],
+                )
+                (vault / ".meridian/idea-files.json").unlink()
+                self.assertEqual(read_workspace_idea(root, "idea-1", vault=vault)["files"], [])
 
     def test_change_journal_reads_an_idea_the_user_wrote_down_without_a_chat(self) -> None:
         def journal(chat_title: str) -> dict[str, object]:
