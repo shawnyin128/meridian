@@ -134,7 +134,7 @@ function AggregationCard({ card, onOpen, onRemove, pending, actions }: {
         : (
           <InlineField
             label={m.wiki.nameFieldLabel} value={card.title} keep={{ scope: ['wiki', card.id], target: RENAME }}
-            normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={actions.onRename} rest={name}
+            normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={actions.onRename} rest={name} selectAll
           />
         )}
       tags={card.parentCount > 1 ? <Tag className="wkind">{m.wiki.aggregation.parentCount(card.parentCount)}</Tag> : null}
@@ -193,7 +193,7 @@ function PaperCard({ paper, onOpen, onRename, onDelete }: {
       title={(
         <InlineField
           label={m.wiki.titleLabel} value={paper.title} keep={{ scope: ['wiki', `${PAPER_PAGE}${paper.id}`], target: RENAME }}
-          normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename}
+          normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename} selectAll
           rest={(
             <Tooltip label={plainTitle(paper.title)} whenClipped>
               <ItemOpen className="tt"><span ref={title} className={`tt-lines fade-lines${titleCut ? ' clipped' : ''}`}><PaperText text={paper.title} /></span></ItemOpen>

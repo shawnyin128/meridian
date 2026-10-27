@@ -20,6 +20,8 @@ export type InlineFieldProps = {
    * the title's own font.
    */
   variant?: 'title'
+  /** Opens with the whole value selected and shown from its start, as a rename does; typing replaces it. */
+  selectAll?: boolean
   emptyText?: string
   normalize?: (value: string) => string
   validate?: (value: string) => boolean
@@ -60,7 +62,7 @@ const UNKEPT: readonly string[] = []
  */
 export function InlineField({
   label, value, display, type = 'text', inputMode, onSave, className, variant, emptyText, normalize = (next) => next,
-  validate = () => true, multiline = false, rest, keep, cell,
+  validate = () => true, multiline = false, rest, keep, cell, selectAll = false,
 }: InlineFieldProps) {
   const m = useMessages()
   const empty = emptyText ?? m.common.field.emptyValue
@@ -84,8 +86,14 @@ export function InlineField({
 
   useEffect(() => {
     if (!editing) return
-    control.current?.focus()
-  }, [editing])
+    const field = control.current
+    field?.focus()
+    if (!selectAll || field === null) return
+    // A backward selection keeps the caret at the value's start, so the field shows the name from its start.
+    field.setSelectionRange(0, field.value.length, 'backward')
+    field.scrollLeft = 0
+    field.scrollTop = 0
+  }, [editing, selectAll])
 
   const draftField = useInlineDraft({
     row: cell?.ref ?? control, triggers: NO_TRIGGERS, onCancel: cell?.onClose ?? (() => setEditing(false)),
@@ -158,7 +166,7 @@ export function InlineField({
  * wrapping field too.
  */
 export function InlineMetadataField(props: Omit<InlineFieldProps,
-  | 'className' | 'variant' | 'emptyText' | 'normalize' | 'validate' | 'multiline' | 'cell'
+  | 'className' | 'variant' | 'emptyText' | 'normalize' | 'validate' | 'multiline' | 'cell' | 'selectAll'
 >) {
   const freeText = props.type !== 'date' && props.inputMode !== 'numeric'
   return <InlineField {...props} multiline={freeText} />

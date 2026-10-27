@@ -209,7 +209,7 @@ function IdeaName({ idea, onRename, children }: {
   return (
     <InlineField
       label={m.ideas.editor.titleLabel} value={idea.title} keep={{ scope: ['idea', idea.id], target: RENAME }}
-      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename} rest={children}
+      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename} rest={children} selectAll
     />
   )
 }

@@ -119,7 +119,7 @@ function ProjectName({ project, onRename, children }: {
     <InlineField
       label={m.project.identity.nameFieldLabel} value={project.name} keep={{ scope: ['project', project.id], target: RENAME }}
       className="project-name" normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename}
-      rest={children}
+      rest={children} selectAll
     />
   )
 }

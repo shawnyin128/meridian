@@ -28,6 +28,10 @@ describe('InlineMetadataField', () => {
   let host: HTMLDivElement
 
   beforeEach(() => {
+
+    // An open in-place field watches its size to fade an end that hides text; jsdom has no ResizeObserver.
+
+    vi.stubGlobal('ResizeObserver', class { observe() {} disconnect() {} })
     globalThis.IS_REACT_ACT_ENVIRONMENT = true
     window.localStorage.setItem(LANGUAGE_STORAGE_KEY, 'zh')
     document.body.innerHTML = ''
@@ -158,6 +162,27 @@ describe('InlineMetadataField', () => {
     expect([save.mock.calls.length, input().value, input().getAttribute('aria-invalid')]).toEqual([0, '   ', 'true'])
     act(() => setValue(input(), '新任务'))
     expect(input().hasAttribute('aria-invalid')).toBe(false)
+  })
+
+  it('改名的字段一打开就选中整个名字、从名字开头显示,打字替换它;别的就地编辑照旧不选', async () => {
+    const name = '一个放不下整行的很长很长很长的对话名字'
+    act(() => root!.render(withMessages(
+      <>
+        <InlineField label="对话名称" value={name} selectAll onSave={() => true} />
+        <InlineField label="当前目标" value="统计负载分布" onSave={() => true} />
+      </>,
+    )))
+    const [rename, goal] = [...host.querySelectorAll<HTMLButtonElement>('.metadata-editable')]
+    act(() => rename!.click())
+    const input = host.querySelector<HTMLInputElement>('[aria-label="编辑对话名称"]')!
+    expect([document.activeElement === input, input.selectionStart, input.selectionEnd, input.selectionDirection, input.scrollLeft])
+      .toEqual([true, 0, name.length, 'backward', 0])
+    act(() => setValue(input, '新'))
+    expect(input.value).toBe('新')
+
+    act(() => goal!.click())
+    const other = host.querySelector<HTMLInputElement>('[aria-label="编辑当前目标"]')!
+    expect(other.selectionStart === 0 && other.selectionEnd === other.value.length).toBe(false)
   })
 
   it('表格格子里的就地编辑:一打开就是同一种就地输入框,点格子里不算离开,回车交给保存后收起;Esc 收起且不保存', async () => {

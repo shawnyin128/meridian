@@ -25,7 +25,7 @@ export function TitleField({ label, value, children, onSave, keep, wrap = false 
   return (
     <InlineField
       label={label} value={value} display={wrap ? shown : <FadeText label={value}>{shown}</FadeText>}
-      {...(wrap ? { multiline: true } : { variant: 'title' as const })} keep={keep}
+      {...(wrap ? { multiline: true } : { variant: 'title' as const })} keep={keep} selectAll
       normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave}
     />
   )

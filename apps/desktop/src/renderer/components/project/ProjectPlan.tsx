@@ -169,7 +169,7 @@ function PlanNameCell({ value, label, keep, onSave, rest }: {
   return (
     <InlineField
       label={label} value={value} className="plan-name-cell" keep={keep}
-      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave} rest={rest}
+      normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onSave} rest={rest} selectAll
     />
   )
 }

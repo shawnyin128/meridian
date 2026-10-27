@@ -70,7 +70,7 @@ function ChatRow({ session, on, onOpen, onRename, onArchive, onDelete }: {
       editor={kept.get(ROW_RENAME) === undefined ? undefined : (
         <InlineField
           label={m.chat.nameFieldLabel} value={session.title} keep={{ scope: ['chat', session.id], target: ROW_RENAME }}
-          normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename} rest={name}
+          normalize={(next) => next.trim()} validate={(next) => next !== ''} onSave={onRename} rest={name} selectAll
         />
       )}
       actions={(

@@ -320,6 +320,52 @@ test('会话行的更多菜单是真菜单:触发器报 menu,重命名、归档�
   await expect(win.locator('#crumb .cseg')).toHaveText(['动态'])
 })
 
+test('改名打开时整个名字选中、从头显示,放不下的那一端渐隐:刚打开只淡右端,不淡左端', async ({ win }) => {
+  await win.locator('#chatList .chat-row').first().waitFor()
+  const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived && s.paperId === undefined)!
+  const name = '摊薄的前提是共享前缀吗：长上下文、多轮对话与批量请求各自的情形'
+  await core(win, 'chat.rename', { id: target.id, title: name })
+  await win.reload()
+  const row = win.locator(`#chatList [data-chat="${target.id}"]`)
+  await row.hover()
+  await row.locator('.dots').click()
+  await win.getByRole('menuitem', { name: '重命名' }).click()
+  const input = row.locator('input')
+  await expect(input).toBeFocused()
+  const look = await input.evaluate((el: HTMLInputElement) => {
+    const style = getComputedStyle(el)
+    return {
+      selected: [el.selectionStart, el.selectionEnd, el.selectionDirection], scrollLeft: el.scrollLeft, fade: el.dataset['fade'],
+      mask: style.maskImage !== 'none', left: style.getPropertyValue('--fade-left').trim(), right: style.getPropertyValue('--fade-right').trim(),
+    }
+  })
+  expect(look).toEqual({ selected: [0, name.length, 'backward'], scrollLeft: 0, fade: 'right', mask: true, left: '0px', right: expect.not.stringMatching(/^0px$/) })
+  // The fade hides only text: the field's frame, drawn by the element after the text box, is never masked
+  // and keeps its 1px border on every side at its own colour, and the text box draws no frame of its own.
+  const frame = await input.evaluate((el: HTMLInputElement) => {
+    const box = el.nextElementSibling
+    if (box === null) return null
+    const style = getComputedStyle(box)
+    const own = getComputedStyle(el)
+    return {
+      mask: style.maskImage, borders: [style.borderTopWidth, style.borderRightWidth, style.borderBottomWidth, style.borderLeftWidth],
+      colours: new Set([style.borderTopColor, style.borderRightColor, style.borderBottomColor, style.borderLeftColor]).size,
+      colour: style.borderRightColor, fill: style.backgroundColor,
+      covers: (['top', 'right', 'bottom', 'left'] as const).every((edge) => Math.abs(box.getBoundingClientRect()[edge] - el.getBoundingClientRect()[edge]) < 0.5),
+      textFrame: [own.borderRightColor, own.backgroundColor],
+    }
+  })
+  expect(frame).toEqual({
+    mask: 'none', borders: ['1px', '1px', '1px', '1px'], colours: 1, colour: expect.stringMatching(/^rgb/), fill: expect.stringMatching(/^rgb\(/),
+    covers: true, textFrame: ['rgba(0, 0, 0, 0)', 'rgba(0, 0, 0, 0)'],
+  })
+  // Moving the caret to the end scrolls the field there: now only its start is hidden, so only the left end fades.
+  await input.press(process.platform === 'darwin' ? 'Meta+ArrowRight' : 'End')
+  await expect.poll(() => input.evaluate((el: HTMLInputElement) => el.dataset['fade'])).toBe('left')
+  await input.press('Escape')
+  await core(win, 'chat.rename', { id: target.id, title: target.title })
+})
+
 test('正打开着的会话开它的 ... 菜单,行仍然是选中底色,不是 hover 底色', async ({ win }) => {
   await win.locator('#chatList .chat-row').first().waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived)!
