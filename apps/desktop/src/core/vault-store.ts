@@ -1,5 +1,5 @@
 import { copyFileSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from 'node:fs'
-import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path'
+import { basename, dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import type { z } from 'zod'
 import type {
   ChatSession, Conclusion, DeliverySettings, FeedEntry, FeedRun, GraphNode, IdeaFile, InboxStream, PaperColumns, PaperImportResult,
@@ -1203,7 +1203,7 @@ export function createVaultStore(
           continue
         }
         taken.add(key)
-        added.push({ id: nextId('att'), name: basename(path), size: attachmentSizeText(statSync(path).size), path, idea })
+        added.push({ id: nextId('att'), name: basename(path), size: attachmentSizeText(statSync(path).size), path: storedFilePath(path), idea })
       }
     }
     if (added.length === 0) return 0
@@ -1212,8 +1212,19 @@ export function createVaultStore(
     return added.length
   }
 
-  /** An idea file as the contract carries it. */
-  const ideaFileOf = ({ idea, ...attachment }: IdeaFileRecord): IdeaFile => ({ idea, attachment: structuredClone(attachment) })
+  /**
+   * The path idea-files.json stores for the file at absolute `path`: relative to the vault, with `/`
+   * between its parts, when the file lies inside the vault, so it moves with the vault; else `path`.
+   */
+  const storedFilePath = (path: string): string => {
+    const inner = relative(root, path)
+    return inner === '' || inner.startsWith('..') || isAbsolute(inner) ? path : inner.split(sep).join('/')
+  }
+
+  /** An idea file as the contract carries it, its path absolute. */
+  const ideaFileOf = ({ idea, ...attachment }: IdeaFileRecord): IdeaFile => ({
+    idea, attachment: { ...structuredClone(attachment), path: isAbsolute(attachment.path) ? attachment.path : join(root, attachment.path) },
+  })
 
   /** Appends one feed entry dated now. */
   const appendFeedEntry = (source: FeedEntry['source'], runs: FeedRun[]): void => {
@@ -3435,7 +3446,7 @@ export function createVaultStore(
     addIdeaFile: atomic((ideaId, attachment) => {
       if (!isAbsolute(attachment.path)) throw new CallError('invalid', `附件路径不是绝对路径：${attachment.path}`)
       if (!ideas.some((idea) => idea.id === ideaId)) throw new CallError('not-found', `想法不存在：${ideaId}`)
-      const record: IdeaFileRecord = { id: nextId('att'), ...attachment, idea: ideaId }
+      const record: IdeaFileRecord = { id: nextId('att'), ...attachment, path: storedFilePath(attachment.path), idea: ideaId }
       ideaFiles = save('idea-files', [record, ...ideaFiles])
       return ideaFileOf(record)
     }),

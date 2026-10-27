@@ -168,6 +168,8 @@ idea-file-add`) with a stable `file_id`, the idea's `idea_id` (the one you gave
 `meridian.workspace_idea_add`, or an App idea id from
 `meridian.workspace_changes`) and the file's `path` relative to the repository;
 the App shows the file with the idea and keeps it where it is.
+`meridian.workspace_idea` lists the files an idea holds under `files`, each with
+its absolute `path`; read them there before writing another.
 
 ## Research Graph Generated View
 

@@ -167,6 +167,11 @@ class MeridianMCPServer:
             return workspace.wiki_root
         raise FileNotFoundError(adapter.NEEDS_INIT_MESSAGE)
 
+    def vault_root(self) -> Path | None:
+        """The Meridian library of the configured Paper Wiki, or None when none is configured."""
+        workspace = resolve_workspace(wiki_root=self.default_wiki_root) if self.default_wiki_root else resolve_workspace()
+        return None if workspace is None else workspace.library_root
+
     def workspace_root(self, arguments: JsonDict) -> Path:
         explicit = arguments.get("workspace_root")
         if explicit:
@@ -324,7 +329,10 @@ def tool_definitions() -> list[JsonDict]:
         },
         {
             "name": "meridian.workspace_idea",
-            "description": "Coding context: expand one current App-owned idea referenced by the change list.",
+            "description": (
+                "Coding context: expand one current App-owned idea referenced by the change list, with the "
+                "files it holds (name, size and absolute path) when the Paper Wiki library is configured."
+            ),
             "inputSchema": _schema(
                 {
                     "workspace_root": {
@@ -753,6 +761,7 @@ def _call_workspace_idea(server: MeridianMCPServer, arguments: JsonDict) -> Json
     return read_workspace_idea(
         server.workspace_root(arguments),
         _required(arguments, "idea_id"),
+        vault=server.vault_root(),
     )
 
 

@@ -253,8 +253,17 @@ def read_workspace_changes(
     }
 
 
-def read_workspace_idea(root: Path, idea_id: str) -> dict[str, Any]:
-    """Read one current App-owned idea projection without loading every idea."""
+VAULT_IDEA_FILES_PATH = Path(".meridian/idea-files.json")
+
+
+def read_workspace_idea(root: Path, idea_id: str, *, vault: Path | None = None) -> dict[str, Any]:
+    """Read one current App-owned idea projection without loading every idea.
+
+    With ``vault``, the Meridian library the App keeps, the result also lists under ``files`` each
+    file the idea holds, in the App's order, as ``name``, ``size`` and absolute ``path``: a path the
+    vault stores relative to itself is resolved against ``vault``. A file entry this version cannot
+    read is left out; a vault holding no idea files lists none.
+    """
 
     repository = _repository_root(root)
     manifest = _read_manifest(repository)
@@ -265,11 +274,34 @@ def read_workspace_idea(root: Path, idea_id: str) -> dict[str, Any]:
     idea = next((item for item in payload["ideas"] if item["id"] == normalized), None)
     if idea is None:
         raise WorkspaceProtocolError(f"workspace idea does not exist: {normalized}")
-    return {
+    result = {
         "schema_version": WORKSPACE_IDEA_SCHEMA_VERSION,
         "project_id": payload["project_id"],
         "idea": idea,
     }
+    if vault is not None:
+        result["files"] = _vault_idea_files(vault, normalized)
+    return result
+
+
+def _vault_idea_files(vault: Path, idea_id: str) -> list[dict[str, str]]:
+    target = vault / VAULT_IDEA_FILES_PATH
+    if not target.exists():
+        return []
+    records = _read_json(target, label="vault idea files")
+    if not isinstance(records, list):
+        raise WorkspaceProtocolError("vault idea files must be a JSON array")
+    base = vault.expanduser().resolve()
+    files = []
+    for record in records:
+        if not isinstance(record, dict) or record.get("idea") != idea_id:
+            continue
+        name, size, path = record.get("name"), record.get("size"), record.get("path")
+        if not all(isinstance(value, str) and value for value in (name, size, path)):
+            continue
+        stored = Path(path)
+        files.append({"name": name, "size": size, "path": str(stored if stored.is_absolute() else base / stored)})
+    return files
 
 
 def read_workspace_node_ideas(root: Path, node_id: str) -> list[dict[str, Any]]:
