@@ -57,8 +57,7 @@ import { useMessages } from '../messages/useMessages.js'
 import { InlineMetadataField } from '../components/InlineField.js'
 import { ModalDialog } from '../components/ModalDialog.js'
 import { DirectoryField, FieldRow, FieldRows, FormInput } from '../components/FormControls.js'
-import { InlineMessage } from '../components/InlineMessage.js'
-import { SshFolderBrowser, SshHostField, useSshFolders } from '../components/SshFolderPicker.js'
+import { SshFolderPicker, SshHostField } from '../components/SshFolderPicker.js'
 import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, SectionHeading,
 } from '../components/PageShell.js'
@@ -333,7 +332,8 @@ export function ProjectDetail({
   const [localPath, setLocalPath] = useState('')
   const [sshHost, setSshHost] = useState('')
   const [sshPort, setSshPort] = useState('')
-  const remote = useSshFolders()
+  const [sshPath, setSshPath] = useState('')
+  const [pickingSsh, setPickingSsh] = useState(false)
   const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   const planList = useRef<HTMLDivElement>(null)
   const planDraft = useRef<HTMLElement>(null)
@@ -574,20 +574,17 @@ export function ProjectDetail({
     setLocalPath(workspace?.kind === 'local' ? workspace.root : '')
     setSshHost(ssh ? workspace.host ?? '' : '')
     setSshPort(ssh && workspace.port !== undefined ? String(workspace.port) : '')
-    remote.reset()
+    setSshPath(ssh ? workspace.root : '')
+    setPickingSsh(false)
     setWorkspaceOpen(true)
   }
 
-  /** Connects to the host typed and shows its home; once connected, binds the folder shown. */
-  const submitSshWorkspace = async () => {
-    const port = sshPort.trim() === '' ? undefined : Number(sshPort)
-    const target = { host: sshHost.trim(), ...(port === undefined ? {} : { port }) }
-    if (remote.folder === null) {
-      remote.connect(target)
-      return
-    }
+  const sshPortNumber = sshPort.trim() === '' ? undefined : Number(sshPort)
+  const sshTarget = { host: sshHost.trim(), ...(sshPortNumber === undefined ? {} : { port: sshPortNumber }) }
+
+  const connectSshWorkspace = async () => {
     setBinding('ssh')
-    const connected = await writeProject(projectApi.bindWorkspace(projectId, { kind: 'ssh', ...target, path: remote.folder.path }))
+    const connected = await writeProject(projectApi.bindWorkspace(projectId, { kind: 'ssh', ...sshTarget, path: sshPath.trim() }))
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
@@ -770,13 +767,10 @@ export function ProjectDetail({
         actions={(
           <CommitActions
             place="foot" onCancel={() => setWorkspaceOpen(false)}
-            saving={binding !== null || (workspaceMode === 'ssh' && remote.folder === null && remote.opening)}
-            canSave={workspaceMode === 'local' || remote.folder === null || (!remote.opening && !remote.edited)}
+            saving={binding !== null}
             {...workspaceMode === 'local'
               ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
-              : remote.folder === null
-                ? { form: 'workspaceSsh', saveLabel: m.project.workspace.connect, busyLabel: m.project.workspace.connecting }
-                : { form: 'workspaceSsh', saveLabel: m.project.workspace.choose, busyLabel: m.project.workspace.choosing }}
+              : { form: 'workspaceSsh', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }}
           />
         )}
       >
@@ -811,29 +805,43 @@ export function ProjectDetail({
               : (
                 <form
                   id="workspaceSsh" className="workspace-form"
-                  onSubmit={(event) => { event.preventDefault(); void submitSshWorkspace() }}
+                  onSubmit={(event) => { event.preventDefault(); void connectSshWorkspace() }}
                 >
                   <FieldRows>
                     <FieldRow label={m.project.workspace.hostLabel}>
                       <SshHostField
                         value={sshHost} autoFocus required placeholder={m.project.workspace.hostPlaceholder}
-                        onValue={(host) => { setSshHost(host); remote.reset() }} onError={report}
+                        onValue={setSshHost} onError={report}
                       />
                     </FieldRow>
                     <FieldRow label={m.project.workspace.portLabel}>
                       <FormInput
                         appearance="field" value={sshPort} type="number" min={1} max={65_535}
                         placeholder={m.project.workspace.portLabel}
-                        onChange={(event) => { setSshPort(event.target.value); remote.reset() }}
+                        onChange={(event) => setSshPort(event.target.value)}
                       />
                     </FieldRow>
-                    {remote.folder === null
-                      ? remote.issue === null ? null : <InlineMessage tone="error" variant="line">{remote.issue}</InlineMessage>
-                      : <SshFolderBrowser choice={remote} />}
+                    <FieldRow label={m.project.workspace.pathLabel}>
+                      <DirectoryField
+                        value={sshPath} required placeholder={m.project.workspace.remotePlaceholder}
+                        chooseLabel={m.project.workspace.chooseLocal} chooseDisabled={sshTarget.host === ''}
+                        onChoose={() => setPickingSsh(true)}
+                        onChange={(event) => setSshPath(event.target.value)}
+                      />
+                    </FieldRow>
                   </FieldRows>
                 </form>
               )}
       </ModalDialog>
+      <SshFolderPicker
+        target={workspaceOpen && workspaceMode === 'ssh' && pickingSsh ? sshTarget : null}
+        start={sshPath.trim() === '' ? null : sshPath.trim()}
+        onChoose={(path) => {
+          setSshPath(path)
+          setPickingSsh(false)
+        }}
+        onClose={() => setPickingSsh(false)}
+      />
 
       <PageBody className="project-detail-body">
         <ProjectTimeline

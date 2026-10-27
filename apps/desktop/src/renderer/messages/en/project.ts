@@ -140,11 +140,9 @@ export const project = {
     adding: 'Adding…',
     hostLabel: 'Host',
     hostPlaceholder: 'SSH host',
+    remotePlaceholder: 'Remote project folder',
     portLabel: 'Port',
     connect: 'Connect',
-    connecting: 'Connecting…',
-    choose: 'Choose',
-    choosing: 'Choosing…',
     state: { ready: 'Connected', missing: 'Not found', invalid: 'Invalid' },
   },
   control: {
