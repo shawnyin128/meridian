@@ -16,9 +16,17 @@ import { searchUrl, watchQuery } from './net/arxiv.js'
 import { minimalPdf } from './net/minimal-pdf.js'
 
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
+/** The user-data folders the Backgrounds of this file keep their embeddings in, removed after each case. */
+const userDataDirs: string[] = []
+const userData = (): string => {
+  const dir = mkdtempSync(join(tmpdir(), 'meridian-user-data-'))
+  userDataDirs.push(dir)
+  return dir
+}
 const setup = (options: { semanticKey?: string } = {}) => {
   const store = createFixtureStore(() => '2026-08-25')
   const background = createBackground({
+    userData: userData(),
     store, get: createCannedGet(cannedNet as CannedTable, VAULT), probe: probePdf,
     arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
     ...(options.semanticKey === undefined ? {} : { semanticScholarApiKey: () => options.semanticKey }),
@@ -27,7 +35,10 @@ const setup = (options: { semanticKey?: string } = {}) => {
 }
 
 describe('createBackground', () => {
-  afterEach(() => { vi.useRealTimers() })
+  afterEach(() => {
+    vi.useRealTimers()
+    for (const dir of userDataDirs.splice(0)) rmSync(dir, { recursive: true, force: true })
+  })
 
   it('论文库打不开时排好的定时什么也不做:十五秒后和之后的每一轮都不碰库、不联网', async () => {
     vi.useFakeTimers({ now: 0 })
@@ -42,6 +53,7 @@ describe('createBackground', () => {
     rmSync(empty, { recursive: true, force: true })
     const get = vi.fn(async () => ({ status: 503, body: new Uint8Array() }))
     const background = createBackground({
+    userData: userData(),
       store, get, probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => Date.now(),
     })
     const stop = background.armSchedule()
@@ -122,6 +134,7 @@ describe('createBackground', () => {
     const canned = createCannedGet(cannedNet as CannedTable, VAULT)
     const store = createFixtureStore(() => '2026-08-25')
     const background = createBackground({
+    userData: userData(),
       store, probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
       semanticScholarApiKey: () => 'saved-key',
       get: (url, options) => {
@@ -150,23 +163,22 @@ describe('createBackground', () => {
     })
     expect(rows[0]).toMatchObject({
       kind: 'discovery', project: 'draft', source: '项目 · draft 效率',
-      reasons: expect.arrayContaining([
-        { kind: 'project', label: '来自项目「draft 效率」' },
-        expect.objectContaining({ kind: 'intent' }),
-        { kind: 'source', label: '由相似论文召回' },
-        expect.objectContaining({ kind: 'seed' }),
-      ]),
+      reasons: [
+        { kind: 'intent', label: expect.stringMatching(/^方向「.+」$/) },
+        { kind: 'seed', label: expect.stringMatching(/^接近《.+》$/), paperId: expect.stringMatching(/^ARXIV:/) },
+      ],
     })
     store.feedbackDiscovery(rows[0]!.id, 'less')
     expect(store.listInbox({ kind: 'discovery', project: 'draft' })).toHaveLength(1)
     expect(store.discoverySeeds('draft').negative).toContain('semantic-branch-acceptance')
   })
 
-  it('没存 key 时项目发现只搜 arXiv，推荐理由标明 arXiv', async () => {
+  it('没存 key 时项目发现只搜 arXiv,也照样按模型给出方向和最近的种子作理由', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const canned = createCannedGet(cannedNet as CannedTable, VAULT)
     const hosts: string[] = []
     const background = createBackground({
+    userData: userData(),
       store,
       get: async (url, options) => { hosts.push(new URL(url).hostname); return canned(url, options) },
       probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => Date.UTC(2026, 8, 22),
@@ -175,7 +187,7 @@ describe('createBackground', () => {
     expect(result.added).toBeGreaterThan(0)
     expect(new Set(hosts)).toEqual(new Set(['export.arxiv.org']))
     const rows = store.listInbox({ kind: 'discovery', project: 'draft' })
-    expect(rows[0]!.reasons).toEqual(expect.arrayContaining([{ kind: 'source', label: '由相似论文召回 · arXiv' }]))
+    expect(rows[0]!.reasons.map((reason) => reason.kind)).toEqual(['intent', 'seed'])
   })
 
   it('存了 key 后每次 Semantic Scholar 请求都带上，改了立即生效', async () => {
@@ -184,6 +196,7 @@ describe('createBackground', () => {
     const keys: (string | undefined)[] = []
     const saved: { key?: string } = {}
     const background = createBackground({
+    userData: userData(),
       store,
       get: async (url, options) => {
         if (url.includes('semanticscholar.org')) keys.push(options.headers?.['x-api-key'])
@@ -221,6 +234,7 @@ describe('createBackground', () => {
     const hosts: string[] = []
     const clock = { now: Date.UTC(2026, 8, 22) }
     const background = createBackground({
+    userData: userData(),
       store,
       get: async (url, options) => {
         hosts.push(new URL(url).hostname)
@@ -244,6 +258,7 @@ describe('createBackground', () => {
 
   it('作者搜索与关注建议取不到结果时只报失败原因，不带原始错误与路径', async () => {
     const failing = (error: Error) => createBackground({
+    userData: userData(),
       store: createFixtureStore(() => '2026-08-25'), get: async () => { throw error },
       probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
       semanticScholarApiKey: () => 'saved-key',
@@ -260,6 +275,7 @@ describe('createBackground', () => {
     const store = createFixtureStore(() => '2026-08-25')
     let requests = 0
     const background = createBackground({
+    userData: userData(),
       store, get: async () => { requests += 1; return { status: 200, body: new Uint8Array() } },
       probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
     })
@@ -270,6 +286,7 @@ describe('createBackground', () => {
   it('作者服务和论文检索持续限流时回限流这个失败原因,不把裸 429 也不把 Core 的句子交给界面', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const background = createBackground({
+    userData: userData(),
       store,
       get: async () => ({ status: 429, body: new Uint8Array(), retryAfterMs: 2_000 }),
       probe: probePdf,

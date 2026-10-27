@@ -165,7 +165,9 @@ const discovered = (seed, id, arxiv, submitted, title, authors, abstract) => ({
 
 /**
  * Recommendations project discovery would have brought for the KV cache project, in the stored shape it
- * writes. The seed gives SnapKV `less` and Scissorhands `known` feedback, which put both in the trash.
+ * writes: KVQuant as this version scores it, with its calibrated score, the path that scored it and its
+ * reasons, and the others as an older version wrote them. The seed gives SnapKV `less` and Scissorhands
+ * `known` feedback, which put both in the trash.
  */
 export function discoveryRecords(seed) {
   const authors = ['Coleman Hooper', 'Sehoon Kim', 'Hiva Mohammadzadeh', 'Michael W. Mahoney', 'Yakun Sophia Shao', 'Kurt Keutzer', 'Amir Gholami']
@@ -175,11 +177,13 @@ export function discoveryRecords(seed) {
     authors: authors.join(', '), venue: 'arXiv:2401.18079',
     abstract: 'KVQuant quantizes keys per channel before the rotary embedding and keeps outliers per vector, reaching 3-bit KV caches with under $0.1$ perplexity loss.',
     rec: '', reasons: [
-      { kind: 'project', label: '来自项目「KV cache 量化」' }, { kind: 'source', label: '由相似论文召回' },
-      { kind: 'wiki', label: '匹配 Wiki 主题/方法「KV cache 压缩」' },
+      { kind: 'intent', label: '方向「KV cache 压缩」' }, { kind: 'seed', label: '接近《KIVI》', paperId: 'ARXIV:2402.02750' },
+      { kind: 'wiki', label: 'Wiki「KV cache 压缩」' },
     ],
     downloaded: false, paper: '', pdf: 'https://arxiv.org/pdf/2401.18079', topic: '', gone: false,
     arxiv: '2401.18079', semanticId: '', meta: { authors, submitted: '2024-01-31', journalRef: null },
+    ranking: { relevance: 0.83, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2024-01-31' },
+    score: { path: 'api' },
   }, discovered(seed, 'seed-discovery-snapkv', '2404.14469', '2024-04-22',
     'SnapKV: LLM Knows What You are Looking for Before Generation',
     ['Yuhong Li', 'Yingbing Huang', 'Bowen Yang', 'Bharat Venkitesh', 'Acyr Locatelli', 'Hanchen Ye', 'Tianle Cai', 'Patrick Lewis', 'Deming Chen'],

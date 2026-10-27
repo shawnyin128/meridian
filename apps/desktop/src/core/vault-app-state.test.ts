@@ -10,6 +10,7 @@ import { TRASH_RETENTION_DAYS } from '../shared/vocabulary.js'
 import type { VaultStore } from './vault.js'
 import { createVaultStore } from './vault-store.js'
 import { minimalPdf } from './net/minimal-pdf.js'
+import { fixedRanking } from './fixtures/ranking.js'
 
 /** Test vault for the real implementation: aggregation layout, two papers, two topics, one method, and four sources. */
 const VAULT = resolve(import.meta.dirname, 'fixtures/vault')
@@ -405,7 +406,7 @@ describe('vault app state', () => {
 
     it('忽略、稍后阅读、减少类似和已经了解都让卡片离开并记下原因,恢复时一并撤掉;更多类似留着', () => {
       const project = store.createProject('离开的原因')
-      expect(store.addDiscoveryEntries(project, ['2609.30001', '2609.30002', '2609.30003'].map(found))).toBe(3)
+      expect(store.addDiscoveryEntries(project, ['2609.30001', '2609.30002', '2609.30003'].map(found), undefined, fixedRanking())).toBe(3)
       const [less, known, more] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
       store.dismissInbox('in-dup')
       store.readLater('in-new')
@@ -422,7 +423,7 @@ describe('vault app state', () => {
 
     it('减少类似和已经了解进垃圾桶,恢复后卡片回到论文推送,反馈和离开的原因一并撤掉', () => {
       const project = store.createProject('撤销反馈')
-      store.addDiscoveryEntries(project, ['2609.31001', '2609.31002'].map(found))
+      store.addDiscoveryEntries(project, ['2609.31001', '2609.31002'].map(found), undefined, fixedRanking())
       const [less, known] = store.listInbox({ kind: 'discovery' }).map((e) => e.id)
       store.feedbackDiscovery(less!, 'less')
       store.feedbackDiscovery(known!, 'known')

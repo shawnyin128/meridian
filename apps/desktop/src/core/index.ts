@@ -257,6 +257,7 @@ const background = createBackground({
   sleep: canned ? async () => {} : sleep,
   now: Date.now,
   semanticScholarApiKey: semanticKey.current,
+  userData,
 })
 const cliRunnerDeps = {
   // A run's own pre-call check decides at run time; what it finds corrects the status Settings and the pickers keep.

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import type { VaultStore } from './vault.js'
+import { fixedRanking } from './fixtures/ranking.js'
 import { createVaultStore } from './vault-store.js'
 
 /** Test vault the store opens. */
@@ -75,7 +76,7 @@ describe('论文推送重做后要写的存储形状', () => {
     expect(reopened.listInbox({ kind: 'discovery', project })).toEqual([
       expect.objectContaining({ id: 'inbox-903', title: live.title, reasons: live.reasons }),
     ])
-    expect(reopened.addDiscoveryEntries(project, ['2609.90001', '2609.90002', '2609.90003'].map(refound))).toBe(0)
+    expect(reopened.addDiscoveryEntries(project, ['2609.90001', '2609.90002', '2609.90003'].map(refound), undefined, fixedRanking())).toBe(0)
     reopened.dismissInbox('inbox-903')
     expect(read('inbox')).toEqual([left, folded, { ...live, gone: true, left: 'dismissed' }])
   })

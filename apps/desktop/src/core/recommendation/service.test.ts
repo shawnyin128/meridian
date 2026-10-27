@@ -5,6 +5,9 @@ import { ON_POLICY_DISTILLATION_SAMPLE, type DiscoverySamplePaper } from './fixt
 import { clusterRecommendationProfile, recommendationFingerprint } from './profile.js'
 import { createArxivRecommendations } from './providers/arxiv.js'
 import { createFallbackRecommendations } from './providers/fallback.js'
+import { fixedRanking } from '../fixtures/ranking.js'
+import type { Embeddings } from './embeddings.js'
+import { createScorer, type Scorer } from './scorer.js'
 import { createRecommendationService, DISCOVERY_COOLDOWN_MS } from './service.js'
 import type {
   DiscoveryPaper, DiscoverySchedule, RecommendationIntent, RecommendationProfile, RecommendationProvider,
@@ -35,10 +38,38 @@ function confirmDirections(store: ReturnType<typeof createFixtureStore>, project
   }
 }
 
-/** Store methods for a fake store that keeps no refresh progress between runs. */
+/** Store methods for a fake store that keeps no refresh progress between runs and shows no cards. */
 const noProgress = {
   refreshProgress: () => ({ steps: {}, candidates: [], favouredAt: null, newest: [], poolStalled: false }),
   setRefreshProgress: () => {},
+  scopeCards: () => [],
+  knownPapers: () => new Map(),
+  listWatches: () => [],
+}
+
+/** Embeddings with no key saved: every paper is missing, so the scope model runs on TF-IDF vectors. */
+const keyless: Embeddings = {
+  startRun: () => ({ path: 'api' }),
+  vectorsFor: async (paperIds) => ({ model: null, vectors: new Map(), missing: [...paperIds], path: 'unavailable' }),
+}
+
+/** The scorer the App builds, with no key saved and a calibration file that a keyless run never writes. */
+const keylessScorer = (): Scorer => createScorer({ embeddings: keyless, calibrationFile: '/nonexistent/calibration.json' })
+
+/**
+ * A scorer for cases about scheduling and delivery: every paper of a group scores 1 under the group's
+ * first scope, so a run delivers in the providers' order.
+ */
+const flatScorer: Scorer = {
+  score: async ({ groups }) => ({
+    scoreOf: (groupId, paperId) => {
+      const group = groups.find((held) => held.id === groupId)
+      const scope = group?.scopes[0]
+      return scope === undefined || !group!.items.includes(paperId) ? undefined : { score: 1, path: 'fallback', scope: scope.key }
+    },
+    similarity: () => 0,
+    nearest: () => [],
+  }),
 }
 
 /** The cooldown record an earlier fetch of `intent` leaves, keyed by its anchor seed and no negatives. */
@@ -69,7 +100,7 @@ describe('project recommendation service', () => {
       positive.some((seed) => seed.paperId === 'ARXIV:2605.29343') ? [ON_POLICY_DISTILLATION_SAMPLE.expected] : []
     ))
     const onWrite = vi.fn()
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite, now: () => 1 })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite, now: () => 1 })
     await expect(service.discover(project.id)).resolves.toEqual({
       projects: 1, intents: 2, added: 1, deferredProjects: 0,
       cachedIntents: 0, failedIntents: 0, nothingNew: false, lastFetchedAt: 1, directions: [],
@@ -85,11 +116,7 @@ describe('project recommendation service', () => {
     expect(found[0]).toMatchObject({
       title: ON_POLICY_DISTILLATION_SAMPLE.expected.title,
       pdf: ON_POLICY_DISTILLATION_SAMPLE.expected.pdf,
-      reasons: [
-        { kind: 'project', label: '来自项目「OPD 与 speculative drafter」' },
-        { kind: 'intent', label: '匹配核心方向「Draft-OPD」' },
-        { kind: 'seed', label: '基于 1 篇相关论文' },
-      ],
+      reasons: [{ kind: 'intent', label: '方向「Draft-OPD」' }],
     })
     expect(onWrite).toHaveBeenCalledOnce()
 
@@ -108,7 +135,7 @@ describe('project recommendation service', () => {
     await store.addPaper(project, imported.id)
     const recommend = vi.fn(async () => [ON_POLICY_DISTILLATION_SAMPLE.expected])
     const onWrite = vi.fn()
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite, now: () => 1 })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite, now: () => 1 })
 
     const first = await service.discover(project)
     expect(first.directions).toEqual([{ projectId: project, id: expect.any(String), label: 'Draft-OPD' }])
@@ -126,7 +153,7 @@ describe('project recommendation service', () => {
     const project = seededProject(store, '论文移走了', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
     for (const paper of (await store.getProject(project)).papers) await store.removePaper(project, paper)
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [])
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
     await service.discover(project)
     expect(recommend.mock.calls.map(([positive]) => positive.map((held) => held.paperId)))
       .toEqual([[`ARXIV:${ON_POLICY_DISTILLATION_SAMPLE.seeds[0]!.arxiv}`]])
@@ -137,7 +164,7 @@ describe('project recommendation service', () => {
     store.createProject('空项目')
     const project = store.listProjects().find((item) => item.name === '空项目')!
     const recommend = vi.fn(async () => [])
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend }, onWrite: vi.fn(), now: () => 1,
     })
     await expect(service.discover(project.id)).resolves.toEqual({
@@ -166,7 +193,7 @@ describe('project recommendation service', () => {
       ...ON_POLICY_DISTILLATION_SAMPLE.expected,
       semanticId: `limited-${at}`, id: `2609.9999${at}`, title: `Limited candidate ${at}`,
     }))
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend: async () => papers }, onWrite: vi.fn(), now: () => 1,
     })
 
@@ -188,7 +215,7 @@ describe('project recommendation service', () => {
     }, imported.title)
     await store.addPaper(project.id, imported.id)
     confirmDirections(store, project.id)
-    store.addDiscoveryEntries(project.id, [ON_POLICY_DISTILLATION_SAMPLE.expected])
+    store.addDiscoveryEntries(project.id, [ON_POLICY_DISTILLATION_SAMPLE.expected], undefined, fixedRanking())
     const rejected = store.listInbox({ kind: 'discovery', project: project.id })[0]!
     store.feedbackDiscovery(rejected.id, 'less')
 
@@ -201,7 +228,7 @@ describe('project recommendation service', () => {
       expect(negative).toEqual([ON_POLICY_DISTILLATION_SAMPLE.expected.semanticId])
       return [ON_POLICY_DISTILLATION_SAMPLE.expected, next]
     })
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend }, onWrite: vi.fn(), now: () => 1,
     })
     await expect(service.discover(project.id)).resolves.toEqual({
@@ -229,7 +256,7 @@ describe('project recommendation service', () => {
     confirmDirections(store, project.id)
     let now = 1_000
     const recommend = vi.fn(async () => [])
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend }, onWrite: vi.fn(), now: () => now,
     })
 
@@ -270,7 +297,7 @@ describe('project recommendation service', () => {
       if (round === 1 && call === 2) throw new Error('temporary 429')
       return call === 1 ? [ON_POLICY_DISTILLATION_SAMPLE.expected] : []
     })
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend }, onWrite: vi.fn(), now: () => round,
     })
 
@@ -305,7 +332,7 @@ describe('project recommendation service', () => {
     }, imported.title)
     await store.addPaper(project.id, imported.id)
     confirmDirections(store, project.id)
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store,
       provider: { recommend: async () => { throw new Error('temporary outage') } },
       onWrite: vi.fn(),
@@ -364,7 +391,7 @@ describe('project recommendation service', () => {
       return []
     })
     let now = 1
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend }, onWrite: vi.fn(), now: () => now,
     })
 
@@ -390,7 +417,7 @@ describe('project recommendation service', () => {
     }))
     const schedules = new Map<string, DiscoverySchedule>()
     const requested: string[] = []
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store: {
         deliverySettings: () => ({ maxItemsPerRun: 20 }),
         scanDiscoveryDirections: () => [],
@@ -457,7 +484,7 @@ describe('project recommendation service', () => {
     confirmDirections(store, project.id)
     let now = 1
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [])
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend }, onWrite: vi.fn(), now: () => now,
     })
 
@@ -494,7 +521,7 @@ describe('project recommendation service', () => {
       lastFetchedAt: 1, cursor: 0, requests: { [intent.id]: fetchedRecord(intent, 1) },
     })
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [])
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend }, onWrite: vi.fn(), now: () => DISCOVERY_COOLDOWN_MS + 2,
     })
 
@@ -521,7 +548,7 @@ describe('project recommendation service', () => {
       return [answers.get(query)!]
     })
     let now = 1
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
 
     runs.push([])
     await expect(service.discover(project)).resolves.toMatchObject({ intents: 2, added: 2 })
@@ -551,7 +578,7 @@ describe('project recommendation service', () => {
       requests: Object.fromEntries(intents.slice(0, 3).map((intent) => [intent.id, fetchedRecord(intent, recent)])),
     }
     const requested: string[] = []
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store: {
         deliverySettings: () => ({ maxItemsPerRun: 20 }),
         scanDiscoveryDirections: () => [],
@@ -596,7 +623,7 @@ describe('project recommendation service', () => {
     let answer = [candidate(1), candidate(2), candidate(3)]
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => answer)
     let now = 1
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
     const titles = () => store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)
 
     await expect(service.discover(project)).resolves.toMatchObject({ added: 1 })
@@ -623,7 +650,7 @@ describe('project recommendation service', () => {
       semanticId: `held-${at}`, id: `2609.${72_000 + at}`, title: `Held candidate ${at}`,
     })
     let answer = [candidate(1), candidate(2)]
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: { recommend: async () => answer }, onWrite: vi.fn(), now: () => 1,
     })
     const titles = () => store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)
@@ -652,7 +679,7 @@ describe('project recommendation service', () => {
       steps: {}, candidates: [candidate(1)], favouredAt: null, newest: [], poolStalled: false,
     })
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [candidate(2)])
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
 
     await expect(service.discover(project)).resolves.toMatchObject({ added: 1, intents: 1 })
     expect(recommend).toHaveBeenCalledTimes(1)
@@ -675,7 +702,7 @@ describe('project recommendation service', () => {
     ))
     const asked = () => recommend.mock.calls.filter(([positive]) => ours(positive)).length
     let now = 1
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
     const titles = () => store.listInbox({ kind: 'discovery', project }).map((entry) => entry.title)
 
     await expect(service.discover(project)).resolves.toMatchObject({ added: 1, intents: 1 })
@@ -705,7 +732,7 @@ describe('project recommendation service', () => {
     })
     const recommend = vi.fn<RecommendationProvider['recommend']>(async () => [1, 2, 3, 4].map(candidate))
     let now = 1
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
     const refresh = () => {
       now += DISCOVERY_COOLDOWN_MS + 1
       return service.discover(project)
@@ -765,6 +792,9 @@ describe('project recommendation service', () => {
       undelivered: <P extends { id: string }>(found: P[]) => (
         found.filter((paper) => ![...delivered.values()].some((held) => held.includes(paper.id)))
       ),
+      scopeCards: () => [],
+      knownPapers: () => new Map(),
+      listWatches: () => [],
     }
     const recommend = vi.fn<RecommendationProvider['recommend']>(async (positive) => (
       [1, 2, 3, 4].map((at) => ({
@@ -773,7 +803,7 @@ describe('project recommendation service', () => {
       }))
     ))
     let now = 1
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
     const counts = () => ids.map((id) => delivered.get(id)!.length)
 
     await expect(service.discover()).resolves.toMatchObject({ added: 3 })
@@ -792,7 +822,7 @@ describe('project recommendation service', () => {
       return [ON_POLICY_DISTILLATION_SAMPLE.expected]
     })
     let now = 1_000
-    const service = createRecommendationService({ store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
+    const service = createRecommendationService({ scorer: flatScorer, store, provider: { recommend }, onWrite: vi.fn(), now: () => now })
 
     await expect(service.discover(project)).resolves.toMatchObject({ added: 1, nothingNew: false, lastFetchedAt: 1_000 })
     now += DISCOVERY_COOLDOWN_MS + 1
@@ -828,7 +858,7 @@ describe('project recommendation service', () => {
         },
       },
     })
-    const service = createRecommendationService({
+    const service = createRecommendationService({ scorer: flatScorer,
       store, provider: createFallbackRecommendations(() => [arxivProvider]), onWrite: vi.fn(), now: () => 1,
     })
 
@@ -838,5 +868,104 @@ describe('project recommendation service', () => {
     expect(asked.map((request) => request.split(' ').slice(0, 3).join(' '))).toEqual([
       'relevance 2022 0', 'submittedDate 2025 0', 'submittedDate 2025 0', 'relevance 2022 50',
     ])
+  })
+})
+
+/** A provider result with title `title` and abstract `abstract`, ranked by the provider at `relevance`. */
+const candidate = (id: string, title: string, abstract = '', relevance = 0.5): DiscoveryPaper => ({
+  semanticId: `S-${id}`, id, title, authors: ['Ada'], abstract, submitted: '2026-09-01', journalRef: null,
+  pdf: `https://arxiv.org/pdf/${id}`,
+  ranking: { relevance, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2026-09-01' },
+})
+
+/** A scorer that scores the papers `table` names, each under its direction, and calls the papers `twins` names alike. */
+const tableScorer = (table: Record<string, { score: number; direction: number; path?: 'api' | 'fallback' }>, twins: string[] = []): Scorer => ({
+  score: async ({ groups }) => ({
+    scoreOf: (groupId, paperId) => {
+      const held = table[paperId]
+      const scope = groups.find((group) => group.id === groupId)?.scopes[held?.direction ?? -1]
+      return held === undefined || scope === undefined ? undefined : { score: held.score, path: held.path ?? 'fallback', scope: scope.key }
+    },
+    similarity: (left, right) => (twins.includes(left) && twins.includes(right) ? 0.95 : 0.1),
+    nearest: () => [],
+  }),
+})
+
+describe('discovery ranked by the scope model', () => {
+  it('没有 key 时按回退模型打分:低于 0.5 的候选不送也不进候选池,送出的卡片写明方向、最近的种子和论文里真有的 Wiki 词', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const direction = store.discoveryIntents('draft').find((intent) => intent.seeds.some((seed) => seed.paperId === 'ARXIV:2404.00456'))!
+    const onTopic = candidate('2609.70001', 'Rotated outlier-free 4-bit inference in LLMs with KV cache quantization',
+      'Rotation removes outliers so that 4-bit weights, activations and KV cache quantization keep accuracy in rotated LLMs.')
+    const offTopic = candidate('2609.70002', 'Protein folding with diffusion', 'Residue level structure prediction for protein folding.')
+    const recommend = vi.fn<RecommendationProvider['recommend']>(async (positive) => (
+      positive.some((seed) => seed.paperId === 'ARXIV:2404.00456') ? [onTopic, offTopic] : []
+    ))
+    const service = createRecommendationService({ scorer: keylessScorer(), store, provider: { recommend }, onWrite: vi.fn(), now: () => 1 })
+
+    await expect(service.discover('draft', true)).resolves.toMatchObject({ added: 1 })
+    const cards = store.listInbox({ kind: 'discovery', project: 'draft' })
+    expect(cards.map((card) => card.title)).toEqual([onTopic.title])
+    expect(cards[0]!.ranking!.relevance).toBeGreaterThanOrEqual(0.5)
+    expect(cards[0]!.reasons).toEqual([
+      { kind: 'intent', label: `方向「${direction.label}」` },
+      { kind: 'seed', label: '接近《QuaRot》', paperId: 'ARXIV:2404.00456' },
+      { kind: 'wiki', label: 'Wiki「KV cache quantization」' },
+    ])
+    expect(store.refreshProgress({ kind: 'project', id: 'draft' }).candidates.map((paper) => paper.id)).not.toContain(offTopic.id)
+    expect(store.undelivered([offTopic])).toEqual([offTopic])
+  })
+
+  it('核心方向占一半显示位置,其余方向分剩下的;同一份额里近乎重复的往后排,排不上又过线的留在候选池里按分数排', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '两个方向', ON_POLICY_DISTILLATION_SAMPLE.seeds)
+    store.setDeliverySettings({ maxItemsPerRun: 10, maxShownPerScope: 4 })
+    const found = ['c1', 'c2', 'c3', 'c4', 'c5', 'c6'].map((name, at) => candidate(`2609.7101${at}`, name))
+    const table = {
+      'S-2609.71010': { score: 0.9, direction: 0 }, 'S-2609.71011': { score: 0.89, direction: 0 },
+      'S-2609.71012': { score: 0.8, direction: 0 }, 'S-2609.71013': { score: 0.7, direction: 1 },
+      'S-2609.71014': { score: 0.6, direction: 1 }, 'S-2609.71015': { score: 0.4, direction: 1 },
+    }
+    const service = createRecommendationService({
+      scorer: tableScorer(table, ['S-2609.71010', 'S-2609.71011']), store, onWrite: vi.fn(), now: () => 1,
+      provider: { recommend: async () => [...found].reverse() },
+    })
+    expect(store.discoveryIntents(project).map((intent) => intent.core)).toEqual([true, false])
+
+    await service.discover(project)
+    expect(store.listInbox({ kind: 'discovery', project }).map((card) => card.title)).toEqual(['c1', 'c3', 'c4', 'c5'])
+    expect(store.refreshProgress({ kind: 'project', id: project }).candidates.map((paper) => paper.title)).toEqual(['c2'])
+  })
+
+  it('单次推送上限按分数取最高的新候选,而不是 provider 给的顺序', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '按分数取', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    store.setDeliverySettings({ maxItemsPerRun: 1 })
+    const found = [candidate('2609.72001', 'first by provider', '', 1), candidate('2609.72002', 'best by score', '', 0.1)]
+    const service = createRecommendationService({
+      scorer: tableScorer({ 'S-2609.72001': { score: 0.6, direction: 0 }, 'S-2609.72002': { score: 0.95, direction: 0 } }),
+      store, onWrite: vi.fn(), now: () => 1, provider: { recommend: async () => found },
+    })
+    await service.discover(project)
+    expect(store.listInbox({ kind: 'discovery', project }).map((card) => [card.title, card.ranking?.relevance]))
+      .toEqual([['best by score', 0.95]])
+  })
+
+  it('回退打分的卡片在下一轮有向量时按 API 重新打分', async () => {
+    const store = createFixtureStore(() => '2026-09-17')
+    const project = seededProject(store, '重新打分', ON_POLICY_DISTILLATION_SAMPLE.seeds.slice(0, 1))
+    const found = candidate('2609.73001', 'scored twice')
+    let scorer = tableScorer({ 'S-2609.73001': { score: 0.6, direction: 0, path: 'fallback' } })
+    let answer = [found]
+    const service = createRecommendationService({
+      scorer: { score: (input) => scorer.score(input) }, store, onWrite: vi.fn(), now: () => 1,
+      provider: { recommend: async () => answer },
+    })
+    await service.discover(project)
+    expect(store.listInbox({ kind: 'discovery', project }).map((card) => card.ranking?.relevance)).toEqual([0.6])
+    scorer = tableScorer({ 'S-2609.73001': { score: 0.8, direction: 0, path: 'api' } })
+    answer = []
+    await service.discover(project, true)
+    expect(store.listInbox({ kind: 'discovery', project }).map((card) => card.ranking?.relevance)).toEqual([0.8])
   })
 })

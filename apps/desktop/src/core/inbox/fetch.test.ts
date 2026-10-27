@@ -2,7 +2,16 @@ import { describe, expect, it, vi } from 'vitest'
 import { createFixtureStore } from '../fixture-store.js'
 import type { AuthorIdentity } from '../../shared/contract.js'
 import type { RemotePaper } from '../net/arxiv.js'
+import { trainingExamples, type Scorer } from '../recommendation/index.js'
 import { createWatchFetcher } from './fetch.js'
+
+vi.mock('../recommendation/index.js', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('../recommendation/index.js')>()
+  return { ...actual, trainingExamples: vi.fn(actual.trainingExamples) }
+})
+
+/** A scorer for watches that still rank by keyword, which must never be asked. */
+const unusedScorer: Scorer = { score: () => { throw new Error('a keyword watch never scores') } }
 
 const paper = (id: string, title: string): RemotePaper => ({
   id, title, authors: ['Mei Lin'], abstract: 'Abstract.', submitted: '2026-09-01',
@@ -15,6 +24,7 @@ function setup(
     citationCount: number; influentialCitationCount: number; venue: string; published: boolean
   }>> },
   authorPapers?: (identity: AuthorIdentity) => Promise<RemotePaper[]>,
+  scorer: Scorer = unusedScorer,
 ) {
   const store = createFixtureStore(() => '2026-08-25')
   const queries: string[] = []
@@ -26,6 +36,7 @@ function setup(
     },
     ...(scholar === undefined ? {} : { scholar }),
     ...(authorPapers === undefined ? {} : { authorPapers }),
+    scorer,
     now: () => 1_000,
     onWrite: () => { counter.writes += 1 },
   })
@@ -141,6 +152,41 @@ describe('createWatchFetcher', () => {
     await fetcher.run([watch])
     expect(titles()).toEqual(['Below The Cut'])
     expect(fetcher.status().last).toEqual({ watches: [watch], added: 1, at: 1_000 })
+  })
+
+  it('有三个正例的关注改按模型排:按分数送,低于 0.5 的不送也不进候选池,送出的卡片存模型分', async () => {
+    const scores: Record<string, number> = { 'ARXIV:2609.52001': 0.4, 'ARXIV:2609.52002': 0.9, 'ARXIV:2609.52003': 0.6 }
+    const score = vi.fn<Scorer['score']>(async () => ({
+      scoreOf: (_group, paperId) => (scores[paperId] === undefined ? undefined : { score: scores[paperId]!, path: 'api', scope: 'watch:learnt' }),
+      similarity: () => 0,
+      nearest: () => [],
+    }))
+    const { store, fetcher } = setup(async (query) => (query === 'all:"learnt"' ? [
+      paper('2609.52001', 'Learnt Low'), paper('2609.52002', 'Learnt High'), paper('2609.52003', 'Learnt Middle'),
+    ] : []), undefined, undefined, { score })
+    store.createWatch({ type: 'topic', name: 'learnt' })
+    const watch = store.listWatches().find((held) => held.name === 'learnt')!.id
+    vi.mocked(trainingExamples).mockImplementation((scope) => (scope.kind === 'watch' && scope.watchId === watch
+      ? ['p1', 'p2', 'p3'].map((paperId) => ({ paperId, weight: 1, positive: true }))
+      : []))
+    store.setDeliverySettings({ maxItemsPerRun: 1 })
+
+    await fetcher.run([watch])
+    vi.mocked(trainingExamples).mockReset()
+    expect(score).toHaveBeenCalledOnce()
+    expect(score.mock.calls[0]![0].groups).toEqual([{
+      id: `watch:${watch}`,
+      scopes: [{
+        key: `watch:${watch}`, examples: expect.any(Array), prior: ['p1', 'p2', 'p3'],
+        retrieved: ['ARXIV:2609.52001', 'ARXIV:2609.52002', 'ARXIV:2609.52003'],
+      }],
+      items: ['ARXIV:2609.52001', 'ARXIV:2609.52002', 'ARXIV:2609.52003'],
+    }])
+    const cards = store.listInbox({ kind: 'watch', watch })
+    expect(cards.map((entry) => [entry.title, entry.ranking?.relevance, entry.reasons[0]?.label]))
+      .toEqual([['Learnt High', 0.9, '命中关键词「learnt」']])
+    expect(store.refreshProgress({ kind: 'watch', id: watch }).candidates.map((found) => found.title))
+      .toEqual(['Learnt Middle'])
   })
 
   it('候选池里别处已经送过的候选拿掉,不再留在池里', async () => {

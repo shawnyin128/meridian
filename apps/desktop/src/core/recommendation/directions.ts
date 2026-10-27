@@ -50,7 +50,7 @@ export function directionBasis(basis: { topics: string[]; focus: string; path: s
 }
 
 /** The short title of `title`: its part before the first colon when that part is short, else all of it. */
-const shortTitleOf = (title: string): string => {
+export const shortTitleOf = (title: string): string => {
   const head = title.split(':')[0]!.trim()
   return head !== '' && head.length <= SHORT_PREFIX && head !== title.trim() ? head : title.trim()
 }

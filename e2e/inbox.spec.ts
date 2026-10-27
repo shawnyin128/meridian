@@ -149,7 +149,7 @@ test('关注与项目发现是两条流,发现解释来源并接受显式反馈'
 
   await expect.poll(async () => (await discoveryFromCore(win)).length).toBeGreaterThan(0)
   await expect(shown(win, '.pcard').first()).toBeVisible()
-  await expect(shown(win, '.pcard').first().locator('.prec')).toContainText('来自项目')
+  await expect(shown(win, '.pcard').first().locator('.prec')).toContainText('方向「')
   await expect(shown(win, '.collapsible-group-title').first()).toContainText('项目 ·')
   // Discovery lists its projects under the sidebar row; picking one shows only that project's papers.
   const byProject = new Map<string, number>()

@@ -41,7 +41,8 @@ import {
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
 import {
-  combinedReasons, cutBelow, listedUnder, orderListing, sortFound, withoutStreams, withStream, type StoredStream,
+  combinedReasons, cutBelow, cutByRanking, listedUnder, orderListing, sortFound, withoutStreams, withStream,
+  type StoredStream,
 } from './inbox/delivery.js'
 import {
   createPaperIndex, doiField, libraryArxivId, libraryIdentity, paperIdentity, type PaperIdentity,
@@ -50,9 +51,9 @@ import type { RemotePaper } from './net/arxiv.js'
 import type { Publication } from './net/semantic-metadata.js'
 import {
   buildRecommendationProfile, clusterRecommendationProfile, directionBasis, directionIntents, directionsAfter,
-  discoveryReasons, migratedDirections, mirroredDisabled, recommendationSeedIds, scannedDirections,
-  type DirectionPaper, type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type ProjectDirections, type RefreshProgress,
-  type RefreshScope,
+  batchIdOf, migratedDirections, mirroredDisabled, recommendationSeedIds, scannedDirections, shortTitleOf,
+  type DirectionPaper, type DiscoveryPaper, type DiscoveryPreferences, type DiscoverySchedule, type KnownPaper,
+  type ProjectDirections, type RefreshProgress, type RefreshScope, type ScopeRanking,
 } from './recommendation/index.js'
 import { dayOf, feedNewestFirst, systemToday } from './dates.js'
 import { createResearchIdea, readResearchIdea, updateResearchIdea } from './research-ideas/index.js'
@@ -107,6 +108,7 @@ type InboxRecord = Omit<InboxEntry, 'also'> & {
     topic: string
     arxiv: string
     meta: { authors: string[]; submitted: string; journalRef: string | null }
+    score?: { path: string }
   }
 }
 
@@ -506,29 +508,47 @@ export function createFixtureStore(
     seen: [...inbox.filter((entry) => gone.has(entry.id)).map(entryIdentity), ...delivered],
   })
 
+  /** Returns `entry` with the score `ranking` gives its paper, or `entry` itself when that score is no news. */
+  const rescored = (entry: InboxRecord, ranking: ScopeRanking): InboxRecord => {
+    const score = ranking.scoreOf(batchIdOf(entry.semanticId, entry.vault.arxiv))
+    if (score === undefined || entry.ranking === undefined
+      || (entry.ranking.relevance === score.relevance && entry.vault.score?.path === score.path)) return entry
+    return {
+      ...entry, ranking: { ...entry.ranking, relevance: score.relevance },
+      vault: { ...entry.vault, score: { ...entry.vault.score, path: score.path } },
+    }
+  }
+
   /**
    * Delivers the papers a stream found that no stream delivered before, at most `limit` and each once,
    * as the records `make` builds, which `place` puts among the entries held; and lists the stream, by
-   * `listed`, on each live card it found again. Papers the vault holds are skipped. Returns the records
-   * delivered.
+   * `listed`, on each live card it found again. The scope's cards and these papers are cut by
+   * `ranking` when given, which also rescores the cards it scored, else by recommendation score.
+   * Papers the vault holds are skipped. Returns the records delivered.
    */
-  const deliver = <P extends RemotePaper>(
+  const deliver = <P extends RemotePaper & { semanticId?: string }>(
     scope: Pick<InboxStream, 'kind' | 'id'>, found: P[], limit: number | undefined,
     identityOf: (paper: P) => PaperIdentity, make: (paper: P) => InboxRecord,
     listed: (entry: InboxRecord, paper: P) => InboxRecord,
     place: (fresh: InboxRecord[], held: InboxRecord[]) => InboxRecord[],
+    ranking?: ScopeRanking,
   ): InboxRecord[] => {
     const { fresh, merged } = sortFound(found, identityOf, known())
+    const shown = inFeed()
     const held = inbox.map((entry) => {
       const paper = merged.get(entry.id)
-      return paper === undefined ? entry : listed(entry, paper)
+      const listing = paper === undefined ? entry : listed(entry, paper)
+      return ranking !== undefined && shown(listing) && listedUnder(listing, scope.kind, scope.id)
+        ? rescored(listing, ranking) : listing
     })
-    const shown = inFeed()
-    const { kept, folded } = cutBelow(
-      held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id)),
-      limit === undefined ? fresh : fresh.slice(0, limit),
-      ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope, nowMs(),
-    )
+    const live = held.filter((entry) => shown(entry) && listedUnder(entry, scope.kind, scope.id))
+    const capped = limit === undefined ? fresh : fresh.slice(0, limit)
+    const { kept, folded } = ranking === undefined
+      ? cutBelow(live, capped, ops.deliverySettings().maxShownPerScope ?? DEFAULT_DELIVERY_SETTINGS.maxShownPerScope)
+      : cutByRanking(
+        live.map((entry) => ({ id: entry.id, paperId: batchIdOf(entry.semanticId, entry.vault.arxiv), ranking: entry.ranking })),
+        capped, (paper) => batchIdOf(paper.semanticId, paper.id), ranking,
+      )
     const added = kept.map(make)
     for (const id of folded) gone.add(id)
     inbox = place(added, held)
@@ -1743,24 +1763,25 @@ export function createFixtureStore(
       deliveryConfig = structuredClone(settings)
     },
 
-    addInboxEntries(watchId, found, limit) {
+    addInboxEntries(watchId, found, limit, ranking) {
       const watch = watches.find((w) => w.id === watchId)
       if (!watch) throw new CallError('not-found', `关注不存在：${watchId}`)
       const added = deliver({ kind: 'watch', id: watch.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, ...doiField(paper), title: paper.title, submitted: paper.submitted,
       }), (paper) => {
         const { topic, arxiv, meta, ...entry } = inboxFields(watch, paper)
-        return {
+        const record: InboxRecord = {
           id: nextId('inbox'), watch: watch.id, downloaded: false, paper: '', semanticId: '', ...doiField(paper), ...entry,
           vault: { topic, arxiv, meta },
         }
+        return ranking === undefined ? record : rescored(record, ranking)
       }, (entry, paper) => {
         const fields = inboxFields(watch, paper)
         return withStream(entry, { kind: 'watch', id: watch.id, source: fields.source, reasons: fields.reasons })
       }, (fresh, held) => {
         const at = held.findIndex((entry) => entry.watch === watch.id)
         return at < 0 ? [...held, ...fresh] : [...held.slice(0, at), ...fresh, ...held.slice(at)]
-      })
+      }, ranking)
       return added.map((entry) => entry.vault.arxiv)
     },
 
@@ -1889,14 +1910,14 @@ export function createFixtureStore(
       putDirections(params.projectId, next, params.action === 'add' ? disabled.filter((id) => id !== params.directionId) : disabled)
     },
 
-    addDiscoveryEntries(projectId, found: DiscoveryPaper[], limit) {
+    addDiscoveryEntries(projectId, found: DiscoveryPaper[], limit, ranking) {
       const project = projectById.get(projectId)
       if (!project) throw new CallError('not-found', `项目不存在：${projectId}`)
-      const seeds = projectDiscoverySeeds(projectId)
       const source = `项目 · ${project.name}`
+      const reasonsOf = (paper: DiscoveryPaper) => ranking.scoreOf(batchIdOf(paper.semanticId, paper.id))?.reasons ?? []
       return deliver({ kind: 'discovery', id: project.id }, found, limit, (paper) => paperIdentity({
         arxiv: paper.id, ...doiField(paper), semanticId: paper.semanticId, title: paper.title, submitted: paper.submitted,
-      }), (paper) => ({
+      }), (paper) => rescored({
         id: nextId('inbox'),
         kind: 'discovery',
         watch: '',
@@ -1907,7 +1928,7 @@ export function createFixtureStore(
         venue: paper.journalRef ?? `arXiv:${paper.id}`,
         abstract: paper.abstract,
         rec: '',
-        reasons: discoveryReasons(project.name, seeds.positive.length, paper),
+        reasons: reasonsOf(paper),
         downloaded: false,
         paper: '',
         pdf: paper.pdf,
@@ -1919,12 +1940,41 @@ export function createFixtureStore(
           arxiv: paper.id,
           meta: { authors: paper.authors, submitted: paper.submitted, journalRef: paper.journalRef },
         },
-      }), (entry, paper) => {
-        const listed = withStream(entry, {
-          kind: 'discovery', id: project.id, source, reasons: discoveryReasons(project.name, seeds.positive.length, paper),
-        })
+      }, ranking), (entry, paper) => {
+        const listed = withStream(entry, { kind: 'discovery', id: project.id, source, reasons: reasonsOf(paper) })
         return listed.semanticId === '' && paper.semanticId !== '' ? { ...listed, semanticId: paper.semanticId } : listed
-      }, (fresh, held) => [...fresh, ...held]).length
+      }, (fresh, held) => [...fresh, ...held], ranking).length
+    },
+
+    scopeCards(scope) {
+      scopeOf(scope)
+      const shown = inFeed()
+      return inbox.filter((entry) => shown(entry) && listedUnder(entry, scope.kind === 'project' ? 'discovery' : 'watch', scope.id))
+        .map((entry) => ({
+          id: entry.id, paperId: batchIdOf(entry.semanticId, entry.vault.arxiv), title: entry.title, abstract: entry.abstract,
+        }))
+    },
+
+    knownPapers(paperIds) {
+      const known = new Map<string, KnownPaper>()
+      for (const paperId of paperIds) {
+        const entry = inbox.find((held) => batchIdOf(held.semanticId, held.vault.arxiv) === paperId)
+        if (entry !== undefined) {
+          const page = byId.get(paperOf(entry.paper))
+          const taken = page !== undefined ? (page.rating === 5 ? 'rated' : 'library')
+            : later.some((queued) => queued.id === entry.id) ? 'later' : undefined
+          known.set(paperId, {
+            title: entry.title, shortTitle: page?.shortTitle ?? shortTitleOf(entry.title), abstract: entry.abstract,
+            ...(taken === undefined ? {} : { taken }),
+          })
+          continue
+        }
+        const page = [...byId.values()].find((paper) => `ARXIV:${libraryArxivId(paper)}` === paperId)
+        if (page !== undefined) {
+          known.set(paperId, { title: page.title, shortTitle: page.shortTitle ?? shortTitleOf(page.title), abstract: page.abstract ?? '' })
+        }
+      }
+      return known
     },
 
     feedbackDiscovery(id, feedback) {

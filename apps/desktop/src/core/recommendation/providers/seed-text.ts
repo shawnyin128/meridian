@@ -71,7 +71,39 @@ export function keyPhrases(seeds: readonly { title: string; abstract: string }[]
   return chosen
 }
 
-type Vector = Map<string, number>
+/** A sparse unit vector, by word. */
+export type TextVector = Map<string, number>
+
+/**
+ * The TF-IDF unit vector of each document of `documents`, each given as its words, with document
+ * frequencies taken over `documents` together.
+ */
+export function textVectors(documents: readonly (readonly string[])[]): TextVector[] {
+  const frequency = new Map<string, number>()
+  for (const words of documents) for (const word of new Set(words)) frequency.set(word, (frequency.get(word) ?? 0) + 1)
+  return documents.map((words) => {
+    const counts = new Map<string, number>()
+    for (const word of words) counts.set(word, (counts.get(word) ?? 0) + 1)
+    const weights: TextVector = new Map()
+    let norm = 0
+    for (const [word, count] of counts) {
+      const weight = (1 + Math.log(count)) * Math.log((documents.length + 1) / (frequency.get(word)! + 1))
+      weights.set(word, weight)
+      norm += weight * weight
+    }
+    norm = Math.sqrt(norm) || 1
+    for (const [word, weight] of weights) weights.set(word, weight / norm)
+    return weights
+  })
+}
+
+/** The dot product of two text vectors. */
+export function textDot(left: TextVector, right: TextVector): number {
+  const [small, large] = left.size <= right.size ? [left, right] : [right, left]
+  let dot = 0
+  for (const [word, weight] of small) dot += weight * (large.get(word) ?? 0)
+  return dot
+}
 
 /**
  * How close each candidate's title and abstract are to the nearest seed: TF-IDF cosine similarity,
@@ -82,32 +114,10 @@ export function seedSimilarity(
   seeds: readonly { title: string; abstract: string }[],
   candidates: readonly { title: string; abstract: string }[],
 ): number[] {
-  const seedWords = seeds.map((seed) => topicWords(`${seed.title} ${seed.title} ${seed.abstract}`))
-  const candidateWords = candidates.map((paper) => topicWords(`${paper.title} ${paper.abstract}`))
-  const documents = [...seedWords, ...candidateWords]
-  const frequency = new Map<string, number>()
-  for (const words of documents) for (const word of new Set(words)) frequency.set(word, (frequency.get(word) ?? 0) + 1)
-  const vector = (words: string[]): Vector => {
-    const counts = new Map<string, number>()
-    for (const word of words) counts.set(word, (counts.get(word) ?? 0) + 1)
-    const weights: Vector = new Map()
-    let norm = 0
-    for (const [word, count] of counts) {
-      const weight = (1 + Math.log(count)) * Math.log((documents.length + 1) / (frequency.get(word)! + 1))
-      weights.set(word, weight)
-      norm += weight * weight
-    }
-    norm = Math.sqrt(norm) || 1
-    for (const [word, weight] of weights) weights.set(word, weight / norm)
-    return weights
-  }
-  const seedVectors = seedWords.map(vector)
-  return candidateWords.map((words) => {
-    const candidate = vector(words)
-    return Math.max(0, ...seedVectors.map((seed) => {
-      let dot = 0
-      for (const [word, weight] of candidate) dot += weight * (seed.get(word) ?? 0)
-      return dot
-    }))
-  })
+  const vectors = textVectors([
+    ...seeds.map((seed) => topicWords(`${seed.title} ${seed.title} ${seed.abstract}`)),
+    ...candidates.map((paper) => topicWords(`${paper.title} ${paper.abstract}`)),
+  ])
+  const seedVectors = vectors.slice(0, seeds.length)
+  return vectors.slice(seeds.length).map((candidate) => Math.max(0, ...seedVectors.map((seed) => textDot(candidate, seed))))
 }
