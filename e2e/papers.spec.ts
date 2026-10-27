@@ -4,7 +4,7 @@ import {
   DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
 } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  expect, expectChipHoverInPlace, expectChipsHug, fittedPage, gotoPapers, panelHead, parkPointer, settle, test, uniqueHeights,
+  expect, expectChipHoverInPlace, expectChipsHug, fittedPage, gotoPapers, inlineFrame, panelHead, parkPointer, settle, test, uniqueHeights,
   type MeridianWindow,
 } from './app.js'
 
@@ -2109,21 +2109,24 @@ test('详情里点一项元数据,原位输入框是共用的原位外观:1px �
   }, [property, value] as const)
   const field = await token('backgroundColor', 'var(--field)')
   const strong = await token('borderTopColor', 'var(--sep-strong)')
-  // The focused edge turns --sep-strong over the border transition; read the field once it has settled.
-  await expect.poll(() => input.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(strong)
-  const style = await input.evaluate((el) => {
+  // The field's edge and fill are drawn by its frame; the focused edge turns --sep-strong over the
+  // border transition, so read the frame once it has settled.
+  const frame = inlineFrame(input)
+  await expect.poll(() => frame.evaluate((el) => getComputedStyle(el).borderTopColor)).toBe(strong)
+  const style = await frame.evaluate((el) => {
     const s = getComputedStyle(el)
+    const own = getComputedStyle(el.previousElementSibling!)
     return {
       borders: [s.borderTopWidth, s.borderRightWidth, s.borderBottomWidth, s.borderLeftWidth],
       colors: [s.borderTopColor, s.borderRightColor, s.borderBottomColor, s.borderLeftColor],
-      background: s.backgroundColor, shadow: s.boxShadow, outline: s.outlineStyle,
+      background: s.backgroundColor, shadow: [s.boxShadow, own.boxShadow], outline: [s.outlineStyle, own.outlineStyle],
     }
   })
   expect(style.borders).toEqual(['1px', '1px', '1px', '1px'])
   expect(style.colors).toEqual([strong, strong, strong, strong])
   expect(style.background).toBe(field)
   expect(style.background).not.toBe('rgba(0, 0, 0, 0)')
-  // Nothing around the field but its own edge.
-  expect(style.shadow).toBe('none')
-  expect(style.outline).toBe('none')
+  // Nothing around the field but its own edge, on the frame or on the input.
+  expect(style.shadow).toEqual(['none', 'none'])
+  expect(style.outline).toEqual(['none', 'none'])
 })
