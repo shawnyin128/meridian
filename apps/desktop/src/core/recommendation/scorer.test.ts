@@ -154,7 +154,29 @@ describe('paper scorer', () => {
     expect(scores.get('rotation-3')!.score).toBeGreaterThanOrEqual(0.5)
     expect(logged).toHaveBeenCalledOnce()
     expect(String(logged.mock.calls[0]![0])).toMatch(/refused the saved key/)
+    expect(String(logged.mock.calls[0]![0])).toMatch(/^\[feed\] fallback reason=auth: /)
     logged.mockRestore()
+  })
+
+  it('一轮不得不改走回退时在 Core 日志里记一条 warn,写明原因;没有 key 的一轮不记', async () => {
+    const warned = vi.spyOn(console, 'warn').mockImplementation(() => {})
+    for (const reason of ['rate-limit', 'quota', 'timeout', 'network', 'server'] as const) {
+      const throttled: Embeddings = {
+        startRun: () => ({ path: 'api' }),
+        vectorsFor: async (asked, run) => {
+          if (run.path === 'api') Object.assign(run, { path: 'fallback', reason })
+          return { model: null, vectors: new Map(), missing: [...asked], path: 'fallback', reason }
+        },
+      }
+      await scoresOf(throttled, calibrationFile())
+    }
+    expect(warned.mock.calls.map(([line]) => String(line))).toEqual(['rate-limit', 'quota', 'timeout', 'network', 'server'].map((reason) => (
+      `[feed] fallback reason=${reason}: paper embeddings fell back to TF-IDF for this refresh`
+    )))
+    await scoresOf(embeddingsFrom('unavailable'), calibrationFile())
+    await scoresOf(embeddingsFrom('api'), calibrationFile())
+    expect(warned).toHaveBeenCalledTimes(5)
+    warned.mockRestore()
   })
 
   it('一轮中途被限流:有向量的照样走 API,没向量的走回退,不改映射也不记差距', async () => {

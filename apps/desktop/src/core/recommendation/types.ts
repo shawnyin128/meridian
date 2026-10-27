@@ -91,6 +91,12 @@ export type CardSignal = {
   feedback?: 'more' | 'less' | 'known'
   reasons: { kind: string; label: string }[]
   rating?: number
+  /** The path that scored the card last; none for a card no scope model scored. */
+  path?: string
+  /** Whether the feed shows the card. */
+  shown: boolean
+  /** Whether the vault holds its paper, by the page it was added as or by its arXiv id. */
+  owned: boolean
 }
 
 /** What the user did with a scope's papers: its cards, and the library rating of each rated paper of its project by batch id. */

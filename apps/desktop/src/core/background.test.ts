@@ -234,6 +234,28 @@ describe('createBackground', () => {
     vi.restoreAllMocks()
   })
 
+  it('API 答出向量的一轮也按回退打分,每个方向在 Core 日志记一条两条路径的差距', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const canned = createCannedGet(cannedNet as CannedTable, VAULT)
+    const store = createFixtureStore(() => '2026-08-25')
+    const vectorOf = (id: string) => Array.from({ length: 8 }, (_, at) => 1 + ((id.charCodeAt(at % id.length) * (at + 3)) % 7) / 10)
+    const background = createBackground({
+      userData: userData(),
+      store, probe: probePdf, arxivIntervalMs: 0, sleep: async () => {}, now: () => 0,
+      semanticScholarApiKey: () => 'saved-key',
+      get: (url, options) => (url === semanticEmbeddingUrl
+        ? Promise.resolve({ status: 200, body: new TextEncoder().encode(JSON.stringify((JSON.parse(String(options.body)) as { ids: string[] }).ids
+          .map((id) => ({ paperId: id, embedding: { model: 'specter_v2', vector: vectorOf(id) } })))) })
+        : canned(url, options)),
+    })
+    await background.fetchDiscoveries('draft')
+    const gaps = info.mock.calls.map(([line]) => String(line)).filter((line) => line.startsWith('[feed] gap '))
+    expect(gaps.map((line) => line.split(' ')[2])).toEqual(store.discoveryIntents('draft').filter((intent) => intent.enabled)
+      .map((intent) => `direction:draft:${intent.id}`))
+    for (const line of gaps) expect(line).toMatch(/ papers=\d+ overlap@10=\d\.\d{3} ndcg@10=\d\.\d{3} spearman=-?\d\.\d{3}$/)
+    vi.restoreAllMocks()
+  })
+
   it('存了 key 后每次 Semantic Scholar 请求都带上，改了立即生效', async () => {
     const store = createFixtureStore(() => '2026-08-25')
     const canned = createCannedGet(cannedNet as CannedTable, VAULT)

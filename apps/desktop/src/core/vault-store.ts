@@ -1619,7 +1619,8 @@ export function createVaultStore(
    * Delivers the papers a stream found that no stream delivered before, at most `limit` and each once,
    * as the records `make` builds, which `place` puts among the entries held; and lists the stream, by
    * `listed`, on each live card it found again. The scope's cards and these papers are cut by
-   * `ranking` when given, which also rescores the cards it scored, else by recommendation score.
+   * `ranking` when given, which also rescores the cards it scored, else by recommendation score; a card
+   * that misses the cut leaves this scope, and folds only when no other scope lists it.
    * Remembers what it delivered and returns those records. Papers the vault holds are skipped. Throws,
    * leaving the inbox as it stood, when it cannot write.
    */
@@ -1651,7 +1652,10 @@ export function createVaultStore(
       )
     const added = kept.map(make)
     if (added.length === 0 && !changed && folded.size === 0) return []
-    const fold = (entry: InboxRecord): InboxRecord => (folded.has(entry.id) ? { ...entry, gone: true, left: 'folded' } : entry)
+    // A card another scope still lists leaves only this scope; it folds once no scope lists it.
+    const fold = (entry: InboxRecord): InboxRecord => (!folded.has(entry.id) ? entry
+      : withoutStreams(entry, (stream) => stream.kind === scope.kind && stream.id === scope.id)
+        ?? { ...entry, gone: true, left: 'folded' })
     inbox = save('inbox', place(added, held.map(fold)))
     remember(added)
     return added
@@ -2670,6 +2674,8 @@ export function createVaultStore(
     scopeSignals(scope) {
       scopeOf(scope)
       const kind = scope.kind === 'project' ? 'discovery' : 'watch'
+      const shown = inFeed()
+      const ownedArxiv = new Set([...papers.values()].flatMap((paper) => libraryArxivId(paper) ?? []))
       const cards = inbox.flatMap((entry) => {
         const stream = streamsOf(entry).find((held) => held.kind === kind && held.id === scope.id)
         if (stream === undefined) return []
@@ -2682,6 +2688,9 @@ export function createVaultStore(
           ...(entry.feedback === undefined ? {} : { feedback: entry.feedback }),
           reasons: stream.reasons.map(({ kind: reason, label }) => ({ kind: reason, label })),
           ...(rating === undefined ? {} : { rating }),
+          ...(entry.score === undefined ? {} : { path: entry.score.path }),
+          shown: shown(entry),
+          owned: pagesOf.has(entry.paper) || ownedArxiv.has(entry.arxiv),
         }]
       })
       const linked = scope.kind === 'project' ? projectOf(scope.id).papers : []

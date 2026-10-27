@@ -5,7 +5,7 @@ import type { RemotePaper } from '../net/arxiv.js'
 import type { VaultStore } from '../vault.js'
 import { DEFAULT_DELIVERY_SETTINGS } from '../../shared/contract.js'
 import {
-  POOL_LIMIT, SCORE_THRESHOLD, batchIdOf, poolFirst, rankedPaper, scoringBackground, selectShown, shareCap, textCollector,
+  POOL_LIMIT, SCORE_THRESHOLD, batchIdOf, logFeedMeasures, poolFirst, rankedPaper, scoringBackground, selectShown, shareCap, textCollector,
   trainingExamples, type DiscoveryPaper, type ScholarlyMetadata, type Scorer, type ScopeRanking, type TrainingExample,
 } from '../recommendation/index.js'
 
@@ -150,6 +150,7 @@ export function createWatchFetcher(deps: {
       })
       if (deps.store.updateInboxEntries(watch.id, enriched) > 0) deps.onWrite()
     }
+    for (const watch of watches) logFeedMeasures(`watch:${watch.id}`, deps.store.scopeSignals({ kind: 'watch', id: watch.id }).cards, [])
     reason = failure
     const total = [...counts.values()].reduce((sum, count) => sum + count.added, 0)
     last = { watches: watchIds ?? null, added: total, at: deps.now() }

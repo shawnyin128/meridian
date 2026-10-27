@@ -24,7 +24,10 @@ This folder owns paper recommendation as one replaceable Core domain.
   every API run.
 - `selection.ts` cuts a scope to what it shows: nothing below 0.5, half the slots for the core
   direction, the rest split evenly, maximal marginal relevance within each share.
-- `evaluation.ts` owns the inspectable offline metrics and stage-two quality gate.
+- `evaluation.ts` owns the inspectable offline metrics and stage-two quality gate; `gate.test.ts` is
+  the scope model's offline gate on both paths and their gap.
+- `measures.ts` writes the live measures of each refresh and the gap between the two paths to Core's
+  log, which `scripts/feed-report.mjs` sums up over a period.
 - `providers/` contains external API adapters; the Semantic Scholar adapter normalizes similarity,
   citation, reference and same-author candidates behind one `RecommendationProvider` boundary.
 - `scoring.ts` owns the sorts shared by watch and discovery projections; 推荐 is the stored score.

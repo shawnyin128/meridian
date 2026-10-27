@@ -65,14 +65,14 @@ export type Scorer = {
    * scopes: the groups' items and examples and `background`, which names each paper's owner, a group
    * id or a scope key, and whether it is a positive, as `randomNegatives` draws them. Every path is
    * Platt-fitted to the anchors of all scopes together: each scope's negatives, its positives scored
-   * leave-one-out, and the papers retrieved for it, as positives that share the weight of its
-   * positives. An item scores on the API path
+   * leave-one-out, and the papers retrieved for it that score above all its negatives, as positives
+   * that share the weight of its positives. An item scores on the API path
    * when it and the scope's model have embeddings, else on the fallback path through the scope's
    * monotone map. `papers` holds the text of every paper named. Embeddings of the groups' papers come
    * from the cache or the API; those of the background only from the cache. While the run stays on
-   * the API, each scope's map is refitted from the items both paths scored, and saved. A run the API
-   * refused the saved key for is logged as an error. Throws when an embedding request fails for a
-   * reason that is no EmbeddingFallbackReason.
+   * the API, each scope's map is refitted from the items both paths scored, and saved. A run that left
+   * the API is logged with its reason, as an error when the API refused the saved key and else as a
+   * warning. Throws when an embedding request fails for a reason that is no EmbeddingFallbackReason.
    */
   score(input: {
     groups: readonly ScoreGroup[]
@@ -183,7 +183,9 @@ export function createScorer(deps: {
       ]))
       const lookup = await deps.embeddings.vectorsFor([...fetched], run)
       if (run.reason === 'auth') {
-        console.error('[discovery] Semantic Scholar refused the saved key for paper embeddings; this refresh scores on TF-IDF. Check the key in Settings.')
+        console.error('[feed] fallback reason=auth: Semantic Scholar refused the saved key for paper embeddings; this refresh scores on TF-IDF. Check the key in Settings.')
+      } else if (run.reason !== undefined) {
+        console.warn(`[feed] fallback reason=${run.reason}: paper embeddings fell back to TF-IDF for this refresh`)
       }
       const cached = await deps.embeddings.vectorsFor([...owners.keys()].filter((paperId) => !fetched.has(paperId)), { path: 'fallback' })
       const embedding = new Map([...lookup.vectors].map(([id, vector]) => [id, unit(vector)]))
@@ -243,13 +245,16 @@ export function createScorer(deps: {
           fitted.set(key, { model, rows })
           const own = scopeAnchors(modelRows, gram, model)
           anchors.push(...own)
+          // A retrieved paper no closer to the scope than its closest negative is no evidence of relevance.
+          const ceiling = Math.max(...rows.flatMap((example, at) => (example.positive ? [] : [marginOf(model, gram[at]!)])))
           const retrieved = (retrievedOf.get(key) ?? []).flatMap((paperId) => {
             const vector = vectorOf(paperId)
-            return vector === undefined ? [] : [vector]
+            const margin = vector === undefined ? undefined : marginOf(model, vectors.map((row) => dot(row, vector)))
+            return margin === undefined || margin <= ceiling ? [] : [margin]
           })
           const weight = rows.reduce((sum, example) => sum + (example.positive ? example.weight : 0), 0) / retrieved.length
           anchors.push(
-            ...retrieved.map((vector) => ({ margin: marginOf(model, vectors.map((row) => dot(row, vector))), positive: true, weight })),
+            ...retrieved.map((margin) => ({ margin, positive: true, weight })),
             ...(retrieved.length === 0 || own.length > 0 ? [] : rows.flatMap((example, at) => (example.positive ? [] : [{
               margin: marginOf(model, gram[at]!), positive: false, weight: example.weight,
             }]))),

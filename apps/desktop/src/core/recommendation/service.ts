@@ -2,6 +2,7 @@ import { DEFAULT_DELIVERY_SETTINGS, type DiscoveryFetchResult } from '../../shar
 import type { VaultStore } from '../vault.js'
 import { shortTitleOf } from './directions.js'
 import { trainingExamples, type ExampleStore } from './examples.js'
+import { logFeedMeasures } from './measures.js'
 import { discoveryReasons, mergeIntentResults, type IntentResult } from './merge.js'
 import { POOL_LIMIT, poolFirst, shareCap } from './pool.js'
 import {
@@ -359,6 +360,9 @@ export function createRecommendationService(deps: {
           if (fetchedAt !== null) lastFetchedAt = Math.max(lastFetchedAt ?? fetchedAt, fetchedAt)
         }
         if (wrote || directions.length > 0) deps.onWrite()
+        for (const plan of plans) {
+          logFeedMeasures(`project:${plan.id}`, deps.store.scopeSignals({ kind: 'project', id: plan.id }).cards, deps.store.discoveryIntents(plan.id))
+        }
         const deferredProjects = fetching.filter((plan) => (
           plan.intents.length > 0 && plan.selected.length === 0
         )).length

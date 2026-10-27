@@ -20,7 +20,7 @@ import { isUnopenedStore } from './unopened-store.js'
 import { createMetadataQueue, fillPublications, type PdfProbe } from './paper-library/index.js'
 import {
   createArxivRecommendations, createEmbeddings, createFallbackRecommendations, createRecommendationService, createScorer,
-  createSemanticRecommendations, createSemanticScholar,
+  createSemanticRecommendations, createSemanticScholar, logGaps,
 } from './recommendation/index.js'
 import type { VaultStore } from './vault.js'
 
@@ -100,6 +100,7 @@ export function createBackground(deps: {
       get: semanticGet, apiKey: semanticKey, dir: join(deps.userData, 'recommendation', 'embeddings'), sleep: deps.sleep,
     }),
     calibrationFile: join(deps.userData, 'recommendation', 'calibration.json'),
+    onGap: logGaps,
   })
   const recommendation = createRecommendationService({
     store: deps.store, onWrite, now: deps.now, scorer,

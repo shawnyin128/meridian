@@ -224,6 +224,45 @@ describe('vault store', () => {
     }
 
     for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:两个项目共有一张卡片,一个项目把它排到线下只拿掉自己那一档,另一个项目照样显示;没人再列着它才折叠`, () => {
+        const s = make()
+        const keeps = s.createProject('留着它的项目')
+        const cuts = s.createProject('排到线下的项目')
+        const shared = Object.assign(found('2609.29101'), {
+          semanticId: 'semantic-2609.29101',
+          ranking: { relevance: 0, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2026-09-01' },
+        })
+        expect(s.addDiscoveryEntries(keeps, [shared], undefined, fixedRanking())).toBe(1)
+        expect(s.addDiscoveryEntries(cuts, [shared], undefined, fixedRanking({ score: () => 0.3 }))).toBe(0)
+        const listed = (project: string) => titles(s.listInbox({ kind: 'discovery', project }))
+        expect(listed(keeps)).toContain('Shared 2609.29101')
+        expect(listed(cuts)).not.toContain('Shared 2609.29101')
+        expect(s.scopeSignals({ kind: 'project', id: cuts }).cards).toEqual([])
+        expect(s.addDiscoveryEntries(keeps, [], 0, fixedRanking({ score: () => 0.3 }))).toBe(0)
+        expect(titles(s.listInbox())).not.toContain('Shared 2609.29101')
+        expect(s.undelivered([shared])).toEqual([])
+      })
+    }
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
+      it(`${name}:范围的卡片信号带上打分路径、是否还在显示、库里是否已有这篇`, () => {
+        const s = make()
+        const project = s.createProject('信号项目')
+        const scored = (id: string) => Object.assign(found(id), {
+          semanticId: `semantic-${id}`,
+          ranking: { relevance: 0, published: false, citationCount: 0, influentialCitationCount: 0, submitted: '2026-09-01' },
+        })
+        s.addDiscoveryEntries(project, [scored('2609.29001'), scored('2609.29002')], undefined, fixedRanking({ path: 'api' }))
+        s.updatePaper(s.listPapers({ page: 1, size: 1 }).rows[0]!.id, { identifier: 'arXiv:2609.29002' })
+        expect(s.scopeSignals({ kind: 'project', id: project }).cards.map(({ paperIds, path, shown, owned }) => ({ paperIds, path, shown, owned })))
+          .toEqual([
+            { paperIds: ['semantic-2609.29001', 'ARXIV:2609.29001'], path: 'api', shown: true, owned: false },
+            { paperIds: ['semantic-2609.29002', 'ARXIV:2609.29002'], path: 'api', shown: false, owned: true },
+          ])
+      })
+    }
+
+    for (const [name, make] of [['真实实现', () => store], ['fixture', () => createFixtureStore()]] as const) {
       it(`${name}:问哪些候选还会送出:库里有的、送过的(送它的关注删了也算)和推送里正列着的都不算,同一篇只算一次`, () => {
         const s = make()
         s.createWatch({ type: 'topic', name: 'asked' })

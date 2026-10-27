@@ -70,6 +70,19 @@ describe('createWatchFetcher', () => {
     expect(counter.writes).toBeGreaterThan(0)
   })
 
+  it('每轮抓完给抓过的每条关注在 Core 日志记一条推送量,按关键词排的卡片记在没有打分路径的那一档', async () => {
+    const info = vi.spyOn(console, 'info').mockImplementation(() => {})
+    const { store, fetcher } = setup(async (query) =>
+      query === 'all:"speculative decoding"' ? [paper('2609.00001', 'Tree One')] : [])
+    const watch = store.listWatches().find((held) => held.name === 'speculative decoding')!
+    const before = store.scopeSignals({ kind: 'watch', id: watch.id }).cards
+    await fetcher.run([watch.id])
+    expect(info.mock.calls.map(([line]) => String(line)).filter((line) => line.startsWith('[feed] measures'))).toEqual([
+      expect.stringMatching(new RegExp(`^\\[feed\\] measures watch:${watch.id} path=none delivered=${before.length + 1} shown=\\d+ `)),
+    ])
+    info.mockRestore()
+  })
+
   it('关键词关注带来的新论文,来源写关键词 · 名字,理由写命中关键词;收件里早先的条目照原样', async () => {
     const { store, fetcher } = setup(async (query) =>
       query === 'all:"speculative decoding"' ? [paper('2609.00001', 'Tree One')] : [])

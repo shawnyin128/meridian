@@ -17,7 +17,7 @@ const direction = (id: string, label: string, core: boolean, seeds: string[]): R
 
 /** A card of the scope that left the feed for `left`, its paper known as `ARXIV:<arxiv>`. */
 const card = (arxiv: string, fields: Partial<CardSignal> = {}): CardSignal => ({
-  paperIds: [`ARXIV:${arxiv}`], gone: true, downloaded: false, reasons: [], ...fields,
+  paperIds: [`ARXIV:${arxiv}`], gone: true, downloaded: false, reasons: [], shown: false, owned: false, ...fields,
 })
 
 /** A store whose project `p` holds `directions` and whose scopes hold `signals`. */
@@ -144,7 +144,7 @@ describe('trainingExamples', () => {
     const store = storeOf([core], {
       cards: [
         card('0001', { left: 'later' }),
-        { paperIds: ['ARXIV:2001', 'semantic-2001'], gone: true, downloaded: false, left: 'known', reasons: [] },
+        { paperIds: ['ARXIV:2001', 'semantic-2001'], gone: true, downloaded: false, left: 'known', reasons: [], shown: false, owned: false },
       ],
       ratings: {},
     })
