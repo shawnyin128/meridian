@@ -1307,7 +1307,8 @@ test('关联:可以加一个链接并给它起显示名,点 chip 交给系统浏
     ;(globalThis as { openedUrls?: string[] }).openedUrls = seen
     shell.openExternal = (url: string) => { seen.push(url); return Promise.resolve() }
   })
-  await chip.click()
+  // A hovered chip's actions lie over its end, which on a short name covers its middle, so click the name.
+  await chip.locator('.tagchip-open').click()
   await expect.poll(() => app.evaluate(() => (globalThis as { openedUrls?: string[] }).openedUrls))
     .toEqual(['https://wandb.ai/team/draft'])
   await win.screenshot({ path: resolve(import.meta.dirname, '../outputs/e2e/shots/project-url-chip.png') })
