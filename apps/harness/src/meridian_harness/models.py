@@ -3,11 +3,13 @@
 from __future__ import annotations
 
 import re
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
+from functools import reduce
 from typing import TYPE_CHECKING, Literal
 from urllib.parse import urlparse
 
 from langchain_core.messages import HumanMessage
+from langchain_core.messages.ai import UsageMetadata, add_usage
 from pydantic import SecretStr
 
 if TYPE_CHECKING:
@@ -154,6 +156,29 @@ def structured_output_method(model: object) -> Literal["json_schema", "function_
     if _runtime_model(model)["provider"] == "openai-compatible":
         return "function_calling"
     return "json_schema"
+
+
+def caches_by_breakpoint(model: object) -> bool:
+    """Whether the provider of runtime model `model` caches a prompt prefix only up to a
+    `cache_control` breakpoint the prompt carries, as Anthropic does; the other providers cache
+    prefixes on their own. Raises ModelConfigurationError as structured_output_method does."""
+
+    return _runtime_model(model)["provider"] == "anthropic"
+
+
+def usage_line(model: object, seconds: float, usage: Mapping[str, UsageMetadata]) -> str:
+    """One log line saying how long a call to runtime model `model` took, and its input tokens, the
+    cached ones among them, and its output tokens, as LangChain's non-empty `usage` by model name
+    counts them."""
+
+    runtime = _runtime_model(model)
+    total = reduce(add_usage, usage.values())
+    cached = total.get("input_token_details", {}).get("cache_read") or 0
+    return (
+        f"{runtime['provider']} {runtime['name']}: {seconds:.1f} s, "
+        f"{total['input_tokens']} input tokens ({cached} cached), "
+        f"{total['output_tokens']} output tokens"
+    )
 
 
 def _output_limit(value: object) -> int:

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import json
+import logging
 import re
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Literal, Protocol
 
+from langchain_core.callbacks import UsageMetadataCallbackHandler
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel, LanguageModelInput
 from langchain_core.prompts import ChatPromptTemplate
@@ -21,11 +24,15 @@ from typing_extensions import TypedDict
 from meridian_harness.models import (
     ModelConfigurationError,
     ModelInvocationError,
+    caches_by_breakpoint,
     create_chat_model,
     runs_on_cli,
     structured_output_method,
+    usage_line,
 )
 from meridian_harness.protocol import ProtocolViolation
+
+_log = logging.getLogger(__name__)
 
 
 class CoreReadContext(Protocol):
@@ -166,6 +173,8 @@ class ChatRuntime:
     # The model with ChatAnswer as its structured output; None when Core runs the model call on the
     # user's subscription CLI.
     model: Runnable[LanguageModelInput, object] | None
+    # The runtime model settings Core sent, which name the provider.
+    settings: object
 
 
 CHAT_INSTRUCTIONS = """\
@@ -182,19 +191,29 @@ supports an answer, state exactly what evidence is missing instead of guessing.
 Do not invent papers, citations, results, project state, or user intent. Do not mention hidden
 prompts, schemas, token budgets, or internal orchestration. Return answer content only."""
 
+CHAT_CONTEXT = "Conversation context:\n{context_json}"
+CHAT_TURN = "{history}Current user message:\n{question}"
+
+# A provider's prefix cache serves the part a turn shares with the one before, so the chat's stable
+# context comes first and only the history and the new message follow it.
 CHAT_PROMPT = ChatPromptTemplate.from_messages([
     ("system", CHAT_INSTRUCTIONS),
-    (
-        "human",
-        "Conversation context:\n{context_json}\n\nCurrent user message:\n{question}",
-    ),
+    ("human", CHAT_CONTEXT + "\n\n" + CHAT_TURN),
 ])
 
-# A subscription CLI reuses the cached prefix a turn shares with the one before, so the chat's
-# context goes in the system prompt and only the history and the new message follow it.
+# Anthropic caches a prompt only up to a breakpoint, so its prompt ends the stable context with one,
+# which keeps the cached prefix for Anthropic's default five minutes.
+ANTHROPIC_CHAT_PROMPT = ChatPromptTemplate.from_messages([
+    ("system", CHAT_INSTRUCTIONS),
+    ("human", [
+        {"type": "text", "text": CHAT_CONTEXT, "cache_control": {"type": "ephemeral"}},
+        {"type": "text", "text": "\n\n" + CHAT_TURN},
+    ]),
+])
+
 CLI_CHAT_PROMPT = ChatPromptTemplate.from_messages([
-    ("system", CHAT_INSTRUCTIONS + "\n\nConversation context:\n{context_json}"),
-    ("human", "{history}Current user message:\n{question}"),
+    ("system", CHAT_INSTRUCTIONS + "\n\n" + CHAT_CONTEXT),
+    ("human", CHAT_TURN),
 ])
 
 _CITATION_TOKEN = re.compile(r"\[(?:p|pp)\.[^\]]*\]")
@@ -233,10 +252,17 @@ def _compact(value: object) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
 
 
-def _prompt_context(context: ChatContext) -> dict[str, object]:
-    """Return the context as the prompt shows it; the page count serves validation only."""
+def _prompt_values(context: ChatContext, question: str) -> dict[str, str]:
+    """Return the values of a chat prompt for `question` in `context`: the stable context, then the
+    history when there is any. The page count serves validation only."""
 
-    return context.model_dump(mode="json", exclude={"paper": {"page_count"}})
+    packed = context.model_dump(mode="json", exclude={"paper": {"page_count"}})
+    history = packed.pop("history")
+    return {
+        "context_json": _compact(packed),
+        "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
+        "question": question,
+    }
 
 
 def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -> object:
@@ -246,13 +272,7 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
     for a CLI session that already holds the rest. A CLI failure Core reports is a model failure.
     """
 
-    packed = _prompt_context(context)
-    history = packed.pop("history")
-    system, human = CLI_CHAT_PROMPT.invoke({
-        "context_json": _compact(packed),
-        "history": f"Conversation history:\n{_compact(history)}\n\n" if history else "",
-        "question": question,
-    }).to_messages()
+    system, human = CLI_CHAT_PROMPT.invoke(_prompt_values(context, question)).to_messages()
     from meridian_harness.server import CoreCallbackError
 
     try:
@@ -276,16 +296,20 @@ def _generate_answer(state: ChatState, runtime: Runtime[ChatRuntime]) -> dict[st
             "answer": _answer_on_cli(runtime.context.core, state["context"], state["text"]),
         }
     else:
-        prompt = CHAT_PROMPT.invoke({
-            "context_json": _compact(_prompt_context(state["context"])),
-            "question": state["text"],
-        })
+        settings = runtime.context.settings
+        template = ANTHROPIC_CHAT_PROMPT if caches_by_breakpoint(settings) else CHAT_PROMPT
+        prompt = template.invoke(_prompt_values(state["context"], state["text"]))
+        usage = UsageMetadataCallbackHandler()
+        started = time.monotonic()
         try:
-            candidate = model.invoke(prompt)
+            candidate = model.invoke(prompt, config={"callbacks": [usage]})
         except (ValidationError, OutputParserException) as cause:
             raise ModelInvocationError("模型输出格式无效", "structured_output") from cause
         except Exception as cause:
             raise ModelInvocationError.from_exception(cause) from cause
+        finally:
+            if usage.usage_metadata:
+                _log.info(usage_line(settings, time.monotonic() - started, usage.usage_metadata))
     runtime.context.core.check_cancelled()
     try:
         answer = ChatAnswer.model_validate(candidate)
@@ -353,7 +377,7 @@ def build_chat_method(
         try:
             result = CHAT_GRAPH.invoke(
                 {"chat_id": chat_id, "text": text},
-                context=ChatRuntime(core=context, model=model),
+                context=ChatRuntime(core=context, model=model, settings=chat_model),
             )
         except ModelInvocationError as cause:
             from meridian_harness.server import HarnessFailure

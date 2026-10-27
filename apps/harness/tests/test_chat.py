@@ -4,15 +4,22 @@ import json
 import unittest
 from collections.abc import Callable
 from threading import Event
+from typing import Any
 
 from langchain_core.exceptions import OutputParserException
 from langchain_core.language_models import BaseChatModel, GenericFakeChatModel
 from langchain_core.runnables import Runnable, RunnableLambda
-from provider_stand_in import ProviderStandIn
+from provider_stand_in import AnthropicStandIn, ProviderStandIn
 
 from meridian_harness.protocol import ProtocolViolation
 from meridian_harness.server import CoreCallbackError, HarnessFailure, RequestContext
-from meridian_harness.workflows.chat import CHAT_GRAPH, CHAT_PROMPT, build_chat_method
+from meridian_harness.workflows.chat import (
+    CHAT_GRAPH,
+    CHAT_INSTRUCTIONS,
+    CHAT_PROMPT,
+    ChatContext,
+    build_chat_method,
+)
 
 
 def _answering(
@@ -185,6 +192,108 @@ class ChatWorkflowTests(unittest.TestCase):
         self.assertEqual(raised.exception.detail, "structured_output")
 
 
+class ChatPromptCacheTests(unittest.TestCase):
+    def test_an_api_turn_sends_the_same_parts_with_the_paper_before_the_history(self) -> None:
+        context = _paper_chat_context(_HISTORY)
+        packed = ChatContext.model_validate(context).model_dump(
+            mode="json", exclude={"paper": {"page_count"}},
+        )
+        before = (
+            f"Conversation context:\n{_compact(packed)}\n\nCurrent user message:\nWhat changed?"
+        )
+        stable = {"title": packed["title"], "paper": packed["paper"]}
+        expected = (
+            f"Conversation context:\n{_compact(stable)}\n\n"
+            f"Conversation history:\n{_compact(packed['history'])}\n\n"
+            "Current user message:\nWhat changed?"
+        )
+        for route, (system, human) in _api_requests(context).items():
+            with self.subTest(route=route):
+                self.assertEqual(system, CHAT_INSTRUCTIONS)
+                self.assertEqual(human, expected)
+                parts = _parts(packed, "What changed?")
+                self.assertEqual(sorted(parts.values()), sorted(_parts_of(before).values()))
+                self.assertEqual(_parts_of(human), parts)
+                order = [human.index(parts[name]) for name in _STABLE_FIRST]
+                self.assertEqual(order, sorted(order))
+
+    def test_consecutive_turns_of_a_paper_chat_share_the_whole_stable_prefix(self) -> None:
+        turns = [_HISTORY[:0], _HISTORY[:2], _HISTORY]
+        sent = [_api_requests(_paper_chat_context(history)) for history in turns]
+        for route in sent[0]:
+            with self.subTest(route=route):
+                system, human = sent[0][route]
+                stable = human[: human.index("\n\nCurrent user message:")]
+                self.assertIn("Second page.", stable)
+                self.assertIn("A note of mine.", stable)
+                for later in sent[1:]:
+                    self.assertEqual(later[route][0], system)
+                    self.assertTrue(
+                        later[route][1].startswith(f"{stable}\n\nConversation history:"),
+                    )
+
+    def test_an_anthropic_turn_ends_the_stable_context_with_a_five_minute_breakpoint(
+        self,
+    ) -> None:
+        bodies = []
+        for history in (_HISTORY[:0], _HISTORY[:2], _HISTORY):
+            with AnthropicStandIn({"answer": "Answer"}) as service:
+                _ask(service.runtime, _paper_chat_context(history))
+            (body,) = service.requests
+            bodies.append(body)
+        for body in bodies:
+            self.assertEqual(json.dumps(body).count("cache_control"), 1)
+            (message,) = body["messages"]
+            cached, rest = message["content"]
+            self.assertEqual(cached["cache_control"], {"type": "ephemeral"})
+            self.assertTrue(cached["text"].startswith("Conversation context:\n"))
+            self.assertIn("Second page.", cached["text"])
+            self.assertNotIn("Earlier", cached["text"])
+            self.assertTrue(rest["text"].endswith("Current user message:\nWhat changed?"))
+            self.assertEqual(body["system"], bodies[0]["system"])
+            self.assertEqual(cached, bodies[0]["messages"][0]["content"][0])
+        self.assertIn("Earlier answer", bodies[2]["messages"][0]["content"][1]["text"])
+
+    def test_no_other_provider_is_sent_a_cache_breakpoint(self) -> None:
+        for provider, protocol in (
+            ("openai", "responses"), ("openai-compatible", "chat-completions"),
+        ):
+            with self.subTest(provider=provider):
+                service = ProviderStandIn({"answer": "Answer"})
+                build_chat_method(_answering("Answer", service))(
+                    RequestContext(30, Event(), _reads(_paper_chat_context(_HISTORY))),
+                    _params(provider, protocol),
+                )
+                self.assertNotIn("cache_control", json.dumps(service.requests[0]))
+
+    def test_an_api_turn_logs_its_input_tokens_with_the_cached_ones(self) -> None:
+        usage = {
+            "input_tokens": 120, "output_tokens": 150,
+            "cache_read_input_tokens": 15_000, "cache_creation_input_tokens": 0,
+        }
+        with (
+            AnthropicStandIn({"answer": "Answer"}, usage) as service,
+            self.assertLogs("meridian_harness", "INFO") as logged,
+        ):
+            _ask(service.runtime, _paper_chat_context(_HISTORY))
+        (line,) = logged.output
+        self.assertRegex(
+            line,
+            r"^INFO:meridian_harness\.workflows\.chat:anthropic stand-in-model: \d+\.\d s, "
+            r"15120 input tokens \(15000 cached\), 150 output tokens$",
+        )
+
+        service = ProviderStandIn({"answer": "Answer"})
+        with self.assertLogs("meridian_harness", "INFO") as logged:
+            build_chat_method(_answering("Answer", service))(
+                RequestContext(31, Event(), _read), _params(),
+            )
+        (line,) = logged.output
+        self.assertRegex(
+            line, r"openai paper-model: \d+\.\d s, 1 input tokens \(0 cached\), 1 output tokens$",
+        )
+
+
 class ChatOnCliTests(unittest.TestCase):
     def test_a_cli_model_asks_core_for_the_one_model_call_and_builds_no_provider(self) -> None:
         calls: list[object] = []
@@ -295,6 +404,120 @@ class ChatOnCliTests(unittest.TestCase):
         self.assertEqual(raised.exception.kind, "model_error")
         self.assertEqual(str(raised.exception), "claude 运行失败：usage limit reached")
         self.assertEqual(raised.exception.detail, "subscription_cli")
+
+
+_HISTORY = [
+    {"role": "user", "text": "Earlier question"},
+    {"role": "assistant", "text": "Earlier answer"},
+    {"role": "user", "text": "Second question"},
+    {"role": "assistant", "text": "Second answer"},
+]
+# The parts of a turn in the order an API request carries them.
+_STABLE_FIRST = [
+    "title", "paper metadata", "paper abstract", "paper pages", "reading", "history", "question",
+]
+
+
+def _compact(value: object) -> str:
+    return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def _paper_chat_context(history: list[dict[str, str]]) -> dict[str, object]:
+    return {
+        "title": "Paper discussion",
+        "history": history,
+        "paper": {
+            "id": "paper-1",
+            "title": "Grounded paper",
+            "authors": ["A. Author"],
+            "year": 2024,
+            "abstract": "An abstract.",
+            "pages": [
+                {"number": 1, "text": "First page."},
+                {"number": 2, "text": "Second page."},
+            ],
+            "pageCount": 12,
+            "reading": {
+                "highlights": [{"page": 1, "quote": "First", "note": ""}],
+                "notes": [{"page": 2, "text": "A note of mine."}],
+                "remark": "",
+            },
+        },
+    }
+
+
+def _parts(packed: dict[str, Any], question: str) -> dict[str, str]:
+    """Each part of a turn's context, packed as the prompt shows it, as the bytes it is sent as."""
+
+    paper = packed["paper"]
+    # Without its closing brace, the metadata is the bytes the paper object starts with.
+    return {
+        "title": _compact(packed["title"]),
+        "paper metadata": _compact({
+            key: value for key, value in paper.items()
+            if key not in {"abstract", "pages", "reading"}
+        })[:-1],
+        "paper abstract": _compact(paper["abstract"]),
+        "paper pages": _compact(paper["pages"]),
+        "reading": _compact(paper["reading"]),
+        "history": _compact(packed["history"]),
+        "question": question,
+    }
+
+
+def _parts_of(human: str) -> dict[str, str]:
+    """The parts of a human message in either layout: the history in the context, or after it."""
+
+    body = human.removeprefix("Conversation context:\n")
+    body, question = body.split("\n\nCurrent user message:\n")
+    context, _, history = body.partition("\n\nConversation history:\n")
+    packed = json.loads(context)
+    if history:
+        packed["history"] = json.loads(history)
+    return _parts(packed, question)
+
+
+def _reads(context: dict[str, object]) -> Callable[[str, object], object]:
+    def read(method: str, _params: object) -> object:
+        if method != "chat.context":
+            raise AssertionError(f"Unexpected callback: {method}")
+        return context
+
+    return read
+
+
+def _ask(runtime: dict[str, object], context: dict[str, object]) -> object:
+    return build_chat_method()(
+        RequestContext(32, Event(), _reads(context)),
+        {**_params(), "model": runtime},
+    )
+
+
+def _api_requests(context: dict[str, object]) -> dict[str, tuple[str, str]]:
+    """The system text and the human text each API route sends for one turn in `context`."""
+
+    sent: dict[str, tuple[str, str]] = {}
+    responses = ProviderStandIn({"answer": "Answer"})
+    build_chat_method(_answering("Answer", responses))(
+        RequestContext(33, Event(), _reads(context)), _params(),
+    )
+    system, human = responses.requests[0]["input"]
+    sent["openai-responses"] = (system["content"], human["content"])
+    completions = ProviderStandIn({"answer": "Answer"})
+    build_chat_method(_answering("Answer", completions))(
+        RequestContext(34, Event(), _reads(context)),
+        _params("openai-compatible", "chat-completions"),
+    )
+    system, human = completions.requests[0]["messages"]
+    sent["compatible-chat"] = (system["content"], human["content"])
+    with AnthropicStandIn({"answer": "Answer"}) as anthropic:
+        _ask(anthropic.runtime, context)
+    body = anthropic.requests[0]
+    (message,) = body["messages"]
+    content = message["content"]
+    text = content if isinstance(content, str) else "".join(block["text"] for block in content)
+    sent["anthropic-messages"] = (body["system"], text)
+    return sent
 
 
 def _read(method: str, _params: object) -> object:
