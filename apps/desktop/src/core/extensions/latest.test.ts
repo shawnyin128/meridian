@@ -1,6 +1,6 @@
-import { existsSync, mkdtempSync, rmSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import type { HttpGet } from '../net/http.js'
 import {
@@ -12,6 +12,7 @@ const temporary: string[] = []
 afterEach(() => {
   for (const root of temporary.splice(0)) rmSync(root, { recursive: true, force: true })
   vi.useRealTimers()
+  vi.restoreAllMocks()
 })
 
 /** `BUNDLED_PLUGIN_VERSION` with its patch number moved by `step`. */
@@ -68,6 +69,33 @@ describe('createPluginVersionCheck', () => {
       expect(await make().check()).toBe(BUNDLED_PLUGIN_VERSION)
       expect(existsSync(file)).toBe(false)
       expect(seen).toEqual([])
+    }
+  })
+
+  it('新版本在文件里多写的键不影响读出已知版本,再查到新版本写回时原样留着', async () => {
+    const newer = patched(2)
+    const { make, file } = setup(async () => ({ status: 200, body: newer }))
+    mkdirSync(dirname(file), { recursive: true })
+    writeFileSync(file, JSON.stringify({ version: patched(1), checkedAt: '2026-09-21T00:00:00.000Z', source: { branch: 'master' } }))
+    const check = make()
+    expect(check.latest()).toBe(patched(1))
+    expect(check.checkedAt()).toBe('2026-09-21T00:00:00.000Z')
+    expect(await check.check()).toBe(newer)
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      version: newer, checkedAt: '2026-09-22T00:00:00.000Z', source: { branch: 'master' },
+    })
+  })
+
+  it('读不了的文件报出来,当作没查过,用打包时的插件版本', () => {
+    const reported = vi.spyOn(console, 'error').mockImplementation(() => {})
+    for (const text of ['not json', JSON.stringify({ version: 2, checkedAt: '2026-09-21T00:00:00.000Z' })]) {
+      const { make, file } = setup(async () => ({ status: 200, body: '' }))
+      mkdirSync(dirname(file), { recursive: true })
+      writeFileSync(file, text)
+      const check = make()
+      expect(check.latest()).toBe(BUNDLED_PLUGIN_VERSION)
+      expect(check.checkedAt()).toBeNull()
+      expect(reported).toHaveBeenLastCalledWith(expect.stringContaining(file))
     }
   })
 
