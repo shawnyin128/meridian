@@ -76,7 +76,7 @@ describe('占位文字和命令的省略号', () => {
   // The busy states shown while something runs, the only texts that still end in an ellipsis.
   const BUSY = [
     'common.loading', 'common.saving', 'chat.thinking', 'inbox.discovering', 'inbox.check.checking', 'papers.upload.importing', 'papers.publication.filling',
-    'project.workspace.adding', 'project.workspace.connecting', 'project.workspace.choosing', 'watches.suggesting',
+    'project.workspace.adding', 'watches.suggesting',
     'settings.storage.checkingDirectory', 'settings.storage.resetting', 'settings.storage.backupSwitching',
     'settings.storage.backupDeleting', 'settings.model.saving', 'settings.model.connection.testing',
     'settings.extensions.plugin.checking', 'settings.extensions.app.checking', 'settings.extensions.app.downloading',
