@@ -90,7 +90,10 @@ export const ChatRecordSchema = ChatSessionSchema.omit({ messageCount: true }).e
 
 const TrashBase = TrashEntrySchema.omit({ kind: true, restorable: true })
 
-/** One `.meridian/idea-files.json` entry: a file idea `idea` holds, kept where it is on disk at `path`. */
+/**
+ * One `.meridian/idea-files.json` entry: a file idea `idea` holds, kept where it is on disk at `path`,
+ * which is relative to the vault, parts separated by `/`, for a file inside the vault, else absolute.
+ */
 export const IdeaFileRecordSchema = AttachmentSchema.extend({ idea: z.string(), path: z.string() })
 export type IdeaFileRecord = z.infer<typeof IdeaFileRecordSchema>
 

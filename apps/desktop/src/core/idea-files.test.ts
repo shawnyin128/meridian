@@ -42,6 +42,29 @@ describe('idea files', () => {
     expect(readFileSync(join(vault, '.meridian/ideas.json'), 'utf8')).toBe(ideasBefore)
   })
 
+  it('stores a file inside the vault relative to it and lists it at its absolute path, also once the vault has moved', () => {
+    const idea = store.createIdea(undefined, '熵正则路由', '正文')
+    mkdirSync(join(vault, '.meridian/designs'), { recursive: true })
+    writeFileSync(join(vault, '.meridian/designs/d1.md'), '# 设计卡')
+    const inside = store.addIdeaFile(idea.id, { name: 'd1.md', size: '1 KB', path: join(vault, '.meridian/designs/d1.md') })
+    const outside = store.addIdeaFile(idea.id, PROPOSAL)
+
+    expect(stored('idea-files').map((record) => record['path'])).toEqual([PROPOSAL.path, '.meridian/designs/d1.md'])
+    expect(inside.attachment.path).toBe(join(vault, '.meridian/designs/d1.md'))
+    store.deleteIdeaFile(idea.id, inside.attachment.id)
+    store.restoreTrash(store.listTrash()[0]!.id)
+    expect(stored('idea-files').map((record) => record['path'])).toEqual([PROPOSAL.path, '.meridian/designs/d1.md'])
+
+    const moved = mkdtempSync(join(tmpdir(), 'meridian-idea-files-moved-'))
+    cpSync(vault, moved, { recursive: true })
+    try {
+      expect(createVaultStore(moved).listIdeaFiles().map((file) => file.attachment.path))
+        .toEqual([outside.attachment.path, join(moved, '.meridian/designs/d1.md')])
+    } finally {
+      rmSync(moved, { recursive: true, force: true })
+    }
+  })
+
   it('refuses a file with a relative path, and one for an idea that does not exist', () => {
     const idea = store.createIdea(undefined, '熵正则路由', '正文')
     expect(() => store.addIdeaFile(idea.id, { ...PROPOSAL, path: 'proposal.md' })).toThrow(/绝对路径/)
