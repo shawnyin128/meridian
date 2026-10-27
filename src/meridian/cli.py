@@ -21,6 +21,7 @@ from meridian.workspace_protocol import (
     IDEA_CONTEXT_MAX_LEN,
     IDEA_TITLE_MAX_LEN,
     add_workspace_agent_idea,
+    add_workspace_agent_idea_file,
     add_workspace_agent_task,
     add_workspace_event,
     inspect_project_workspace,
@@ -215,6 +216,19 @@ def build_parser() -> argparse.ArgumentParser:
     workspace_idea_add.add_argument("--date", default=None, help="Idea date in YYYY-MM-DD; defaults to today.")
     workspace_idea_add.add_argument("--node", default=None, help="Optional Lab graph node id.")
     workspace_idea_add.add_argument("--json-out", type=Path, default=None, help="Optional write result JSON path.")
+
+    workspace_idea_file_add = workspace_subparsers.add_parser(
+        "idea-file-add",
+        help="Attach a file in the repository, such as a proposal, to an idea, for the Meridian App to show with it.",
+    )
+    workspace_idea_file_add.add_argument("--root", type=Path, default=Path.cwd(), help="Repository or .meridian root.")
+    workspace_idea_file_add.add_argument("--id", required=True, help="Stable file identifier.")
+    workspace_idea_file_add.add_argument(
+        "--idea", required=True, help="The id given to idea-add, or an App idea id the workspace changes list."
+    )
+    workspace_idea_file_add.add_argument("--path", required=True, help="Existing file relative to the repository.")
+    workspace_idea_file_add.add_argument("--date", default=None, help="Date in YYYY-MM-DD; defaults to today.")
+    workspace_idea_file_add.add_argument("--json-out", type=Path, default=None, help="Optional write result JSON path.")
 
     workspace_task_add = workspace_subparsers.add_parser(
         "task-add",
@@ -481,6 +495,19 @@ def main(argv: list[str] | None = None) -> int:
             if json_out:
                 target = _write_json_payload(json_out, result)
                 print(f"Wrote workspace task result JSON: {target}")
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 0
+
+        if args.product == "workspace" and args.command == "idea-file-add":
+            json_out = _preflight_json_out(args.json_out)
+            if args.json_out and json_out is None:
+                return 1
+            result = add_workspace_agent_idea_file(
+                args.root, file_id=args.id, idea_id=args.idea, path=args.path, file_date=args.date,
+            )
+            if json_out:
+                target = _write_json_payload(json_out, result)
+                print(f"Wrote workspace idea file result JSON: {target}")
             print(json.dumps(result, indent=2, ensure_ascii=False))
             return 0
 

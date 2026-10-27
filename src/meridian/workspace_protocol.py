@@ -21,6 +21,8 @@ WORKSPACE_CHANGE_PAGE_SCHEMA_VERSION = "meridian.workspace-change-page.v1"
 WORKSPACE_IDEA_SCHEMA_VERSION = "meridian.workspace-idea.v1"
 WORKSPACE_AGENT_IDEAS_SCHEMA_VERSION = "meridian.workspace-agent-ideas.v1"
 WORKSPACE_AGENT_IDEA_WRITE_SCHEMA_VERSION = "meridian.workspace-agent-idea-write.v1"
+WORKSPACE_AGENT_IDEA_FILES_SCHEMA_VERSION = "meridian.workspace-agent-idea-files.v1"
+WORKSPACE_AGENT_IDEA_FILE_WRITE_SCHEMA_VERSION = "meridian.workspace-agent-idea-file-write.v1"
 WORKSPACE_AGENT_TASKS_SCHEMA_VERSION = "meridian.workspace-agent-tasks.v1"
 WORKSPACE_AGENT_TASK_WRITE_SCHEMA_VERSION = "meridian.workspace-agent-task-write.v1"
 
@@ -30,11 +32,13 @@ GRAPH_PATH = Path(".meridian/graph/graph.json")
 EVENTS_PATH = Path(".meridian/events/events.json")
 CHANGES_PATH = Path(".meridian/control/changes.json")
 AGENT_IDEAS_PATH = Path(".meridian/ideas/ideas.json")
+AGENT_IDEA_FILES_PATH = Path(".meridian/ideas/files.json")
 AGENT_TASKS_PATH = Path(".meridian/tasks/tasks.json")
 
 _EVENT_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")
 _APP_OR_GENERATED_SURFACES = {
-    MANIFEST_PATH, PLAN_PATH, GRAPH_PATH, EVENTS_PATH, CHANGES_PATH, AGENT_IDEAS_PATH, AGENT_TASKS_PATH,
+    MANIFEST_PATH, PLAN_PATH, GRAPH_PATH, EVENTS_PATH, CHANGES_PATH, AGENT_IDEAS_PATH, AGENT_IDEA_FILES_PATH,
+    AGENT_TASKS_PATH,
 }
 EVENT_KINDS = {"start", "reopen", "result", "decision", "complete", "note"}
 _EVENT_TITLE_MAX_LEN = 120
@@ -484,6 +488,77 @@ def add_workspace_agent_idea(
     }
 
 
+def add_workspace_agent_idea_file(
+    root: Path,
+    *,
+    file_id: str,
+    idea_id: str,
+    path: str,
+    file_date: str | None = None,
+) -> dict[str, Any]:
+    """Attach one file in the workspace to an idea, for the Meridian App to show with that idea.
+
+    ``idea_id`` is the id given to :func:`add_workspace_agent_idea`, or the id of an idea the App
+    lists in the workspace changes. ``path`` is an existing file inside the repository, stored
+    relative to it; the App keeps the file where it is. Files already in the file are kept as written.
+    Writing the same id with the same content again is a no-op; the same id with different content,
+    an id that is not URL-safe, or a path that is missing, outside the repository or a protocol
+    surface raises :class:`WorkspaceProtocolError`.
+    """
+
+    repository = _repository_root(root)
+    _read_manifest(repository)
+    normalized_id = file_id.strip()
+    normalized_idea = idea_id.strip()
+    if not _EVENT_ID.fullmatch(normalized_id) or not _EVENT_ID.fullmatch(normalized_idea):
+        raise WorkspaceProtocolError("idea file id and idea id must be 1-128 URL-safe identifier characters")
+    entry = {
+        "id": normalized_id,
+        "idea_id": normalized_idea,
+        "path": _source_path(repository, path, label="idea file"),
+        "date": _event_date(file_date),
+    }
+
+    target = repository / AGENT_IDEA_FILES_PATH
+    if target.exists():
+        payload = _validate_agent_idea_files(_read_json(target, label="workspace agent idea files"))
+    else:
+        payload = {"schema_version": WORKSPACE_AGENT_IDEA_FILES_SCHEMA_VERSION, "files": []}
+    prior = next(
+        (item for item in payload["files"] if isinstance(item, dict) and item.get("id") == normalized_id), None
+    )
+    if prior is not None:
+        if prior != entry:
+            raise WorkspaceProtocolError(f"idea file id already exists with different content: {normalized_id}")
+        status = "unchanged"
+    else:
+        payload["files"].append(entry)
+        _atomic_json(target, payload)
+        status = "created"
+    return {
+        "schema_version": WORKSPACE_AGENT_IDEA_FILE_WRITE_SCHEMA_VERSION,
+        "status": status,
+        "path": AGENT_IDEA_FILES_PATH.as_posix(),
+        "file": entry,
+    }
+
+
+def _validate_agent_idea_files(value: Any) -> dict[str, Any]:
+    """Validate the agent idea files file itself and return it with its files exactly as stored.
+
+    Stored files are not revalidated: one this version cannot read must not block a new file, and
+    the App reads the file entry by entry.
+    """
+
+    payload = _object(value, "workspace agent idea files")
+    _required_keys(payload, {"schema_version", "files"}, "workspace agent idea files")
+    if payload.get("schema_version") != WORKSPACE_AGENT_IDEA_FILES_SCHEMA_VERSION:
+        raise WorkspaceProtocolError("workspace agent idea files are not meridian.workspace-agent-idea-files.v1")
+    if not isinstance(payload.get("files"), list):
+        raise WorkspaceProtocolError("workspace agent idea files must be a JSON array")
+    return payload
+
+
 def add_workspace_agent_task(
     root: Path,
     *,
@@ -806,22 +881,22 @@ def _parse_change_cursor(cursor: str) -> tuple[str, int] | None:
     return (epoch, sequence) if sequence >= 0 else None
 
 
-def _source_path(repository: Path, source: str) -> str:
+def _source_path(repository: Path, source: str, *, label: str = "event source") -> str:
     raw = source.strip()
     if not raw:
-        raise WorkspaceProtocolError("event source must not be empty")
+        raise WorkspaceProtocolError(f"{label} must not be empty")
     relative = Path(raw)
     if relative.is_absolute():
-        raise WorkspaceProtocolError("event source must be relative to the workspace root")
+        raise WorkspaceProtocolError(f"{label} must be relative to the workspace root")
     try:
         resolved = (repository / relative).resolve(strict=True)
         normalized = resolved.relative_to(repository)
     except (OSError, ValueError) as exc:
-        raise WorkspaceProtocolError("event source must be an existing file inside the workspace") from exc
+        raise WorkspaceProtocolError(f"{label} must be an existing file inside the workspace") from exc
     if not resolved.is_file():
-        raise WorkspaceProtocolError("event source must be an existing file inside the workspace")
+        raise WorkspaceProtocolError(f"{label} must be an existing file inside the workspace")
     if normalized in _APP_OR_GENERATED_SURFACES:
-        raise WorkspaceProtocolError("event source must be durable evidence, not a protocol projection")
+        raise WorkspaceProtocolError(f"{label} must be durable evidence, not a protocol projection")
     return normalized.as_posix()
 
 

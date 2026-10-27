@@ -114,7 +114,13 @@ of at most 80 characters that names the idea on its own, a `body` that states
 it, and a `context` of at most 60 characters naming the work it came up in,
 without dates, times or agent names; the App records those. Pass `node` when it
 grows out of a Lab node. Do not record implementation details, TODOs, bug
-notes, or restatements of an existing idea.
+notes, or restatements of an existing idea. When you write a file in the
+repository for an idea, such as a proposal, call
+`meridian.workspace_idea_file_add` once (or `python -m meridian workspace
+idea-file-add`) with a stable `file_id`, the idea's `idea_id` (the one you gave
+`meridian.workspace_idea_add`, or an App idea id from
+`meridian.workspace_changes`) and the file's `path` relative to the repository;
+the App shows the file with the idea and keeps it where it is.
 
 For a long-running task where App edits could invalidate the implementation,
 call `meridian.workspace_changes` once more with the current cursor before

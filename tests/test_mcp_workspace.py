@@ -207,6 +207,7 @@ class MCPWorkspaceTests(unittest.TestCase):
                 "meridian.workspace_plan",
                 "meridian.workspace_event_add",
                 "meridian.workspace_idea_add",
+                "meridian.workspace_idea_file_add",
                 "meridian.workspace_task_add",
             },
         )
@@ -364,6 +365,29 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertFalse((root / ".meridian/ideas/ideas.json").exists())
             properties = definition["inputSchema"]["properties"]
             self.assertEqual((properties["title"]["maxLength"], properties["context"]["maxLength"]), (80, 60))
+
+    def test_idea_file_add_records_a_workspace_file_for_an_idea_and_rejects_unknown_arguments(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            (root / "docs").mkdir()
+            (root / "docs/proposal.md").write_text("# Proposal\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+            arguments = {"file_id": "proposal", "idea_id": "reuse-distance", "path": "docs/proposal.md", "date": "2026-10-21"}
+
+            _, created = self._call(server, "meridian.workspace_idea_file_add", arguments)
+            _, repeated = self._call(server, "meridian.workspace_idea_file_add", arguments)
+            unknown, _ = self._call(server, "meridian.workspace_idea_file_add", {**arguments, "name": "Proposal"})
+            missing, _ = self._call(server, "meridian.workspace_idea_file_add", {**arguments, "file_id": "x", "path": "nope.md"})
+
+            self.assertEqual((created["status"], repeated["status"]), ("created", "unchanged"))
+            self.assertTrue(unknown["isError"])
+            self.assertTrue(missing["isError"])
+            stored = json.loads((root / ".meridian/ideas/files.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored, {
+                "schema_version": "meridian.workspace-agent-idea-files.v1",
+                "files": [{"id": "proposal", "idea_id": "reuse-distance", "path": "docs/proposal.md", "date": "2026-10-21"}],
+            })
 
     def test_task_add_records_agent_tasks_idempotently_and_leaves_the_plan_alone(self) -> None:
         with TemporaryDirectory() as tmp:

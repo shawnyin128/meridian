@@ -143,6 +143,13 @@ def capabilities(*, detail: str = "summary") -> dict[str, Any]:
             "outputs": ["status", "path", "idea"],
         },
         {
+            "name": "meridian.workspace_idea_file_add",
+            "workflow": "Project Workspace",
+            "summary": "Attach an idempotent file in the repository to an idea, for the App to show with it.",
+            "inputs": ["workspace_root", "file_id", "idea_id", "path", "date"],
+            "outputs": ["status", "path", "file"],
+        },
+        {
             "name": "meridian.workspace_task_add",
             "workflow": "Project Workspace",
             "summary": "Add an idempotent concrete next step agreed with the user to the App's project plan.",
