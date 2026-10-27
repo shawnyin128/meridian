@@ -359,8 +359,9 @@ export function createWikiProposals({ store, pdf, now }: {
      * The user's decision on queued record `id`: `decline` rejects it as declined with `reason`; `apply`
      * reruns the staleness, validation and quote checks and applies it as its producer (recorded in the
      * change log under its trigger's chip), or rejects it as stale or invalid. Throws if there is no such
-     * record, it is not queued, or applying it would write a project conclusion the user has not verified
-     * (the record stays queued).
+     * record or it is not queued, and, leaving the record queued, `newer-version` when its stored ops
+     * carry keys this version does not know, or `refused` when applying it would write a project
+     * conclusion the user has not verified.
      */
     async decide(id: string, decision: 'apply' | 'decline', reason?: string): Promise<ProposalReceipt> {
       const record = store.proposalRecords().find((r) => r.id === id)
@@ -372,6 +373,10 @@ export function createWikiProposals({ store, pdf, now }: {
       if (decision === 'decline') {
         next = { ...record, status: 'rejected', reason: { kind: 'declined', message: reason ?? '' }, decided }
       } else {
+        const unknown = store.proposalUnknownOpKeys(id)
+        if (unknown.length > 0) {
+          throw new CallError('newer-version', `这条提案的操作带着这个版本不认识的 ${unknown.join('、')}，需要更新 App 才能应用`)
+        }
         const outcome = await evaluate(proposal)
         const unverified = await unverifiedOf(proposal)
         if (outcome.status === 'rejected') {

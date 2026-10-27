@@ -1,8 +1,9 @@
-import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
+import { mkdirSync, writeFileSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { z } from 'zod'
 import type { HttpGet } from '../net/http.js'
 import bundledVersionFile from '../../../../../VERSION?raw'
+import { readStoredFile, withUnknownFields } from '../vault/stored-records.js'
 import { olderThan } from './status.js'
 
 /** The plugin version this build was made with: the skills and MCP share it, independent of the app's version. */
@@ -31,8 +32,9 @@ export interface PluginVersionCheck {
 }
 
 /**
- * Tracks the newest plugin version. `file` keeps the last version read from master across restarts;
- * `onLatest` receives the newest version after every successful read.
+ * Tracks the newest plugin version. `file` keeps the last version read from master across restarts,
+ * with the keys this version does not know kept on every write; a `file` it cannot read is reported
+ * and treated as never checked. `onLatest` receives the newest version after every successful read.
  */
 export function createPluginVersionCheck({ get, file, now, onLatest }: {
   get: HttpGet
@@ -40,7 +42,8 @@ export function createPluginVersionCheck({ get, file, now, onLatest }: {
   now: () => number
   onLatest: (version: string) => void
 }): PluginVersionCheck {
-  let stored = existsSync(file) ? StoredSchema.parse(JSON.parse(readFileSync(file, 'utf8'))) : null
+  const read = readStoredFile(file, StoredSchema)
+  let stored = read?.value ?? null
   const latest = () => (stored !== null && olderThan(BUNDLED_PLUGIN_VERSION, stored.version)
     ? stored.version : BUNDLED_PLUGIN_VERSION)
 
@@ -51,7 +54,7 @@ export function createPluginVersionCheck({ get, file, now, onLatest }: {
     if (!/^\d+\.\d+\.\d+$/.test(version)) return latest()
     stored = { version, checkedAt: new Date(now()).toISOString() }
     mkdirSync(dirname(file), { recursive: true })
-    writeFileSync(file, `${JSON.stringify(stored, null, 2)}\n`, 'utf8')
+    writeFileSync(file, `${JSON.stringify(withUnknownFields(stored, read?.unknown ?? []), null, 2)}\n`, 'utf8')
     onLatest(latest())
     return latest()
   }

@@ -93,20 +93,11 @@ const WorkspaceChangesSchema = z.object({
   epoch: z.string(),
   next_sequence: z.number().int().positive(),
   ideas: z.array(IdeaProjectionSchema),
-  changes: z.array(WorkspaceChangeSchema).max(MAX_RETAINED_CHANGES),
+  /** Changes as written; parsedChanges reads each one on its own with WorkspaceChangeSchema. */
+  changes: z.array(z.unknown()).max(MAX_RETAINED_CHANGES),
 }).strict().superRefine((value, context) => {
   if (new Set(value.ideas.map((idea) => idea.id)).size !== value.ideas.length) {
     context.addIssue({ code: 'custom', path: ['ideas'], message: 'Idea IDs must be unique' })
-  }
-  let previous = 0
-  for (const [index, change] of value.changes.entries()) {
-    if (change.sequence <= previous || change.sequence >= value.next_sequence) {
-      context.addIssue({
-        code: 'custom', path: ['changes', index, 'sequence'],
-        message: 'Change sequences must increase and remain below next_sequence',
-      })
-    }
-    previous = change.sequence
   }
 })
 
@@ -340,14 +331,12 @@ function changesOf(
       at,
       ...change,
     }))
-  // Unknown fields go back before the oldest changes are dropped: a change is located by its position.
-  const next = withUnknownFields({
+  return withUnknownFields({
     ...base,
     next_sequence: base.next_sequence + additions.length,
     ideas: projected,
-    changes: [...base.changes, ...additions],
+    changes: [...base.changes, ...additions].slice(-MAX_RETAINED_CHANGES),
   }, prior?.unknown ?? []) as WorkspaceChanges
-  return { ...next, changes: next.changes.slice(-MAX_RETAINED_CHANGES) }
 }
 
 function planOf(project: ProjectRecord): { revision: string; value: JsonObject } {
@@ -650,11 +639,30 @@ function parsedObject(text: string | undefined): JsonObject | undefined {
   return obj(value)
 }
 
-/** The change journal in `text` with the fields this version does not know, or nothing. Throws when it cannot be read. */
-function parsedChanges(text: string | undefined): { value: WorkspaceChanges; unknown: UnknownField[] } | undefined {
+/**
+ * The change journal `file` holds as `text`, with the fields this version does not know, or nothing.
+ * Its changes stay as written; each one this version cannot read is reported on stderr. Throws when
+ * the journal cannot be read, or the sequences of the changes it reads do not increase below
+ * `next_sequence`.
+ */
+function parsedChanges(
+  file: string, text: string | undefined,
+): { value: WorkspaceChanges; unknown: UnknownField[] } | undefined {
   if (text === undefined) return undefined
   const read = readRecord(WorkspaceChangesSchema, JSON.parse(text))
   if ('error' in read) throw new Error(read.error)
+  let previous = 0
+  for (const [index, raw] of read.value.changes.entries()) {
+    const change = readRecord(WorkspaceChangeSchema, raw)
+    if ('error' in change) {
+      console.error(`[workspace] ${file}: change ${index + 1} cannot be read by this version and is kept as it is (the App may need an update): ${change.error}`)
+      continue
+    }
+    if (change.value.sequence <= previous || change.value.sequence >= read.value.next_sequence) {
+      throw new Error(`${file}: change sequences must increase and remain below next_sequence`)
+    }
+    previous = change.value.sequence
+  }
   return read
 }
 
@@ -688,7 +696,7 @@ export async function writeProjectWorkspaceState(
         project,
         parsedObject(files.get(PLAN)),
         planned.value,
-        parsedChanges(files.get(CHANGES)),
+        parsedChanges(`${remote.host}:${CHANGES}`, files.get(CHANGES)),
         ideas,
       )
       await writeRemoteFiles(
@@ -708,7 +716,7 @@ export async function writeProjectWorkspaceState(
     project,
     existsSync(planFile) ? parsedObject(readFileSync(planFile, 'utf8')) : undefined,
     planned.value,
-    existsSync(changesFile) ? parsedChanges(readFileSync(changesFile, 'utf8')) : undefined,
+    existsSync(changesFile) ? parsedChanges(changesFile, readFileSync(changesFile, 'utf8')) : undefined,
     ideas,
   )
   atomicJson(planFile, planned.value)

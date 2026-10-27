@@ -2122,6 +2122,10 @@ export function createFixtureStore(
       proposals = structuredClone(rows)
     },
 
+    proposalUnknownOpKeys() {
+      return []
+    },
+
     nextProposalId() {
       return nextId('proposal')
     },

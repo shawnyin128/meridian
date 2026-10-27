@@ -323,6 +323,50 @@ describe('subscription choice', () => {
     expect(await config.runtime()).toMatchObject({ provider: 'anthropic' })
   })
 
+  it('keeps the keys a newer App added to the profiles file, at the top and on each profile by its source, when it saves the profiles again', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const file = join(root, HARNESS_MODEL_CONFIG_FILENAME)
+    writeFileSync(file, JSON.stringify({
+      schemaVersion: 'meridian.harness-model.v5', activeProfile: 'openai', order: ['openai', 'anthropic'],
+      profiles: [
+        {
+          provider: 'openai', protocol: 'responses', baseUrl: 'https://api.openai.com/v1', model: 'gpt-test',
+          authentication: 'api-key', region: 'eu',
+          credential: { storage: 'electron-safe-storage.v1', ciphertext: 'aaaa-ianepo', lastFour: 'aaaa', sealedBy: 'mac' },
+        },
+        { ...apiProfile, model: 'claude-test', tier: 'pro' },
+      ],
+    }), 'utf8')
+
+    const config = await createHarnessModelConfig(root, credentialVault())
+    expect(await config.runtime()).toMatchObject({ provider: 'openai', model: 'gpt-test', apiKey: 'openai-aaaa' })
+    await config.update({ ...apiProfile, model: 'claude-next', apiKey: 'anthropic-bbbb' })
+
+    const saved = JSON.parse(readFileSync(file, 'utf8')) as { activeProfile: string; order: string[]; profiles: Record<string, unknown>[] }
+    expect(saved.activeProfile).toBe('anthropic')
+    expect(saved.order).toEqual(['openai', 'anthropic'])
+    expect(saved.profiles.map((profile) => [profile['provider'], profile['model']])).toEqual([['anthropic', 'claude-next'], ['openai', 'gpt-test']])
+    expect(saved.profiles[0]).toMatchObject({ tier: 'pro' })
+    expect(saved.profiles[1]).toMatchObject({ region: 'eu', credential: { ciphertext: 'aaaa-ianepo', sealedBy: 'mac' } })
+  })
+
+  it('keeps the keys and CLIs a newer App added to the subscription file when it saves the choice again', async () => {
+    const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
+    const file = join(root, HARNESS_SUBSCRIPTION_FILENAME)
+    writeFileSync(file, JSON.stringify({
+      schemaVersion: 'meridian.harness-subscription.v1', active: 'codex', usage: { shown: true },
+      clis: { codex: { model: 'gpt-5-codex', effort: 'high' }, gemini: { model: 'gemini-pro' } },
+    }), 'utf8')
+
+    const config = await createHarnessModelConfig(root, credentialVault())
+    config.updateSubscription({ cli: 'claude', model: '' })
+
+    expect(JSON.parse(readFileSync(file, 'utf8'))).toEqual({
+      schemaVersion: 'meridian.harness-subscription.v1', active: 'claude', usage: { shown: true },
+      clis: { claude: { model: '' }, codex: { model: 'gpt-5-codex', effort: 'high' }, gemini: { model: 'gemini-pro' } },
+    })
+  })
+
   it('reads a subscription file with keys a newer App added and CLIs it does not know', async () => {
     const root = mkdtempSync(join(tmpdir(), 'meridian-model-config-'))
     writeFileSync(join(root, HARNESS_SUBSCRIPTION_FILENAME), JSON.stringify({
