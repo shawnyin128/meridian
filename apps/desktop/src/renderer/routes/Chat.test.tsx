@@ -675,14 +675,17 @@ describe('Chat composer', () => {
     await finish()
   })
 
-  it('快捷引用是一行的幽灵 chip，保存为想法是排在工具栏末尾的幽灵按钮，还没讨论时只是按不了，旁边不写字', () => {
+  it('上面一行只有快捷引用的幽灵 chip；下面一行是模型胶囊、一道细竖线，再是实验设计和保存为想法两个功能胶囊，还没讨论时保存为想法只是按不了', () => {
     const chips = [...document.querySelectorAll<HTMLButtonElement>('#qmChips button')]
     expect(chips.map((chip) => [chip.className, chip.querySelector('.fade-text')?.textContent]))
       .toEqual([['btn ghost sm qm', '@草稿树项目']])
+    expect([...document.querySelector('.qacts')!.children].map((part) => part.id)).toEqual(['qmChips'])
+    const foot = document.querySelector('.cbox-foot')!
+    expect([...foot.children].map((part) => [part.className, part.textContent])).toEqual([
+      ['choice-capsule', '模型'], ['cbox-divider', ''], ['choice-capsule', '实验设计'], ['choice-capsule', '保存为想法'], ['cbox-send', ''],
+    ])
     const save = document.querySelector<HTMLButtonElement>('#qaIdea')!
-    expect(save.className).toBe('btn ghost sm save-idea')
-    expect(save.parentElement!.lastElementChild).toBe(save)
-    expect([save.disabled, save.previousElementSibling?.id]).toEqual([true, 'qmChips'])
+    expect([save.textContent, save.disabled, save.hasAttribute('aria-pressed')]).toEqual(['保存为想法', true, false])
     expect(document.querySelector('.qsep')).toBeNull()
   })
 

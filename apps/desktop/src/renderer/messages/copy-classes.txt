@@ -34,8 +34,10 @@ chat.mentionGroup.page label
 chat.mentionGroup.paper label
 chat.mentionGroup.project label
 chat.messagesLabel aria
-chat.modelPicker aria
-chat.sourcePicker aria
+chat.modelMenu action
+chat.modelRows.effort label
+chat.modelRows.model label
+chat.modelRows.source label
 chat.defaultMark state
 chat.design.body label
 chat.design.claim label
@@ -84,7 +86,6 @@ chat.design.unknown state
 chat.design.untested label
 chat.design.writes label
 chat.modelSettings action
-chat.effortPicker aria
 chat.effortDefault state
 chat.nameFieldLabel aria
 chat.thinking state

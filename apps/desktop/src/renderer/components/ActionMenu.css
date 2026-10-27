@@ -50,6 +50,11 @@
 .mi .ck>span{display:flex}
 .cki{width:13px;height:13px;vertical-align:-2px}
 .mi-key{margin-left:auto;color:var(--ter);font-size:var(--fs-cap)}
+/* A row that opens a submenu: its label, then what is chosen there in the quiet colour, then a caret pointing right. */
+.mi-sub-value{display:flex;align-items:center;margin-left:auto;padding-left:var(--sp-20);color:var(--ter);font-size:var(--fs-sm)}
+.mi-sub-caret{display:flex;color:var(--ter)}
+.mi-sub-caret svg{width:12px;height:12px}
+.mi-sub[data-state="open"]{background:var(--hover)}
 /* Input row in a popover */
 .mi-in{padding:var(--sp-6) var(--sp-8)}
 .mi-in .form-input{width:100%}

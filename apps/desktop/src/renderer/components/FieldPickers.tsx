@@ -124,21 +124,49 @@ export function DotsMenu({
 }
 
 /**
- * The composer's capsule that turns a choice on and off: `children` on the capsule the pickers
- * draw, pressed, in the selected look, while `pressed`; a click calls `onToggle`. It is one of the
- * controls of the toolbar it renders in.
+ * The composer's capsule that does one thing on a click, `onClick`, showing `children` on the capsule
+ * the pickers draw; with `pressed` it turns a choice on and off and is pressed, in the selected look,
+ * while that holds. It is one of the controls of the toolbar it renders in.
  */
-export function CapsuleToggle({ pressed, onToggle, disabled = false, children }: {
-  pressed: boolean
-  onToggle: () => void
+export function CapsuleButton({ pressed, onClick, disabled = false, id, children }: {
+  pressed?: boolean
+  onClick: () => void
   disabled?: boolean
+  id?: string
   children: ReactNode
 }) {
   return useToolbarItem()(
-    <button type="button" className="choice-capsule" aria-pressed={pressed} disabled={disabled} onClick={onToggle}>
+    <button
+      type="button" className="choice-capsule" id={id} {...(pressed === undefined ? {} : { 'aria-pressed': pressed })}
+      disabled={disabled} onClick={onClick}
+    >
       {children}
     </button>,
   )
+}
+
+/**
+ * The trigger of a capsule menu: `children`, then a small caret, on a neutral capsule whose fill
+ * deepens under the pointer and while its menu is open; while `busy` it cannot open, keeps its full
+ * colour and shows the running ring in place of its caret.
+ */
+function capsuleTrigger(children: ReactNode, { ariaLabel, disabled, busy }: { ariaLabel?: string | undefined; disabled: boolean; busy: boolean }) {
+  return (
+    <button className="choice-capsule" aria-label={ariaLabel} disabled={disabled || busy} aria-busy={busy || undefined}>
+      <FadeText className="choice-capsule-value">{children}</FadeText>
+      {busy ? <RunningRing /> : <span className="choice-capsule-caret"><IconChevron /></span>}
+    </button>
+  )
+}
+
+/**
+ * The composer's capsule that opens a menu of `children`: `label` and a small caret on the capsule
+ * the pickers draw, its menu under it, starting at its start. It is one of the controls of the
+ * toolbar it renders in.
+ */
+export function CapsuleMenu({ label, disabled = false, children }: { label: string; disabled?: boolean; children: ReactNode }) {
+  const asItem = useToolbarItem()
+  return <ActionMenu align="start" trigger={asItem(capsuleTrigger(label, { disabled, busy: false }))}>{children}</ActionMenu>
 }
 
 /**
@@ -200,12 +228,7 @@ export function ChoicePicker<T extends string>({
         >{children ?? label(value)}</Button>
       )
       : asItem(appearance === 'capsule'
-        ? (
-          <button className="choice-capsule" aria-label={ariaLabel} disabled={disabled || busy} aria-busy={busy || undefined}>
-            <FadeText className="choice-capsule-value">{children ?? label(value)}</FadeText>
-            {busy ? <RunningRing /> : <span className="choice-capsule-caret"><IconChevron /></span>}
-          </button>
-        )
+        ? capsuleTrigger(children ?? label(value), { ariaLabel, disabled, busy })
         : (
           <button
             className={className ?? 'pv metadata-editable'} aria-label={ariaLabel}

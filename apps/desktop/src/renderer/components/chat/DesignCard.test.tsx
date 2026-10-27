@@ -209,9 +209,12 @@ describe('the design card under an answer', () => {
       DESIGN.claim.text, 'M1：一', 'M0：三', '推测解码加速', '实验设计-msg-9.md', '无效', 'repairable',
       '推测解码加速 · 动态树宽 之下', 'B 从 16 到 64，对照为等平均宽度的固定树', '2026-10-27: declared decision table: 无效 → repairable',
     ]) expect(writes.textContent).toContain(text)
-    expect([...writes.querySelectorAll('.diff .add')].map((line) => line.textContent)).toEqual(
-      PREVIEW.file.markdown.replace(/\n$/, '').split('\n').map((line) => `+ ${line}`),
-    )
+    expect(writes.querySelector('.diff')).toBeNull()
+    expect(writes.textContent).not.toContain('---')
+    expect(writes.textContent).not.toContain('| Result pattern |')
+    expect(writes.querySelector('h1')!.textContent).toBe('主张')
+    expect([...writes.querySelectorAll('th')].map((cell) => cell.textContent)).toEqual(['Result pattern', 'Node state'])
+    expect([...writes.querySelectorAll('.property')].map((row) => row.textContent)).toContain('typeexperiment-design')
 
     await act(async () => button('确认写入')!.click())
     expect(api.save).toHaveBeenCalledWith('chat-3', 'msg-9', '0123456789abcdef')

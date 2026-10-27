@@ -17,12 +17,10 @@
 .event-icon svg{width:14px;height:14px}
 
 .composer{padding:var(--sp-12) 0 var(--sp-16);background:var(--content);position:relative}
-/* One line: quick mentions shrink and fade at their maximum width, and the save-idea action ends the row. */
+/* One line of quick mentions, each shrinking and fading at its maximum width. */
 .qacts{display:flex;align-items:center;gap:var(--sp-4);padding:0 0 var(--sp-6)}
 #qmChips{display:flex;gap:var(--sp-4);min-width:0}
 .qm{min-width:0;max-width:160px}
-.save-idea,.qacts>.tag{margin-left:auto}
-.qacts>.tag+.save-idea{margin-left:0}
 /*
  * The editor grows with its text up to eight lines, then scrolls. A long placeholder stays on one
  * line so the empty box does not grow. CodeMirror's base theme brings its own font, line height,

@@ -30,7 +30,6 @@ import { useMessages } from '../../messages/useMessages.js'
 import { IdeaDraft, type IdeaDraftText } from '../ideas/IdeaDraft.js'
 import { PaperText } from '../paper/PaperText.js'
 import { plainTitle } from '../paper/paper-text.js'
-import { Button } from '../Button.js'
 import './Chat.css'
 
 /**
@@ -172,17 +171,12 @@ export function PaperChat({ paper, onBack = () => {}, prompt = null }: {
       </ScrollArea>
       <div className="composer paper-chat-composer">
         <div className="mwrap">
-          <div className="qacts">
-            <Button
-              size="compact" variant="ghost" className="save-idea" disabled={session === null || !hasDiscussion}
-              onClick={ideaSlot.start}
-            >{m.chat.saveIdeaLabel}</Button>
-          </div>
           <ChatComposer
             key={paperId} ref={composer} chat={sessionId} label={m.chat.askAboutPaper} placeholder={m.chat.composerPlaceholder}
             draft={draft} onDraft={(next) => { if (paperId !== null) drafts.set('chat-message', next) }} unavailable={session === null}
             running={sending} onSend={submit} onStop={stopSending}
             design={{ on: designing, onToggle: () => { if (paperId !== null) designs.set('chat-design', !designing) } }}
+            saveIdea={{ disabled: session === null || !hasDiscussion, onSave: ideaSlot.start }}
           />
         </div>
       </div>

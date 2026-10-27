@@ -254,10 +254,6 @@ export function Chat() {
                     </Tooltip>
                   ))}
                 </span>
-                <Button
-                  size="compact" variant="ghost" className="save-idea" id="qaIdea" disabled={id === null || !hasDiscussion}
-                  onClick={ideaSlot.start}
-                >{m.chat.saveIdeaLabel}</Button>
               </div>
             </Toolbar>
 
@@ -266,6 +262,7 @@ export function Chat() {
               draft={draft} onDraft={(next) => { if (id !== null) drafts.set('message', next) }} unavailable={id === null}
               running={sending} onSend={submit} onStop={stopSending}
               design={{ on: designing, onToggle: () => { if (id !== null) designs.set('design', !designing) } }}
+              saveIdea={{ id: 'qaIdea', disabled: id === null || !hasDiscussion, onSave: ideaSlot.start }}
               mentions={mentions}
             />
           </div>

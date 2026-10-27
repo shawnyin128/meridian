@@ -6,8 +6,8 @@ import { useMessages } from '../../messages/useMessages.js'
 import { useJump, useVaultRevision } from '../../shell/AppShell.js'
 import { Card } from '../Card.js'
 import { CommitActions } from '../CommitActions.js'
-import { DiffLines } from '../DiffLines.js'
 import { EntityLink, NODE_MODE_LOOK } from '../EntityLink.js'
+import { Markdown } from '../Markdown.js'
 import { SectionHeading } from '../PageShell.js'
 import { Property, PropertyList } from '../PropertyList.js'
 import { SourceAnchor } from '../SourceAnchor.js'
@@ -23,6 +23,20 @@ type Anchor = ExperimentDesign['ledger'][number]['anchor']
 const OUTCOME_MODE: Record<Outcome, keyof typeof NODE_MODE_LOOK> = {
   invalid: 'repairable', alternative: 'repairable', expand: 'supported', 'below-gate': 'supported', kill: 'dead', inconclusive: 'unresolved',
 }
+/**
+ * The file `markdown` as a person reads it: its frontmatter as `key`/`value` fields, then its body,
+ * which the frontmatter's closing line ends before.
+ */
+function fileParts(markdown: string): { fields: Array<[string, string]>; body: string } {
+  const front = /^---\n([\s\S]*?)\n---\n/.exec(markdown)
+  if (front === null) return { fields: [], body: markdown }
+  const fields = front[1]!.split('\n').map((line): [string, string] => {
+    const at = line.indexOf(':')
+    return [line.slice(0, at), line.slice(at + 1).trim()]
+  })
+  return { fields, body: markdown.slice(front[0].length) }
+}
+
 /** The most rows a design's tables show before they scroll. */
 const DESIGN_ROWS = 8
 
@@ -66,6 +80,7 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
   const [saving, setSaving] = useState(false)
   const [titles, setTitles] = useState<ReadonlyMap<string, string>>(new Map())
   const chosen = design.predictions.find((prediction) => prediction.chosen)!
+  const file = preview === null ? null : fileParts(preview.file.markdown)
   const anchorsWiki = design.ledger.some((entry) => entry.anchor?.kind === 'wiki')
 
   useEffect(() => {
@@ -189,7 +204,7 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
         level="group" meta={preview?.saved == null ? undefined : d.savedAs}
         fold={{ open: unfolded, onToggle: () => setUnfolded((held) => !held), controls: writesId }}
       >{d.writes}</SectionHeading>
-      {!unfolded || preview === null ? null : (
+      {!unfolded || file === null || preview === null ? null : (
         <Card id={writesId}>
           <div className="design-writes">
             <PropertyList>
@@ -201,8 +216,9 @@ export function DesignCard({ chat, messageId, design }: { chat: string; messageI
               <Property label={d.body}>{preview.idea.body.split('\n').map((line) => <div key={line}>{line}</div>)}</Property>
               {preview.idea.project === null ? null : <Property label={d.project}>{preview.idea.project.name}</Property>}
               <Property label={d.file}>{preview.file.name}</Property>
+              {file.fields.map(([key, value]) => <Property key={key} label={key}>{value}</Property>)}
             </PropertyList>
-            <DiffLines lines={preview.file.markdown.replace(/\n$/, '').split('\n').map((line) => `+ ${line}`)} />
+            <Markdown src={file.body} />
             <PropertyList>
               <Property label={d.hypothesisNode}>
                 <EntityLink kind="node" mode="unresolved" fill label={preview.nodes.hypothesis.title} />

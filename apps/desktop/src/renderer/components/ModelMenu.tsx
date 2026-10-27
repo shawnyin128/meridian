@@ -9,8 +9,8 @@ import { errorLabel } from '../lib/failure-label.js'
 import { modelEntryLabel, modelSourceLabel } from '../lib/model-source.js'
 import { useMessages } from '../messages/useMessages.js'
 import { useNotice, useSettingsOpen } from '../shell/AppShell.js'
-import { MenuItem } from './ActionMenu.js'
-import { ChoicePicker } from './FieldPickers.js'
+import { MenuItem, MenuRadioGroup, MenuRadioItem, MenuSeparator, MenuSub } from './ActionMenu.js'
+import { CapsuleMenu } from './FieldPickers.js'
 import { ModelStatusTag } from './ModelStatusTag.js'
 
 /** The effort option that keeps no effort of the chat's own, so the model's own applies. */
@@ -53,24 +53,23 @@ function useSourceModels(source: string | null, settings: HarnessModelSettings |
 }
 
 /**
- * The composer's three pickers for chat `chat`: the source, the model of that source and the
- * reasoning effort of that model, each a capsule with a caret. The source picker offers the configured
- * sources that can run, besides the chat's own, then the model settings command; the model picker
- * every model that source offers, as Core keeps them for the session, its default model marked unless
- * it is the CLI's own default, whose name says so; the effort picker the levels of the chosen model. A
- * pick changes only this chat, the way Core saves a chat's own choice: a new source runs at its
- * defaults, a new model drops the chat's own effort, and picking the source's default model or the
- * effort a run takes anyway keeps none of the chat's own. A CLI source's models, which Core reads at
- * App start, are asked for at once, and while they are not known the model and effort pickers are
- * busy. An API source's models, whose read opens its key, are asked for only once its model menu
- * opens; until they arrive that menu offers the source's default model and the chat's own, and the
- * effort picker its provider's levels. A refused change shows as a
- * refusal notice. They show while some configured source can run, the chat's own or the default
- * included when it cannot; while none can, or the chat has no source to run, it is the shared "AI
- * not connected" tag. Nothing shows before the chat's choice is read; without a chat they show the
- * default source and nothing can be picked.
+ * The composer's model capsule for chat `chat`, whose menu has three rows, each showing what the chat
+ * runs on and opening the submenu of its choices: the source, the configured sources that can run, besides
+ * the chat's own, then the model settings command; the model, every model that source offers, as Core keeps
+ * them for the session, its default model marked unless it is the CLI's own default, whose name says
+ * so; and the reasoning effort, the levels of the chosen model. A pick changes only this chat, the way Core saves a
+ * chat's own choice: a new source runs at its defaults, a new model drops the chat's own effort, and
+ * picking the source's default model or the effort a run takes anyway keeps none of the chat's own. A
+ * CLI source's models, which Core reads at App start, are asked for at once, and while they are not
+ * known the model and effort rows are busy. An API source's models, whose read opens its key, are
+ * asked for only once its model submenu opens; until they arrive that submenu offers the source's
+ * default model and the chat's own, and the effort row its provider's levels. A model that takes no
+ * effort has no effort row. A refused change shows as a refusal notice. The capsule shows while some
+ * configured source can run, the chat's own or the default included when it cannot; while none can,
+ * or the chat has no source to run, it is the shared "AI not connected" tag. Nothing shows before the
+ * chat's choice is read; without a chat the capsule shows and cannot open.
  */
-export function ModelChips({ chat }: { chat: string | null }) {
+export function ModelMenu({ chat }: { chat: string | null }) {
   const m = useMessages()
   const notice = useNotice()
   const { anyRuns, settings } = useModelStatus()
@@ -91,58 +90,82 @@ export function ModelChips({ chat }: { chat: string | null }) {
   const model = choice?.model ?? entry.model
   const models = offers === null ? [...new Set([entry.model, model])] : offers.models.some((held) => held.id === model)
     ? offers.models.map((held) => held.id) : [...offers.models.map((held) => held.id), model]
+  const efforts = offers !== null ? offers.models.find((held) => held.id === model)?.efforts ?? { levels: [] }
+    : api ? { levels: [...HARNESS_API_EFFORTS[group.provider ?? 'openai-compatible']] } : null
   const save = (next: { source: string; model?: string; effort?: string }) => {
     if (chat === null) return
     chatApi.setModel(chat, next.source, next.model, next.effort)
       .then(adopt).catch((cause: unknown) => notice.refusal(errorLabel(m, cause)))
   }
   return (
-    <>
-      <ChoicePicker
-        appearance="capsule" disabled={chat === null} aria-label={m.chat.sourcePicker(modelSourceLabel(m, group))}
-        value={groupKey(group)} options={sources.map(groupKey)}
-        label={(key) => modelSourceLabel(m, sources.find((held) => groupKey(held) === key)!)}
-        onPick={(key) => {
-          const next = sources.find((held) => groupKey(held) === key)!
-          if (next !== group) save({ source: next.defaultEntry })
-        }}
-        after={<MenuItem inset onSelect={() => openCategory('model')}>{m.chat.modelSettings}</MenuItem>}
-      />
-      <ChoicePicker
-        appearance="capsule" disabled={chat === null} busy={offers === null && !api}
+    <CapsuleMenu label={m.chat.modelMenu} disabled={chat === null}>
+      <MenuSub label={m.chat.modelRows.source} value={modelSourceLabel(m, group)}>
+        <Choices
+          value={groupKey(group)} options={sources.map(groupKey)}
+          label={(key) => modelSourceLabel(m, sources.find((held) => groupKey(held) === key)!)}
+          onPick={(key) => {
+            const next = sources.find((held) => groupKey(held) === key)!
+            if (next !== group) save({ source: next.defaultEntry })
+          }}
+        />
+        <MenuSeparator />
+        <MenuItem inset onSelect={() => openCategory('model')}>{m.chat.modelSettings}</MenuItem>
+      </MenuSub>
+      <MenuSub
+        label={m.chat.modelRows.model} value={modelEntryLabel(m, { model })} busy={offers === null && !api}
         onOpenChange={(open) => { if (open && api) setAsked(entry.id) }}
-        aria-label={m.chat.modelPicker(modelEntryLabel(m, { model }))}
-        value={model} options={models} label={(id) => modelEntryLabel(m, { model: id })}
-        note={(id) => (id === entry.model && id !== '' ? m.chat.defaultMark : undefined)}
-        onPick={(id) => {
-          if (id !== model) save({ source: entry.id, ...(id === entry.model ? {} : { model: id }) })
-        }}
-      />
-      <EffortPicker
-        entry={entry} model={model} chosen={choice?.effort} disabled={chat === null}
-        efforts={offers !== null ? offers.models.find((held) => held.id === model)?.efforts ?? { levels: [] }
-          : api ? { levels: [...HARNESS_API_EFFORTS[group.provider ?? 'openai-compatible']] } : null}
+      >
+        <Choices
+          value={model} options={models} label={(id) => modelEntryLabel(m, { model: id })}
+          note={(id) => (id === entry.model && id !== '' ? m.chat.defaultMark : undefined)}
+          onPick={(id) => {
+            if (id !== model) save({ source: entry.id, ...(id === entry.model ? {} : { model: id }) })
+          }}
+        />
+      </MenuSub>
+      <EffortRow
+        entry={entry} model={model} chosen={choice?.effort} efforts={efforts}
         onPick={(effort) => save({ source: entry.id, ...(choice?.model === undefined ? {} : { model: choice.model }), ...(effort === undefined ? {} : { effort }) })}
       />
-    </>
+    </CapsuleMenu>
+  )
+}
+
+/** The checked choices of a submenu: `options`, `value` checked, each followed by the mark `note` gives it. */
+function Choices<T extends string>({ value, options, label, note, onPick }: {
+  value: T
+  options: readonly T[]
+  label: (option: T) => string
+  note?: (option: T) => string | undefined
+  onPick: (option: T) => void
+}) {
+  return (
+    <MenuRadioGroup value={value}>
+      {options.map((option) => {
+        const mark = note?.(option)
+        return (
+          <MenuRadioItem key={option} value={option} onSelect={() => onPick(option)}>
+            {label(option)}{mark === undefined ? null : <span className="mi-key">{mark}</span>}
+          </MenuRadioItem>
+        )
+      })}
+    </MenuRadioGroup>
   )
 }
 
 /**
- * The reasoning effort picker of `model`, a model of configured source `entry`, showing the effort
- * the chat runs at: `chosen`, the chat's own, else the one a run of `model` takes without it, the
+ * The reasoning effort row of `model`, a model of configured source `entry`, showing the effort the
+ * chat runs at: `chosen`, the chat's own, else the one a run of `model` takes without it, the
  * source's own effort for its own model, else the level `efforts` names as the model's default. Its
- * menu lists the levels `efforts` holds, that run-without-a-choice effort marked as the default, or,
- * when there is none, a first default option. Picking it calls `onPick` without an effort. While
- * `efforts` is not known yet (null) it is busy, showing the effort it knows, and cannot open; a
- * model that takes no effort shows nothing.
+ * submenu lists the levels `efforts` holds, that run-without-a-choice effort marked as the default,
+ * or, when there is none, a first default option. Picking it calls `onPick` without an effort. While
+ * `efforts` is not known yet (null) the row is busy; a model that takes no effort has no row.
  */
-function EffortPicker({ entry, model, chosen, efforts, disabled, onPick }: {
+function EffortRow({ entry, model, chosen, efforts, onPick }: {
   entry: HarnessModelEntry
   model: string
   chosen: string | undefined
   efforts: HarnessModelEfforts | null
-  disabled: boolean
   onPick: (effort?: string) => void
 }) {
   const m = useMessages()
@@ -152,13 +175,14 @@ function EffortPicker({ entry, model, chosen, efforts, disabled, onPick }: {
   const label = (option: string) => (option === OWN_EFFORT ? m.chat.effortDefault : option)
   const options = efforts === null ? [value] : own === undefined ? [OWN_EFFORT, ...efforts.levels] : efforts.levels
   return (
-    <ChoicePicker
-      appearance="capsule" disabled={disabled} busy={efforts === null} aria-label={m.chat.effortPicker(label(value))}
-      value={value} options={options} label={label}
-      note={(option) => (own !== undefined && option === own ? m.chat.defaultMark : undefined)}
-      onPick={(option) => {
-        if (option !== value) onPick(option === OWN_EFFORT || option === own ? undefined : option)
-      }}
-    >{efforts === null && chosen === undefined && own === undefined ? '' : label(value)}</ChoicePicker>
+    <MenuSub label={m.chat.modelRows.effort} value={label(value)} busy={efforts === null}>
+      <Choices
+        value={value} options={options} label={label}
+        note={(option) => (own !== undefined && option === own ? m.chat.defaultMark : undefined)}
+        onPick={(option) => {
+          if (option !== value) onPick(option === OWN_EFFORT || option === own ? undefined : option)
+        }}
+      />
+    </MenuSub>
   )
 }
