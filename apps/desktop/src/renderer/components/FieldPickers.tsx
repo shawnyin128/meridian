@@ -124,6 +124,24 @@ export function DotsMenu({
 }
 
 /**
+ * The composer's capsule that turns a choice on and off: `children` on the capsule the pickers
+ * draw, pressed, in the selected look, while `pressed`; a click calls `onToggle`. It is one of the
+ * controls of the toolbar it renders in.
+ */
+export function CapsuleToggle({ pressed, onToggle, disabled = false, children }: {
+  pressed: boolean
+  onToggle: () => void
+  disabled?: boolean
+  children: ReactNode
+}) {
+  return useToolbarItem()(
+    <button type="button" className="choice-capsule" aria-pressed={pressed} disabled={disabled} onClick={onToggle}>
+      {children}
+    </button>,
+  )
+}
+
+/**
  * The one single-value picker: a menu of `options` with the picked one marked, each followed by
  * the trailing mark `note` gives it, if any. With
  * `appearance="field"` it is the boxed field of a form, showing the picked option's label, or

@@ -299,6 +299,35 @@ test('把讨论整理成可回看的想法', async ({ win }) => {
   await expect(win.locator('#qaConcl')).toHaveCount(0)
 })
 
+test('一条带实验设计的回答在正文下列出设计；展开「将写入」看全要写的东西，确认后它成了以主张为题、带设计文件的想法', async ({ win }) => {
+  const design = JSON.parse(readFileSync(resolve(import.meta.dirname, '../apps/desktop/src/core/fixtures/experiment-design.json'), 'utf8')) as {
+    claim: { text: string }
+  }
+  const { id } = await core<{ id: string }>(win, 'chat.create', { title: '动态树宽的实验', named: true })
+  await core(win, 'chat.append', { id, messages: [
+    { role: 'you', runs: [{ kind: 'text', text: '帮我设计实验' }], actions: [] },
+    { role: 'ai', runs: [{ kind: 'text', text: '可以测。' }], actions: [], design },
+  ] })
+  // The chat was made through Core directly, so the sidebar reads its list again only after a reload.
+  await win.reload()
+  await win.locator(`#chatList [data-chat="${id}"]`).click()
+  const card = shown(win, '.design-card')
+  await expect(card.locator('[role="heading"]')).toHaveText(['主张', '解释', '预测', '最小实验', '决策', '证据', '将写入'])
+  await expect(card.locator('table').nth(1).locator('tbody tr')).toHaveCount(6)
+  await expect(card.locator('.design-writes')).toHaveCount(0)
+
+  await card.getByRole('button', { name: '将写入' }).click()
+  const writes = card.locator('.design-writes')
+  await expect(writes).toContainText(design.claim.text)
+  await expect(writes).toContainText('No node for M2 or M0.')
+  await writes.getByRole('button', { name: '确认写入' }).click()
+  await expect(card.getByRole('button', { name: /^将写入/ })).toContainText('已存为想法')
+
+  await win.locator('[data-desk="ideas"]').click()
+  await shown(win, '.idea-card').filter({ hasText: design.claim.text }).click()
+  await expect(shown(win, '.idea-detail-panel')).toContainText(/实验设计-msg-\d+\.md/)
+})
+
 test('会话行的更多菜单是真菜单:触发器报 menu,重命名、归档之后是删除,下键两次高亮归档,回车归档且不进那条会话', async ({ win }) => {
   await win.locator('#chatList .chat-row').first().waitFor()
   const target = (await core<Session[]>(win, 'chat.list', {})).find((s) => !s.archived && s.paperId === undefined)!

@@ -89,16 +89,21 @@ function SortArrow({ direction }: { direction: SortDirection }) {
  * stay put; a double-click puts it back to its `width`. A sortable header sorts on click, through its
  * button from the keyboard, and reports `aria-sort`.
  * `rows` is `fill`, taking the height its parent leaves, or `capped`, showing the header and the
- * first five rows and scrolling the rest, as an embedded list does. With `actions`, the table ends
+ * first `limit` rows, five unless it names more, and scrolling the rest, as an embedded list does.
+ * A `wrap` table wraps its cells' text onto as many lines as it needs instead of fading it. With `actions`, the table ends
  * in the actions column: its header cell holds `actions` (null for nothing) and each row its own.
  * `draft` is the header cell of a column being created (a `TableDraftHead`), placed after the
  * columns; while it is open every row leaves a cell under it. `className` only names the table.
  * `children` are the body rows, each a `TableRow`. A filling table with `onFit` reports, after every
  * render and whenever its box changes size, how many body rows its box shows below the header.
  */
-export function Table({ columns, rows = 'fill', actions, draft = null, className, onFit, children }: {
+export function Table({
+  columns, rows = 'fill', limit = EMBEDDED_LIST_ROW_LIMIT, wrap = false, actions, draft = null, className, onFit, children,
+}: {
   columns: readonly TableColumn[]
   rows?: 'fill' | 'capped'
+  limit?: number
+  wrap?: boolean
   actions?: ReactNode
   draft?: ReactNode
   className?: string | undefined
@@ -107,7 +112,7 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
 }) {
   const m = useMessages()
   const box = useRef<HTMLDivElement | null>(null)
-  const cap = useRowCap(box, bodyRows, rows === 'capped' ? EMBEDDED_LIST_ROW_LIMIT : undefined)
+  const cap = useRowCap(box, bodyRows, rows === 'capped' ? limit : undefined)
   const fit = useRef(onFit)
   fit.current = onFit
   // The room below the header the row count was last worked out for, and that count.
@@ -246,7 +251,7 @@ export function Table({ columns, rows = 'fill', actions, draft = null, className
       axis="both" fill={rows === 'fill'} gutter={rows === 'fill' || cap !== null} held={HELD} ref={box}
       className={`table-scroll table-scroll--${rows}`} style={cap === null ? undefined : { maxHeight: cap }}
     >
-      <table className={classes('table', className)}>
+      <table className={classes('table', wrap && 'table--wrap', className)}>
         <colgroup>
           {columns.map((column) => (
             <col key={column.key} ref={colRef(column.key)} data-cw={column.key} style={{ width: `${widthOf(column.key)}px` }} />

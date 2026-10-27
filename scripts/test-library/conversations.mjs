@@ -17,7 +17,7 @@ const say = (role, ...runs) => ({ role, runs: runs.map((run) => (typeof run === 
  * One chat an idea was saved from is then deleted into Trash, so that idea, carried out in the
  * speculative decoding project on a node of its graph, has a deleted chat as its source.
  * Two ideas relate to projects and a Wiki page other than where they came from, and one is written
- * down on the KV cache project's page. The idea promoted to a project holds two files, written under
+ * down on the KV cache project's page. One answer to a design turn carries its experiment design. The idea promoted to a project holds two files, written under
  * `<out>/files`, which its project lists too, and a third that went to Trash.
  */
 export async function seedConversations(seed, call) {
@@ -105,6 +105,127 @@ export async function seedConversations(seed, call) {
   await call('idea.update', { id: moeIdea, patch: { relations: { projects: [seed.projects.moe.id], pages: [] } } })
   await call('idea.create', {
     title: '按层分配 KV 位宽预算', body: '浅层对量化误差更敏感，给定总位宽时按层分配，而不是每层一样。', sourceProject: seed.projects.kv.id,
+  })
+
+  // A design turn's answer carries its experiment design, anchored in the speculative decoding page and its claim.
+  await onDay(seed, -1, async () => {
+    const designed = await call('chat.create', { title: '动态树宽在大 batch 下是否优于固定树宽', named: true })
+    await append(designed.id, [
+      say('you', { kind: 'mention', text: '@推测解码加速', target: { kind: 'project', id: spec } },
+        ' 里我有个想法：按接受率动态调整草稿树的宽度，在大 batch 下会比固定宽度更好。帮我设计一个能把它和别的解释分开的实验。'),
+      {
+        ...say('ai', '可以测，但“更好”要先拆开。大 batch 下验证成了主要成本，动态宽度的收益可能来自少验证注定被拒的分支，也可能只是平均宽度变窄省下的算力。下面的设计用等平均宽度的固定树把这两者分开，并在跑之前定好怎么判。'),
+        model: { route: 'subscription', cli: 'claude', id: 'claude-opus-5-5[1m]' },
+        design: {
+    "claim": {
+      "text": "大 batch 下，按接受率动态调整草稿树宽度，端到端吞吐高于固定宽度。",
+      "status": "hypothesis"
+    },
+    "explanations": {
+      "m1": "动态宽度把验证预算投向接受率高的位置，少验证注定被拒的分支。",
+      "m2": "收益只来自平均宽度变窄：同等平均宽度的固定窄树一样快。",
+      "m0": "测量假象：batch 组成、预热或请求长度两组没有对齐。"
+    },
+    "predictions": [
+      {
+        "regime": "B 从 16 到 64，对照为等平均宽度的固定树",
+        "m1": "差距随 B 增大",
+        "m2": "差距消失",
+        "m0": "差距不稳定",
+        "metric": "吞吐 tok/s",
+        "chosen": true
+      },
+      {
+        "regime": "宽度与接受率脱钩，宽度分布不变",
+        "m1": "收益消失",
+        "m2": "收益保留",
+        "m0": "无变化",
+        "metric": "接受长度",
+        "chosen": false
+      },
+      {
+        "regime": "B = 1",
+        "m1": "收益小或为负",
+        "m2": "收益小",
+        "m0": null,
+        "metric": "单请求延迟",
+        "chosen": false
+      }
+    ],
+    "experiment": {
+      "substrate": "component",
+      "keeps": "真实 GPU 上随 batch 变化的验证开销，和真实的接受率分布",
+      "untested": "到达流量、调度器与草稿头训练"
+    },
+    "decisions": [
+      {
+        "pattern": "输出分布偏离目标模型，或两组平均宽度相差超过 5%",
+        "outcome": "invalid",
+        "interpretation": "检验无效",
+        "next": "修正对齐后重跑"
+      },
+      {
+        "pattern": "等平均宽度的固定树与动态宽度相差不到 2%",
+        "outcome": "alternative",
+        "interpretation": "支持 M2：收益来自变窄",
+        "next": "改写主张，另立 M2 节点"
+      },
+      {
+        "pattern": "B ≥ 32 时吞吐高至少 8%，CI 不含 0，脱钩后收益消失",
+        "outcome": "expand",
+        "interpretation": "支持 M1",
+        "next": "扩展到完整服务系统"
+      },
+      {
+        "pattern": "B ≥ 32 时差距可辨但低于 8%",
+        "outcome": "below-gate",
+        "interpretation": "机制成立，收益不够",
+        "next": "记结论，不扩展"
+      },
+      {
+        "pattern": "B ≥ 32 时差距的 95% CI 落在 ±2% 内",
+        "outcome": "kill",
+        "interpretation": "排除所需效应",
+        "next": "确认后关闭节点"
+      },
+      {
+        "pattern": "CI 跨过 0 且宽于 ±8%",
+        "outcome": "inconclusive",
+        "interpretation": "无法判定",
+        "next": "增加请求块"
+      }
+    ],
+    "ledger": [
+      {
+        "statement": "加速比主要取决于草稿的接受率",
+        "status": "source",
+        "anchor": {
+          "kind": "wiki",
+          "ref": "topics/speculative-decoding#acceptance-rate"
+        }
+      },
+      {
+        "statement": "已有工作按接受率调整树宽",
+        "status": "source",
+        "anchor": {
+          "kind": "wiki",
+          "ref": "topics/speculative-decoding"
+        }
+      },
+      {
+        "statement": "大 batch 下验证开销成为主要成本",
+        "status": "inference",
+        "anchor": null
+      },
+      {
+        "statement": "动态宽度的收益随 batch 增大",
+        "status": "new-hypothesis",
+        "anchor": null
+      }
+    ]
+  },
+      },
+    ])
   })
 
   const temperature = await call('chat.create', { title: '草稿采样的温度要不要调', named: true })

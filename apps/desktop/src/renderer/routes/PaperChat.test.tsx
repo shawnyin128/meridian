@@ -221,7 +221,7 @@ describe('PaperChat', () => {
     await act(async () => { host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click() })
 
     // Core trims the turn at its ends.
-    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '  关键假设是什么？  ' }])
+    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '  关键假设是什么？  ' }], false)
     expect(typed()).toBe('')
   })
 
@@ -526,7 +526,7 @@ describe('PaperChat', () => {
 
     // The Enter that sends inserts no line break of its own.
     expect(press({}).defaultPrevented).toBe(true)
-    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '第一行' }])
+    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '第一行' }], false)
     await act(async () => { await Promise.resolve() })
   })
 
