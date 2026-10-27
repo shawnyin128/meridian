@@ -1,5 +1,6 @@
 import { chmodSync, existsSync, mkdirSync, readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { z } from 'zod'
 import type {
   CallFailure, HarnessAddModelParams, HarnessCli, HarnessCliModel, HarnessModelEntry, HarnessModelProfile,
   HarnessModelProtocol, HarnessModelProvider, HarnessModelSettings, HarnessModelSettingsUpdate, HarnessModelSource,
@@ -12,6 +13,7 @@ import {
   HarnessUpdateSubscriptionParamsSchema,
 } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
+import { readRecord, withUnknownFields, type UnknownField } from '../vault/stored-records.js'
 import { writeJson } from '../vault/writer.js'
 import type { CredentialVault } from './credential-vault.js'
 import { CLAUDE_EFFORTS, CODEX_UNUSABLE_EFFORTS } from './subscription.js'
@@ -131,11 +133,35 @@ export type ModelChoice = { source: string; model?: string; effort?: string }
 const isRecord = (value: unknown): value is Record<string, unknown> =>
   typeof value === 'object' && value !== null && !Array.isArray(value)
 
+/** The keys of `harness-model.json` this version does not know: the file's own, and each profile's by its profile key. */
+type ConfigUnknown = { top: UnknownField[]; profiles: Map<string, UnknownField[]> }
+
 type LoadedConfig = {
   value: PrivateModelConfig
+  unknown?: ConfigUnknown
   legacyApiKey?: string
   migrated?: boolean
 }
+
+/** The keys `harness-model.json` holds at CONFIG_VERSION, to tell apart those a newer App added; parseCurrentConfig reads the values. */
+const ConfigKeysSchema = z.object({
+  schemaVersion: z.unknown(),
+  activeProfile: z.unknown(),
+  profiles: z.array(z.object({
+    provider: z.unknown(), protocol: z.unknown(), baseUrl: z.unknown(), model: z.unknown(), authentication: z.unknown(),
+    credential: z.object({ storage: z.unknown(), ciphertext: z.unknown(), lastFour: z.unknown() }).strict().optional(),
+  }).strict()),
+}).strict()
+
+/** The keys `harness-subscription.json` holds, to tell apart those a newer App added; readSubscriptionChoice reads the values. */
+const SubscriptionKeysSchema = z.object({
+  schemaVersion: z.unknown(),
+  active: z.unknown(),
+  clis: z.object({
+    claude: z.object({ model: z.unknown() }).strict().optional(),
+    codex: z.object({ model: z.unknown() }).strict().optional(),
+  }).strict().optional(),
+}).strict()
 
 /** A model reached through a LangChain provider, with its API key when it needs one. */
 type HarnessApiModel = {
@@ -256,12 +282,21 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
   const subscriptionFile = join(configHome, HARNESS_SUBSCRIPTION_FILENAME)
   const listFile = join(configHome, HARNESS_MODELS_FILENAME)
   let value = defaults()
+  let configUnknown: ConfigUnknown = { top: [], profiles: new Map() }
   let loadError: CallFailure | undefined
   let subscription = noSubscription()
+  let subscriptionUnknown: UnknownField[] = []
   let subscriptionError: CallFailure | undefined
   let revision = 0
+  /** Writes `value` to `harness-model.json`, with the keys it read there that this version does not know. */
+  const saveConfig = () => persist(configHome, file, withUnknownFields({
+    ...value,
+    profiles: value.profiles.map((profile) => withUnknownFields(
+      profile, configUnknown.profiles.get(profileKey(profile.provider, profile.baseUrl)) ?? [],
+    )),
+  }, configUnknown.top) as Record<string, unknown>)
   try {
-    subscription = readSubscriptionChoice(subscriptionFile)
+    ({ value: subscription, unknown: subscriptionUnknown } = readSubscriptionChoice(subscriptionFile))
   } catch (error) {
     console.error(`[harness] ${error instanceof Error ? error.message : String(error)}`)
     subscriptionError = callFailure(error)
@@ -269,6 +304,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
   try {
     const loaded = readPrivateConfig(file)
     value = loaded.value
+    if (loaded.unknown !== undefined) configUnknown = loaded.unknown
     if (loaded.legacyApiKey !== undefined) {
       try {
         const current = activeProfile(value)
@@ -285,14 +321,14 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
               : profile
           )),
         }
-        persist(configHome, file, value)
+        saveConfig()
       } catch (cause) {
-        persist(configHome, file, value)
+        saveConfig()
         console.error(`[harness] an old API key was removed from the plain-text configuration: ${cause instanceof Error ? cause.message : String(cause)}`)
         loadError = callFailure(cause)
       }
     } else if (loaded.migrated === true) {
-      persist(configHome, file, value)
+      saveConfig()
     }
   } catch (error) {
     console.error(`[harness] ${error instanceof Error ? error.message : String(error)}`)
@@ -406,11 +442,11 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
   }
 
   const choose = (next: SubscriptionChoice) => {
-    persist(configHome, subscriptionFile, {
+    persist(configHome, subscriptionFile, withUnknownFields({
       schemaVersion: SUBSCRIPTION_VERSION,
       active: next.active,
       clis: { claude: { model: next.models.claude }, codex: { model: next.models.codex } },
-    })
+    }, subscriptionUnknown) as Record<string, unknown>)
     subscription = next
     subscriptionError = undefined
     revision += 1
@@ -460,7 +496,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         activeProfile: key,
         profiles: value.profiles.map((held) => (held === profile ? { ...held, model: chosen.model } : held)),
       }
-      persist(configHome, file, value)
+      saveConfig()
     }
     if (subscription.active !== null || subscriptionError !== undefined) choose({ ...subscription, active: null })
   }
@@ -513,7 +549,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
         : value.profiles.map((profile) => (profile === existing ? updated : profile)),
     }
     loadError = undefined
-    persist(configHome, file, value)
+    saveConfig()
     return nextKey
   }
 
@@ -731,7 +767,7 @@ export async function createHarnessModelConfig(configHome: string, vault: Creden
                 : profile
             )),
           }
-          persist(configHome, file, value)
+          saveConfig()
         }
       }
       return {
@@ -865,7 +901,22 @@ function readPrivateConfig(file: string): LoadedConfig {
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
     const schemaVersion = String(parsed['schemaVersion'])
-    if (schemaVersion === CONFIG_VERSION) return { value: parseCurrentConfig(parsed) }
+    if (schemaVersion === CONFIG_VERSION) {
+      const config = parseCurrentConfig(parsed)
+      const read = readRecord(ConfigKeysSchema, parsed)
+      const unknown: ConfigUnknown = { top: [], profiles: new Map() }
+      for (const field of 'error' in read ? [] : read.unknown) {
+        const [list, position, ...at] = field.at
+        const profile = list === 'profiles' && typeof position === 'number' ? config.profiles[position] : undefined
+        if (profile === undefined) {
+          unknown.top.push(field)
+          continue
+        }
+        const key = profileKey(profile.provider, profile.baseUrl)
+        unknown.profiles.set(key, [...unknown.profiles.get(key) ?? [], { ...field, at }])
+      }
+      return { value: config, unknown }
+    }
     if (!LEGACY_CONFIG_VERSIONS.includes(
       schemaVersion as typeof LEGACY_CONFIG_VERSIONS[number],
     )) {
@@ -884,12 +935,12 @@ function readPrivateConfig(file: string): LoadedConfig {
 }
 
 /**
- * Reads the subscription choice in `file`, or no choice when there is none. Keys and CLIs this
- * version does not know are ignored. Throws `newer-version` for a schema version or an active CLI
- * this version cannot run, and `invalid` for anything else it cannot read.
+ * Reads the subscription choice in `file`, or no choice when there is none, with the keys and CLIs
+ * this version does not know, which it otherwise ignores. Throws `newer-version` for a schema version
+ * or an active CLI this version cannot run, and `invalid` for anything else it cannot read.
  */
-function readSubscriptionChoice(file: string): SubscriptionChoice {
-  if (!existsSync(file)) return noSubscription()
+function readSubscriptionChoice(file: string): { value: SubscriptionChoice; unknown: UnknownField[] } {
+  if (!existsSync(file)) return { value: noSubscription(), unknown: [] }
   try {
     const parsed = JSON.parse(readFileSync(file, 'utf8')) as Record<string, unknown>
     if (parsed['schemaVersion'] !== SUBSCRIPTION_VERSION) throw new CallError('newer-version', '版本不受支持')
@@ -905,7 +956,11 @@ function readSubscriptionChoice(file: string): SubscriptionChoice {
       if (typeof held !== 'object' || held === null) throw new Error(`${cli} 的配置无效`)
       return HarnessSubscriptionModelSchema.parse((held as Record<string, unknown>)['model'])
     }
-    return { active: active as HarnessCli | null, models: { claude: modelOf('claude'), codex: modelOf('codex') } }
+    const read = readRecord(SubscriptionKeysSchema, parsed)
+    return {
+      value: { active: active as HarnessCli | null, models: { claude: modelOf('claude'), codex: modelOf('codex') } },
+      unknown: 'error' in read ? [] : read.unknown,
+    }
   } catch (error) {
     throw new CallError(
       callFailure(error) === 'newer-version' ? 'newer-version' : 'invalid',
