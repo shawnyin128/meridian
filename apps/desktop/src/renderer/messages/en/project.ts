@@ -143,8 +143,6 @@ export const project = {
     remotePlaceholder: 'Remote project folder',
     portLabel: 'Port',
     connect: 'Connect',
-    choose: 'Choose',
-    choosing: 'Choosing…',
     state: { ready: 'Connected', missing: 'Not found', invalid: 'Invalid' },
   },
   control: {

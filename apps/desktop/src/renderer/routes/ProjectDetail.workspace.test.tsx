@@ -185,13 +185,13 @@ describe('项目工作区对话框', () => {
     expect([...dialog.querySelectorAll('#workspaceSsh .field-row-label')].map((label) => label.textContent))
       .toEqual(['主机', '端口', '项目路径'])
     expect(pathRow(dialog.querySelector('#workspaceSsh .directory-field')!)).toEqual(local)
-    expect([dialog.querySelector('.ssh-folders'), submit(dialog).textContent]).toEqual([null, '选择'])
+    expect([dialog.querySelector('.ssh-folders'), submit(dialog).textContent]).toEqual([null, '添加'])
     expect(folderButton(dialog).disabled).toBe(true)
     act(() => setValue(sshFields(dialog)[0]!, 'gpu-lab'))
     expect(folderButton(dialog).disabled).toBe(false)
   })
 
-  it('文件夹按钮在工作区对话框上叠开远端文件夹选择框：从主目录开始，点文件夹进入、上层文件夹返回，选择把路径填进项目路径、关掉选择框、焦点回到文件夹按钮，再按选择才存', async () => {
+  it('文件夹按钮在工作区对话框上叠开远端文件夹选择框：从主目录开始，点文件夹进入、上层文件夹返回，选择把路径填进项目路径、关掉选择框、焦点回到文件夹按钮，再按添加才存', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
     const [hostField, portField, pathField] = sshFields(dialog)
@@ -200,6 +200,7 @@ describe('项目工作区对话框', () => {
     await openPicker(dialog)
     expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'gpu-lab', port: 2222 }])
     expect([document.querySelectorAll('[role="dialog"]').length, pickerButton('选择').disabled]).toEqual([2, true])
+    expect(picker()!.querySelector(':scope > .modal-title:not(.modal-title--hidden)')?.textContent).toBe('gpu-lab')
     expect([
       picker()!.querySelector('.ssh-folders .loading-placeholder') !== null,
       picker()!.querySelector<HTMLButtonElement>('.ssh-folders-head button')!.disabled,
@@ -229,7 +230,7 @@ describe('项目工作区对话框', () => {
     expect(api.binds.map((bind) => bind.binding)).toEqual([
       { kind: 'ssh', host: 'gpu-lab', port: 2222, path: '/home/researcher/projects' },
     ])
-    expect(busyState(submit(dialog))).toEqual(['正在选择…', '选择', true, true, 'true'])
+    expect(busyState(submit(dialog))).toEqual(['正在添加…', '添加', true, true, 'true'])
     await act(async () => { api.binds[0]!.finish() })
     expect(document.querySelector('.workspace-dialog')).toBeNull()
   })
@@ -241,19 +242,40 @@ describe('项目工作区对话框', () => {
     act(() => setValue(hostField!, 'gpu-lab'))
     act(() => setValue(pathField!, '/srv/shared'))
     await openPicker(dialog)
-    await answer(folder('/home/researcher', ['projects']))
-    await act(async () => { row('projects').click() })
-    await answer(folder('/home/researcher/projects', ['spec-decoding']))
+    await answer(folder('/srv/shared', ['data']))
+    await act(async () => { row('data').click() })
+    await answer(folder('/srv/shared/data', []))
     await act(async () => { pickerButton('取消').click() })
     expect([picker(), pathField!.value, document.activeElement]).toEqual([null, '/srv/shared', folderButton(dialog)])
 
     await openPicker(dialog)
-    await answer(folder('/home/researcher', ['projects']))
+    await answer(folder('/srv/shared', ['data']))
     await act(async () => {
       document.activeElement!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
     })
     expect([picker(), pathField!.value, document.activeElement]).toEqual([null, '/srv/shared', folderButton(dialog)])
     expect([document.querySelector('.workspace-dialog') !== null, api.binds]).toEqual([true, []])
+  })
+
+  it('项目路径里有主机能列出的文件夹时选择框从那里开始，列不出来就不报错、从远端主目录开始', async () => {
+    const dialog = await openWorkspaceDialog()
+    await chooseSsh(dialog)
+    const [hostField, , pathField] = sshFields(dialog)
+    act(() => setValue(hostField!, 'gpu-lab'))
+    act(() => setValue(pathField!, ' /srv/shared '))
+    await openPicker(dialog)
+    expect(api.listings.map((listing) => listing.params)).toEqual([{ host: 'gpu-lab', path: '/srv/shared' }])
+    await answer(folder('/srv/shared', ['data']))
+    expect(browsed()).toEqual(['/srv/shared', ['data']])
+    await act(async () => { pickerButton('取消').click() })
+
+    act(() => setValue(pathField!, '/srv/missing'))
+    await openPicker(dialog)
+    await answer({ state: 'failed', issue: 'cd: /srv/missing: No such file or directory' })
+    expect(api.listings.slice(1).map((listing) => listing.params))
+      .toEqual([{ host: 'gpu-lab', path: '/srv/missing' }, { host: 'gpu-lab' }])
+    await answer(folder('/home/researcher', ['projects']))
+    expect([browsed(), picker()!.querySelector('[role="alert"]')]).toEqual([['/home/researcher', ['projects']], null])
   })
 
   it('手打的远端路径不开选择框也能直接存成工作区', async () => {
@@ -266,7 +288,7 @@ describe('项目工作区对话框', () => {
     expect([api.binds.map((bind) => bind.binding), api.listings]).toEqual([[{ kind: 'ssh', host: 'gpu-lab', path: '/srv/shared' }], []])
   })
 
-  it('SSH 工作区还没存好时，选择按钮在原处转圈、按不动；切回本地目录也开不了第二次连接', async () => {
+  it('SSH 工作区还没存好时，添加按钮在原处转圈、按不动；切回本地目录也开不了第二次连接', async () => {
     const dialog = await openWorkspaceDialog()
     await chooseSsh(dialog)
     const [hostField, , pathField] = sshFields(dialog)
@@ -275,7 +297,7 @@ describe('项目工作区对话框', () => {
     await act(async () => { submit(dialog).click() })
     await act(async () => { submit(dialog).click() })
     expect(api.binds.map((bind) => bind.binding)).toEqual([{ kind: 'ssh', host: 'gpu-lab', path: '/home/researcher' }])
-    expect(busyState(submit(dialog))).toEqual(['正在选择…', '选择', true, true, 'true'])
+    expect(busyState(submit(dialog))).toEqual(['正在添加…', '添加', true, true, 'true'])
     await act(async () => {
       [...dialog.querySelectorAll<HTMLButtonElement>('.workspace-kinds button')].find((b) => b.textContent === '本地目录')!.click()
     })

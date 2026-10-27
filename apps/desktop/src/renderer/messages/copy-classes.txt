@@ -543,9 +543,7 @@ project.signals.reason.pathBroken state
 project.signals.reason.pathMissing state
 project.workspace.add action
 project.workspace.adding aria
-project.workspace.choose action
 project.workspace.chooseLocal action
-project.workspace.choosing aria
 project.workspace.connect action
 project.workspace.dialogTitle label
 project.workspace.hostLabel label

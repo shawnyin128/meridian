@@ -140,8 +140,6 @@ export const project = {
     remotePlaceholder: '远端项目目录',
     portLabel: '端口',
     connect: '连接',
-    choose: '选择',
-    choosing: '正在选择…',
     state: { ready: '已连接', missing: '未找到', invalid: '无效' },
   },
   control: {

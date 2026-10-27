@@ -770,7 +770,7 @@ export function ProjectDetail({
             saving={binding !== null}
             {...workspaceMode === 'local'
               ? { form: 'workspaceLocal', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }
-              : { form: 'workspaceSsh', saveLabel: m.project.workspace.choose, busyLabel: m.project.workspace.choosing }}
+              : { form: 'workspaceSsh', saveLabel: m.project.workspace.add, busyLabel: m.project.workspace.adding }}
           />
         )}
       >
@@ -835,6 +835,7 @@ export function ProjectDetail({
       </ModalDialog>
       <SshFolderPicker
         target={workspaceOpen && workspaceMode === 'ssh' && pickingSsh ? sshTarget : null}
+        start={sshPath.trim() === '' ? null : sshPath.trim()}
         onChoose={(path) => {
           setSshPath(path)
           setPickingSsh(false)

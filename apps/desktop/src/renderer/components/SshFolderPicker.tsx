@@ -14,7 +14,7 @@ import { IconButton } from './IconButton.js'
 import { IconEnclosingFolder, IconFolder, IconNext } from './icons.js'
 import { InlineMessage } from './InlineMessage.js'
 import { LoadingPlaceholder } from './LoadingPlaceholder.js'
-import { ModalDialog, ModalTitle } from './ModalDialog.js'
+import { ModalDialog } from './ModalDialog.js'
 import { PickerPopover, PickOption } from './PickerPopover.js'
 import { Item } from './Item.js'
 import { List } from './List.js'
@@ -40,8 +40,8 @@ export type SshFolderChoice = {
   edited: boolean
   /** Changes the path field's text. */
   type: (path: string) => void
-  /** Connects to `target` and lists its remote home. */
-  connect: (target: SshTarget) => void
+  /** Connects to `target` and lists `start`, or its remote home when there is no `start` or `start` cannot be listed. */
+  connect: (target: SshTarget, start?: string) => void
   /** Lists the folder at `path` of the host connected to: absolute, `~` or a path under `~/`. */
   open: (path: string) => void
   /** Drops the connection, the folder shown and any listing still on its way. */
@@ -63,7 +63,7 @@ export function useSshFolders(): SshFolderChoice {
   const connected = useRef<SshTarget | null>(null)
   const latest = useRef(0)
 
-  const list = useCallback((target: SshTarget, at?: string) => {
+  const list = useCallback((target: SshTarget, at?: string, orHome = false) => {
     const mine = ++latest.current
     setOpening(true)
     setIssue(null)
@@ -74,7 +74,8 @@ export function useSshFolders(): SshFolderChoice {
         connected.current = target
         setFolder(listed)
         type(listed.path)
-      } else setIssue(listed.issue)
+      } else if (orHome) list(target)
+      else setIssue(listed.issue)
     }, (error: unknown) => {
       if (mine !== latest.current) return
       setOpening(false)
@@ -95,8 +96,12 @@ export function useSshFolders(): SshFolderChoice {
     type('')
   }, [])
 
+  const connect = useCallback((target: SshTarget, start?: string) => {
+    list(target, start, start !== undefined)
+  }, [list])
+
   const edited = folder !== null && path !== folder.path
-  return { folder, opening, issue, path, edited, type, connect: list, open, reset }
+  return { folder, opening, issue, path, edited, type, connect, open, reset }
 }
 
 /**
@@ -226,14 +231,16 @@ export function SshFolderBrowser({ choice }: { choice: SshFolderChoice }) {
 }
 
 /**
- * The folder picker of an SSH host, a dialog stacked on whatever opened it. While `target` is not
- * null it is open, connects to `target` and browses from its remote home in a `SshFolderBrowser`.
+ * The folder picker of an SSH host, a dialog stacked on whatever opened it and titled with the host.
+ * While `target` is not null it is open, connects to `target` and browses in a `SshFolderBrowser`
+ * from `start`, or from the remote home when `start` is null or cannot be listed.
  * Choose hands the folder shown to `onChoose`; it is held until a folder is shown, while the next one
  * lists and while the path field holds a path not gone to. Cancel, Esc and the scrim call `onClose`.
  * Closing drops the connection and any listing still on its way.
  */
-export function SshFolderPicker({ target, onChoose, onClose }: {
+export function SshFolderPicker({ target, start, onChoose, onClose }: {
   target: SshTarget | null
+  start: string | null
   onChoose: (path: string) => void
   onClose: () => void
 }) {
@@ -244,14 +251,15 @@ export function SshFolderPicker({ target, onChoose, onClose }: {
   const port = target?.port
   useEffect(() => {
     if (host === undefined) return
-    connect({ host, ...(port === undefined ? {} : { port }) })
+    connect({ host, ...(port === undefined ? {} : { port }) }, start ?? undefined)
     return reset
-  }, [host, port, connect, reset])
+  }, [host, port, start, connect, reset])
 
   const { folder } = choice
   return (
     <ModalDialog
       open={target !== null} onOpenChange={(open) => { if (!open) onClose() }} size="form" className="ssh-folder-picker"
+      title={host}
       actions={(
         <CommitActions
           place="foot" onCancel={onClose} saveLabel={m.common.sshFolders.choose}
@@ -260,7 +268,6 @@ export function SshFolderPicker({ target, onChoose, onClose }: {
         />
       )}
     >
-      <ModalTitle hidden>{host}</ModalTitle>
       <SshFolderBrowser choice={choice} />
     </ModalDialog>
   )
