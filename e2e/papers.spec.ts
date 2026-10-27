@@ -1364,6 +1364,10 @@ test('详情面板头部的打开和收起在标题上方单独一行靠右,长�
   expect(Math.abs(head.actions[1]!.right - head.content.right)).toBeLessThan(1)
   expect(head.actions.map((action) => Math.round(action.top - head.content.top))).toEqual([0, 0])
   expect(head.actions.map((action) => action.top + action.height <= head.title.top)).toEqual([true, true])
+  // The buttons' row sits up in the panel's top inset, so it adds no band of its own above the title.
+  const panel = await win.locator('.paper-detail-slot').evaluate((el) => ({ top: el.getBoundingClientRect().top, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
+  expect(head.actions.map((action) => action.top - panel.top < panel.inset)).toEqual([true, true])
+  expect(head.title.top - panel.top).toBeLessThanOrEqual(panel.inset + head.actions[0]!.height)
   expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
   expect(head.title.lines.length).toBeGreaterThanOrEqual(3)
   expect(head.title.lines.slice(0, -1).map((line) => ({

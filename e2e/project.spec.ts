@@ -1031,6 +1031,10 @@ test('任务详情头部的收起钮在标题上方单独一行靠右,长标题�
   expect(Math.abs(head.actions[0]!.right - head.content.right)).toBeLessThan(1)
   expect(Math.round(head.actions[0]!.top - head.content.top)).toBe(0)
   expect(head.actions[0]!.top + head.actions[0]!.height).toBeLessThanOrEqual(head.title.top)
+  // The buttons' row sits up in the panel's top inset, so it adds no band of its own above the title.
+  const panel = await side.evaluate((el) => ({ top: el.getBoundingClientRect().top, inset: parseFloat(getComputedStyle(el).getPropertyValue('--side-panel-block')) }))
+  expect(head.actions[0]!.top - panel.top).toBeLessThan(panel.inset)
+  expect(head.title.top - panel.top).toBeLessThanOrEqual(panel.inset + head.actions[0]!.height)
   expect([head.title.left - head.content.left, head.content.right - head.title.right].map(Math.round)).toEqual([0, 0])
   expect(head.title.lines.length).toBeGreaterThanOrEqual(2)
   expect(head.title.lines.slice(0, -1).map((line) => ({
