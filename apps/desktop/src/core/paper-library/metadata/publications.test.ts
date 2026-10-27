@@ -1,6 +1,9 @@
 import { describe, expect, it } from 'vitest'
 import { createFixtureStore } from '../../fixture-store.js'
+import type { DblpPaper } from '../../net/dblp.js'
+import { HttpStatusError } from '../../net/http.js'
 import { minimalPdf } from '../../net/minimal-pdf.js'
+import type { Publication } from '../../net/semantic-metadata.js'
 import type { VaultStore } from '../../vault.js'
 import { publicationFill } from './fill.js'
 import { fillPublications, publicationIdOf } from './publications.js'
@@ -127,5 +130,49 @@ describe('设置里 Semantic Scholar 卡片的补全发表信息', () => {
     expect(publicationIdOf('10.1145/3600006.3613165')).toBe('DOI:10.1145/3600006.3613165')
     expect(publicationIdOf('ISBN 978-0')).toBeNull()
     expect(publicationIdOf(undefined)).toBeNull()
+  })
+})
+
+describe('补全发表信息时没有会场年份的论文去问 DBLP', () => {
+  /** A DBLP stand-in answering `answer` for every paper it is asked about, recording the titles asked. */
+  function dblp(answer: (paper: DblpPaper) => Promise<Publication | undefined>) {
+    const asked: string[] = []
+    return { asked, venueOf: (paper: DblpPaper) => { asked.push(paper.title); return answer(paper) } }
+  }
+
+  /** A store with three papers: two arXiv papers and one with a DOI. */
+  function library() {
+    const { store, id } = arxivPaper()
+    const other = store.importPaper('other.pdf', minimalPdf({ lines: ['other'] })).paper.id
+    store.fillPaperMetadata(other, { ...ARXIV_FILL, title: 'Wide Trees', identifier: 'arXiv:2509.05678' }, store.getPaper(other).title)
+    const doi = store.importPaper('doi.pdf', minimalPdf({ lines: ['doi'] })).paper.id
+    store.updatePaper(doi, { title: 'Serving at Scale', identifier: 'doi:10.1145/3600006.3613165' })
+    return { store, id, other, doi }
+  }
+  const S2 = new Map([['ARXIV:2509.01234', { venue: 'ICLR' }], ['DOI:10.1145/3600006.3613165', { venue: 'SOSP', year: 2023 }]])
+
+  it('Semantic Scholar 没给出会场年份或没查到的论文按标题问 DBLP，会场写成 DBLP 的会场加年份；有年份的不问', async () => {
+    const { store, id, other, doi } = library()
+    const source = dblp(async (paper) => ({ venue: paper.title === 'Draft Trees' ? 'ICLR' : 'NeurIPS', year: 2024, source: 'dblp' }))
+    expect(await fillPublications(store, { lookup: async () => S2 }, source)).toBe(3)
+    expect(source.asked.sort()).toEqual(['Draft Trees', 'Wide Trees'])
+    expect([store.getPaper(id).venue, store.getPaper(other).venue, store.getPaper(doi).venue]).toEqual(['ICLR 2024', 'NeurIPS 2024', 'SOSP 2023'])
+  })
+
+  it('DBLP 没有可信的结果时照用 Semantic Scholar 给的', async () => {
+    const { store, id, other } = library()
+    await fillPublications(store, { lookup: async () => S2 }, dblp(async () => undefined))
+    expect([store.getPaper(id).venue, store.getPaper(other).venue]).toEqual(['ICLR', 'arXiv'])
+  })
+
+  it.each([
+    ['429', new HttpStatusError(429, 0)],
+    ['超时', new DOMException('The operation timed out.', 'TimeoutError')],
+  ])('DBLP %s 时补全照样完成，留着别的来源给的，这一轮不再问 DBLP', async (_name, error) => {
+    const { store, id, doi } = library()
+    const source = dblp(async () => { throw error })
+    expect(await fillPublications(store, { lookup: async () => S2 }, source)).toBe(2)
+    expect(source.asked).toHaveLength(1)
+    expect([store.getPaper(id).venue, store.getPaper(doi).venue]).toEqual(['ICLR', 'SOSP 2023'])
   })
 })

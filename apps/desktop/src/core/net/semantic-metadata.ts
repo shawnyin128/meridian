@@ -11,8 +11,11 @@ const PREPRINT = /^arxiv(\.org)?$/i
 /** A DBLP key of a conference or journal paper, ending in the two digits of its year; CoRR keys are arXiv's. */
 const DBLP_VENUE_KEY = /^(?:conf|journals)\/(?!corr\/)[^/]+\/.*\D(\d{2})$/
 
-/** Where a paper was published: the venue's short name (its full name when it has none) and the year of that publication. */
-export type Publication = { venue: string; year?: number }
+/**
+ * Where a paper was published: the venue's short name (its full name when it has none), the year of
+ * that publication, and `source` 'dblp' when DBLP gave them rather than Semantic Scholar.
+ */
+export type Publication = { venue: string; year?: number; source?: 'dblp' }
 
 /** Looks up where papers were published by Semantic Scholar id (`ARXIV:<id>`, `DOI:<doi>`), keyed by the id asked. */
 export type PublicationSource = {

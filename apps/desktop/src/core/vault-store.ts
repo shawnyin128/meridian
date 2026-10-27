@@ -1425,13 +1425,21 @@ export function createVaultStore(
   }
 
   /** Fills only missing bibliographic fields and updates queued copies of the same source. */
-  /** Records the fields `fill` names as the values the App last filled into paper `id`. */
-  const recordFill = (id: string, fill: MetadataFill): void => {
+  /**
+   * Records the fields `fill` names as the values the App last filled into paper `id`, each from the
+   * service `sources` names for it, if any.
+   */
+  const recordFill = (id: string, fill: MetadataFill, sources: Record<string, string> = {}): void => {
     const held = fills.find((record) => record.paper === id)
     const fields = { ...held?.fields, ...fill }
+    const named = {
+      ...Object.fromEntries(Object.entries(held?.sources ?? {}).filter(([field]) => !(field in fill))),
+      ...sources,
+    }
+    const next = { paper: id, fields, ...(Object.keys(named).length > 0 || held?.sources !== undefined ? { sources: named } : {}) }
     fills = save('metadata-fills', held === undefined
-      ? [...fills, { paper: id, fields }]
-      : fills.map((record) => (record === held ? { ...record, fields } : record)))
+      ? [...fills, next]
+      : fills.map((record) => (record === held ? { ...record, ...next } : record)))
   }
 
   /** What fillPaperPublication writes onto paper `id` for `publication`. Throws if there is no such paper. */
@@ -1691,7 +1699,7 @@ export function createVaultStore(
       const write = publicationFillOf(id, publication)
       if (Object.keys(write).length === 0) return []
       writePaper(id, { ...write, updated: today() })
-      recordFill(id, write)
+      recordFill(id, write, write.venue === undefined ? {} : { venue: publication?.source ?? 'semantic-scholar' })
       return Object.keys(write)
     }),
 
