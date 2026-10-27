@@ -2371,11 +2371,25 @@ export const ExperimentDesignSchema = z.object({
 }).strict()
 
 /**
+ * The idea an idea turn's answer drafts from its chat: a title on one line, a body, and the
+ * messages it came from, by id, oldest first. `saved` is the idea it was saved as, once it is.
+ */
+export const IdeaDraftSchema = z.object({
+  title: DesignLine(80),
+  body: z.string().trim().min(1).max(4_000),
+  sources: z.array(z.string().min(1)).min(1).max(20),
+  saved: z.string().optional(),
+}).strict()
+
+/** The modes of a chat turn beside an ordinary answer: an experiment design, or an idea draft. */
+export const ChatTurnModeSchema = z.enum(['design', 'idea'])
+
+/**
  * Chat message. `role` distinguishes user, AI answer, and Meridian status copy;
  * status messages are not rendered as answer bubbles. Messages without buttons
  * carry an empty actions array. `model`, on an AI answer, is the model that wrote
  * it; answers kept before 0.0.21.0 name none. `design`, on an AI answer to a design turn, is the
- * experiment design it carries.
+ * experiment design it carries, and `idea`, on one to an idea turn, the idea draft.
  */
 export const ChatMessageSchema = z.object({
   id: z.string(),
@@ -2384,6 +2398,7 @@ export const ChatMessageSchema = z.object({
   actions: z.array(ChatActionSchema),
   model: ChatAnswerModelSchema.optional(),
   design: ExperimentDesignSchema.optional(),
+  idea: IdeaDraftSchema.optional(),
 }).strict()
 
 /**
@@ -2474,12 +2489,12 @@ export const ChatAppendParamsSchema = z.object({
  * One explicit send is one billable model turn; Core owns persistence, context, and cancellation.
  * `runs` is what the user wrote, each mention as a run of its own, `@` and the name on one line,
  * naming the project, paper or Wiki page it mentions; the whole text holds at most 20,000
- * characters and more than whitespace. With `design` the turn is a design turn: its answer may carry
- * an experiment design.
+ * characters and more than whitespace. With `mode` the turn is a design turn, whose answer may carry
+ * an experiment design, or an idea turn, whose answer may carry an idea draft of the whole chat.
  */
 export const ChatSendParamsSchema = z.object({
   id: z.string(),
-  design: z.boolean().optional(),
+  mode: ChatTurnModeSchema.optional(),
   runs: z.array(ChatRunSchema.refine((run) => (run.kind === 'text'
     ? run.target === undefined
     : /^@[^\n]+$/.test(run.text) && ['project', 'paper', 'page'].includes(run.target?.kind ?? '')))).min(1),
@@ -2545,7 +2560,36 @@ export const HarnessFailureDetailSchema = z.object({
 export const ChatFailureParamsSchema = z.object({ id: z.string() }).strict()
 
 /** Asks again for an answer to a chat's last question, after its turn got none; answers a ChatSendResult. */
-export const ChatRetryParamsSchema = z.object({ id: z.string(), design: z.boolean().optional() }).strict()
+export const ChatRetryParamsSchema = z.object({ id: z.string(), mode: ChatTurnModeSchema.optional() }).strict()
+
+/**
+ * Reads what saving the idea draft of answer `messageId` of chat `id` writes, with `title` and
+ * `body` as the user left them; answers a ChatIdeaPreview.
+ */
+export const ChatIdeaPreviewParamsSchema = z.object({
+  id: z.string(), messageId: z.string(),
+  title: IdeaDraftSchema.shape.title, body: IdeaDraftSchema.shape.body,
+}).strict()
+
+/**
+ * Everything saving an idea draft writes: the idea from the chat `chat`, its title, its body and
+ * the project it relates to (the project the chat last mentioned, if any), with `rounds`, the
+ * chat's rounds, counted by its questions, that the draft came from. `fingerprint` names exactly
+ * this; `saved` is the idea the draft was saved as, or null.
+ */
+export const ChatIdeaPreviewSchema = z.object({
+  idea: z.object({
+    title: z.string(), body: z.string(),
+    project: z.object({ id: z.string(), name: z.string() }).strict().nullable(),
+  }).strict(),
+  chat: z.string(),
+  rounds: z.array(z.number().int().positive()),
+  fingerprint: z.string().regex(/^[0-9a-f]{16}$/),
+  saved: z.string().nullable(),
+}).strict()
+
+/** Saves the idea draft of answer `messageId` of chat `id` with `title` and `body`; `fingerprint` is that of the preview shown. Answers the idea. */
+export const ChatSaveIdeaParamsSchema = ChatIdeaPreviewParamsSchema.extend({ fingerprint: z.string() }).strict()
 
 /**
  * Reads what saving the design answer `messageId` of chat `id` carries as an idea would write, its
@@ -3092,6 +3136,9 @@ export type ChatAction = z.infer<typeof ChatActionSchema>
 export type ChatMessage = z.infer<typeof ChatMessageSchema>
 export type ExperimentDesign = z.infer<typeof ExperimentDesignSchema>
 export type ChatDesignPreview = z.infer<typeof ChatDesignPreviewSchema>
+export type IdeaDraft = z.infer<typeof IdeaDraftSchema>
+export type ChatTurnMode = z.infer<typeof ChatTurnModeSchema>
+export type ChatIdeaPreview = z.infer<typeof ChatIdeaPreviewSchema>
 export type ChatAnswerModel = z.infer<typeof ChatAnswerModelSchema>
 export type ChatWriting = z.infer<typeof ChatWritingSchema>
 export type ChatMessageFields = z.infer<typeof ChatMessageFieldsSchema>
@@ -3268,6 +3315,8 @@ export const CONTRACT_METHODS = [
   'chat.setModel',
   'chat.designPreview',
   'chat.saveDesign',
+  'chat.ideaPreview',
+  'chat.saveIdea',
   'idea.list',
   'idea.create',
   'idea.update',

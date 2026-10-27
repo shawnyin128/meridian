@@ -1,5 +1,5 @@
 import type {
-  ChatAnswerModel, ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatWriting, ExperimentDesign, HarnessFailureDetail,
+  ChatAnswerModel, ChatMessage, ChatMessageFields, ChatRun, ChatSendResult, ChatTurnMode, ChatWriting, ExperimentDesign, HarnessFailureDetail, IdeaDraft,
   TrashedEntry,
 } from '../../shared/contract.js'
 import { CallError, callFailure } from '../call-error.js'
@@ -19,8 +19,11 @@ function trimmed(runs: readonly ChatRun[]): ChatRun[] {
   if (last.kind === 'text') last.text = last.text.trimEnd()
   return copied.filter((run) => run.kind !== 'text' || run.text !== '')
 }
-const answerMessage = (text: string, model: ChatAnswerModel | undefined, design: ExperimentDesign | null = null): ChatMessageFields => ({
+const answerMessage = (
+  text: string, model: ChatAnswerModel | undefined, design: ExperimentDesign | null = null, idea: IdeaDraft | null = null,
+): ChatMessageFields => ({
   role: 'ai', runs: textRun(text), actions: [], ...(model === undefined ? {} : { model }), ...(design === null ? {} : { design }),
+  ...(idea === null ? {} : { idea }),
 })
 const statusMessage = (text: string): ChatMessageFields => ({
   role: 'status', runs: textRun(text), actions: [],
@@ -45,12 +48,12 @@ export function createChatService(options: {
   }
 
   /**
-   * Asks the model once to answer `text` in chat `id`, as a design turn with `design`, and keeps the
-   * answer with the model that wrote it and the design it carries, or, when the turn gets none, a status line that says what happened in plain words; either
+   * Asks the model once to answer `text` in chat `id`, as a design or idea turn with `mode`, and keeps
+   * the answer with the model that wrote it and the design or idea draft it carries, or, when the turn gets none, a status line that says what happened in plain words; either
    * takes the place of the status line a retried turn's chat ends with. Where it failed is kept for
    * `failure` and goes to the log.
    */
-  const answer = async (id: string, text: string, design: boolean): Promise<ChatSendResult> => {
+  const answer = async (id: string, text: string, mode: ChatTurnMode | undefined): Promise<ChatSendResult> => {
     if (!options.model.configured(options.choiceOf?.(id)) || options.runner === null) return { id, state: 'failed', reason: 'no-model' }
     failures.delete(id)
     const keep = (message: ChatMessageFields) => options.store.replaceChatStatus(id, message)
@@ -68,11 +71,13 @@ export function createChatService(options: {
           if (running.get(id) === controller && model !== undefined) written.set(id, { text: so, model, since })
         },
       }
-      const answered = design
-        ? await options.runner.design(id, text, controller.signal, progress)
-        : { answer: await options.runner.answer(id, text, controller.signal, progress), design: null }
+      const answered = mode === 'design'
+        ? { ...await options.runner.design(id, text, controller.signal, progress), idea: null }
+        : mode === 'idea'
+          ? { ...await options.runner.idea(id, text, controller.signal, progress), design: null }
+          : { answer: await options.runner.answer(id, text, controller.signal, progress), design: null, idea: null }
       if (controller.signal.aborted) return { id, state: 'cancelled' }
-      keep(answerMessage(answered.answer, model, answered.design))
+      keep(answerMessage(answered.answer, model, answered.design, answered.idea))
       return { id, state: 'complete' }
     } catch (cause) {
       if (controller.signal.aborted) return { id, state: 'cancelled' }
@@ -89,29 +94,29 @@ export function createChatService(options: {
   }
 
   return {
-    /** Keeps what the user wrote in `written` as chat `id`'s question and answers it, as a design turn with `design`. */
-    async send(id: string, written: readonly ChatRun[], design = false): Promise<ChatSendResult> {
+    /** Keeps what the user wrote in `written` as chat `id`'s question and answers it, as a design or idea turn with `mode`. */
+    async send(id: string, written: readonly ChatRun[], mode?: ChatTurnMode): Promise<ChatSendResult> {
       if (running.has(id)) throw new CallError('busy', '这段对话仍在生成，请先停止或等待完成')
       options.store.chatSession(id)
       const runs = trimmed(written)
       options.store.appendChatMessages(id, [{ role: 'you', runs, actions: [] }])
-      return answer(id, modelText(runs), design)
+      return answer(id, modelText(runs), mode)
     },
     /**
-     * Asks the model again to answer chat `id`'s last question, as a design turn with `design`, whose
+     * Asks the model again to answer chat `id`'s last question, as a design or idea turn with `mode`, whose
      * turn ended in a status line,
      * without writing the question twice, its outcome in place of that line: one more billable turn, as
      * `send` is. Fails as `busy` while
      * the chat is generating and as `refused` when it does not end in such a line.
      */
-    async retry(id: string, design = false): Promise<ChatSendResult> {
+    async retry(id: string, mode?: ChatTurnMode): Promise<ChatSendResult> {
       if (running.has(id)) throw new CallError('busy', '这段对话仍在生成，请先停止或等待完成')
       const messages = options.store.chatMessages(id)
       const question = messages.findLast((message) => message.role !== 'status')
       if (messages.at(-1)?.role !== 'status' || question?.role !== 'you') {
         throw new CallError('refused', '这段对话的最后一问已经有回答')
       }
-      return answer(id, modelText(question.runs), design)
+      return answer(id, modelText(question.runs), mode)
     },
     /**
      * Stops the reply being generated in `id` and keeps the text it had written so far as its answer,

@@ -8,7 +8,12 @@ const FILE = DESIGN_FILE_TEXT.en
 export const chat = {
   newChat: 'New chat',
   nameFieldLabel: 'Chat name',
-  saveIdeaLabel: 'Save as idea',
+  ideaMode: {
+    toggle: 'Organize idea',
+    source: 'Source',
+    rounds: (rounds: string) => `From rounds ${rounds}`,
+    roundSeparator: ', ',
+  },
   mentionGroup: { project: 'Projects', paper: 'Papers', page: 'Wiki' },
   conflictTitle: 'Conflicting findings',
   conflictQuestion: 'Why do these two findings conflict?',

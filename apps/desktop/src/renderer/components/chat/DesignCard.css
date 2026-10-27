@@ -1,6 +1,3 @@
 /* The design under an answer: its sections in one column, the claim's status tag before its sentence. */
 .design-card{display:flex;flex-direction:column}
 .design-claim{display:flex;align-items:baseline;gap:var(--item-gap)}
-/* What saving the design writes: the idea, its file and the nodes, one under another, then the commit. */
-.design-writes{display:flex;flex-direction:column;gap:var(--item-gap)}
-.design-commit{display:flex;justify-content:flex-end;gap:var(--item-gap)}

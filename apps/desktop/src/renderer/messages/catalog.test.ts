@@ -155,7 +155,7 @@ describe('一个概念一个词', () => {
 
   it('保存只叫保存;选中文字后加批注的那一项按它落到的高亮与批注叫批注', () => {
     expect(Object.values(zh.reader.notes)).not.toContain('保存笔记')
-    expect(zh.chat.saveIdeaLabel).toBe('保存为想法')
+    expect(zh.chat.ideaMode.toggle).toBe('整理想法')
     expect(zh.reader.selection.note).toBe('批注')
     expect(zh.reader.rail.tabs.highlights).toContain(zh.reader.selection.note)
   })

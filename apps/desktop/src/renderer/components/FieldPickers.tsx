@@ -146,6 +146,30 @@ export function CapsuleButton({ pressed, onClick, disabled = false, id, children
 }
 
 /**
+ * The composer's capsules of modes that exclude one another: one CapsuleButton per option of
+ * `options`, its `label`, with the id `id` when it has one, pressed while `value` is its mode. A
+ * click on an option that is off calls `onChange` with its mode, which turns any other off; a click
+ * on the one that is on calls it with null.
+ */
+export function CapsuleModes<M extends string>({ value, options, disabled = false, onChange }: {
+  value: M | null
+  options: ReadonlyArray<{ value: M; label: string; id?: string }>
+  disabled?: boolean
+  onChange: (next: M | null) => void
+}) {
+  return (
+    <>
+      {options.map((option) => (
+        <CapsuleButton
+          key={option.value} {...(option.id === undefined ? {} : { id: option.id })} pressed={value === option.value}
+          disabled={disabled} onClick={() => onChange(value === option.value ? null : option.value)}
+        >{option.label}</CapsuleButton>
+      ))}
+    </>
+  )
+}
+
+/**
  * The trigger of a capsule menu: `children`, then a small caret, on a neutral capsule whose fill
  * deepens under the pointer and while its menu is open; while `busy` it cannot open, keeps its full
  * colour and shows the running ring in place of its caret.

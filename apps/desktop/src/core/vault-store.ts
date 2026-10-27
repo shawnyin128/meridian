@@ -3468,6 +3468,17 @@ export function createVaultStore(
       })
     }),
 
+    markIdeaDraftSaved: atomic((id, messageId, ideaId) => {
+      const chat = chatOf(id)
+      const message = chat.messages.find((held) => held.id === messageId)
+      if (message?.idea === undefined) throw new CallError('not-found', `这条回答没有想法草稿：${messageId}`)
+      const idea = message.idea
+      chats = save('chats', chats.map((held) => (held !== chat ? held : {
+        ...held,
+        messages: held.messages.map((candidate) => (candidate !== message ? candidate : { ...candidate, idea: { ...idea, saved: ideaId } })),
+      })))
+    }),
+
     recordAction: atomic((id, messageId) => {
       const chat = chatOf(id)
       const message = chat.messages.find((held) => held.id === messageId)

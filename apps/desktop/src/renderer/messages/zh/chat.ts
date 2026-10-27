@@ -7,7 +7,12 @@ const FILE = DESIGN_FILE_TEXT.zh
 export const chat = {
   newChat: '新对话',
   nameFieldLabel: '对话名称',
-  saveIdeaLabel: '保存为想法',
+  ideaMode: {
+    toggle: '整理想法',
+    source: '来源',
+    rounds: (rounds: string) => `来自 第 ${rounds} 轮`,
+    roundSeparator: '、',
+  },
   mentionGroup: { project: '项目', paper: '论文', page: 'Wiki' },
   conflictTitle: '结论冲突',
   conflictQuestion: '为什么说这两条结论冲突？',

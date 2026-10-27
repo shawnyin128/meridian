@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type {
-  ChatMessage, ChatRun, PaperRow, ProjectSummary, WikiAggregationCard,
+  ChatMessage, ChatRun, ChatTurnMode, PaperRow, ProjectSummary, WikiAggregationCard,
 } from '../../shared/contract.js'
-import { chat, feed, idea as ideaApi, papers, project, wiki } from '../ipc.js'
+import { chat, feed, papers, project, wiki } from '../ipc.js'
 import { errorLabel } from '../lib/failure-label.js'
 import {
   useChatSession, useCrumbTail, useJump, useNotice, useVaultRevision,
@@ -24,7 +24,6 @@ import {
   PageBody, PageError, PageFooter, PageHeader, PageShell, PageTitle,
 } from '../components/PageShell.js'
 import { useDrafts } from '../hooks/useDrafts.js'
-import { useDraftSlot } from '../components/DraftSlot.js'
 import { useFollowEnd } from '../hooks/useFollowEnd.js'
 import { useAnswerSoFar } from '../hooks/useAnswerSoFar.js'
 import { useChatFailure } from '../hooks/useChatFailure.js'
@@ -35,7 +34,6 @@ import { useJumpOrigin } from '../hooks/useJumpOrigin.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { CHAT_TITLE_RENAME, CONFLICT_THREAD } from '../lib/chat.js'
-import { IdeaDraft, type IdeaDraftText } from '../components/ideas/IdeaDraft.js'
 import { BackButton } from '../components/BackButton.js'
 import { FadeText } from '../components/FadeText.js'
 import { Toolbar } from '../components/Toolbar.js'
@@ -89,17 +87,16 @@ export function Chat() {
   const fmt = useFormat()
   const m = useMessages()
   const { id, title, archived, paper, select } = useChatSession()
-  const { jump, open } = useJump()
+  const { jump } = useJump()
   const { origin, back } = useJumpOrigin()
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
   const [messages, setMessages] = useState<ChatMessage[] | null>(null)
-  // The message being typed and an idea being drafted belong to their chat.
+  // The message being typed belongs to its chat.
   const drafts = useDrafts<ChatRun[]>(['chat', id ?? ''])
-  const ideaDrafts = useDrafts<IdeaDraftText>(['chat', id ?? ''])
   // Whether the chat's next turns are design turns stays with the chat, as its draft does.
-  const designs = useDrafts<boolean>(['chat', id ?? ''])
-  const designing = id !== null && designs.get('design') === true
+  const modes = useDrafts<ChatTurnMode>(['chat', id ?? ''])
+  const mode = id === null ? null : modes.get('mode') ?? null
   const { running, stop } = useGenerations()
   const { track } = useModelStatus()
   const [projects, setProjects] = useState<ProjectSummary[]>([])
@@ -112,8 +109,6 @@ export function Chat() {
   const { error, load } = useScreenLoad()
   const write = useVaultWrite()
   const draft = id === null ? [] : drafts.get('message') ?? []
-  const ideaDraft = id === null ? undefined : ideaDrafts.get('idea')
-  const ideaSlot = useDraftSlot<HTMLDivElement>(ideaDraft !== undefined, () => { if (id !== null) ideaDrafts.set('idea', { title: '', body: '' }) })
   const sending = id !== null && running(id)
   const writing = useAnswerSoFar(id, sending, messages)
   const failure = useChatFailure(id, messages)
@@ -135,9 +130,9 @@ export function Chat() {
   const mentions = useMemo(() => mentionsOf(projects, rows, pages, fmt, m), [projects, rows, pages, fmt, m])
 
   const turn = useChatTurn(track)
-  const send = useCallback((session: string, runs: ChatRun[], design: boolean) => {
+  const send = useCallback((session: string, runs: ChatRun[], mode: ChatTurnMode | null) => {
     follow()
-    return turn.send(session, runs, design)
+    return turn.send(session, runs, mode)
   }, [follow, turn])
 
   const stopSending = () => {
@@ -155,14 +150,14 @@ export function Chat() {
     }
     void chat.create(m.chat.conflictTitle, true).then(async (session) => {
       select(session.id)
-      await send(session.id, [{ kind: 'text', text: m.chat.conflictQuestion }], false)
+      await send(session.id, [{ kind: 'text', text: m.chat.conflictQuestion }], null)
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }, [jump, select, send, notice, m])
 
   const submit = () => {
     if (draftText(draft).trim() === '' || id === null || sending) return
     drafts.set('message', [])
-    void send(id, draft, designing)
+    void send(id, draft, mode)
   }
 
   const act = (message: ChatMessage) => {
@@ -174,7 +169,6 @@ export function Chat() {
       bump()
     }).catch((e: unknown) => notice.refusal(errorLabel(m, e)))
   }
-  const hasDiscussion = (messages ?? []).some((message) => message.role === 'you')
 
   // An archived chat is not listed in the sidebar. Once opened it looks like any other chat; only
   // the breadcrumb marks it as archived.
@@ -212,27 +206,13 @@ export function Chat() {
                     key={msg.id} chat={id} message={msg} onAct={() => act(msg)}
                     failure={at === shown.length - 1 ? failure : undefined}
                     onRetry={id !== null && !sending && at === shown.length - 1 && endsUnanswered(shown)
-                      ? () => { follow(); void turn.retry(id, designing) }
+                      ? () => { follow(); void turn.retry(id, mode) }
                       : undefined}
                   />
                 ))}
             {writing === null ? null : (
               <ChatMessageView key={writing.message.id} message={writing.message} onAct={() => act(writing.message)} writingSince={writing.since} />
             )}
-            {id === null || ideaDraft === undefined
-              ? null
-              : (
-                <div className="mwrap" ref={ideaSlot.slot}>
-                  <IdeaDraft
-                    key={id} source={title === null ? m.chat.currentChat : plainTitle(title)} draft={ideaDraft}
-                    onChange={(next) => ideaDrafts.set('idea', next)} onCancel={() => ideaDrafts.drop('idea')}
-                    onSave={(ideaTitle, body) => write(ideaApi.create(id, ideaTitle, body), {
-                      note: m.chat.ideaSavedNote,
-                      action: (idea) => ({ label: m.common.open, onAction: () => open('ideas', idea.id) }),
-                    }).then((saved) => { if (saved) ideaDrafts.drop('idea') })}
-                  />
-                </div>
-              )}
           </div>
         </div>
       </PageBody>
@@ -261,8 +241,10 @@ export function Chat() {
               key={id} ref={composer} id="composer" chat={id} sendId="sendBtn" placeholder={m.chat.composerPlaceholder}
               draft={draft} onDraft={(next) => { if (id !== null) drafts.set('message', next) }} unavailable={id === null}
               running={sending} onSend={submit} onStop={stopSending}
-              design={{ on: designing, onToggle: () => { if (id !== null) designs.set('design', !designing) } }}
-              saveIdea={{ id: 'qaIdea', disabled: id === null || !hasDiscussion, onSave: ideaSlot.start }}
+              mode={{
+                value: mode,
+                onChange: (next) => { if (id !== null) { if (next === null) modes.drop('mode'); else modes.set('mode', next) } },
+              }}
               mentions={mentions}
             />
           </div>

@@ -15,8 +15,8 @@ const pending = () => new Promise<ChatSendResult>((resolve) => { turns.settle = 
 
 vi.mock('../ipc.js', () => ({
   chat: {
-    send: (id: string, _runs: unknown, design: boolean) => { calls.push(`send ${id}${design ? ' design' : ''}`); return pending() },
-    retry: (id: string, design: boolean) => { calls.push(`retry ${id}${design ? ' design' : ''}`); return pending() },
+    send: (id: string, _runs: unknown, mode: string | null) => { calls.push(`send ${id}${mode === null ? '' : ` ${mode}`}`); return pending() },
+    retry: (id: string, mode: string | null) => { calls.push(`retry ${id}${mode === null ? '' : ` ${mode}`}`); return pending() },
   },
 }))
 vi.mock('../shell/AppShell.js', () => ({ useVaultRevision: () => ({ revision: 0, bump: () => { calls.push('bump') } }) }))
@@ -46,7 +46,7 @@ describe('useChatTurn', () => {
 
   it('发出的问题马上显示:发出之后、回答回来之前就让各屏重新读一遍,回答回来后再读一遍', async () => {
     const turn = mount()
-    const sent = turn.send('chat-1', [{ kind: 'text', text: '问' }], false)
+    const sent = turn.send('chat-1', [{ kind: 'text', text: '问' }], null)
     expect(calls).toEqual(['send chat-1', 'bump'])
     await act(async () => {
       turns.settle({ id: 'chat-1', state: 'complete' })
@@ -57,7 +57,7 @@ describe('useChatTurn', () => {
 
   it('重试不写新的问题,不提前重读,回答回来后像别的写入一样结束', async () => {
     const turn = mount()
-    const retried = turn.retry('chat-1', false)
+    const retried = turn.retry('chat-1', null)
     expect(calls).toEqual(['retry chat-1'])
     await act(async () => {
       turns.settle({ id: 'chat-1', state: 'complete' })
@@ -66,18 +66,18 @@ describe('useChatTurn', () => {
     expect(calls).toEqual(['retry chat-1', 'written'])
   })
 
-  it('发出和重试的设计轮次都按设计轮次问 Core', async () => {
+  it('发出和重试都按自己的模式问 Core：设计轮次和整理想法轮次', async () => {
     const turn = mount()
-    const sent = turn.send('chat-1', [{ kind: 'text', text: '设计实验' }], true)
+    const sent = turn.send('chat-1', [{ kind: 'text', text: '设计实验' }], 'design')
     await act(async () => {
       turns.settle({ id: 'chat-1', state: 'complete' })
       await sent
     })
-    const retried = turn.retry('chat-1', true)
+    const retried = turn.retry('chat-1', 'idea')
     await act(async () => {
       turns.settle({ id: 'chat-1', state: 'complete' })
       await retried
     })
-    expect(calls).toEqual(['send chat-1 design', 'bump', 'written', 'retry chat-1 design', 'written'])
+    expect(calls).toEqual(['send chat-1 design', 'bump', 'written', 'retry chat-1 idea', 'written'])
   })
 })

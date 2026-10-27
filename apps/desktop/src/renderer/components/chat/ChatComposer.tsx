@@ -5,13 +5,13 @@ import { defaultKeymap, history, historyKeymap } from '@codemirror/commands'
 import { Compartment, EditorState } from '@codemirror/state'
 import type { Extension } from '@codemirror/state'
 import { EditorView, keymap, placeholder as placeholderText } from '@codemirror/view'
-import type { ChatRun } from '../../../shared/contract.js'
+import type { ChatRun, ChatTurnMode } from '../../../shared/contract.js'
 import { useCandidateKeys } from '../../hooks/useCandidateKeys.js'
 import { sendsMessage } from '../../lib/chat.js'
 import { commitKeys, composing } from '../../lib/keyboard.js'
 import { useMessages } from '../../messages/useMessages.js'
 import { ComposerBox } from '../ComposerBox.js'
-import { CapsuleButton } from '../FieldPickers.js'
+import { CapsuleModes } from '../FieldPickers.js'
 import { GenerationControl } from '../GenerationControl.js'
 import { ModelMenu } from '../ModelMenu.js'
 import { PickerPopover, PickOption } from '../PickerPopover.js'
@@ -62,8 +62,9 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
 /**
  * The one chat composer, in the Chat screen and the reader's paper chat: a ComposerBox holding a
  * CodeMirror editor over `draft` with its own undo history, then the model capsule of chat `chat`
- * (see ModelMenu), a divider, and the function capsules: the one that makes the next turns design
- * turns while `design.on`, and the one that saves the chat as an idea, `saveIdea`, with the id `saveIdea.id`; then the send control, which stops the turn while `running`, as Escape anywhere in
+ * (see ModelMenu), a divider, and the function capsules, the modes `mode.value` holds that exclude one
+ * another: design turns, and idea turns that organize the chat into an idea, whose capsule has the id
+ * `qaIdea`; then the send control, which stops the turn while `running`, as Escape anywhere in
  * the box does. Enter sends, Shift+Enter breaks the line, and an Enter that confirms an input
  * method's composition belongs to the input method. With `mentions`, typing `@` anywhere opens the picker of the candidates matching what
  * follows it up to the caret; picking one puts it in as a pill, which the caret steps over and a
@@ -72,7 +73,7 @@ const sameDraft = (a: readonly ChatRun[], b: readonly ChatRun[]) => JSON.stringi
  * `label` names the editor for assistive technology, as the placeholder does without it.
  */
 export function ChatComposer({
-  ref, id, chat, label, placeholder, draft, onDraft, unavailable, running, sendId, onSend, onStop, design, saveIdea, mentions = [],
+  ref, id, chat, label, placeholder, draft, onDraft, unavailable, running, sendId, onSend, onStop, mode, mentions = [],
 }: {
   ref?: Ref<ChatComposerHandle>
   chat: string | null
@@ -86,8 +87,7 @@ export function ChatComposer({
   sendId?: string
   onSend: () => void
   onStop: () => void
-  design: { on: boolean; onToggle: () => void }
-  saveIdea: { onSave: () => void; disabled: boolean; id?: string }
+  mode: { value: ChatTurnMode | null; onChange: (next: ChatTurnMode | null) => void }
   mentions?: readonly MentionCandidate[]
 }) {
   const m = useMessages()
@@ -182,12 +182,10 @@ export function ChatComposer({
             )}
             chips={<ModelMenu chat={chat} />}
             functions={(
-              <>
-                <CapsuleButton pressed={design.on} disabled={chat === null} onClick={design.onToggle}>{m.chat.design.toggle}</CapsuleButton>
-                <CapsuleButton
-                  {...(saveIdea.id === undefined ? {} : { id: saveIdea.id })} disabled={saveIdea.disabled} onClick={saveIdea.onSave}
-                >{m.chat.saveIdeaLabel}</CapsuleButton>
-              </>
+              <CapsuleModes
+                value={mode.value} disabled={chat === null} onChange={mode.onChange}
+                options={[{ value: 'design', label: m.chat.design.toggle }, { value: 'idea', label: m.chat.ideaMode.toggle, id: 'qaIdea' }]}
+              />
             )}
             send={(
               <GenerationControl

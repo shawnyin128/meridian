@@ -1241,7 +1241,7 @@ describe('a design turn', () => {
     const designing = runner.design(chat, 'Design it', new AbortController().signal)
     child.ready()
     const request = await child.frame()
-    expect(request).toMatchObject({ method: 'chat.answer', params: { chatId: chat, design: true, limits: { maxOutputTokens: 28_120, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 600 } } })
+    expect(request).toMatchObject({ method: 'chat.answer', params: { chatId: chat, mode: 'design', limits: { maxOutputTokens: 28_120, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 600 } } })
 
     const context = child.frame()
     child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: 'Design it' } })
@@ -1330,7 +1330,7 @@ describe('a design turn', () => {
     const request = await child.frame()
     expect(request).toMatchObject({
       method: 'chat.answer',
-      params: { design: true, model: CLI_MODEL, limits: { maxOutputTokens: 4_000, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 120 } },
+      params: { mode: 'design', model: CLI_MODEL, limits: { maxOutputTokens: 4_000, minOutputTokens: 4_000, maxModelCalls: 1, timeoutSeconds: 120 } },
     })
     const replied = child.frame()
     child.callModel('design', request['id'] as number, { system: 'Rules and context', prompt: 'History, then: Design it', schema: { type: 'object' } })
@@ -1373,5 +1373,92 @@ describe('a design turn', () => {
     const [turn] = packChatHistory([{ ...message('a', 'ai', '可以测。'), design: DESIGN }])
     expect(turn!.text.startsWith('可以测。\n\n## Explanations')).toBe(true)
     expect(turn!.text).toContain('| 输出分布偏离目标模型，或两组平均宽度相差超过 5% | 检验无效 | 修正对齐后重跑 | repairable |')
+  })
+})
+
+describe('an idea turn', () => {
+  /** A chat of `turns` question and answer pairs, then the question that asks for its idea. */
+  const longChat = (store: VaultStore, turns: number) => {
+    const chat = store.createChat('树宽', true).id
+    store.appendChatMessages(chat, Array.from({ length: turns }, (_, at) => [
+      { role: 'you' as const, actions: [], runs: [{ kind: 'text' as const, text: `问题 ${at + 1}` }] },
+      { role: 'ai' as const, actions: [], runs: [{ kind: 'text' as const, text: `回答 ${at + 1}` }] },
+    ]).flat())
+    store.appendChatMessages(chat, [{ role: 'you', actions: [], runs: [{ kind: 'text', text: '整理想法' }] }])
+    return chat
+  }
+  const apiRunner = (store: VaultStore, child: FakeHarness) => createChatHarnessRunner({
+    store,
+    model: { runtime: async () => API_MODEL } as unknown as HarnessModelConfig,
+    checkCli: vi.fn(),
+    cli: vi.fn<CliChatRunner>(),
+    structured: vi.fn<CliRunner>(),
+    sessions: {} as CliChatSessions,
+    launch: () => child,
+  })
+  /** Starts idea turn `text` in `chat`, answers its context read and returns the request, the context and the turn. */
+  const start = async (store: VaultStore, chat: string, text = '整理想法') => {
+    const child = new FakeHarness()
+    const runner = apiRunner(store, child)
+    const turn = runner.idea(chat, text, new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const read = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: text } })
+    const context = (await read)['result'] as { history: Array<{ role: string; text: string }> }
+    return { child, runner, request, context, turn }
+  }
+
+  it('asks for an idea with the whole chat as its history and a cap that holds its longest draft', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 15)
+    const { child, runner, request, context, turn } = await start(store, chat)
+
+    expect(request).toMatchObject({ method: 'chat.answer', params: { chatId: chat, mode: 'idea', limits: { maxOutputTokens: 26_140, minOutputTokens: 4_000 } } })
+    expect(context.history).toHaveLength(30)
+    expect(context.history[0]).toEqual({ role: 'user', text: '问题 1' })
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '整理好了。', idea: null } })
+    await expect(turn).resolves.toEqual({ answer: '整理好了。', idea: null })
+    runner.close()
+  })
+
+  it('keeps an ordinary turn\'s history at its twenty newest turns', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 15)
+    const child = new FakeHarness()
+    const runner = apiRunner(store, child)
+    const answering = runner.answer(chat, '整理想法', new AbortController().signal)
+    child.ready()
+    const request = await child.frame()
+    const read = child.frame()
+    child.send({ type: 'callback', id: request['id'], callbackId: 'context', method: 'chat.context', params: { id: chat, currentText: '整理想法' } })
+    expect(((await read)['result'] as { history: unknown[] }).history).toHaveLength(20)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '好。' } })
+    await answering
+    runner.close()
+  })
+
+  it('turns the draft\'s source turns into the ids of the messages they count, the current question last', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 3)
+    const ids = store.chatMessages(chat).map((message) => message.id)
+    const { child, runner, request, turn } = await start(store, chat)
+    const idea = { title: '按接受率调树宽', body: '树宽跟着接受率走。', sources: [7, 1, 3, 3] }
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '整理好了。', idea } })
+
+    await expect(turn).resolves.toEqual({
+      answer: '整理好了。', idea: { title: idea.title, body: idea.body, sources: [ids[0], ids[2], ids[6]] },
+    })
+    runner.close()
+  })
+
+  it('fails as malformed output when a source turn counts no message the turn was given', async () => {
+    const store = createFixtureStore()
+    const chat = longChat(store, 3)
+    const { child, runner, request, turn } = await start(store, chat)
+    child.send({ type: 'response', id: request['id'], ok: true, result: { answer: '整理好了。', idea: { title: '题', body: '文', sources: [8] } } })
+
+    await expect(turn).rejects.toMatchObject({ name: 'CallError', reason: 'malformed-output' })
+    runner.close()
   })
 })

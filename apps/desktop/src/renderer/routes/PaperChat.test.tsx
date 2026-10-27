@@ -147,18 +147,9 @@ const type = (text: string) => act(() => {
 /** The question as the composer shows it. */
 const typed = () => editor().state.doc.toString()
 
-function setValue(input: HTMLInputElement | HTMLTextAreaElement, value: string): void {
-  const prototype = input instanceof window.HTMLTextAreaElement
-    ? window.HTMLTextAreaElement.prototype
-    : window.HTMLInputElement.prototype
-  const setter = Object.getOwnPropertyDescriptor(prototype, 'value')!.set!
-  setter.call(input, value)
-  input.dispatchEvent(new Event('input', { bubbles: true }))
-}
-
 describe('PaperChat', () => {
-  /** The paper chat's capsule that saves it as an idea. */
-  const saveIdea = () => [...document.querySelectorAll<HTMLButtonElement>('.paper-chat .choice-capsule')].find((held) => held.textContent === '保存为想法')!
+  /** The paper chat's capsule that organizes it into an idea. */
+  const organizeIdea = () => [...document.querySelectorAll<HTMLButtonElement>('.paper-chat .choice-capsule')].find((held) => held.textContent === '整理想法')!
   let root: Root | null = null
 
   beforeEach(() => {
@@ -223,7 +214,7 @@ describe('PaperChat', () => {
     await act(async () => { host.querySelector<HTMLButtonElement>('.paper-chat .send')!.click() })
 
     // Core trims the turn at its ends.
-    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '  关键假设是什么？  ' }], false)
+    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '  关键假设是什么？  ' }], null)
     expect(typed()).toBe('')
   })
 
@@ -330,50 +321,6 @@ describe('PaperChat', () => {
     await finish()
   })
 
-  it('论文对话把用户明确整理的标题和正文存为可回看的想法', async () => {
-    api.messages.mockResolvedValueOnce([{
-      id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [],
-    }])
-    const host = document.createElement('div')
-    document.body.append(host)
-    root = createRoot(host)
-    await act(async () => {
-      root!.render(withMessages(<PaperChat paper={PAPER} />))
-      await Promise.resolve()
-      await Promise.resolve()
-    })
-
-    expect(host.querySelector('.qacts .tag')).toBeNull()
-    await act(async () => {
-      saveIdea().click()
-      await Promise.resolve()
-    })
-    expect(document.querySelector('[role="dialog"]')).toBeNull()
-    const draft = host.querySelector<HTMLElement>('.paper-chat .msgs > :last-child .idea-draft')!
-    expect(draft.querySelector('.draft-form-destination')!.textContent).toBe('→想法')
-    expect(draft.querySelector('.idea-draft-source')!.textContent).toBe('来源：Paper One · Paper One')
-    expect(document.activeElement).toBe(draft.querySelector('input'))
-    act(() => {
-      setValue(draft.querySelector('input')!, '可验证的新方向')
-      const body = EditorView.findFromDOM(draft.querySelector<HTMLElement>('.form-markdown .cm-editor')!)!
-      body.dispatch({ changes: { from: 0, insert: '把讨论后的机制和实验假设明确写下来' }, userEvent: 'input.type' })
-    })
-    await act(async () => {
-      draft.querySelector('input')!.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true }))
-      await Promise.resolve()
-    })
-    expect(host.querySelector('.idea-draft')).toBeNull()
-    expect(api.createIdea).toHaveBeenCalledWith(
-      'chat-paper-1', '可验证的新方向', '把讨论后的机制和实验假设明确写下来',
-    )
-    const saved = api.writes.at(-1)!
-    const action = saved.opts.action!(saved.result as never)
-    expect([saved.opts.note, action.label]).toEqual(['想法已保存', '打开'])
-    action.onAction()
-    expect(api.open).toHaveBeenCalledWith('ideas', 'idea-1')
-    expect(document.body.textContent).not.toContain('存为结论')
-  })
-
   /** Renders the paper chat for PAPER and waits for its session and messages to load. */
   async function mountChat(): Promise<HTMLElement> {
     const host = document.createElement('div')
@@ -464,24 +411,7 @@ describe('PaperChat', () => {
     }
   })
 
-  it('想法草稿留在它的论文上：换一篇时不跟过去，回到原篇草稿还在；Esc 收起', async () => {
-    api.messages.mockResolvedValueOnce([{ id: 'm1', role: 'you', runs: [{ kind: 'text', text: '先讨论机制' }], actions: [] }])
-    const host = await mountChat()
-    await act(async () => { saveIdea().click() })
-    act(() => setValue(host.querySelector<HTMLInputElement>('.idea-draft input')!, '只属于这一篇'))
-    await showPaper(null)
-    await showPaper(PAPER_TWO)
-    expect(host.querySelector('.idea-draft')).toBeNull()
-    await showPaper(null)
-    await showPaper(PAPER)
-    const title = host.querySelector<HTMLInputElement>('.idea-draft input')!
-    expect(title.value).toBe('只属于这一篇')
-    act(() => { title.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })) })
-    expect(host.querySelector('.idea-draft')).toBeNull()
-    expect(api.createIdea).not.toHaveBeenCalled()
-  })
-
-  it('问题去掉空白后为空时发送钮不可点；保存为想法是输入框下面一行的功能胶囊，还没讨论时按不了，上面不再有一行', async () => {
+  it('问题去掉空白后为空时发送钮不可点；整理想法是输入框下面一行的模式胶囊，开着时这一问按整理想法轮次发出，上面不再有一行', async () => {
     const host = await mountChat()
     const send = host.querySelector<HTMLButtonElement>('.paper-chat .send')!
     expect(send.disabled).toBe(true)
@@ -490,9 +420,15 @@ describe('PaperChat', () => {
     type('关键假设是什么？')
     expect(send.disabled).toBe(false)
 
-    const save = saveIdea()
-    expect([save.className, save.disabled, save.closest('.cbox-foot') !== null]).toEqual(['choice-capsule', true, true])
+    const organize = organizeIdea()
+    expect([organize.className, organize.getAttribute('aria-pressed'), organize.closest('.cbox-foot') !== null])
+      .toEqual(['choice-capsule', 'false', true])
     expect(host.querySelector('.paper-chat .qacts')).toBeNull()
+    act(() => organize.click())
+    act(() => { field().dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true })) })
+    await act(async () => { await Promise.resolve() })
+    expect(api.send).toHaveBeenLastCalledWith('chat-paper-1', [{ kind: 'text', text: '关键假设是什么？' }], 'idea')
+    expect(host.querySelector('.idea-draft')).toBeNull()
   })
 
   it('空对话的空态只有对话的图标，和输入框一样留在对话栏的左右边距里', async () => {
@@ -528,7 +464,7 @@ describe('PaperChat', () => {
 
     // The Enter that sends inserts no line break of its own.
     expect(press({}).defaultPrevented).toBe(true)
-    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '第一行' }], false)
+    expect(api.send).toHaveBeenCalledWith('chat-paper-1', [{ kind: 'text', text: '第一行' }], null)
     await act(async () => { await Promise.resolve() })
   })
 

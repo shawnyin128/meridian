@@ -39,6 +39,10 @@ const MAX_DESIGN_CHARACTERS = DESIGN_ANSWER_CHARACTERS + 160 + 3 * 160 + 4 * (80
   + 6 * (120 + 2 * 60) + 6 * (160 + 300)
 /** The output cap of a design turn before it held its longest output, which every model takes and Harness never clamps below. */
 const MIN_DESIGN_TOKENS = 4_000
+/** The longest output an idea turn gives, in characters: its answer, then the title, body and source turns of the longest draft. */
+const MAX_IDEA_CHARACTERS = 2_000 + 80 + 4_000 + 20 * 3
+/** The output cap of an idea turn on a subscription CLI, and the one Harness never clamps an API model's below. */
+const MIN_IDEA_TOKENS = 4_000
 const MODEL_CONNECTION_REDACTIONS = [
   /(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
   /(\b(?:api[-_ ]?key|x-api-key|access[-_ ]?token|secret)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
@@ -59,6 +63,15 @@ const ChatContextParamsSchema = z.object({
 const ChatAnswerSchema = z.object({ answer: z.string().trim().min(1).max(MAX_ANSWER_CHARACTERS) }).strict()
 const ChatDesignAnswerSchema = z.object({
   answer: z.string().trim().min(1).max(DESIGN_ANSWER_CHARACTERS), design: ExperimentDesignSchema.nullable(),
+}).strict()
+/** An idea turn's answer, its draft's source turns counted over the history the turn was given, its current message last. */
+const ChatIdeaAnswerSchema = z.object({
+  answer: z.string().trim().min(1).max(2_000),
+  idea: z.object({
+    title: z.string().trim().min(1).max(80).regex(/^[^\n]*$/),
+    body: z.string().trim().min(1).max(4_000),
+    sources: z.array(z.number().int().positive()).min(1).max(20),
+  }).strict().nullable(),
 }).strict()
 /** How many mentioned Wiki pages, and claims of them, a turn's context holds. */
 const MENTIONED_WIKI_PAGES = 5
@@ -102,6 +115,9 @@ export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   sourceCharacters: 80_000,
   historyCharacters: 12_000,
   historyTurns: 20,
+  /** The history an idea turn reads, the whole chat up to these, less in a paper chat whose source takes the rest of the context. */
+  ideaHistoryCharacters: 60_000,
+  ideaHistoryTurns: 100,
   readingCharacters: 12_000,
   readingRemarkCharacters: 4_000,
   readingItemCharacters: 3_000,
@@ -246,20 +262,29 @@ type WikiClaim = { ref: string; page: string; text: string }
 const claimCharacters = (claims: readonly WikiClaim[]) =>
   claims.reduce((sum, claim) => sum + claim.page.length + claim.text.length, 0)
 
-/** Preserve the newest whole turns and a bounded tail of the oldest included turn. */
-export function packChatHistory(messages: readonly StoredChatMessage[]) {
-  const history: Array<{ role: 'user' | 'assistant'; text: string }> = []
-  let remaining = CHAT_CONTEXT_BUDGETS.historyCharacters
-  for (let index = messages.length - 1; index >= 0
-    && history.length < CHAT_CONTEXT_BUDGETS.historyTurns && remaining > 0; index -= 1) {
+/**
+ * The newest whole turns of `messages`, without status lines, at most `turns` of them and
+ * `characters` long, and a bounded tail of the oldest turn included, oldest first, each with the id
+ * of its message.
+ */
+function packedHistory(messages: readonly StoredChatMessage[], characters: number, turns: number) {
+  const history: Array<{ id: string; role: 'user' | 'assistant'; text: string }> = []
+  let remaining = characters
+  for (let index = messages.length - 1; index >= 0 && history.length < turns && remaining > 0; index -= 1) {
     const message = messages[index]!
     if (message.role === 'status') continue
     const text = clipTail(messageText(message), remaining)
     if (text === '') continue
-    history.unshift({ role: message.role === 'you' ? 'user' : 'assistant', text })
+    history.unshift({ id: message.id, role: message.role === 'you' ? 'user' : 'assistant', text })
     remaining -= text.length
   }
   return history
+}
+
+/** Preserve the newest whole turns and a bounded tail of the oldest included turn. */
+export function packChatHistory(messages: readonly StoredChatMessage[]) {
+  return packedHistory(messages, CHAT_CONTEXT_BUDGETS.historyCharacters, CHAT_CONTEXT_BUDGETS.historyTurns)
+    .map(({ role, text }) => ({ role, text }))
 }
 
 /** Prioritize the user's paper-wide remark and authored notes within one deterministic budget. */
@@ -462,6 +487,9 @@ export function createChatHarnessRunner(options: {
     }
   }
 
+  /** The chats whose running turn is an idea turn, each with the ids of the messages its history holds, once read. */
+  const ideaTurns = new Map<string, string[]>()
+
   const rpc = createHarnessRpc({
     launch: options.launch ?? launchHarnessProcess,
     requiredCapabilities: ['chat', 'model-check'],
@@ -470,13 +498,22 @@ export function createChatHarnessRunner(options: {
       'chat.context': async (params) => {
         const { id, currentText } = ChatContextParamsSchema.parse(params)
         const session = options.store.chatSession(id)
-        const history = packChatHistory(messagesBefore(options.store.chatMessages(id), currentText))
         const paper = session.paperId === undefined ? undefined : await paperContext(session.paperId)
-        const used = session.title.length + history.reduce((sum, turn) => sum + turn.text.length, 0) + (paper === undefined ? 0 : (
+        const paperUsed = paper === undefined ? 0 : (
           paper.title.length + paper.authors.join('').length + (paper.abstract?.length ?? 0)
           + paper.pages.reduce((sum, page) => sum + page.text.length, 0) + paper.reading.remark.length
           + paper.reading.highlights.reduce((sum, item) => sum + item.quote.length + item.note.length, 0)
-          + paper.reading.notes.reduce((sum, note) => sum + note.text.length, 0)))
+          + paper.reading.notes.reduce((sum, note) => sum + note.text.length, 0))
+        const before = messagesBefore(options.store.chatMessages(id), currentText)
+        const idea = ideaTurns.has(id)
+        const packed = idea
+          ? packedHistory(before, Math.min(
+            CHAT_CONTEXT_BUDGETS.ideaHistoryCharacters, CHAT_CONTEXT_BUDGETS.contextCharacters - session.title.length - paperUsed,
+          ), CHAT_CONTEXT_BUDGETS.ideaHistoryTurns)
+          : packedHistory(before, CHAT_CONTEXT_BUDGETS.historyCharacters, CHAT_CONTEXT_BUDGETS.historyTurns)
+        if (idea) ideaTurns.set(id, packed.map((turn) => turn.id))
+        const history = packed.map(({ role, text }) => ({ role, text }))
+        const used = session.title.length + history.reduce((sum, turn) => sum + turn.text.length, 0) + paperUsed
         const wiki = await mentionedClaims(id, CHAT_CONTEXT_BUDGETS.contextCharacters - used)
         return { title: session.title, history, ...(paper === undefined ? {} : { paper }), wiki }
       },
@@ -568,12 +605,12 @@ export function createChatHarnessRunner(options: {
   }
 
   /**
-   * The one structured model call of a design turn of chat `chatId` on `model`, ending when `signal`
+   * The one structured model call of a design or idea turn of chat `chatId` on `model`, ending when `signal`
    * aborts, with the vault lookups a turn of that chat has, a paper chat's search and page read only
    * when its context cannot hold the whole paper, outside the chat's CLI session; a CLI failure goes
    * to `onFailure`.
    */
-  const cliDesign = (
+  const cliStructured = (
     chatId: string, model: HarnessCliModel, signal: AbortSignal, onFailure: (failure: CliRunError) => void,
   ): HarnessCallback => {
     let called = false
@@ -708,14 +745,14 @@ export function createChatHarnessRunner(options: {
         const result = ChatDesignAnswerSchema.parse(await rpc.request('chat.answer', {
           chatId: id,
           text,
-          design: true,
+          mode: 'design',
           model,
           limits: { maxOutputTokens, minOutputTokens, maxModelCalls: 1, timeoutSeconds },
         }, {
           signal,
           ...('source' in model ? {
             timeoutMs: CLI_REQUEST_TIMEOUT_MS,
-            callbacks: { 'model.invoke': cliDesign(id, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }) },
+            callbacks: { 'model.invoke': cliStructured(id, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }) },
           } : { timeoutMs: requestTimeoutMs }),
         }))
         if (result.design !== null) await checkAnchors(id, result.design)
@@ -725,6 +762,61 @@ export function createChatHarnessRunner(options: {
           ? chatHarnessError(cause)
           : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })
       } finally {
+        ended.abort()
+      }
+    },
+    /**
+     * Asks Harness to organize chat `id` into an idea on idea turn `text` until `signal` aborts, its
+     * context holding the chat's whole history up to CHAT_CONTEXT_BUDGETS' idea budget and, on an
+     * API model, an output cap of MAX_IDEA_CHARACTERS tokens raised by the effort's reasoning
+     * allowance and never clamped below MIN_IDEA_TOKENS; on a subscription CLI the turn is one
+     * structured call outside the chat's session. `progress` hears the model writing it. Returns the
+     * answer and its draft, its sources the ids of the messages they count, oldest first, or null
+     * when the chat holds no idea; rejects with a malformed-output CallError when a source counts no
+     * message the turn was given, and otherwise as `answer` does.
+     */
+    async idea(id: string, text: string, signal: AbortSignal, progress?: ChatProgress): Promise<{
+      answer: string; idea: { title: string; body: string; sources: string[] } | null
+    }> {
+      const ended = new AbortController()
+      let failure: CliRunError | undefined
+      ideaTurns.set(id, [])
+      try {
+        const model = await options.model.runtime(options.choiceOf?.(id))
+        progress?.onModel('source' in model
+          ? { route: 'subscription', cli: model.cli, ...(model.model === undefined ? {} : { id: model.model }) }
+          : { route: 'api', id: model.model })
+        const { maxOutputTokens, minOutputTokens, timeoutSeconds, requestTimeoutMs } = 'source' in model
+          ? cliRunLimits(MIN_IDEA_TOKENS)
+          : apiRunLimits(model.effort, answerTokens(MAX_IDEA_CHARACTERS), MIN_IDEA_TOKENS)
+        const result = ChatIdeaAnswerSchema.parse(await rpc.request('chat.answer', {
+          chatId: id,
+          text,
+          mode: 'idea',
+          model,
+          limits: { maxOutputTokens, minOutputTokens, maxModelCalls: 1, timeoutSeconds },
+        }, {
+          signal,
+          ...('source' in model ? {
+            timeoutMs: CLI_REQUEST_TIMEOUT_MS,
+            callbacks: { 'model.invoke': cliStructured(id, model, AbortSignal.any([signal, ended.signal]), (cause) => { failure = cause }) },
+          } : { timeoutMs: requestTimeoutMs }),
+        }))
+        if (result.idea === null) return { answer: result.answer, idea: null }
+        const given = ideaTurns.get(id) ?? []
+        const current = options.store.chatMessages(id).findLast((message) => message.role === 'you')!.id
+        const ids = [...given, current]
+        if (result.idea.sources.some((turn) => turn > ids.length)) {
+          throw new CallError('malformed-output', '模型的想法来源对不上这段对话')
+        }
+        const sources = [...new Set(result.idea.sources)].sort((first, second) => first - second).map((turn) => ids[turn - 1]!)
+        return { answer: result.answer, idea: { title: result.idea.title, body: result.idea.body, sources } }
+      } catch (cause) {
+        throw failure === undefined || cause instanceof CallError
+          ? chatHarnessError(cause)
+          : new CallError(CLI_CALL_FAILURES[failure.kind], failure.message, { cause: failure })
+      } finally {
+        ideaTurns.delete(id)
         ended.abort()
       }
     },

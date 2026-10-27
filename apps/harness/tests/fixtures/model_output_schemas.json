@@ -689,5 +689,63 @@
    "design"
   ],
   "type": "object"
+ },
+ "ChatIdeaAnswer": {
+  "$defs": {
+   "IdeaDraft": {
+    "additionalProperties": false,
+    "properties": {
+     "title": {
+      "maxLength": 80,
+      "minLength": 1,
+      "pattern": "^[^\\n]*$",
+      "type": "string"
+     },
+     "body": {
+      "maxLength": 4000,
+      "minLength": 1,
+      "type": "string"
+     },
+     "sources": {
+      "items": {
+       "minimum": 1,
+       "type": "integer"
+      },
+      "maxItems": 20,
+      "minItems": 1,
+      "type": "array"
+     }
+    },
+    "required": [
+     "title",
+     "body",
+     "sources"
+    ],
+    "type": "object"
+   }
+  },
+  "additionalProperties": false,
+  "properties": {
+   "answer": {
+    "maxLength": 2000,
+    "minLength": 1,
+    "type": "string"
+   },
+   "idea": {
+    "anyOf": [
+     {
+      "$ref": "#/$defs/IdeaDraft"
+     },
+     {
+      "type": "null"
+     }
+    ]
+   }
+  },
+  "required": [
+   "answer",
+   "idea"
+  ],
+  "type": "object"
  }
 }

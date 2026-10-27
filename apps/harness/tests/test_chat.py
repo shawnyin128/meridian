@@ -21,6 +21,7 @@ from meridian_harness.workflows.chat import (
     ChatAnswer,
     ChatContext,
     ChatDesignAnswer,
+    ChatIdeaAnswer,
     build_chat_method,
 )
 
@@ -611,37 +612,37 @@ def _reads(context: dict[str, object]) -> Callable[[str, object], object]:
 
 
 def _ask(
-    runtime: dict[str, object], context: dict[str, object], *, design: bool = False,
+    runtime: dict[str, object], context: dict[str, object], *, mode: str = "answer",
 ) -> object:
     return build_chat_method()(
         RequestContext(32, Event(), _reads(context)),
-        {**_params(), "model": runtime, "design": design},
+        {**_params(), "model": runtime, "mode": mode},
     )
 
 
 def _api_requests(
-    context: dict[str, object], *, design: bool = False,
+    context: dict[str, object], *, mode: str = "answer",
 ) -> dict[str, tuple[str, str]]:
-    """The system text and the human text each API route sends for one turn in `context`, a design
-    turn with `design`."""
+    """The system text and the human text each API route sends for one turn of `mode` in
+    `context`."""
 
-    output = {"answer": "Answer", "design": None} if design else {"answer": "Answer"}
+    output = {"answer": "Answer", **({mode: None} if mode != "answer" else {})}
     sent: dict[str, tuple[str, str]] = {}
     responses = ProviderStandIn(output)
     build_chat_method(_answering("Answer", responses))(
-        RequestContext(33, Event(), _reads(context)), {**_params(), "design": design},
+        RequestContext(33, Event(), _reads(context)), {**_params(), "mode": mode},
     )
     system, human = responses.requests[0]["input"]
     sent["openai-responses"] = (system["content"], human["content"])
     completions = ProviderStandIn(output)
     build_chat_method(_answering("Answer", completions))(
         RequestContext(34, Event(), _reads(context)),
-        {**_params("openai-compatible", "chat-completions"), "design": design},
+        {**_params("openai-compatible", "chat-completions"), "mode": mode},
     )
     system, human = completions.requests[0]["messages"]
     sent["compatible-chat"] = (system["content"], human["content"])
     with AnthropicStandIn(output) as anthropic:
-        _ask(anthropic.runtime, context, design=design)
+        _ask(anthropic.runtime, context, mode=mode)
     body = anthropic.requests[0]
     (message,) = body["messages"]
     content = message["content"]
@@ -777,7 +778,7 @@ def _read_with_wiki(method: str, _params: object) -> object:
 
 
 def _design_params(**changes: object) -> dict[str, object]:
-    return {**_params(), "design": True, **changes}
+    return {**_params(), "mode": "design", **changes}
 
 
 class ChatDesignTests(unittest.TestCase):
@@ -879,7 +880,7 @@ class ChatDesignTests(unittest.TestCase):
                 raise AssertionError("chat.context must be an object")
             return {**context, "history": [{"role": "user", "text": "Earlier question"}]}
 
-        params = {**_cli_params(), "design": True}
+        params = {**_cli_params(), "mode": "design"}
         result = build_chat_method()(RequestContext(45, Event(), read), params)
 
         self.assertEqual(result, {"answer": "Testable.", "design": _design(ledger=vault_anchor)})
@@ -895,7 +896,7 @@ class ChatDesignTests(unittest.TestCase):
     ) -> None:
         context = {**_paper_chat_context(_HISTORY), "wiki": _CLAIMS}
         chat = _api_requests(context)
-        design = _api_requests(context, design=True)
+        design = _api_requests(context, mode="design")
         for route, (chat_system, chat_user) in chat.items():
             with self.subTest(route=route):
                 design_system, design_text = design[route]
@@ -912,7 +913,7 @@ class ChatDesignTests(unittest.TestCase):
         with AnthropicStandIn({"answer": "Answer"}) as chat_service:
             _ask(chat_service.runtime, context)
         with AnthropicStandIn({"answer": "Testable.", "design": None}) as design_service:
-            _ask(design_service.runtime, context, design=True)
+            _ask(design_service.runtime, context, mode="design")
         cached = [
             service.requests[0]["messages"][0]["content"][0]
             for service in (chat_service, design_service)
@@ -933,7 +934,7 @@ class ChatDesignTests(unittest.TestCase):
                 service = ProviderStandIn({"answer": "Testable.", "design": None})
                 build_chat_method(_answering("unused", service))(
                     RequestContext(50, Event(), _read),
-                    {**_params(provider, protocol), "design": True},
+                    {**_params(provider, protocol), "mode": "design"},
                 )
                 (request,) = service.requests
                 if provider != "openai":
@@ -942,7 +943,7 @@ class ChatDesignTests(unittest.TestCase):
                     self.assertEqual(function["name"], "ChatDesignAnswer")
                 self.assertEqual(developer_text(request, ChatDesignAnswer), [])
         with AnthropicStandIn({"answer": "Testable.", "design": None}) as anthropic:
-            _ask(anthropic.runtime, _paper_chat_context([]), design=True)
+            _ask(anthropic.runtime, _paper_chat_context([]), mode="design")
         (body,) = anthropic.requests
         self.assertEqual(developer_text(body, ChatDesignAnswer), [])
 
@@ -957,7 +958,7 @@ class ChatDesignTests(unittest.TestCase):
                 return {"output": {"answer": "Testable.", "design": None}}
             return {**_paper_chat_context(_HISTORY), "wiki": _CLAIMS}
 
-        build_chat_method()(RequestContext(51, Event(), read), {**_cli_params(), "design": True})
+        build_chat_method()(RequestContext(51, Event(), read), {**_cli_params(), "mode": "design"})
 
         (call,) = calls
         prompt = str(call["prompt"])
@@ -989,7 +990,7 @@ class ChatDesignTests(unittest.TestCase):
             return calls[0]
 
         chat = call(_cli_params())
-        design = call({**_cli_params(), "design": True})
+        design = call({**_cli_params(), "mode": "design"})
 
         self.assertEqual(design["system"], chat["system"])
         history = str(chat["prompt"]).split("Current user message:", 1)[0]
@@ -1011,11 +1012,179 @@ class ChatDesignTests(unittest.TestCase):
 
                 with self.assertRaises(HarnessFailure) as raised:
                     build_chat_method()(
-                        RequestContext(46, Event(), read), {**_cli_params(), "design": True},
+                        RequestContext(46, Event(), read), {**_cli_params(), "mode": "design"},
                     )
 
                 self.assertEqual(raised.exception.kind, "model_error")
                 self.assertEqual(raised.exception.detail, "structured_output")
+
+
+def _idea(**changes: object) -> dict[str, object]:
+    """An idea draft that passes every check, with `changes` applied."""
+
+    idea: dict[str, object] = {
+        "title": "Width that follows acceptance at large batch",
+        "body": (
+            "Grow the draft tree where acceptance is high.\n\n"
+            "Builds on EAGLE; still open: the gain at B >= 32."
+        ),
+        "sources": [1, 2],
+    }
+    idea.update(changes)
+    return idea
+
+
+def _read_with_history(method: str, _params: object) -> object:
+    if method != "chat.context":
+        raise AssertionError(f"Unexpected callback: {method}")
+    return {
+        "title": "Tree width",
+        "history": [
+            {"role": "user", "text": "Could width follow acceptance?"},
+            {"role": "assistant", "text": "It could, at large batch."},
+        ],
+    }
+
+
+def _idea_params() -> dict[str, object]:
+    return {**_params(), "mode": "idea"}
+
+
+class ChatIdeaTests(unittest.TestCase):
+    def test_an_idea_turn_returns_the_answer_and_its_draft_through_a_closed_schema(self) -> None:
+        service = ProviderStandIn({"answer": "Drafted.", "idea": _idea()})
+        method = build_chat_method(_answering("unused", service))
+
+        result = method(RequestContext(60, Event(), _read_with_history), _idea_params())
+
+        self.assertEqual(result, {"answer": "Drafted.", "idea": _idea()})
+        schema = service.requests[0]["text"]["format"]["schema"]
+        self.assertEqual(schema["additionalProperties"], False)
+        self.assertEqual(sorted(schema["required"]), ["answer", "idea"])
+        user = str(service.requests[0]["input"][1]["content"])
+        self.assertIn("stand alone as a research contribution", user)
+        rule = user.index("stand alone as a research contribution")
+        self.assertLess(user.index("Conversation history:"), rule)
+        self.assertLess(rule, user.index("Current user message:"))
+
+    def test_an_idea_turn_merges_the_related_turns_and_names_the_threads_left_out(self) -> None:
+        service = ProviderStandIn({"answer": "Drafted.", "idea": _idea()})
+        method = build_chat_method(_answering("unused", service))
+
+        method(RequestContext(60, Event(), _read_with_history), _idea_params())
+
+        user = str(service.requests[0]["input"][1]["content"])
+        self.assertIn("Read the whole conversation", user)
+        self.assertIn("merge them into one idea", user)
+        self.assertIn("name in `answer` each thread you left out", user)
+
+    def test_an_idea_turn_may_answer_without_a_draft(self) -> None:
+        service = ProviderStandIn({"answer": "Only findings so far.", "idea": None})
+        method = build_chat_method(_answering("unused", service))
+
+        self.assertEqual(
+            method(RequestContext(61, Event(), _read_with_history), {**_params(), "mode": "idea"}),
+            {"answer": "Only findings so far.", "idea": None},
+        )
+
+    def test_an_idea_that_breaks_a_rule_is_a_structured_output_failure(self) -> None:
+        for label, idea in (
+            ("a title over 80 characters", _idea(title="t" * 81)),
+            ("a title on two lines", _idea(title="one\ntwo")),
+            ("no source turn", _idea(sources=[])),
+            ("a source turn the conversation does not have", _idea(sources=[4])),
+            ("a source turn of zero", _idea(sources=[0])),
+            ("a repeated source turn", _idea(sources=[1, 1])),
+            ("an extra field", _idea(project="draft")),
+        ):
+            with self.subTest(label):
+                service = ProviderStandIn({"answer": "Drafted.", "idea": idea})
+                method = build_chat_method(_answering("unused", service))
+
+                with self.assertRaises(HarnessFailure) as raised:
+                    method(RequestContext(62, Event(), _read_with_history), _idea_params())
+
+                self.assertEqual(raised.exception.kind, "model_error")
+                self.assertEqual(raised.exception.detail, "structured_output")
+                self.assertEqual(len(service.requests), 1)
+
+    def test_the_current_message_counts_as_the_turn_after_the_history(self) -> None:
+        service = ProviderStandIn({"answer": "Drafted.", "idea": _idea(sources=[3])})
+        method = build_chat_method(_answering("unused", service))
+
+        result = method(RequestContext(63, Event(), _read_with_history), _idea_params())
+
+        self.assertEqual(result["idea"]["sources"], [3])  # type: ignore[index]
+
+    def test_an_idea_turn_shares_the_chat_turn_stable_prefix(self) -> None:
+        context = _paper_chat_context([{"role": "user", "text": "Earlier question"}])
+        chat = _api_requests(context)
+        idea = _api_requests(context, mode="idea")
+
+        for route, (system, human) in chat.items():
+            with self.subTest(route=route):
+                idea_system, idea_human = idea[route]
+                self.assertEqual(idea_system, system)
+                stable = human.split("Current user message:", 1)[0]
+                self.assertTrue(idea_human.startswith(stable))
+                self.assertIn("stand alone as a research contribution", idea_human[len(stable):])
+
+    def test_a_cli_idea_turn_asks_core_for_one_structured_call(self) -> None:
+        calls: list[dict[str, object]] = []
+
+        def read(method: str, params: object) -> object:
+            if method == "model.invoke":
+                if not isinstance(params, dict):
+                    raise AssertionError("model.invoke params must be an object")
+                calls.append(params)
+                return {"output": {"answer": "Drafted.", "idea": _idea()}}
+            return _read_with_history(method, params)
+
+        params = {**_cli_params(), "mode": "idea"}
+        result = build_chat_method()(RequestContext(64, Event(), read), params)
+
+        self.assertEqual(result, {"answer": "Drafted.", "idea": _idea()})
+        (call,) = calls
+        self.assertEqual(set(call), {"system", "prompt", "schema"})
+        self.assertIn("stand alone as a research contribution", str(call["prompt"]))
+        self.assertEqual(call["schema"], ChatIdeaAnswer.model_json_schema())
+
+    def test_the_idea_schema_is_the_pinned_one_without_titles_or_docstrings(self) -> None:
+        self.assertEqual(ChatIdeaAnswer.model_json_schema(), released_schema("ChatIdeaAnswer"))
+        service = ProviderStandIn({"answer": "Drafted.", "idea": None})
+        build_chat_method(_answering("unused", service))(
+            RequestContext(65, Event(), _read),
+            {**_params("openai-compatible", "chat-completions"), "mode": "idea"},
+        )
+        (request,) = service.requests
+        (tool,) = request["tools"]
+        self.assertEqual(tool["function"]["name"], "ChatIdeaAnswer")
+        self.assertEqual(developer_text(request, ChatIdeaAnswer), [])
+
+    def test_an_idea_turn_reads_a_history_longer_than_an_ordinary_turn_keeps(self) -> None:
+        history = [
+            {"role": "user" if at % 2 == 0 else "assistant", "text": f"Turn {at + 1}"}
+            for at in range(60)
+        ]
+
+        def read(method: str, _params: object) -> object:
+            if method != "chat.context":
+                raise AssertionError(f"Unexpected callback: {method}")
+            return {"title": "Long chat", "history": history}
+
+        service = ProviderStandIn({"answer": "Drafted.", "idea": _idea(sources=[1, 59, 61])})
+        result = build_chat_method(_answering("unused", service))(
+            RequestContext(67, Event(), read), {**_params(), "mode": "idea"},
+        )
+
+        self.assertEqual(result["idea"]["sources"], [1, 59, 61])  # type: ignore[index]
+        self.assertIn("Turn 1", str(service.requests[0]["input"][1]["content"]))
+
+    def test_an_unknown_mode_is_a_protocol_violation(self) -> None:
+        with self.assertRaises(ProtocolViolation):
+            build_chat_method(_answering("unused"))(
+                RequestContext(66, Event(), _read), {**_params(), "mode": "summary"},
+            )
 
 
 if __name__ == "__main__":
