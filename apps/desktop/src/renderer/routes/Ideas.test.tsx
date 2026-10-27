@@ -486,14 +486,14 @@ describe('Ideas', () => {
     expect(independent.textContent).toContain('9月17日 更新')
 
     await act(async () => { (linked as HTMLElement).click() })
-    // The same card panel as the project page's, with the same head: the title, then the close.
+    // The same card panel as the project page's, with the same head: the title, which renames in place, then the close.
     const detail = host.querySelector('.idea-detail-panel')!
     expect([detail.tagName, detail.className, detail.getAttribute('aria-label')])
       .toEqual(['ASIDE', 'side-panel side-panel--card idea-detail-panel', '想法详情'])
     expect(detail.querySelector('.panel-head .panel-head-title')!.textContent)
       .toBe('用可学习性信号动态分配 draft model 的蒸馏预算')
     expect([...detail.querySelectorAll('.panel-head button')].map((item) => [item.textContent || item.getAttribute('aria-label'), item.className]))
-      .toEqual([['收起详情', 'icbtn sm panel-close']])
+      .toEqual([['用可学习性信号动态分配 draft model 的蒸馏预算', 'metadata-editable'], ['收起详情', 'icbtn sm panel-close']])
     expect([...detail.querySelectorAll('.section-heading--group')].map((heading) => heading.textContent))
       .toEqual(['内容', '关联关联', '所在项目打开项目', '来源打开来源对话'])
     expect(detail.textContent).toContain('只对 disagreement 高且可学习的 token 加大蒸馏权重。')
@@ -814,6 +814,38 @@ describe('Ideas', () => {
     act(() => { type(field, '改过名的想法') })
     await press(field, 'Enter')
     expect(api.update).toHaveBeenCalledWith('idea-independent', { title: '改过名的想法' })
+  })
+
+  it('点想法详情头上的标题就地改名:打的字留成草稿,回车经 idea.update 只写标题;Esc 不改;清空了不改且标红', async () => {
+    try {
+      await act(async () => { root.render(<DraftsProvider><MessagesProvider><Ideas /></MessagesProvider></DraftsProvider>) })
+      await act(async () => { host.querySelector<HTMLElement>('[data-idea="idea-independent"] .item-open')!.click() })
+      const head = () => host.querySelector<HTMLElement>('.idea-detail-panel .panel-head-title')!
+      const field = () => head().querySelector<HTMLTextAreaElement>('textarea.metadata-input')
+      const edit = () => act(() => head().querySelector<HTMLButtonElement>('.metadata-editable')!.click())
+      const kept = () => (JSON.parse(window.localStorage.getItem(keptDraftsKey('/vaults/ideas-test')) ?? '{"drafts":[]}') as { drafts: unknown[] }).drafts
+
+      edit()
+      expect(field()!.value).toBe('独立想法')
+      act(() => { type(field()!, '改过名的想法') })
+      await vi.waitFor(() => expect(kept()).toContainEqual([['idea', 'idea-independent'], 'title-rename', '改过名的想法']))
+      // The card's own rename, from its … menu, stays closed.
+      expect(host.querySelector('[data-idea="idea-independent"] .metadata-input')).toBeNull()
+      await press(field()!, 'Enter')
+      await vi.waitFor(() => expect(field()).toBeNull())
+      expect(api.update).toHaveBeenCalledExactlyOnceWith('idea-independent', { title: '改过名的想法' })
+
+      edit()
+      act(() => { type(field()!, '不要的名字') })
+      await press(field()!, 'Escape')
+      expect(field()).toBeNull()
+      edit()
+      act(() => { type(field()!, '  ') })
+      await press(field()!, 'Enter')
+      expect([field()!.getAttribute('aria-invalid'), api.update.mock.calls.length]).toEqual(['true', 1])
+    } finally {
+      window.localStorage.clear()
+    }
   })
 
   it('旧版留下的想法编辑草稿连标题一起留着时,正文回到正文的编辑里,标题回到卡片上的重命名里', async () => {

@@ -295,7 +295,7 @@ function IdeaRow({ idea, chatDeleted, projectsById, selected, menu, onOpen, onRe
 }
 
 function IdeaDetailPanel({
-  idea, sourceChatDeleted, linked, projects, pageTitles, candidate, onClose, onSave, onRelations, onProject, onPromote, onPlace,
+  idea, sourceChatDeleted, linked, projects, pageTitles, candidate, onClose, onRename, onSave, onRelations, onProject, onPromote, onPlace,
   onOpen, onError,
 }: {
   idea: ResearchIdea
@@ -307,6 +307,7 @@ function IdeaDetailPanel({
   /** The idea's candidate node as its source project's graph names it, while one is shown; null once that project is gone. */
   candidate: ComponentProps<typeof IdeaNodeCandidate>['node'] | undefined
   onClose: () => void
+  onRename: (title: string) => Promise<boolean>
   onSave: (body: string) => Promise<boolean>
   onRelations: (relations: IdeaRelationsValue, removed?: string) => Promise<boolean>
   onProject: (projectId: string | null) => void
@@ -332,7 +333,7 @@ function IdeaDetailPanel({
   return (
     <SidePanel surface="card" label={m.ideas.detailHeading} className="idea-detail-panel">
       <IdeaPanel
-        idea={idea} onClose={onClose} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
+        idea={idea} onClose={onClose} onRename={onRename} onOpenSourceChat={(chatId) => onOpen('chat', chatId)} sourceChatDeleted={sourceChatDeleted}
         sourceProject={idea.sourceProject === undefined ? undefined : projects.find((project) => project.id === idea.sourceProject)?.name}
         onOpenSourcePaper={(paperId) => onOpen('reader', paperId)}
         body={(
@@ -614,6 +615,7 @@ export function Ideas() {
                 ? { id: candidateNode.id, label: candidateNode.label, mode: nodeMode(candidateNode) }
                 : candidateSource === 'gone' && selected.candidateNode !== undefined ? null : undefined}
               onClose={closeDetail}
+              onRename={(title) => write(ideaApi.update(selected.id, { title }))}
               onRelations={(relations) => write(ideaApi.update(selected.id, { relations }))}
               onPlace={(kind) => void write(ideaApi.placeOnGraph(selected.id, { kind }))}
               onError={report}

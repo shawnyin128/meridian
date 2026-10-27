@@ -1390,13 +1390,15 @@ test('关联:点 chip 上的编辑就地改它,位置不变,改动写进库里',
     .toEqual(['端到端改名', ...before.slice(1)])
 })
 
-test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', async ({ win }) => {
+test('项目页的标题点一下就地改名,页头和右栏都不变宽,字也不挪位;右栏的名称只是文字', async ({ win }) => {
   await gotoProject(win)
-  const side = win.locator('.screenslot:not([hidden]) .wkside')
-  const props = side.locator('.property-list')
-  const field = props.locator('.property-label:text-is("名称") + .property-value > .metadata-field')
+  const shown = win.locator('.screenslot:not([hidden])')
+  const head = shown.locator('.desk-head')
+  const side = shown.locator('.wkside')
+  const field = head.locator('.page-title-field > .metadata-field')
   const name = field.locator('.metadata-editable')
-  const boxes = () => Promise.all([side.boundingBox(), props.boundingBox(), field.boundingBox()])
+  await expect(side.locator('.property-label:text-is("名称") + .property-value .metadata-field')).toHaveCount(0)
+  const boxes = () => Promise.all([head.boundingBox(), side.boundingBox()])
   const before = await boxes()
   const textBefore = await textBox(name)
 
@@ -1404,7 +1406,15 @@ test('属性格进入编辑时不改变右栏和值列宽度,字也不挪位', a
   const input = field.locator('.metadata-input')
   await expect(input).toBeVisible()
   expect(await boxes()).toEqual(before)
-  expect(await textBox(input)).toEqual(textBefore)
+  const textAfter = await textBox(input)
+  expect([textAfter.left, textAfter.top, textAfter.lineHeight]).toEqual([textBefore.left, textBefore.top, textBefore.lineHeight])
+  await input.fill('改过名字的 draft')
+  await input.press('Enter')
+  await expect(input).toHaveCount(0)
+  await expect(head.locator('.t')).toHaveText('改过名字的 draft')
+  await expect(side.locator('.property-label:text-is("名称") + .property-value')).toHaveText('改过名字的 draft')
+  await expect(win.locator('#crumb .cseg')).toHaveText(['研究', '项目', '改过名字的 draft'])
+  expect((await call<{ name: string }>(win, 'project.get', { id: 'draft' })).name).toBe('改过名字的 draft')
 })
 
 test('属性栏多行的值(当前目标)进入编辑时,编辑框整个露在右栏里,右栏不横向滚动,字不挪位', async ({ win }) => {

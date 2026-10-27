@@ -67,6 +67,9 @@ export function SourceChatDeleted({ className }: { className?: string }) {
   return <Tag className={className}>{m.ideas.sourceChatDeleted}</Tag>
 }
 
+/** The draft an idea's rename from its panel's title is kept under, with its idea, so it reopens where it was typed. */
+const TITLE_RENAME = 'title-rename'
+
 /**
  * The one detail panel of an idea, on the Ideas screen and on the project page, inside the host's
  * SidePanel: the head with the title, the host's `actions` and the close button, then in the body
@@ -77,9 +80,10 @@ export function SourceChatDeleted({ className }: { className?: string }) {
  * `onOpenSourceChat` adds, to the source heading, the button that opens the conversation the idea
  * came from; `sourceChatDeleted` says that conversation is deleted, so there is no such button and the
  * source ends with a tag saying so. `onOpenSourcePaper` makes the paper it came from a link.
+ * `onRename` makes a click on the title rename the idea in place, saved through it.
  */
 export function IdeaPanel({
-  idea, sourceProject, actions, body, onClose, onOpenSourceChat, sourceChatDeleted = false, onOpenSourcePaper, children,
+  idea, sourceProject, actions, body, onClose, onRename, onOpenSourceChat, sourceChatDeleted = false, onOpenSourcePaper, children,
 }: {
   idea: ResearchIdea
   /** The name of the project the idea was sparked in; when given, it leads the source, which then shows for the user's own idea too. */
@@ -87,6 +91,7 @@ export function IdeaPanel({
   actions?: ReactNode
   body?: ReactNode
   onClose: () => void
+  onRename?: ((title: string) => boolean | Promise<boolean>) | undefined
   onOpenSourceChat?: (chatId: string) => void
   sourceChatDeleted?: boolean
   onOpenSourcePaper?: (paperId: string) => void
@@ -97,7 +102,12 @@ export function IdeaPanel({
   const chatId = idea.source.chatId
   return (
     <>
-      <PanelHead title={idea.title} actions={actions} onClose={onClose} />
+      <PanelHead
+        title={idea.title} actions={actions} onClose={onClose}
+        rename={onRename === undefined ? undefined : {
+          label: m.ideas.editor.titleLabel, value: idea.title, keep: { scope: ['idea', idea.id], target: TITLE_RENAME }, onSave: onRename,
+        }}
+      />
       <PanelBody>
         <div className="idea-panel-meta">
           <Tag>{m.project.idea.kind}</Tag>

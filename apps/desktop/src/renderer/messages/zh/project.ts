@@ -115,7 +115,6 @@ export const project = {
     focusLabel: { currentGoal: '当前目标', restartCondition: '重启条件', outcome: '成果' },
     focusWithLabel: (label: string, focus: string) => `${label}：${focus}`,
     nameFieldLabel: '项目名称',
-    nameRequired: '项目名称不能为空',
     topicUpdated: '已更新主题',
     focusRequired: (label: string) => `${label}不能为空`,
     startLabel: '开始',
