@@ -242,8 +242,9 @@ def _prompt_context(context: ChatContext) -> dict[str, object]:
 def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -> object:
     """Ask Core for the turn's one model call on the user's subscription CLI; return its output.
 
-    Core gets the turn whole, as `system` and `prompt`, and the new message alone, as `message`,
-    for a CLI session that already holds the rest. A CLI failure Core reports is a model failure.
+    Core gets the turn whole, as `system` and `prompt`, the new message alone, as `message`, for a
+    CLI session that already holds the rest, and the context `system` shows, as `context`, for a
+    session that holds an older one. A CLI failure Core reports is a model failure.
     """
 
     packed = _prompt_context(context)
@@ -257,7 +258,10 @@ def _answer_on_cli(core: CoreReadContext, context: ChatContext, question: str) -
 
     try:
         result = core.invoke_model({
-            "system": system.content, "prompt": human.content, "message": question,
+            "system": system.content,
+            "prompt": human.content,
+            "message": question,
+            "context": packed,
         })
     except CoreCallbackError as cause:
         if cause.kind != "model_error":

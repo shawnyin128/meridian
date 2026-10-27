@@ -22,6 +22,8 @@ import { createHarnessRpc, type HarnessCallback, type HarnessChild, HarnessRpcEr
 
 const MAX_MODEL_CONNECTION_DETAIL = 500
 const MAX_ANSWER_TOKENS = 2_000
+/** What leads the parts of a chat's context a resumed Codex session has not been given. */
+const CONTEXT_CHANGES = 'These parts of the conversation context changed since your last answer and now read:\n'
 const MODEL_CONNECTION_REDACTIONS = [
   /(\b(?:authorization|proxy-authorization)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
   /(\b(?:api[-_ ]?key|x-api-key|access[-_ ]?token|secret)\b\s*[:=]\s*)(?:bearer\s+)?(?:['"]?)(?!\[redacted\])[^\s,'"}\]]+/gi,
@@ -50,11 +52,15 @@ const modelListFailure = (cause: unknown): CallFailure => {
   if (cause.kind === 'model_error') return MODEL_LIST_FAILURES[String(cause.detail)] ?? 'unavailable'
   return cause.kind === 'harness_gone' ? 'unavailable' : 'unknown'
 }
-/** A chat turn's model call: the whole turn as `system` and `prompt`, and the new message alone. */
+/**
+ * A chat turn's model call: the whole turn as `system` and `prompt`, the new message alone, and the
+ * chat's context as `system` shows it.
+ */
 const ChatModelInvokeParamsSchema = z.object({
   system: z.string().min(1).max(500_000),
   prompt: z.string().min(1).max(200_000),
   message: z.string().min(1).max(20_000),
+  context: z.record(z.string(), z.unknown()),
 }).strict()
 export const CHAT_CONTEXT_BUDGETS = Object.freeze({
   sourceCharacters: 80_000,
@@ -81,6 +87,38 @@ const turnsOf = (messages: readonly StoredChatMessage[]): Turn[] =>
 /** A fingerprint of `turns`, which tells whether a CLI session holds the turns a chat holds now. */
 const turnsDigest = (turns: readonly Turn[]) =>
   createHash('sha256').update(JSON.stringify(turns.map((turn) => [turn.role, turn.text]))).digest('hex')
+/** A fingerprint of each part of a chat context, by its path of keys: every value that is not an object is a part. */
+const contextParts = (value: unknown, path = ''): Record<string, string> => (
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+    ? Object.assign({}, ...Object.entries(value).map(([key, part]) => contextParts(part, path === '' ? key : `${path}.${key}`)))
+    : { [path]: createHash('sha256').update(JSON.stringify(value)).digest('hex') }
+)
+/**
+ * The parts of chat context `context` whose fingerprint `held` does not hold, nested as in `context`,
+ * each part `held` holds that `context` lacks as null, or null when every part is held; with no
+ * `held`, the whole context.
+ */
+function contextChanges(context: Record<string, unknown>, held: Record<string, string> | undefined) {
+  const now = contextParts(context)
+  const changed = [
+    ...Object.keys(now).filter((path) => held?.[path] !== now[path]),
+    ...Object.keys(held ?? {}).filter((path) => !(path in now)),
+  ]
+  if (changed.length === 0) return null
+  const changes: Record<string, unknown> = {}
+  for (const path of changed) {
+    const keys = path.split('.')
+    let into = changes
+    let from: unknown = context
+    for (const key of keys.slice(0, -1)) {
+      into = (into[key] ??= {}) as Record<string, unknown>
+      from = (from as Record<string, unknown> | undefined)?.[key]
+    }
+    const last = keys.at(-1)!
+    into[last] = (from as Record<string, unknown> | undefined)?.[last] ?? null
+  }
+  return changes
+}
 /** The usage between two running totals a Codex session reported. */
 const usageSince = (total: CliUsage, before: CliUsage): CliUsage => ({
   inputTokens: total.inputTokens - before.inputTokens,
@@ -334,7 +372,8 @@ export function createChatHarnessRunner(options: {
    * The one model call of a turn of chat `chatId` that answers `text` on `model`, ending when
    * `signal` aborts, telling `progress` the model the CLI names and the answer as far as it has
    * written it, and reporting a CLI failure to `onFailure`. It resumes the chat's CLI session, with the new message alone, while that
-   * session holds the turns the chat holds; otherwise it starts a new session with the whole turn.
+   * session holds the turns the chat holds, a Codex session also given the parts of the chat's
+   * context it has not been given yet; otherwise it starts a new session with the whole turn.
    * `keep` makes the session resumable once the turn's `answer` is kept.
    */
   const cliTurn = (
@@ -349,15 +388,17 @@ export function createChatHarnessRunner(options: {
     }
     const before = turnsOf(messagesBefore(options.store.chatMessages(chatId), text))
     let called = false
-    let ran: { id: string; total?: CliUsage } | null = null
+    let ran: { id: string; total?: CliUsage; context?: Record<string, string> } | null = null
     const call: HarnessCallback = async (params) => {
       if (called) throw new HarnessRpcError({ kind: 'bad_request', message: 'A run makes one model call' })
       called = true
-      const { system, prompt, message } = ChatModelInvokeParamsSchema.parse(params)
+      const { system, prompt, message, context } = ChatModelInvokeParamsSchema.parse(params)
       const paperId = options.store.chatSession(chatId).paperId
       // A context that holds the whole paper leaves its search and page read nothing to add.
       const wholePaper = paperId !== undefined && await paperSource(paperId).then(({ whole }) => whole, () => false)
       const resumed = options.sessions.resumable(chatId, model, turnsDigest(before))
+      // Claude reads the system prompt anew each turn; a resumed Codex session holds the context it was given.
+      const changes = resumed?.cli === 'codex' ? contextChanges(context, resumed.context) : null
       const start = resumed === null && model.cli === 'claude' ? randomUUID() : undefined
       let id = resumed?.id ?? start
       // Until its answer is kept, the session holds a turn the chat may never hold.
@@ -369,7 +410,8 @@ export function createChatHarnessRunner(options: {
           ...(model.model === undefined ? {} : { model: model.model }),
           ...(model.effort === undefined ? {} : { effort: model.effort }),
           system,
-          prompt: resumed === null ? prompt : message,
+          prompt: resumed === null ? prompt : changes === null ? message
+            : `${CONTEXT_CHANGES}${JSON.stringify(changes)}\n\nCurrent user message:\n${message}`,
           session: resumed !== null ? { resume: resumed.id } : start === undefined ? {} : { start },
           folder: options.sessions.folder(chatId),
           lookup: paperId === undefined || wholePaper ? {} : { paperId },
@@ -389,7 +431,9 @@ export function createChatHarnessRunner(options: {
       const total = model.cli === 'codex' ? result.usage : undefined
       const usage = total !== undefined && resumed?.total !== undefined ? usageSince(total, resumed.total) : result.usage
       options.onLog?.('info', cliUsageLine(model.cli, usage === undefined ? result : { ...result, usage }))
-      if (id !== undefined) ran = { id, ...(total === undefined ? {} : { total }) }
+      if (id !== undefined) {
+        ran = { id, ...(total === undefined ? {} : { total }), ...(model.cli === 'codex' ? { context: contextParts(context) } : {}) }
+      }
       const fromCli = result.model ?? (model.cli === 'codex' && id !== undefined ? options.sessions.codexModel(id) : null)
       if (fromCli !== null) named(fromCli)
       return { output: result.answer }
@@ -402,6 +446,7 @@ export function createChatHarnessRunner(options: {
         ...(model.model === undefined ? {} : { model: model.model }),
         history: turnsDigest([...before, { role: 'you', text: text.trim() }, { role: 'ai', text: answer }]),
         ...(ran.total === undefined ? {} : { total: ran.total }),
+        ...(ran.context === undefined ? {} : { context: ran.context }),
       })
     }
     return { call, keep }

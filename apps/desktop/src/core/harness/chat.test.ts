@@ -15,7 +15,7 @@ import {
   packPaperReading,
 } from './chat.js'
 import { createChatService } from './chat-service.js'
-import { type CliChatSessions, openCliChatSessions } from './cli/chat-sessions.js'
+import { type CliChatSessions, openCliChatSessions, type ResumableSession } from './cli/chat-sessions.js'
 import { CliRunError } from './cli/child.js'
 import { type CliChatCall, type CliChatRunner, createCliChatRunner } from './cli/chat-turn.js'
 import type { HarnessModelConfig, HarnessRuntimeModel } from './model-config.js'
@@ -244,6 +244,12 @@ describe('model connection check', () => {
   })
 })
 
+/** The chat context, without its history, that a stand-in Harness turn shows in its system prompt. */
+const TURN_CONTEXT = {
+  title: 'Speculative decoding',
+  paper: { id: 'paper-1', title: 'EAGLE', reading: { highlights: [], notes: [{ page: 2, text: 'Drafts features.' }], remark: '' } },
+}
+
 class FakeHarness extends EventEmitter implements HarnessChild {
   readonly stdin = new PassThrough()
   readonly stdout = new PassThrough()
@@ -268,21 +274,21 @@ class FakeHarness extends EventEmitter implements HarnessChild {
   }
 
   callModel(callbackId: string, id = 1, params: object = {
-    system: 'Chat rules and context', prompt: 'History, then: Why?', message: 'Why?',
+    system: 'Chat rules and context', prompt: 'History, then: Why?', message: 'Why?', context: TURN_CONTEXT,
   }) {
     this.send({ type: 'callback', id, callbackId, method: 'model.invoke', params })
   }
 
   /**
    * Answers the chat.answer request Core sends next the way Harness does: one model call, with the
-   * whole turn and the new message built from `text`, then the call's output as the answer, or,
-   * with `reject`, a model error instead.
+   * whole turn and the new message built from `text` and the chat's `context`, then the call's
+   * output as the answer, or, with `reject`, a model error instead.
    */
-  async answerTurn(text: string, reject = false) {
+  async answerTurn(text: string, reject = false, context: object = TURN_CONTEXT) {
     const request = await this.frame()
     const id = request['id'] as number
     const replied = this.frame()
-    this.callModel(`call-${id}`, id, { system: 'Chat rules and context', prompt: `History, then: ${text}`, message: text })
+    this.callModel(`call-${id}`, id, { system: 'Chat rules and context', prompt: `History, then: ${text}`, message: text, context })
     const output = ((await replied)['result'] as { output: string }).output
     this.send(reject
       ? { type: 'error', id, ok: false, error: { kind: 'model_error', message: '模型输出包含无效页码引用' } }
@@ -409,12 +415,12 @@ function sessionChat(initial: HarnessRuntimeModel) {
   })
   const service = createChatService({ store, model, runner })
   let started = false
-  /** Sends `text` and lets the stand-in Harness answer it, or reject the answer with `reject`. */
-  const send = async (text: string, reject = false) => {
+  /** Sends `text` and lets the stand-in Harness answer it in `context`, or reject the answer with `reject`. */
+  const send = async (text: string, reject = false, context?: object) => {
     const sent = service.send(chat, [{ kind: 'text', text }])
     if (!started) child.ready()
     started = true
-    await child.answerTurn(text, reject)
+    await child.answerTurn(text, reject, context)
     return sent
   }
   const retry = async () => {
@@ -433,7 +439,7 @@ function sessionChat(initial: HarnessRuntimeModel) {
   }
   /** Deletes the CLI sessions of the chats the vault no longer keeps, the way Core does after the trash changes. */
   const prune = () => sessions.prune(new Set(store.chatIds()))
-  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close, prune, service, child, hold }
+  return { store, chat, state, send, retry, seen, sessionFiles, logs, root, environment, close, prune, service, child, hold, sessions }
 }
 
 const sessionOf = (turn: SeenTurn) => (turn.argv.includes('--resume') ? turn.argv[turn.argv.indexOf('--resume') + 1]
@@ -800,6 +806,65 @@ describe('a chat on a subscription CLI keeps a CLI session', () => {
     }
   })
 
+  it('carries into a resumed Codex turn the parts of the chat\'s context its session has not seen, and only those', async () => {
+    const note = { page: 5, text: 'The acceptance rate drops at long contexts.' }
+    const noted = { ...TURN_CONTEXT, paper: { ...TURN_CONTEXT.paper, reading: { ...TURN_CONTEXT.paper.reading, notes: [...TURN_CONTEXT.paper.reading.notes, note] } } }
+    const renamed = { ...noted, title: 'EAGLE speedups' }
+    const chat = sessionChat({ source: 'cli', cli: 'codex' })
+    try {
+      await chat.send('What is EAGLE?')
+      await chat.send('And its speedup?')
+      await chat.send('Does my note hold?', false, noted)
+      await chat.send('And now?', false, noted)
+      await chat.send('Any other change?', false, renamed)
+
+      const turns = chat.seen()
+      expect(turns.map(resumes)).toEqual([false, true, true, true, true])
+      expect(new Set(turns.slice(1).map(sessionOf)).size).toBe(1)
+      expect(turns.map((turn) => turn.stdin).slice(1)).toEqual([
+        'And its speedup?',
+        'These parts of the conversation context changed since your last answer and now read:\n'
+          + `${JSON.stringify({ paper: { reading: { notes: noted.paper.reading.notes } } })}\n\nCurrent user message:\nDoes my note hold?`,
+        'And now?',
+        'These parts of the conversation context changed since your last answer and now read:\n'
+          + `${JSON.stringify({ title: 'EAGLE speedups' })}\n\nCurrent user message:\nAny other change?`,
+      ])
+    } finally {
+      chat.close()
+    }
+  })
+
+  it('resumes a Claude session with the new message alone when the context changed, which its system prompt file carries', async () => {
+    const chat = sessionChat(CLI_MODEL)
+    try {
+      await chat.send('What is EAGLE?')
+      await chat.send('Does my note hold?', false, { ...TURN_CONTEXT, title: 'EAGLE speedups' })
+
+      const [, second] = chat.seen()
+      expect([resumes(second!), second!.stdin]).toEqual([true, 'Does my note hold?'])
+    } finally {
+      chat.close()
+    }
+  })
+
+  it('resumes a Codex session an older App kept with no record of its context with the whole context', async () => {
+    const chat = sessionChat({ source: 'cli', cli: 'codex' })
+    try {
+      await chat.send('What is EAGLE?')
+      const file = join(chat.root, 'user-data', 'cli-chats', 'sessions.json')
+      const { resumable } = (JSON.parse(readFileSync(file, 'utf8')) as { chats: Array<{ resumable: ResumableSession }> }).chats[0]!
+      // What App 0.0.23.0 keeps of a session it ran.
+      chat.sessions.keep(chat.chat, { cli: 'codex', id: resumable.id, history: resumable.history, total: resumable.total! })
+      await chat.send('And its speedup?')
+
+      const [, second] = chat.seen()
+      expect([resumes(second!), second!.stdin]).toEqual([true, 'These parts of the conversation context changed since your '
+        + `last answer and now read:\n${JSON.stringify(TURN_CONTEXT)}\n\nCurrent user message:\nAnd its speedup?`])
+    } finally {
+      chat.close()
+    }
+  })
+
   it('starts a new session with the whole turn when the chat was edited in Meridian', async () => {
     const chat = sessionChat(CLI_MODEL)
     try {
@@ -882,6 +947,7 @@ describe('stopping a chat turn on a subscription CLI', () => {
         const id = (await chat.child.frame())['id'] as number
         chat.child.callModel(`call-${id}`, id, {
           system: 'Chat rules and context', prompt: 'History, then: And its speedup?', message: 'And its speedup?',
+          context: TURN_CONTEXT,
         })
         await vi.waitFor(() => expect(chat.service.writing(chat.chat)?.text).toBe('Half an answer'))
         const held = chat.seen()[1]!
