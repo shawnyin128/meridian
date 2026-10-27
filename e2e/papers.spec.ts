@@ -3,7 +3,10 @@ import type { PaperCell, PaperColumns } from '../apps/desktop/src/shared/contrac
 import {
   DEFAULT_PAPER_GROUPS, LATER_PAPER, READ_STATES, READING_PAPER, UNREAD_PAPER,
 } from '../apps/desktop/src/shared/vocabulary.js'
-import { expect, fittedPage, gotoPapers, panelHead, parkPointer, settle, test, uniqueHeights, type MeridianWindow } from './app.js'
+import {
+  expect, expectChipHoverInPlace, expectChipsHug, fittedPage, gotoPapers, panelHead, parkPointer, settle, test, uniqueHeights,
+  type MeridianWindow,
+} from './app.js'
 
 /** The reading statuses as the status menu names them, the read-later state by its shown name. */
 const READ_STATE_NAMES = READ_STATES.map((state) => (state === LATER_PAPER ? '待读' : state))
@@ -659,6 +662,21 @@ test('标签添加框:回车提交在路上时点外,写落地前占位、打的
   await expect(input).toHaveCount(1)
   await expect(input).toHaveValue(ADDED_TOPIC)
   await expect(newRow).toHaveCount(1)
+})
+
+test('主题列的 chip 静止时贴着文字,左右留同样的内边距;悬停一个 chip 才在它末端显出 ×,不挪动任何 chip', async ({ win }) => {
+  await gotoPapers(win)
+  await firstPage(win)
+  await parkPointer(win)
+  const cells = win.locator('.ptable tbody tr td:nth-child(7)')
+  const chips = await expectChipsHug(cells)
+  // The short topics of the fixture fit their cells whole, so the room after the name is measured on them.
+  expect(chips.filter((chip) => !chip.cut).length).toBeGreaterThan(5)
+
+  const row = win.locator('.ptable tbody tr').first()
+  await row.locator('.pt-title').hover()
+  await expect(row.locator('td:nth-child(7) .tagchip > .row-actions').first()).toHaveCSS('opacity', '0')
+  await expectChipHoverInPlace(cells.locator('.tagchip[data-row-actions]'), row.locator('td:nth-child(7) .tagchip[data-row-actions]').first())
 })
 
 test('标签添加框:空着焦点移走只收起;打了新主题再移走,像回车一样加上', async ({ win }) => {

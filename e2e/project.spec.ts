@@ -2,8 +2,9 @@ import { resolve } from 'node:path'
 import type { Locator, Page } from '@playwright/test'
 import { ACTIVE_PROJECT, PROJECT_STATUSES, SHELVED_PROJECT } from '../apps/desktop/src/shared/vocabulary.js'
 import {
-  appSwitcher, dshort, expect, expectWholeInRail, fixtureDay, gotoProject, overlaps, panelHead, railEdges, readDraft, test,
-  textBox, timelinePeriod, uniqueHeights, vaultToday, type MeridianWindow,
+  appSwitcher, chipEdges, dshort, expect, expectChipHoverInPlace, expectChipsHug, expectWholeInRail, fixtureDay, gotoProject,
+  overlaps, panelHead, parkPointer, railEdges, readDraft, test, textBox, timelinePeriod, uniqueHeights, vaultToday,
+  type MeridianWindow,
 } from './app.js'
 
 const call = <T>(win: Page, method: string, params: unknown) => win.evaluate(
@@ -849,6 +850,28 @@ test('删掉一个附件,提示里的撤销把它放回', async ({ win }) => {
   await undoFromNotice(win)
   await expect(rows).toHaveCount(before.length)
   expect((await removable(win)).attachments).toEqual(before)
+})
+
+test('属性栏的 chip 静止时贴着文字,左右留同样的内边距:主题、Wiki、链接、论文都一样;放不下的论文名在末端淡出', async ({ win }) => {
+  await win.locator('[data-desk="resproj"]').waitFor()
+  await call(win, 'project.update', { id: 'draft', patch: { topics: ['推理加速'] } })
+  await call(win, 'project.createRelation', { projectId: 'draft', relation: { group: 'links', text: '实验看板', url: 'https://wandb.ai/team/draft' } })
+  await gotoProject(win)
+  await parkPointer(win)
+  const side = win.locator('.screenslot:not([hidden]) .wkside')
+  const chips = await expectChipsHug(side)
+  const row = (label: string) => side.locator('.wkrel').filter({ has: win.locator('.rl', { hasText: label }) })
+  expect(await chipEdges(side.locator('.project-topics'))).toMatchObject([{ text: '推理加速', cut: false }])
+  expect((await chipEdges(row('Wiki'))).filter((chip) => !chip.cut).length).toBeGreaterThan(1)
+  expect(await chipEdges(row('链接'))).toMatchObject([{ text: '实验看板', cut: false }])
+  // The fixture's paper titles are longer than the rail, so these chips fade at their end.
+  expect((await chipEdges(row('论文'))).map((chip) => chip.cut)).toContain(true)
+  expect(chips.length).toBeGreaterThan(5)
+
+  const wikiChips = row('Wiki').locator('.tagchip[data-row-actions]')
+  await expectChipHoverInPlace(side.locator('.tagchip[data-row-actions]'), wikiChips.first())
+  await parkPointer(win)
+  await expectChipHoverInPlace(side.locator('.tagchip[data-row-actions]'), side.locator('.project-topics .tagchip[data-row-actions]'))
 })
 
 test('移除一个主题,提示里的撤销把它放回', async ({ win }) => {
