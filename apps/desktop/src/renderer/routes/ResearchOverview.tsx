@@ -35,6 +35,8 @@ import {
   PageBody, PageError, PageHeader, PageShell, PageTitle, PageToolbar, SectionHeading,
 } from '../components/PageShell.js'
 import { Button } from '../components/Button.js'
+import { Group, GroupedList } from '../components/GroupedList.js'
+import { DEMO_CLAIMS, DEMO_RESOURCES, demoFree, demoResourceName } from '../components/resource-pool/demo-pool.js'
 import './shell.css'
 import './ResearchOverview.css'
 
@@ -231,6 +233,50 @@ function ProjectProgress({ rows, onOpen }: {
           )
         })}
       </List>
+    </>
+  )
+}
+
+/** Resources: who holds each resource and what is free, across the shown projects, from the demo's stub pool. */
+function PoolHolders({ rows, onOpen }: { rows: ProjectOverview[]; onOpen: (projectId: string) => void }) {
+  const m = useMessages()
+  const ids = new Map(rows.map((project) => [project.name, project.id]))
+  const claims = DEMO_CLAIMS.filter((claim) => ids.has(claim.project))
+  if (claims.length === 0) return null
+  return (
+    <>
+      <SectionHeading>{m.pool.heading}</SectionHeading>
+      <GroupedList>
+        {DEMO_RESOURCES.map((resource) => {
+          const held = claims.filter((claim) => claim.resource === resource.id)
+          return (
+            <Group
+              key={resource.id} title={demoResourceName(resource)} data-pool-resource={resource.id}
+              meta={m.pool.free(demoFree(resource), resource.capacity)}
+            >
+              <OverviewList>
+                {held.map((claim) => (
+                  <OverviewRow
+                    key={claim.id}
+                    variant="dated"
+                    when={claim.since}
+                    kind={(
+                      <ProjectSignalKind state={claim.stale === true ? 'warning' : 'running'}>
+                        {claim.stale === true ? m.pool.state.stale : m.pool.state.running}
+                      </ProjectSignalKind>
+                    )}
+                    main={`${claim.held} · ${claim.task}`}
+                    meta={`${claim.agent} · ${claim.device} · ${m.pool.until(claim.until)}`}
+                    project={claim.project}
+                    projectId={ids.get(claim.project)!}
+                    onOpen={() => onOpen(ids.get(claim.project)!)}
+                  />
+                ))}
+              </OverviewList>
+            </Group>
+          )
+        })}
+      </GroupedList>
     </>
   )
 }
@@ -446,6 +492,7 @@ export function ResearchOverview() {
             <Stats rows={shown} />
             <DecisionQueue rows={shown} onOpen={openDecision} />
             <ProjectProgress rows={shown} onOpen={openProject} />
+            <PoolHolders rows={shown} onOpen={openProject} />
             <div className="ovcols">
               <div><Recent rows={shown} onOpen={openProject} /></div>
               <div><Upcoming rows={shown} onOpen={openProject} /></div>

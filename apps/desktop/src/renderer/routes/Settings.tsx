@@ -26,6 +26,7 @@ import { DeliverySettings } from '../components/settings/DeliverySettings.js'
 import { ModelSettings } from '../components/settings/ModelSettings.js'
 import { ApiOverview } from '../components/settings/ApiOverview.js'
 import { ExtensionSettings } from '../components/settings/ExtensionSettings.js'
+import { ResourceSettings } from '../components/settings/ResourceSettings.js'
 import { AddAction } from '../components/AddAction.js'
 import { Button } from '../components/Button.js'
 import { ConfirmDialog } from '../components/ConfirmDialog.js'
@@ -222,6 +223,7 @@ export function Settings() {
     research: m.settings.research.heading,
     model: m.settings.model.heading,
     extensions: m.settings.extensions.heading,
+    resources: m.pool.heading,
     delivery: m.settings.delivery.heading,
     'delivery-watch': m.settings.categories.deliveryWatch,
     'delivery-discovery': m.settings.discovery.heading,
@@ -394,6 +396,7 @@ export function Settings() {
         <WatchSettings />
       </>
     ),
+    resources: <ResourceSettings />,
     'delivery-discovery': (
       <>
         <DiscoverySettings />

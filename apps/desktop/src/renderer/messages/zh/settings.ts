@@ -14,6 +14,7 @@ export const settings = {
     model: '模型',
     research: '科研',
     extensions: 'Agent 扩展',
+    resources: '资源',
     delivery: '论文推送',
     deliveryWatch: '关注',
     deliveryDiscovery: '发现',

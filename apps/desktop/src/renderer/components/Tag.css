@@ -11,6 +11,7 @@
 .tag--error,.tag--p0{color:var(--bad-text)}
 .tag--warning,.tag--p1{color:var(--warn-text)}
 .tag--done{color:var(--good-text)}
+.tag--running{color:var(--accent-text)}
 button.tag{cursor:pointer;transition:color var(--t-fast) var(--e-out)}
 button.tag:hover{color:var(--ink);background-image:linear-gradient(var(--hover),var(--hover))}
 button.tag:active{background-image:linear-gradient(var(--press),var(--press))}

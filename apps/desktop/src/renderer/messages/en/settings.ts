@@ -21,6 +21,7 @@ export const settings = {
     model: 'Models',
     research: 'Research',
     extensions: 'Agent extensions',
+    resources: 'Resources',
     delivery: 'Inmail',
     deliveryWatch: 'Watches',
     deliveryDiscovery: 'Discovery',

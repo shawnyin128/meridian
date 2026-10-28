@@ -68,6 +68,7 @@ import { PickRow, type PickHit } from '../components/PickRow.js'
 import { plainTitle } from '../components/paper/paper-text.js'
 import { StatusDot } from '../components/StatusDot.js'
 import { Tag } from '../components/Tag.js'
+import { demoClaimsOf, demoResource, demoResourceName } from '../components/resource-pool/demo-pool.js'
 import { Tooltip } from '../components/Tooltip.js'
 import { editText, useDraft, useDrafts, usePruneDrafts, type EditDraft } from '../hooks/useDrafts.js'
 import { NO_TRIGGERS } from '../hooks/useOnLeave.js'
@@ -1186,6 +1187,25 @@ export function ProjectDetail({
                         </div>
                       )}
                   </Property>
+                  {demoClaimsOf(project.name).length === 0 ? null : (
+                    <Property label={m.pool.heading}>
+                      <div className="pool-claims">
+                        {demoClaimsOf(project.name).map((claim) => (
+                          <div className="workspace-field" data-row-actions="" data-pool-claim={claim.id} key={claim.id}>
+                            <Tag state={claim.stale === true ? 'warning' : 'running'}>
+                              {claim.stale === true ? m.pool.state.stale : m.pool.state.running}
+                            </Tag>
+                            <FadeText>{`${demoResourceName(demoResource(claim.resource))} · ${claim.held} · ${m.pool.until(claim.until)}`}</FadeText>
+                            <RowActions>
+                              <DotsMenu>
+                                <MenuItem>{m.pool.release}</MenuItem>
+                              </DotsMenu>
+                            </RowActions>
+                          </div>
+                        ))}
+                      </div>
+                    </Property>
+                  )}
                 </PropertyList>
 
                 <SectionHeading

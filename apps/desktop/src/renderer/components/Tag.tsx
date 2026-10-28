@@ -6,10 +6,11 @@ import './Tag.css'
 
 /**
  * The state a tag names, which alone colours its text on the neutral chip: an `error`, a `warning`,
- * something `done`, and the priorities `p0`, in the error's colour, and `p1`, in the warning's. A tag
+ * something `done`, something `running`, in the theme colour, and the priorities `p0`, in the error's colour,
+ * and `p1`, in the warning's. A tag
  * without a state, a kind, a source, a name or any other word, is neutral.
  */
-export type TagState = 'error' | 'warning' | 'done' | 'p0' | 'p1'
+export type TagState = 'error' | 'warning' | 'done' | 'p0' | 'p1' | 'running'
 
 /**
  * A tag's box. `label` is a short status, kind, priority or source word in caption type; `chip` is a

@@ -1,0 +1,22 @@
+/** Resource pool copy: the Settings pane, the overview section and the project property. */
+export const pool = {
+  heading: '资源',
+  registered: '已登记',
+  addResource: '资源',
+  addResourceLabel: '登记资源',
+  namePlaceholder: '名称',
+  kinds: { gpu: 'GPU', machine: '机器' },
+  amount: (n: number, kind: 'gpu' | 'machine') => (kind === 'gpu' ? `${n} 卡` : `${n} 台`),
+  members: (n: number) => `${n} 个资源`,
+  rules: '规则',
+  habits: '使用习惯',
+  candidate: '候选',
+  add: '添加',
+  dismiss: '忽略',
+  rename: '重命名',
+  retire: '停用',
+  free: (free: number, total: number) => `空闲 ${free}/${total}`,
+  until: (time: string) => `到 ${time}`,
+  state: { running: '运行中', stale: '过期' },
+  release: '释放',
+}

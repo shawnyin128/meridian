@@ -323,7 +323,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     expect([...dialog.querySelectorAll('[data-setcat]')].map((node) => node.textContent))
-      .toEqual(['外观', '存储', '第三方服务', 'Agent 扩展', '论文推送', '关注', '发现', '归档的对话'])
+      .toEqual(['外观', '存储', '第三方服务', 'Agent 扩展', '资源', '论文推送', '关注', '发现', '归档的对话'])
     expect(dialog.querySelector('[data-setcat="delivery-watch"]')?.classList.contains('on')).toBe(true)
     expect(dialog.querySelector('[data-testid="watch-settings"]')).not.toBeNull()
     expect(dialog.querySelector('[data-testid="discovery-settings"]')).toBeNull()
@@ -423,7 +423,7 @@ describe('Settings', () => {
 
   it('设置右栏放不下时，模型以外的每个分类的标题都留在滚动区上面，标题以外的内容都在滚动区里', async () => {
     const titles: Record<Exclude<SettingsCategory, 'model'>, string> = {
-      appearance: '外观', storage: '存储', api: '第三方服务', research: '科研', extensions: 'Agent 扩展',
+      appearance: '外观', storage: '存储', api: '第三方服务', research: '科研', extensions: 'Agent 扩展', resources: '资源',
       delivery: '论文推送', 'delivery-watch': '关注', 'delivery-discovery': '发现', archived: '归档的对话 · 0',
     }
     for (const [category, title] of Object.entries(titles) as [SettingsCategory, string][]) {
@@ -509,14 +509,14 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     const setcats = () => [...dialog.querySelectorAll('[data-setcat]')].map((node) => node.getAttribute('data-setcat'))
-    expect(setcats()).toEqual(['appearance', 'storage', 'api', 'extensions', 'delivery', 'archived'])
+    expect(setcats()).toEqual(['appearance', 'storage', 'api', 'extensions', 'resources', 'delivery', 'archived'])
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="api"]')!.click() })
-    expect(setcats()).toEqual(['appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'archived'])
+    expect(setcats()).toEqual(['appearance', 'storage', 'api', 'model', 'research', 'extensions', 'resources', 'delivery', 'archived'])
 
     await act(async () => { dialog.querySelector<HTMLElement>('[data-setcat="delivery"]')!.click() })
     expect(setcats()).toEqual([
-      'appearance', 'storage', 'api', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery', 'archived',
+      'appearance', 'storage', 'api', 'extensions', 'resources', 'delivery', 'delivery-watch', 'delivery-discovery', 'archived',
     ])
   })
 
@@ -525,7 +525,7 @@ describe('Settings', () => {
     await act(async () => { root.render(<MessagesProvider><Settings /></MessagesProvider>) })
     const dialog = document.querySelector('.setdlg')!
     expect([...dialog.querySelectorAll('[data-setcat]')].map((node) => node.getAttribute('data-setcat')))
-      .toEqual(['appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'archived'])
+      .toEqual(['appearance', 'storage', 'api', 'model', 'research', 'extensions', 'resources', 'delivery', 'archived'])
     expect(dialog.querySelector('[data-setcat="model"]')?.classList.contains('on')).toBe(true)
   })
 

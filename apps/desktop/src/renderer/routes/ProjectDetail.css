@@ -25,4 +25,4 @@
 .workspace-kinds{margin-bottom:var(--item-gap)}
 .workspace-form .form-input[type="number"]{-moz-appearance:textfield}
 .workspace-form .form-input[type="number"]::-webkit-inner-spin-button{appearance:none;margin:0}
-
+.pool-claims{display:flex;flex-direction:column;gap:var(--sp-4);min-width:0}

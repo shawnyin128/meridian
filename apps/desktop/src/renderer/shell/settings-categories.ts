@@ -5,7 +5,7 @@ import type { Catalog } from '../messages/catalog.js'
  * Watches and the projects' Discovery directions; Archived chats manages the chats that were archived.
  */
 export const SETTINGS_CATEGORIES = [
-  'appearance', 'storage', 'api', 'model', 'research', 'extensions', 'delivery', 'delivery-watch', 'delivery-discovery',
+  'appearance', 'storage', 'api', 'model', 'research', 'extensions', 'resources', 'delivery', 'delivery-watch', 'delivery-discovery',
   'archived',
 ] as const
 export type SettingsCategory = typeof SETTINGS_CATEGORIES[number]
@@ -17,6 +17,7 @@ export const SETTINGS_CATEGORY_LABEL: Record<SettingsCategory, keyof Catalog['se
   model: 'model',
   research: 'research',
   extensions: 'extensions',
+  resources: 'resources',
   delivery: 'delivery',
   'delivery-watch': 'deliveryWatch',
   'delivery-discovery': 'deliveryDiscovery',
