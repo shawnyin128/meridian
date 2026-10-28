@@ -142,7 +142,9 @@ function inspectClient(layout: ClientLayout, home: string, pluginVersion: string
 
 /**
  * Inspect each client's own plugin list and package files only; this never invokes an agent CLI or changes client state.
- * A plugin older than `pluginVersion`, the newest plugin version known, needs an update.
+ * A plugin older than `pluginVersion`, the newest plugin version known, needs an update. `home` is where
+ * the clients' plugin lists are read: the user's home, or MERIDIAN_AGENT_HOME when a test library's seed
+ * or shots set it. That variable only redirects this read; the App never sets it.
  */
 export function extensionStatuses(home: string = homedir(), pluginVersion?: string): ExtensionStatus[] {
   return CLIENTS.map((layout) => inspectClient(layout, home, pluginVersion))

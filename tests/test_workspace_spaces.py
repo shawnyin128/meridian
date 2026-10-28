@@ -12,6 +12,7 @@ from tempfile import TemporaryDirectory
 from unittest.mock import patch
 
 from meridian.cli import main
+from meridian.framework_check import run_framework_check
 from meridian.lab.focus_hook import run_lab_focus_hook
 from meridian.lab.state import initialize_lab_space
 from meridian.mcp.server import MeridianMCPServer
@@ -245,6 +246,34 @@ class WorkspaceSpacesTests(unittest.TestCase):
         with self.assertRaises(FileNotFoundError):
             initialize_lab_space(self.root / ".meridian/projects/p3", inject_agents_contract=False)
         self.assertFalse((self.root / ".meridian/projects/p3").exists())
+
+    def _lab_state(self) -> list[tuple[str, str, str]]:
+        report = run_framework_check(project_root=self.root, lab_root=self.root)
+        category = next(item for item in report.categories if item.name == "Lab State")
+        return [(finding.severity, finding.code, finding.message) for finding in category.findings]
+
+    def test_framework_check_validates_every_project_space_and_names_each_finding(self) -> None:
+        thread = self.second / "threads/tree.md"
+        thread.write_text(
+            thread.read_text(encoding="utf-8") + "\n## Graph Relations\n\n- `tree.A` related_to `tree.missing`\n",
+            encoding="utf-8",
+        )
+        findings = self._lab_state()
+        missing = [message for _, code, message in findings if code == "lab_graph_json_missing"]
+        self.assertEqual(len(missing), 2)
+        self.assertTrue(missing[0].startswith(".meridian: "))
+        self.assertTrue(missing[1].startswith(".meridian/projects/p2: "))
+        dangling = [message for severity, code, message in findings if code == "lab_dangling_edge_target"]
+        self.assertEqual(len(dangling), 1)
+        self.assertTrue(dangling[0].startswith(".meridian/projects/p2: "))
+
+    def test_framework_check_reports_a_space_that_cannot_be_checked_and_checks_the_others(self) -> None:
+        (self.second / "state.md").write_bytes(b"---\nactive_thread: \xff\n---\n")
+        findings = self._lab_state()
+        failed = [message for _, code, message in findings if code == "lab_graph_check_failed"]
+        self.assertEqual(len(failed), 1)
+        self.assertTrue(failed[0].startswith(".meridian/projects/p2: "))
+        self.assertIn(".meridian: ", " ".join(message for _, code, message in findings if code == "lab_graph_json_missing"))
 
 
 if __name__ == "__main__":

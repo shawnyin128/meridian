@@ -20,6 +20,7 @@ from meridian.lab import (
     validate_research_agent_principles,
 )
 from meridian.setup.doctor import build_setup_doctor_report
+from meridian.spaces import NESTED_SPACES, ROOT_SPACE, ProjectSpace, resolve_space, workspace_projects
 from meridian.wiki.workspace import resolve_workspace
 
 
@@ -734,48 +735,13 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
             "Pass --lab-root <repo> when checking Lab readiness for a research project.",
         )
         return _category(category, findings)
-    report = validate_lab_space(lab_root)
-    for item in report.findings:
-        _add(
-            findings,
-            category,
-            "critical" if item.severity == "error" else "degraded",
-            "confirm" if item.code == "missing_lab_root" else "manual",
-            f"lab_{item.code}",
-            item.message,
-            "Initialize or repair the minimal `.meridian/` research-space skeleton.",
-        )
-    lab_path = lab_root.expanduser().resolve()
-    lab_space = lab_path if lab_path.name == ".meridian" else lab_path / ".meridian"
-    if lab_space.exists():
-        try:
-            graph_health = check_lab_graph(lab_root)
-        except Exception as exc:  # noqa: BLE001 - framework report should not crash on Lab graph drift.
-            _add(
-                findings,
-                category,
-                "critical",
-                "manual",
-                "lab_graph_check_failed",
-                f"Lab graph health check failed unexpectedly: {exc}.",
-                "Repair Lab Markdown graph state, then run `meridian lab graph-refresh --lab-root <repo>`.",
-            )
-        else:
-            for item in graph_health.get("findings", []):
-                if not isinstance(item, dict):
-                    continue
-                graph_severity = str(item.get("severity") or "")
-                code = str(item.get("code") or "graph_finding")
-                _add(
-                    findings,
-                    category,
-                    "critical" if graph_severity == "error" else "degraded",
-                    "manual",
-                    f"lab_{code}",
-                    str(item.get("message") or "Lab graph health finding."),
-                    _lab_graph_next_action(code),
-                )
-    contract_report = validate_meridian_agents_contract(lab_root)
+    spaces = _lab_spaces(lab_root)
+    for space in spaces:
+        # With several projects, each finding names the space it came from.
+        prefix = f"{space.folder.as_posix()}: " if len(spaces) > 1 else ""
+        _check_lab_space(findings, category, space, prefix)
+    repository = spaces[0].repository
+    contract_report = validate_meridian_agents_contract(repository)
     if contract_report.status == "pass":
         _add(
             findings,
@@ -797,7 +763,7 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
                 item.message,
                 "Run Lab readiness initialization or inject the guarded Meridian AGENTS.md contract block.",
             )
-    for drift in _agents_style_profile_drift_findings(lab_root):
+    for drift in _agents_style_profile_drift_findings(repository):
         _add(
             findings,
             category,
@@ -808,6 +774,60 @@ def _lab_state_category(lab_root: Path | None) -> FrameworkCategory:
             drift["next_action"],
         )
     return _category(category, findings)
+
+
+def _lab_spaces(lab_root: Path) -> list[ProjectSpace]:
+    """The project spaces a Lab check at ``lab_root`` covers: the one it names, else every space of the repository."""
+    resolved = lab_root.expanduser().resolve()
+    if resolved.name == ROOT_SPACE.name or resolved.parent.name == NESTED_SPACES.name:
+        return [resolve_space(resolved)]
+    return [space for space, _ in workspace_projects(resolved)] or [ProjectSpace(resolved, ROOT_SPACE)]
+
+
+def _check_lab_space(findings: list[FrameworkFinding], category: str, space: ProjectSpace, prefix: str) -> None:
+    """Adds the findings of one project space's Lab skeleton and graph, each message starting with ``prefix``.
+
+    A space whose check fails unexpectedly is reported as ``lab_graph_check_failed`` on its own.
+    """
+
+    try:
+        report = validate_lab_space(space.lab_root)
+        graph_health = check_lab_graph(space.lab_root) if space.lab_root.exists() else {"findings": []}
+    except Exception as exc:  # noqa: BLE001 - one broken space must not hide the others.
+        _add(
+            findings,
+            category,
+            "critical",
+            "manual",
+            "lab_graph_check_failed",
+            f"{prefix}Lab graph health check failed unexpectedly: {exc}.",
+            "Repair Lab Markdown graph state, then run `meridian lab graph-refresh --lab-root <repo>`.",
+        )
+        return
+    for item in report.findings:
+        _add(
+            findings,
+            category,
+            "critical" if item.severity == "error" else "degraded",
+            "confirm" if item.code == "missing_lab_root" else "manual",
+            f"lab_{item.code}",
+            f"{prefix}{item.message}",
+            "Initialize or repair the minimal `.meridian/` research-space skeleton.",
+        )
+    for item in graph_health.get("findings", []):
+        if not isinstance(item, dict):
+            continue
+        graph_severity = str(item.get("severity") or "")
+        code = str(item.get("code") or "graph_finding")
+        _add(
+            findings,
+            category,
+            "critical" if graph_severity == "error" else "degraded",
+            "manual",
+            f"lab_{code}",
+            f"{prefix}{item.get('message') or 'Lab graph health finding.'}",
+            _lab_graph_next_action(code),
+        )
 
 
 def _lab_graph_next_action(code: str) -> str:
