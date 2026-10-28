@@ -505,7 +505,7 @@ class MCPWorkspaceTests(unittest.TestCase):
             self.assertEqual([item["sequence"] for item in changes["changes"]], [2])
             self.assertEqual(
                 [item["tool"] for item in changes["changes"][0]["expand"]],
-                ["meridian.workspace_plan", "meridian.workspace_idea", "meridian.lab_node"],
+                ["meridian.workspace_idea", "meridian.lab_node"],
             )
             self.assertEqual(idea["idea"]["body"], "Run the smallest discriminating probe.")
             self.assertEqual(node["node"]["id"], "direction.A")
@@ -566,6 +566,47 @@ class MCPWorkspaceTests(unittest.TestCase):
             )
             self.assertEqual({item["revision"] for item in expanded}, {"revision-1"})
             self.assertEqual({item["project"]["id"] for item in expanded}, {"project-1"})
+
+    def test_an_idea_change_expands_to_its_idea_and_node_and_a_project_change_to_the_plan(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self._workspace(root)
+            changes_path = root / ".meridian/control/changes.json"
+            journal = json.loads(changes_path.read_text(encoding="utf-8"))
+            journal["next_sequence"] = 5
+            journal["changes"] += [
+                {
+                    "sequence": 3,
+                    "at": "2026-09-17T00:00:00Z",
+                    "kind": "idea.updated",
+                    "summary": "Idea updated: Probe",
+                    "refs": [{"kind": "project", "id": "project-1"}, {"kind": "idea", "id": "idea-1"}],
+                },
+                {
+                    "sequence": 4,
+                    "at": "2026-09-18T00:00:00Z",
+                    "kind": "project.updated",
+                    "summary": "Project project updated: Shared research",
+                    "refs": [{"kind": "project", "id": "project-1"}],
+                },
+            ]
+            changes_path.write_text(json.dumps(journal) + "\n", encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+
+            _, changes = self._call(server, "meridian.workspace_changes", {})
+
+            self.assertEqual(
+                [(item["kind"], item["expand"]) for item in changes["changes"]],
+                [
+                    ("project.snapshot", [{"tool": "meridian.workspace_plan", "arguments": {}}]),
+                    ("idea.node_linked", [
+                        {"tool": "meridian.workspace_idea", "arguments": {"idea_id": "idea-1"}},
+                        {"tool": "meridian.lab_node", "arguments": {"node_id": "direction.A"}},
+                    ]),
+                    ("idea.updated", [{"tool": "meridian.workspace_idea", "arguments": {"idea_id": "idea-1"}}]),
+                    ("project.updated", [{"tool": "meridian.workspace_plan", "arguments": {}}]),
+                ],
+            )
 
     def test_a_plan_read_takes_one_task_or_one_milestone_at_a_time(self) -> None:
         with TemporaryDirectory() as tmp:
