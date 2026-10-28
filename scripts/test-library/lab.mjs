@@ -219,15 +219,16 @@ export async function seedProposals(seed, call, files) {
 }
 
 /**
- * Seeds the agent side of the draft-distillation project, the second project of the
- * speculative-decoding repository, through the CLI with `--project`: its own Lab, a thread whose
- * nodes are a supported baseline, a dead branch and the active one, and research records of its own.
+ * Seeds the agent side of the draft-distillation project `id`, the second project of the
+ * speculative-decoding repository, bound to the space `folder`, through the CLI with `--project`:
+ * its own Lab, a thread whose nodes are a supported baseline, a dead branch and the active one, and
+ * research records of its own.
  */
-export function seedSharedLab(seed, project) {
+export function seedSharedLab(seed, { id: project, folder }) {
   const root = workspaceOf(seed)
   meridian(seed.out, ['setup', 'init-lab', '--lab-root', root, '--project', project, '--config-home', join(seed.out, 'config')])
-  const space = join(root, '.meridian', 'projects', project)
-  const thread = `.meridian/projects/${project}/threads/distill.md`
+  const space = join(root, folder)
+  const thread = `${folder}/threads/distill.md`
   const created = dayFrom(seed.today, -8)
   writeFileSync(join(root, thread), [
     '---', 'type: research-thread', 'title: 草稿模型蒸馏', 'status: open', `created: ${created}`, `updated: ${created}`,

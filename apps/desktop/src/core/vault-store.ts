@@ -9,7 +9,7 @@ import type {
   WikiAggregationCard, WikiSignal, WorkspaceSpace, WorkspaceSpaceChoice,
 } from '../shared/contract.js'
 import {
-  DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema, WorkspaceSpaceIdSchema,
+  DEFAULT_DELIVERY_SETTINGS, FeedEntrySchema, ProposalRecordSchema, ResearchIdeaSchema, WatchSchema,
 } from '../shared/contract.js'
 import { attachmentSizeText } from '../shared/attachment-size.js'
 import { projectControlState } from '../shared/project-control.js'
@@ -34,7 +34,7 @@ import {
 import {
   chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, overviewResearch, placeNode,
   projectConclusions, verifiedNodes, projectPageText, projectWorkspaceRoot, projectWorkspaceSsh, readProjectPage,
-  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeaFiles, readWorkspaceSpaces, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
+  readLocalProjectWorkspace, readProjectWorkspace, readWorkspaceAgentIdeaFiles, readWorkspaceSpaces, newSpaceId, readWorkspaceAgentIdeas, readWorkspaceAgentTasks, withProjectLinks, writeProjectFields,
   writeProjectWorkspaceState, servedTopics, storedTopics, titledTopics, topicPinsOf, topicScopeOf, type ProjectRecord,
 } from './project-management/index.js'
 import { inboxFields } from './inbox/dedup.js'
@@ -795,10 +795,11 @@ export function createVaultStore(
   /**
    * Puts `next`, bound to a workspace that already holds the project spaces `held`, into the space
    * `space` picks, and returns whether `next` takes over a space another project wrote. `new` is the
-   * root space of a workspace without one and `.meridian/projects/<project id>/` otherwise, which
-   * `refuseNewSpace` may refuse with its reason. Throws `refused` for a space that cannot be read, that
-   * another project of this vault is bound to, or, for `new`, that already exists; `plugin-outdated`
-   * for a new space `refuseNewSpace` refuses; and `not-found` for a space the workspace does not hold.
+   * root space of a workspace without one and otherwise a new empty `.meridian/projects/<space id>/`
+   * (see newSpaceId), even beside spaces of the same project, which stay as they are. Throws `refused`
+   * for a space that cannot be read or that another project of this vault is bound to,
+   * `plugin-outdated` for a new space `refuseNewSpace` refuses, and `not-found` for a space the
+   * workspace does not hold.
    */
   const placeInSpace = (
     next: ProjectRecord, held: readonly WorkspaceSpace[], space: WorkspaceSpaceChoice,
@@ -806,14 +807,9 @@ export function createVaultStore(
   ): boolean => {
     if (space.kind === 'new') {
       if (held.length === 0) return false
-      const id = WorkspaceSpaceIdSchema.safeParse(next.id)
-      if (!id.success) throw new CallError('invalid', `项目 id 不能用作项目空间的文件夹名：${next.id}`)
-      if (held.some((found) => found.space.kind === 'nested' && found.space.id === id.data)) {
-        throw new CallError('refused', '工作区里已有这个项目的空间')
-      }
       const reason = refuseNewSpace?.()
       if (reason !== undefined) throw new CallError('plugin-outdated', reason)
-      next.workspaceSpace = id.data
+      next.workspaceSpace = newSpaceId(next.id, held.flatMap((found) => (found.space.kind === 'nested' ? [found.space.id] : [])))
       return false
     }
     const found = held.find((candidate) => candidate.space.kind === space.kind

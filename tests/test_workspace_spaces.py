@@ -102,7 +102,7 @@ class WorkspaceSpacesTests(unittest.TestCase):
     def test_status_without_project_lists_the_projects_to_choose_from(self) -> None:
         status = self._call("meridian.workspace_status", {})
         self.assertEqual(status["status"], "choose_project")
-        self.assertEqual(status["projects"], [{"id": "p1", "name": "First"}, {"id": "p2", "name": "Second"}])
+        self.assertEqual(status["projects"], [{"id": "p1", "name": "First", "space": ".meridian"}, {"id": "p2", "name": "Second", "space": ".meridian/projects/p2"}])
 
     def test_every_other_workspace_and_lab_call_without_project_names_the_projects(self) -> None:
         calls = {
@@ -125,9 +125,49 @@ class WorkspaceSpacesTests(unittest.TestCase):
             with self.subTest(tool=name):
                 payload = self._call(name, arguments)
                 self.assertEqual(payload["error_code"], "project_required")
-                self.assertEqual(payload["projects"], [{"id": "p1", "name": "First"}, {"id": "p2", "name": "Second"}])
+                self.assertEqual(payload["projects"], [{"id": "p1", "name": "First", "space": ".meridian"}, {"id": "p2", "name": "Second", "space": ".meridian/projects/p2"}])
                 self.assertIn("p1 (First), p2 (Second)", payload["message"])
         self.assertEqual(_tree(self.root), before)
+
+    def _second_space_of_p2(self, updated_at: str) -> Path:
+        """Adds a later space of project p2, as starting fresh does, whose plan the App wrote at `updated_at`."""
+        space = _space(self.root, ".meridian/projects/p2-0a1b2c", "p2", "Second", "fresh")
+        plan = json.loads((space / "control/plan.json").read_text(encoding="utf-8"))
+        (space / "control/plan.json").write_text(json.dumps({**plan, "updated_at": updated_at}), encoding="utf-8")
+        return space
+
+    def test_a_project_with_several_spaces_resolves_to_the_one_the_app_wrote_last(self) -> None:
+        self._second_space_of_p2("2026-10-27T00:00:00Z")
+        graph = self._call("meridian.lab_graph", {"project": "p2"})
+        self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["fresh.A"])
+        plan = json.loads((self.second / "control/plan.json").read_text(encoding="utf-8"))
+        (self.second / "control/plan.json").write_text(json.dumps({**plan, "updated_at": "2026-10-28T00:00:00Z"}), encoding="utf-8")
+        graph = self._call("meridian.lab_graph", {"project": "p2"})
+        self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["tree.A"])
+
+    def test_the_listing_marks_which_space_of_a_project_is_bound(self) -> None:
+        self._second_space_of_p2("2026-10-27T00:00:00Z")
+        payload = self._call("meridian.workspace_plan", {})
+        self.assertEqual(payload["projects"], [
+            {"id": "p1", "name": "First", "space": ".meridian"},
+            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2", "bound": False},
+            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2-0a1b2c", "bound": True},
+        ])
+        self.assertIn("p2 (Second, .meridian/projects/p2-0a1b2c, bound)", payload["message"])
+
+    def test_a_workspace_whose_spaces_all_belong_to_one_project_needs_no_project(self) -> None:
+        with TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            _space(root, ".meridian", "p1", "Only", "kv")
+            fresh = _space(root, ".meridian/projects/p1-0a1b2c", "p1", "Only", "fresh")
+            plan = json.loads((fresh / "control/plan.json").read_text(encoding="utf-8"))
+            (fresh / "control/plan.json").write_text(json.dumps({**plan, "updated_at": "2026-10-27T00:00:00Z"}), encoding="utf-8")
+            server = MeridianMCPServer(default_workspace_root=root)
+            response = server.handle_message({
+                "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "meridian.lab_graph", "arguments": {}},
+            })
+            graph = json.loads(response["result"]["content"][0]["text"])
+            self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["fresh.A"])
 
     def test_an_unknown_project_is_refused_with_the_list(self) -> None:
         payload = self._call("meridian.workspace_plan", {"project": "p9"})

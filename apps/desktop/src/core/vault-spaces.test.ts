@@ -4,6 +4,7 @@ import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { readFrontmatter } from './vault/frontmatter.js'
 import type { VaultStore } from './vault.js'
+import { readWorkspaceSpaces } from './project-management/index.js'
 import { createVaultStore } from './vault-store.js'
 
 /** Test vault for the real implementation: two paper pages, no projects and no app state. */
@@ -66,13 +67,18 @@ describe('several projects in one workspace', () => {
     return id
   }
 
+  /** The nested space id the plan path of project `detail`'s workspace names. */
+  const spaceOf = (detail: { workspace?: { planPath: string } | undefined }): string =>
+    /\.meridian\/projects\/([^/]+)\/control\/plan\.json$/.exec(detail.workspace!.planPath.replaceAll('\\', '/'))![1]!
+
   /** Binds `first` and then `second` to the shared repository, each as a new project space. */
   const bindBoth = async () => {
     const first = await project('First')
     const second = await project('Second')
     await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow)
     await store.bindProjectWorkspace(second, { kind: 'local', root: repo }, { kind: 'new' }, allow)
-    return { first, second, nested: `.meridian/projects/${second}` }
+    const space = spaceOf(await store.getProject(second))
+    return { first, second, space, nested: `.meridian/projects/${space}` }
   }
 
   it('a second project gets its own space under .meridian/projects/<id>/, and the first keeps .meridian/ as it was', async () => {
@@ -82,15 +88,17 @@ describe('several projects in one workspace', () => {
     const rootManifest = readFileSync(join(repo, '.meridian/workspace.json'), 'utf8')
     const second = await project('Second')
     await store.bindProjectWorkspace(second, { kind: 'local', root: repo }, { kind: 'new' }, allow)
+    const space = spaceOf(await store.getProject(second))
+    expect(space).toMatch(new RegExp(`^${second}-[0-9a-f]{6}$`))
 
     expect(readFileSync(join(repo, '.meridian/control/plan.json'), 'utf8')).toBe(rootPlan)
     expect(readFileSync(join(repo, '.meridian/workspace.json'), 'utf8')).toBe(rootManifest)
     const manifest = readJson<{ project: { id: string }; surfaces: { plan: { path: string } } }>(
-      join(repo, `.meridian/projects/${second}/workspace.json`))
+      join(repo, `.meridian/projects/${space}/workspace.json`))
     expect(manifest.project.id).toBe(second)
-    expect(manifest.surfaces.plan.path).toBe(`.meridian/projects/${second}/control/plan.json`)
+    expect(manifest.surfaces.plan.path).toBe(`.meridian/projects/${space}/control/plan.json`)
     expect((await store.getProject(second)).workspace).toMatchObject({
-      state: 'ready', root: repo, planPath: join(repo, `.meridian/projects/${second}/control/plan.json`),
+      state: 'ready', root: repo, planPath: join(repo, `.meridian/projects/${space}/control/plan.json`),
     })
   })
 
@@ -125,17 +133,17 @@ describe('several projects in one workspace', () => {
   })
 
   it('the nested binding lives under shared_workspace on the page, where an older App reads no binding', async () => {
-    const { first, second } = await bindBoth()
+    const { first, second, space, nested } = await bindBoth()
     const page = (id: string) => {
       const rows = readFileSync(join(vault, 'wiki/projects', `${id}.md`), 'utf8').split('\n')
       return readFrontmatter(rows.slice(1, rows.indexOf('---', 1))) as Record<string, unknown>
     }
     expect(page(first)).toMatchObject({ workspace_root: repo })
     expect(page(first)['shared_workspace']).toBeUndefined()
-    expect(page(second)).toMatchObject({ shared_workspace: { root: repo, space: second } })
+    expect(page(second)).toMatchObject({ shared_workspace: { root: repo, space } })
     expect(page(second)['workspace_root']).toBeUndefined()
     expect((await createVaultStore(vault).getProject(second)).workspace?.planPath)
-      .toBe(join(repo, `.meridian/projects/${second}/control/plan.json`))
+      .toBe(join(repo, nested, 'control/plan.json'))
   })
 
   it('an old plugin on this machine refuses a new space beside an existing one, and nothing is written', async () => {
@@ -149,11 +157,11 @@ describe('several projects in one workspace', () => {
   })
 
   it('choosing an existing space binds to it: the project takes it over and the journal keeps its changes', async () => {
-    const { second, nested } = await bindBoth()
+    const { second, space, nested } = await bindBoth()
     await store.bindProjectWorkspace(second, null)
     const before = readJson<{ changes: unknown[]; epoch: string }>(join(repo, nested, 'control/changes.json'))
     const third = await project('Third')
-    const spaces = await store.bindProjectWorkspace(third, { kind: 'local', root: repo }, { kind: 'nested', id: second }, allow)
+    const spaces = await store.bindProjectWorkspace(third, { kind: 'local', root: repo }, { kind: 'nested', id: space }, allow)
     expect(spaces.workspace?.planPath).toBe(join(repo, nested, 'control/plan.json'))
     const after = readJson<{ project_id: string; changes: unknown[]; epoch: string }>(join(repo, nested, 'control/changes.json'))
     expect(after.project_id).toBe(third)
@@ -171,10 +179,48 @@ describe('several projects in one workspace', () => {
   })
 
   it('a project disconnected and bound again to its own space finds its records there', async () => {
-    const { second, nested } = await bindBoth()
+    const { second, space, nested } = await bindBoth()
     agentWrites(repo, nested, 'nested')
     await store.bindProjectWorkspace(second, null)
-    await store.bindProjectWorkspace(second, { kind: 'local', root: repo }, { kind: 'nested', id: second }, allow)
+    await store.bindProjectWorkspace(second, { kind: 'local', root: repo }, { kind: 'nested', id: space }, allow)
     expect((await store.getProject(second)).workspace?.graph?.nodes.map((node) => node.id)).toEqual(['nested.A'])
+  })
+
+  it('starting fresh on the folder a project is bound to gives it a new empty space and keeps the old one listed', async () => {
+    const first = await project('First')
+    await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow)
+    agentWrites(repo, '.meridian', 'old')
+    const before = readFileSync(join(repo, '.meridian/graph/graph.json'), 'utf8')
+    const fresh = await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow)
+    const space = spaceOf(fresh)
+    expect(fresh.workspace?.graph).toBeUndefined()
+    expect(fresh.workspace?.events).toEqual([])
+    expect(readFileSync(join(repo, '.meridian/graph/graph.json'), 'utf8')).toBe(before)
+    expect(await readWorkspaceSpaces({ kind: 'local', root: repo })).toEqual([
+      { space: { kind: 'root' }, project: { id: first, name: 'First' } },
+      { space: { kind: 'nested', id: space }, project: { id: first, name: 'First' } },
+    ])
+  })
+
+  it('one project holds several spaces of one folder and binds to whichever is chosen', async () => {
+    const first = await project('First')
+    await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow)
+    const one = spaceOf(await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow))
+    agentWrites(repo, `.meridian/projects/${one}`, 'one')
+    const two = spaceOf(await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow))
+    expect(two).not.toBe(one)
+    expect((await store.getProject(first)).workspace?.graph).toBeUndefined()
+    await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'nested', id: one }, allow)
+    expect((await store.getProject(first)).workspace?.graph?.nodes.map((node) => node.id)).toEqual(['one.A'])
+    await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'root' }, allow)
+    expect((await store.getProject(first)).workspace?.planPath).toBe(join(repo, '.meridian/control/plan.json'))
+  })
+
+  it('the plugin guard refuses starting fresh on a folder that already holds a space, the project\'s own included', async () => {
+    const first = await project('First')
+    await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, () => 'too old')
+    await expect(store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, () => 'too old'))
+      .rejects.toMatchObject({ reason: 'plugin-outdated' })
+    expect(existsSync(join(repo, '.meridian/projects'))).toBe(false)
   })
 })

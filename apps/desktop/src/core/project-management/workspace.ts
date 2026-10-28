@@ -1,4 +1,4 @@
-import { createHash, randomUUID } from 'node:crypto'
+import { createHash, randomBytes, randomUUID } from 'node:crypto'
 import { execFile } from 'node:child_process'
 import {
   existsSync, globSync, mkdirSync, readdirSync, readFileSync, realpathSync, renameSync, statSync, writeFileSync,
@@ -1162,6 +1162,19 @@ export function readLocalProjectWorkspace(project: ProjectRecord): ProjectWorksp
       events: [],
       issue: error instanceof Error ? error.message : String(error),
     }
+  }
+}
+
+/**
+ * A new nested space id for project `projectId`: the project id, `-` and six random hex digits, none
+ * of `taken`, so one project can hold several spaces in one workspace. Throws `invalid` when the
+ * project id cannot start a folder name.
+ */
+export function newSpaceId(projectId: string, taken: readonly string[]): string {
+  for (;;) {
+    const id = WorkspaceSpaceIdSchema.safeParse(`${projectId}-${randomBytes(3).toString('hex')}`)
+    if (!id.success) throw new CallError('invalid', `项目 id 不能用作项目空间的文件夹名：${projectId}`)
+    if (!taken.includes(id.data)) return id.data
   }
 }
 

@@ -285,7 +285,10 @@ export const ProjectWorkspaceBindingSchema = z.discriminatedUnion('kind', [
   }).strict(),
 ])
 
-/** A later project's space folder under `.meridian/projects/`, named after the project it was made for. */
+/**
+ * A nested space's folder under `.meridian/projects/`: the id of the project it was made for, `-` and
+ * six hex digits, so one project can hold several spaces in one workspace.
+ */
 export const WorkspaceSpaceIdSchema = z.string().regex(/^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/)
 
 /**
@@ -1270,8 +1273,8 @@ export const ProjectGetParamsSchema = z.object({ id: z.string() }).strict()
 /**
  * `binding: null` disconnects the project without deleting `.meridian/` from the workspace. `space`
  * picks where in the workspace the project's records live: a space it already holds, or `new`, the
- * root space of a folder without one and `.meridian/projects/<project id>/` otherwise. Without
- * `space` the project takes the root space.
+ * root space of a folder without one and a new empty `.meridian/projects/<space id>/` otherwise, the
+ * spaces already there kept as they are. Without `space` the project takes the root space.
  */
 export const ProjectBindWorkspaceParamsSchema = z.object({
   id: z.string(),

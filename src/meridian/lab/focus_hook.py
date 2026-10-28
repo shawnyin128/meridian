@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from meridian.lab.graph import materialize_lab_graph
-from meridian.spaces import workspace_projects
+from meridian.spaces import bound_spaces, workspace_projects
 
 MAX_OUTPUT_LINES = 6
 FOCUS_RULE_LINE = (
@@ -47,24 +47,34 @@ def find_lab_or_workspace_root(start: Path) -> Path | None:
     return None
 
 
+def _projects(root: Path) -> list[tuple[str, str]]:
+    """Each project of the workspace at `root` once, as `(id, line)`, in the order its spaces list."""
+    found = workspace_projects(root)
+    bound = bound_spaces(found)
+    shown: dict[str, str] = {}
+    for space, project in found:
+        if project is None:
+            shown[space.folder.as_posix()] = f"- {space.folder.as_posix()}: its manifest cannot be read"
+        elif project["id"] not in shown:
+            active = materialize_lab_graph(bound[project["id"]].lab_root).graph.get("active_nodes", [])
+            shown[project["id"]] = f"- {project['id']}: {project['name']} ({len(active)} node(s) active)"
+    return list(shown.items())
+
+
 def render_workspace_projects(root: Path) -> str:
     """Render, in at most `MAX_OUTPUT_LINES` lines, the projects of a workspace holding several.
 
     Names the rule that every workspace and Lab call passes `project`, then each project's id,
-    name and active node count, or the space whose manifest cannot be read.
+    name and the active node count of the space it is bound to, or a space whose manifest cannot
+    be read.
     """
 
-    spaces = workspace_projects(root)
-    lines = [f"Meridian workspace: {len(spaces)} projects. Pass `project` (one id below) to every workspace_* and lab_* call."]
-    shown = spaces[: MAX_OUTPUT_LINES - 2]
-    for space, project in shown:
-        if project is None:
-            lines.append(f"- {space.folder.as_posix()}: its manifest cannot be read")
-            continue
-        active = materialize_lab_graph(space.lab_root).graph.get("active_nodes", [])
-        lines.append(f"- {project['id']}: {project['name']} ({len(active)} node(s) active)")
-    if len(spaces) > len(shown):
-        lines.append(f"- ...and {len(spaces) - len(shown)} more")
+    projects = _projects(root)
+    lines = [f"Meridian workspace: {len(projects)} projects. Pass `project` (one id below) to every workspace_* and lab_* call."]
+    shown = projects[: MAX_OUTPUT_LINES - 2]
+    lines.extend(line for _, line in shown)
+    if len(projects) > len(shown):
+        lines.append(f"- ...and {len(projects) - len(shown)} more")
     return "\n".join(lines[:MAX_OUTPUT_LINES])
 
 
@@ -76,7 +86,7 @@ def render_lab_focus_report(root: Path, *, hook_event_name: str) -> str:
     A workspace holding several projects gets render_workspace_projects instead.
     """
 
-    if len(workspace_projects(root)) > 1:
+    if len(_projects(root)) > 1:
         return render_workspace_projects(root)
     graph = materialize_lab_graph(root).graph
     active_ids = [str(node_id) for node_id in graph.get("active_nodes", [])]

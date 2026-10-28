@@ -36,7 +36,7 @@ import {
   renamedOptions, restoredColumn, retypedColumn,
 } from './paper-library/index.js'
 import {
-  chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE,
+  chatSource, CONCLUSION_CHANGED, concludedNodes, conclusionCounts, conclusionFingerprint, MANUAL_SOURCE, newSpaceId,
   overviewResearch, placeNode, projectConclusions, readWorkspaceAgentIdeas, servedTopics, storedTopics, titledTopics,
   topicScopeOf, verifiedNodes, withProjectLinks, type TopicPin,
 } from './project-management/index.js'
@@ -1215,7 +1215,9 @@ export function createFixtureStore(
       // The fixture library writes no files: a new space goes beside the canned ones its folder holds.
       const held = binding?.kind === 'ssh' ? fixtureSshSpaces(binding.host, binding.path) : []
       const folder = space?.kind === 'nested' ? `.meridian/projects/${space.id}`
-        : space?.kind === 'new' && held.length > 0 ? `.meridian/projects/${id}` : '.meridian'
+        : space?.kind === 'new' && held.length > 0
+          ? `.meridian/projects/${newSpaceId(id, held.flatMap((found) => (found.space.kind === 'nested' ? [found.space.id] : [])))}`
+          : '.meridian'
       if (binding === null) delete next.workspace
       else if (binding.kind === 'local') {
         next.workspace = {

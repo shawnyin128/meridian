@@ -275,8 +275,9 @@ export function writeDirectionChoices(seed) {
 
 /**
  * Seeds a second project, draft distillation, in the speculative-decoding project's repository: it
- * binds as a new project space, `.meridian/projects/<its id>/`, with its own tasks and milestone.
- * Returns its id, or undefined on an App that binds one project per repository, 0.0.24.0 and older.
+ * binds as a new project space, `.meridian/projects/<space id>/`, with its own tasks and milestone.
+ * Returns its id and its space folder, or undefined on an App that binds one project per repository,
+ * 0.0.24.0 and older.
  */
 export async function seedSharedProject(seed, call) {
   const distill = await createProject(seed, call, 'distill', '草稿模型蒸馏', -8)
@@ -288,8 +289,9 @@ export async function seedSharedProject(seed, call) {
     await call('project.createMilestone', { projectId: distill, milestone: { date: dayFrom(seed.today, 12), title: '蒸馏草稿可用', done: false } })
   })
   const workspace = join(seed.out, 'workspaces', 'spec-decoding')
+  let bound
   try {
-    await call('project.bindWorkspace', { id: distill, binding: { kind: 'local', root: workspace }, space: { kind: 'new' } })
+    bound = await call('project.bindWorkspace', { id: distill, binding: { kind: 'local', root: workspace }, space: { kind: 'new' } })
   } catch (error) {
     if (!String(error).includes('project.bindWorkspace: {"reason":"invalid"}')) throw error
     return undefined
@@ -300,7 +302,8 @@ export async function seedSharedProject(seed, call) {
     ['按 logits 蒸馏 2 个 epoch', -1, 4, 'act', 'p0'],
     ['测蒸馏后的接受率', 5, 7, 'plan', 'p1'],
   ])
-  return distill
+  const folder = /(\.meridian\/projects\/[^/]+)\/control\/plan\.json$/.exec(bound.workspace.planPath.replaceAll('\\', '/'))[1]
+  return { id: distill, folder }
 }
 
 /**

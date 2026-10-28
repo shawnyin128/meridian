@@ -21,11 +21,13 @@ SPACE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$")
 class ProjectChoiceError(ValueError):
     """Raised when a workspace call does not name a project the workspace holds.
 
-    ``projects`` lists the workspace's projects, each as ``{"id", "name"}``, for the agent to choose from.
+    ``projects`` lists the workspace's spaces for the agent to choose from, each as ``{"id", "name",
+    "space"}`` with the project's id and name and the space folder; a project with several spaces
+    marks each with ``bound``, true for the one the project is bound to.
     """
 
-    def __init__(self, message: str, projects: list[dict[str, str]]) -> None:
-        listed = ", ".join(f"{item['id'] or '?'} ({item['name']})" for item in projects) or "none"
+    def __init__(self, message: str, projects: list[dict[str, Any]]) -> None:
+        listed = ", ".join(_named(item) for item in projects) or "none"
         super().__init__(f"{message}: {listed}")
         self.projects = projects
 
@@ -79,20 +81,66 @@ def workspace_projects(repository: Path) -> list[tuple[ProjectSpace, dict[str, s
     return found
 
 
-def _listed(found: list[tuple[ProjectSpace, dict[str, str] | None]]) -> list[dict[str, str]]:
-    return [
-        project if project is not None else {"id": "", "name": f"{space.folder.as_posix()} (unreadable manifest)"}
-        for space, project in found
-    ]
+def _named(item: dict[str, Any]) -> str:
+    if "bound" not in item:
+        return f"{item['id'] or '?'} ({item['name']})"
+    return f"{item['id']} ({item['name']}, {item['space']}{', bound' if item['bound'] else ''})"
+
+
+def _plan_time(space: ProjectSpace) -> str:
+    """When the App last wrote the space's plan, or "" when it cannot be read."""
+    try:
+        value: Any = json.loads((space.lab_root / "control" / "plan.json").read_text(encoding="utf-8"))
+        return value["updated_at"] if isinstance(value["updated_at"], str) else ""
+    except (OSError, ValueError, KeyError, TypeError):
+        return ""
+
+
+def bound_spaces(found: list[tuple[ProjectSpace, dict[str, str] | None]]) -> dict[str, ProjectSpace]:
+    """The space each project of ``found`` is bound to, by project id.
+
+    The App rewrites the plan of the space a project is bound to whenever it binds or edits the
+    project, and never touches its other spaces, so a project's bound space is the one whose plan
+    it wrote last; the first listed wins a tie.
+    """
+
+    bound: dict[str, ProjectSpace] = {}
+    for space, project in found:
+        if project is None:
+            continue
+        held = bound.get(project["id"])
+        if held is None or _plan_time(space) > _plan_time(held):
+            bound[project["id"]] = space
+    return bound
+
+
+def _listed(found: list[tuple[ProjectSpace, dict[str, str] | None]]) -> list[dict[str, Any]]:
+    bound = bound_spaces(found)
+    counts: dict[str, int] = {}
+    for _, project in found:
+        if project is not None:
+            counts[project["id"]] = counts.get(project["id"], 0) + 1
+    listed: list[dict[str, Any]] = []
+    for space, project in found:
+        folder = space.folder.as_posix()
+        if project is None:
+            listed.append({"id": "", "name": f"{folder} (unreadable manifest)", "space": folder})
+            continue
+        entry: dict[str, Any] = {**project, "space": folder}
+        if counts[project["id"]] > 1:
+            entry["bound"] = bound[project["id"]] == space
+        listed.append(entry)
+    return listed
 
 
 def resolve_space(root: Path, project: str | None = None) -> ProjectSpace:
     """The project space a workspace call made at ``root`` for ``project`` works in.
 
     ``root`` is a repository, its ``.meridian`` folder, or a nested space folder, which names its
-    space itself. With ``project``, the id of a project the workspace holds, the call works in that
-    project's space. Without it, a repository with no space or one space works in that one, and a
-    repository with several raises :class:`ProjectChoiceError` listing them. ``root`` must exist.
+    space itself. With ``project``, the id of a project the workspace holds, the call works in the
+    space that project is bound to (see bound_spaces). Without it, a repository with no space works
+    in the root space, one whose spaces all belong to one project in the space it is bound to, and
+    any other raises :class:`ProjectChoiceError` listing the spaces.
     """
 
     resolved = root.expanduser().resolve()
@@ -103,21 +151,24 @@ def resolve_space(root: Path, project: str | None = None) -> ProjectSpace:
     else:
         repository, named = resolved, None
     found = workspace_projects(repository)
+    bound = bound_spaces(found)
     if project is not None:
         wanted = project.strip()
-        for space, held in found:
-            if held is not None and held["id"] == wanted:
-                if named is not None and space.folder != named:
-                    break
-                return space
+        owned = [space for space, held in found if held is not None and held["id"] == wanted]
+        if named is None and owned:
+            return bound[wanted]
+        if named is not None and any(space.folder == named for space in owned):
+            return ProjectSpace(repository, named)
         raise ProjectChoiceError(
             f"this workspace holds no project {wanted!r}; pass one of the projects listed",
             _listed(found),
         )
     if named is not None:
         return ProjectSpace(repository, named)
-    if len(found) <= 1:
-        return found[0][0] if found else ProjectSpace(repository, ROOT_SPACE)
+    if not found:
+        return ProjectSpace(repository, ROOT_SPACE)
+    if len(bound) == 1 and all(held is not None for _, held in found):
+        return next(iter(bound.values()))
     raise ProjectChoiceError(
         "this workspace holds several projects; pass project with the id of the one this work is for",
         _listed(found),

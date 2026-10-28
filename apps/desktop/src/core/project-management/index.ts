@@ -23,6 +23,7 @@ export {
   projectWorkspaceRoot,
   projectWorkspaceSsh,
   readLocalProjectWorkspace,
+  newSpaceId,
   readProjectWorkspace,
   readWorkspaceSpaces,
   readWorkspaceAgentIdeas,
