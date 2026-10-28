@@ -274,6 +274,36 @@ export function writeDirectionChoices(seed) {
 }
 
 /**
+ * Seeds a second project, draft distillation, in the speculative-decoding project's repository: it
+ * binds as a new project space, `.meridian/projects/<its id>/`, with its own tasks and milestone.
+ * Returns its id, or undefined on an App that binds one project per repository, 0.0.24.0 and older.
+ */
+export async function seedSharedProject(seed, call) {
+  const distill = await createProject(seed, call, 'distill', '草稿模型蒸馏', -8)
+  await onDay(seed, -8, async () => {
+    await call('project.update', { id: distill, patch: {
+      focus: '蒸馏后接受率到 0.65', start: dayFrom(seed.today, -8), due: dayFrom(seed.today, 30),
+    } })
+    await setAreas(seed, call, distill, ['推理加速'])
+    await call('project.createMilestone', { projectId: distill, milestone: { date: dayFrom(seed.today, 12), title: '蒸馏草稿可用', done: false } })
+  })
+  const workspace = join(seed.out, 'workspaces', 'spec-decoding')
+  try {
+    await call('project.bindWorkspace', { id: distill, binding: { kind: 'local', root: workspace }, space: { kind: 'new' } })
+  } catch (error) {
+    if (!String(error).includes('project.bindWorkspace: {"reason":"invalid"}')) throw error
+    return undefined
+  }
+  await addTasks(seed, call, distill, [
+    ['跑 68M 草稿基线', -8, -6, 'done', 'p1'],
+    ['只蒸馏前 4 层', -5, -4, 'done', 'p2'],
+    ['按 logits 蒸馏 2 个 epoch', -1, 4, 'act', 'p0'],
+    ['测蒸馏后的接受率', 5, 7, 'plan', 'p1'],
+  ])
+  return distill
+}
+
+/**
  * Moves each project's creation, and every research record Core stamped on the project page on day
  * `stamped`, to the day the project was created. Run with the App closed.
  */

@@ -4,11 +4,11 @@ import { parseArgs } from 'node:util'
 import { DESKTOP, openApp, readJson, readsCannedNetFile, redate, session, writeJson } from './test-library/app.mjs'
 import { seedConversations } from './test-library/conversations.mjs'
 import { redateLater, seedInbox, seedWatches, writeInbox } from './test-library/feed.mjs'
-import { prepareWorkspace, redateEvents, seedLab, seedProposals } from './test-library/lab.mjs'
+import { prepareWorkspace, redateEvents, seedLab, seedProposals, seedSharedLab } from './test-library/lab.mjs'
 import { seedModelChoice } from './test-library/model.mjs'
 import { arxivMetadata, importPapers, paperFiles, redatePapers, seedPapers, writeLegacyOverlap } from './test-library/papers.mjs'
 import {
-  discoveryProgress, discoveryRecords, redateProjects, seedProjects, writeDirectionChoices,
+  discoveryProgress, discoveryRecords, redateProjects, seedProjects, seedSharedProject, writeDirectionChoices,
 } from './test-library/projects.mjs'
 import { relocate } from './test-library/relocate.mjs'
 import { checkOut, MARKER, protectedRoots } from './test-library/safety.mjs'
@@ -63,11 +63,14 @@ async function seed(out, app, today) {
     return Object.fromEntries(Object.entries(state.papers).map(([key, id]) => [key, rows.find((row) => row.id === id).title]))
   })
   prepareWorkspace(state)
-  await session(out, app, {}, async (call) => {
+  // No coding agent's plugin is installed for the seed, so a second project space may be added.
+  await session(out, app, { agentHome: join(out, 'agent-home') }, async (call) => {
     await seedPapers(state, call, files)
     await seedWiki(state, call, files)
     await seedWatches(state, call)
     await seedLab(state, call, await seedProjects(state, call))
+    const shared = await seedSharedProject(state, call)
+    if (shared !== undefined) seedSharedLab(state, shared)
     await seedConversations(state, call)
     await seedProposals(state, call, files)
     await seedModelChoice(call)

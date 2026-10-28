@@ -39,14 +39,16 @@ export function readsCannedNetFile(app) {
 /**
  * The environment an App on test library `out` runs with. `network: false` keeps Core off the
  * network, answering from its canned responses and those in the file `canned`, `bootstrap` lets
- * Core initialize an empty library, `show` opens a normal window for the owner. Without `show` the
+ * Core initialize an empty library, `agentHome` is the home whose coding agents' plugins Core looks
+ * up instead of the user's, `show` opens a normal window for the owner. Without `show` the
  * window is isolated: it paints right of every display, never takes focus, and on macOS the App has
  * no Dock icon and never becomes the active app.
  */
-function appEnv(out, { show = false, network = false, bootstrap = false, canned }) {
+function appEnv(out, { show = false, network = false, bootstrap = false, canned, agentHome }) {
   const env = { ...process.env }
   for (const key of [
     'ELECTRON_RUN_AS_NODE', 'MERIDIAN_LIBRARY_ROOT', 'MERIDIAN_CANNED_NET', 'MERIDIAN_CANNED_NET_FILE', 'MERIDIAN_BOOTSTRAP_VAULT',
+    'MERIDIAN_AGENT_HOME',
   ]) {
     delete env[key]
   }
@@ -58,6 +60,7 @@ function appEnv(out, { show = false, network = false, bootstrap = false, canned 
     ...(network ? {} : { MERIDIAN_CANNED_NET: '1' }),
     ...(canned === undefined ? {} : { MERIDIAN_CANNED_NET_FILE: canned }),
     ...(bootstrap ? { MERIDIAN_BOOTSTRAP_VAULT: '1' } : {}),
+    ...(agentHome === undefined ? {} : { MERIDIAN_AGENT_HOME: agentHome }),
   }
 }
 

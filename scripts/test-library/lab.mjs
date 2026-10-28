@@ -1,5 +1,5 @@
 import { spawnSync } from 'node:child_process'
-import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs'
+import { existsSync, mkdirSync, mkdtempSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { dayFrom, meridian, onDay, python, readJson, writeJson } from './app.mjs'
@@ -9,7 +9,10 @@ const THREAD = 'spec-decoding'
 const node = (id) => `${THREAD}.${id}`
 const workspaceOf = (seed) => join(seed.out, 'workspaces', 'spec-decoding')
 
-/** Calls `fn` of the Lab's Python API, which the MCP tools wrap, with JSON `args`, and returns its result. */
+/**
+ * Calls `fn` of the Lab's Python API, which the MCP tools wrap, with JSON `args`, and returns its
+ * result. It works in `args.root` when given, else in the speculative-decoding repository.
+ */
 function lab(seed, module, fn, args) {
   const code = `import json, sys
 from pathlib import Path
@@ -216,17 +219,64 @@ export async function seedProposals(seed, call, files) {
 }
 
 /**
+ * Seeds the agent side of the draft-distillation project, the second project of the
+ * speculative-decoding repository, through the CLI with `--project`: its own Lab, a thread whose
+ * nodes are a supported baseline, a dead branch and the active one, and research records of its own.
+ */
+export function seedSharedLab(seed, project) {
+  const root = workspaceOf(seed)
+  meridian(seed.out, ['setup', 'init-lab', '--lab-root', root, '--project', project, '--config-home', join(seed.out, 'config')])
+  const space = join(root, '.meridian', 'projects', project)
+  const thread = `.meridian/projects/${project}/threads/distill.md`
+  const created = dayFrom(seed.today, -8)
+  writeFileSync(join(root, thread), [
+    '---', 'type: research-thread', 'title: 草稿模型蒸馏', 'status: open', `created: ${created}`, `updated: ${created}`,
+    'related_threads: []', '---', '', '# Research Thread: 草稿模型蒸馏', '', '## Root Problem', '',
+    '让 68M 草稿模型的分布贴近 13B 目标模型，把接受率从 0.52 提到 0.65。', '', '## Approach Tree', '',
+    '### Node A: 基线：68M 草稿模型直接上', '', '- mode: `supported`', '', '#### Next Action', '', '作为蒸馏的对照。', '',
+    '## Graph Relations', '',
+  ].join('\n'), 'utf8')
+  const packet = (changes, confirmed) => lab(seed, 'meridian.lab.graph', 'apply_lab_update', { root: space, packet: {
+    schema: 'meridian.lab.update.v1', intent: 'seed', target_thread: 'distill', changes,
+    user_confirmation: { required_for: confirmed, status: 'accepted' },
+  } })
+  packet([
+    { op: 'set_active_thread', thread_id: 'distill' },
+    { op: 'create_node', node_id: 'distill.B', title: '按目标模型 logits 蒸馏草稿', parent: 'A', why: '接受率是瓶颈，蒸馏能对齐分布。',
+      next_action: '用 KL 损失蒸馏 2 个 epoch，测接受率。' },
+    { op: 'create_node', node_id: 'distill.C', title: '只蒸馏前 4 层', parent: 'A', state: 'dead', why: '层数太少，接受率反而下降。' },
+    { op: 'create_node', node_id: 'distill.D', title: '在线蒸馏：用验证结果回灌', parent: 'B' },
+  ], ['create_node', 'set_active_thread', 'state:dead'])
+  packet([{ op: 'activate_node', node_id: 'distill.B' }], [])
+  for (const [id, days, kind, text, node] of [
+    ['distill-baseline', -6, 'result', '68M 草稿模型基线：接受率 0.52', 'distill.A'],
+    ['distill-four-layers', -4, 'decision', '只蒸馏前 4 层，接受率降到 0.47，放弃', 'distill.C'],
+    ['distill-logits-start', -1, 'start', '开始按 logits 蒸馏，KL 损失，2 个 epoch', 'distill.B'],
+  ]) {
+    meridian(seed.out, ['workspace', 'event-add', '--root', root, '--project', project, '--id', id, '--text', text,
+      '--kind', kind, '--source', thread, '--date', dayFrom(seed.today, days), '--node', node])
+  }
+}
+
+/**
  * Gives every research record the agent dated in the past a timestamp on its own day, and returns
  * the day of each feed entry the App copied from a record, by entry id. Run with the App closed.
  */
 export function redateEvents(seed) {
-  const file = join(workspaceOf(seed), '.meridian', 'events', 'events.json')
-  const held = readJson(file)
-  held.events = held.events.map((event) => (event.at === undefined ? event : { ...event, at: `${event.date}${event.at.slice(10)}` }))
-  writeJson(file, held)
+  const nested = join(workspaceOf(seed), '.meridian', 'projects')
+  const files = [
+    join(workspaceOf(seed), '.meridian', 'events', 'events.json'),
+    ...(existsSync(nested) ? readdirSync(nested).map((space) => join(nested, space, 'events', 'events.json')) : []),
+  ].filter((file) => existsSync(file))
+  const events = files.flatMap((file) => {
+    const held = readJson(file)
+    held.events = held.events.map((event) => (event.at === undefined ? event : { ...event, at: `${event.date}${event.at.slice(10)}` }))
+    writeJson(file, held)
+    return held.events
+  })
   const feed = readJson(join(seed.out, 'library', '.meridian', 'feed.json'))
   for (const entry of feed.filter((item) => item.source === 'lab')) {
-    const event = held.events.find((item) => JSON.stringify(entry.body).includes(item.text))
+    const event = events.find((item) => JSON.stringify(entry.body).includes(item.text))
     if (event !== undefined) seed.days.feed.set(entry.id, Math.round((Date.parse(event.date) - Date.parse(seed.today)) / 86_400_000))
   }
 }
