@@ -174,6 +174,7 @@ common.failure.reasons.malformed-output failure
 common.failure.reasons.model failure
 common.failure.reasons.newer-changes failure
 common.failure.reasons.newer-version failure
+common.failure.reasons.plugin-outdated failure
 common.failure.reasons.no-key failure
 common.failure.reasons.no-model failure
 common.failure.reasons.not-found failure
@@ -602,6 +603,9 @@ project.workspace.kindLabel aria
 project.workspace.local label
 project.workspace.localPlaceholder placeholder
 project.workspace.pathLabel label
+project.workspace.spaceLabel label
+project.workspace.newSpace label
+project.workspace.spaceUnreadable failure
 project.workspace.portLabel label
 project.workspace.remotePlaceholder placeholder
 project.workspace.state.invalid state

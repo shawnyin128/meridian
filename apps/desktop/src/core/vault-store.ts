@@ -797,8 +797,8 @@ export function createVaultStore(
    * `space` picks, and returns whether `next` takes over a space another project wrote. `new` is the
    * root space of a workspace without one and `.meridian/projects/<project id>/` otherwise, which
    * `refuseNewSpace` may refuse with its reason. Throws `refused` for a space that cannot be read, that
-   * another project of this vault is bound to, or, for `new`, that already exists; and `not-found` for
-   * a space the workspace does not hold.
+   * another project of this vault is bound to, or, for `new`, that already exists; `plugin-outdated`
+   * for a new space `refuseNewSpace` refuses; and `not-found` for a space the workspace does not hold.
    */
   const placeInSpace = (
     next: ProjectRecord, held: readonly WorkspaceSpace[], space: WorkspaceSpaceChoice,
@@ -812,7 +812,7 @@ export function createVaultStore(
         throw new CallError('refused', '工作区里已有这个项目的空间')
       }
       const reason = refuseNewSpace?.()
-      if (reason !== undefined) throw new CallError('refused', reason)
+      if (reason !== undefined) throw new CallError('plugin-outdated', reason)
       next.workspaceSpace = id.data
       return false
     }

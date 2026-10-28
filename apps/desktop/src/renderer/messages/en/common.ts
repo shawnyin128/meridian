@@ -90,7 +90,7 @@ export const common = {
       'not-pdf': 'Not a PDF', write: 'Could not write to the library', 'no-key': 'No Semantic Scholar key',
       'not-found': 'It no longer exists', refused: 'Not possible right now', changed: 'Changed in the meantime',
       'newer-changes': 'Undo the newer changes first', 'in-use': 'Still in use', invalid: 'Not valid',
-      'not-library': 'Not a Meridian library', busy: 'Still in progress', 'newer-version': 'Needs a newer App',
+      'not-library': 'Not a Meridian library', busy: 'Still in progress', 'newer-version': 'Needs a newer App', 'plugin-outdated': 'Needs a newer agent plugin',
       'key-unsaved': 'Could not save the key', 'key-unreadable': 'Could not read the saved key', 'no-model': 'No model set up',
       cancelled: 'Generation stopped', model: 'The model call failed', 'update-files': 'Could not access the update files',
       'cli-missing': 'CLI not found', 'cli-unsupported': 'Unsupported CLI version', 'cli-signed-out': 'Not signed in with subscription',

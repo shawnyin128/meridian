@@ -88,7 +88,7 @@ export const common = {
       unavailable: '网络不可用', timeout: '连接超时', 'rate-limit': '被限流', server: '服务器出错', 'not-pdf': '不是 PDF',
       write: '没能写入论文库', 'no-key': '没有 Semantic Scholar key', 'not-found': '这一项已不存在',
       refused: '现在不能这样做', changed: '内容已变化', 'newer-changes': '先撤销较新的变动', 'in-use': '还有内容在用',
-      invalid: '内容无效', 'not-library': '不是 Meridian 论文库', busy: '仍在进行中', 'newer-version': '需要更新 App',
+      invalid: '内容无效', 'not-library': '不是 Meridian 论文库', busy: '仍在进行中', 'newer-version': '需要更新 App', 'plugin-outdated': '需要更新 agent 插件',
       'key-unsaved': '没能保存密钥', 'key-unreadable': '没能读取已存的密钥', 'no-model': '还没有配置模型',
       cancelled: '已停止生成', model: '模型调用失败', 'update-files': '没能读写更新文件',
       'cli-missing': '没有找到 CLI', 'cli-unsupported': 'CLI 版本不受支持', 'cli-signed-out': '未用订阅登录',

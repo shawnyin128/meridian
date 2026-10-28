@@ -15,7 +15,8 @@ import type {
   HarnessRejectPaperWikiResult, HarnessRunReceipt,
   LibraryBackup, LibraryLocation, LibraryResetResult, ListResult,
   MilestoneFields, NetFailed, PaperColumn, PaperColumns, PaperFields, PaperImportResult, PaperReading, PaperRow, PublicationFillResult,
-  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation,
+  Proposal, ProjectDetail, ProjectFields, ProjectRecordedChange, ProjectWorkspaceBinding, ReadingMutation, WorkspaceSpace,
+  WorkspaceSpaceChoice,
   OptionalRecordedChange, ReadingRecordedChange, RecordedChange,
   ResearchIdea,
   ResearchIdeaGraphPlacement, ResearchIdeaPatch, ResearchIdeaPlaceOnGraphResult,
@@ -218,8 +219,11 @@ export const project = {
   overview: () => call<ProjectOverview[]>('project.overview', {}),
   create: (name: string) => call<string>('project.create', { name }),
   get: (id: string) => call<ProjectDetail>('project.get', { id }),
-  bindWorkspace: (id: string, binding: ProjectWorkspaceBinding | null) =>
-    call<ProjectDetail>('project.bindWorkspace', { id, binding }),
+  bindWorkspace: (id: string, binding: ProjectWorkspaceBinding | null, space?: WorkspaceSpaceChoice) =>
+    call<ProjectDetail>('project.bindWorkspace', { id, binding, ...(space === undefined ? {} : { space }) }),
+  /** The project spaces the folder `binding` names already holds. */
+  workspaceSpaces: (binding: ProjectWorkspaceBinding) =>
+    call<WorkspaceSpace[]>('project.workspaceSpaces', { binding }),
   update: (id: string, patch: Partial<ProjectFields>) =>
     call<ProjectRecordedChange>('project.update', { id, patch }),
   delete: (id: string) => call<RecordedChange>('project.delete', { id }),

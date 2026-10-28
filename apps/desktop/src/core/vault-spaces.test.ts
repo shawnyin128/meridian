@@ -143,7 +143,7 @@ describe('several projects in one workspace', () => {
     await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, () => 'too old')
     const second = await project('Second')
     await expect(store.bindProjectWorkspace(second, { kind: 'local', root: repo }, { kind: 'new' }, () => 'too old'))
-      .rejects.toThrow('too old')
+      .rejects.toMatchObject({ reason: 'plugin-outdated', message: 'too old' })
     expect(existsSync(join(repo, '.meridian/projects'))).toBe(false)
     expect((await store.getProject(second)).workspace).toBeUndefined()
   })

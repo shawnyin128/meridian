@@ -1,8 +1,8 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import type { ComponentProps, ReactNode } from 'react'
 import type {
-  ProjectDetail as Project, ProjectWorkspace, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
-  ProjectFields, ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow,
+  ProjectDetail as Project, ProjectWorkspace, ProjectWorkspaceBinding, RelationGroup, ResearchGraph as ResearchGraphData, ResearchIdea,
+  ProjectFields, ProjectRecordedChange, ResearchIdeaGraphPlacement, TaskWindow, WorkspaceSpace, WorkspaceSpaceChoice, WorkspaceSpaceRef,
 } from '../../shared/contract.js'
 import { attachmentSizeText } from '../../shared/attachment-size.js'
 import { projectControlState } from '../../shared/project-control.js'
@@ -86,6 +86,22 @@ import './ProjectDetail.css'
 
 /** The Research log's three views: activity, conclusions, and the research graph. */
 export type RecordTab = 'tl' | 'concl' | 'graph'
+
+/** The choice of a new project space among a folder's existing ones. */
+const NEW_SPACE = 'new'
+
+/** The choice that picks `space`, a folder's root space or one nested space; the root's when undefined. */
+const spaceKey = (space: WorkspaceSpaceRef | undefined): string =>
+  space === undefined ? NEW_SPACE : space.kind === 'root' ? 'root' : `nested:${space.id}`
+
+/** The space the choice `key` picks, as Core takes it. */
+const spaceChoiceOf = (key: string): WorkspaceSpaceChoice => (key === NEW_SPACE
+  ? { kind: 'new' }
+  : key === 'root' ? { kind: 'root' } : { kind: 'nested', id: key.slice('nested:'.length) })
+
+/** The folder of `space` in its workspace, which names a space whose manifest cannot be read. */
+const spaceFolder = (space: WorkspaceSpaceRef): string =>
+  space.kind === 'root' ? '.meridian' : `.meridian/projects/${space.id}`
 
 /**
  * The bound workspace's name as the button that changes the connection, after a dot that names the
@@ -357,6 +373,9 @@ export function ProjectDetail({
   const [sshPath, setSshPath] = useState('')
   const [pickingSsh, setPickingSsh] = useState(false)
   const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
+  /** The project spaces the folder last inspected holds, by the binding it was inspected for. */
+  const [spaces, setSpaces] = useState<{ key: string; held: WorkspaceSpace[] } | null>(null)
+  const [spaceChoice, setSpaceChoice] = useState<string>(NEW_SPACE)
   const planList = useRef<HTMLDivElement>(null)
   const planDraft = useRef<HTMLElement>(null)
   const planAdd = useRef<HTMLButtonElement>(null)
@@ -581,14 +600,31 @@ export function ProjectDetail({
     if (root !== null) setLocalPath(root)
   }
 
-  const connectLocalWorkspace = async () => {
-    setBinding('local')
-    const connected = await writeProject(
-      projectApi.bindWorkspace(projectId, { kind: 'local', root: localPath.trim() }),
-    )
+  /**
+   * Connects the project to the folder `target` names. A folder whose project spaces have not been
+   * shown yet is inspected first; when it holds any, the choice among them appears and nothing is
+   * bound until the add button is pressed again. A folder that cannot be inspected is bound as one holding
+   * none, and the bind reports why it cannot be used.
+   */
+  const connectWorkspace = async (target: ProjectWorkspaceBinding) => {
+    setBinding(target.kind)
+    const key = JSON.stringify(target)
+    const shown = spaces?.key === key ? spaces.held : null
+    const held = shown ?? await projectApi.workspaceSpaces(target).catch(() => [])
+    if (shown === null && held.length > 0) {
+      setSpaces({ key, held })
+      setSpaceChoice(spaceKey(held.find((found) => found.project?.id === projectId)?.space))
+      setBinding(null)
+      return
+    }
+    const connected = await writeProject(projectApi.bindWorkspace(projectId, target, held.length === 0
+      ? { kind: 'new' }
+      : spaceChoiceOf(spaceChoice)))
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
+
+  const connectLocalWorkspace = () => connectWorkspace({ kind: 'local', root: localPath.trim() })
 
   const openWorkspace = () => {
     const workspace = project?.workspace
@@ -606,12 +642,28 @@ export function ProjectDetail({
   const sshTarget = { host: sshHost.trim(), ...(sshPortNumber === undefined ? {} : { port: sshPortNumber }) }
   const reach = useSshReach(workspaceOpen && workspaceMode === 'ssh' ? sshTarget : null)
 
-  const connectSshWorkspace = async () => {
-    setBinding('ssh')
-    const connected = await writeProject(projectApi.bindWorkspace(projectId, { kind: 'ssh', ...sshTarget, path: sshPath.trim() }))
-    setBinding(null)
-    if (connected) setWorkspaceOpen(false)
-  }
+  const sshBinding: ProjectWorkspaceBinding = { kind: 'ssh', ...sshTarget, path: sshPath.trim() }
+  const connectSshWorkspace = () => connectWorkspace(sshBinding)
+  const shownSpaces = spaces !== null && spaces.key === JSON.stringify(
+    workspaceMode === 'local' ? { kind: 'local', root: localPath.trim() } : sshBinding,
+  ) ? spaces.held : []
+  const spaceRow = shownSpaces.length === 0 ? null : (
+    <FieldRow label={m.project.workspace.spaceLabel}>
+      <ChoicePicker
+        appearance="field" aria-label={m.project.workspace.spaceLabel} value={spaceChoice}
+        options={[...shownSpaces.map((found) => spaceKey(found.space)), NEW_SPACE]}
+        label={(option) => {
+          if (option === NEW_SPACE) return m.project.workspace.newSpace
+          const found = shownSpaces.find((candidate) => spaceKey(candidate.space) === option)
+          return found?.project?.name ?? spaceFolder(found!.space)
+        }}
+        note={(option) => (shownSpaces.find((candidate) => spaceKey(candidate.space) === option)?.issue === undefined
+          ? undefined
+          : m.project.workspace.spaceUnreadable)}
+        onPick={setSpaceChoice}
+      />
+    </FieldRow>
+  )
 
   const refreshWorkspace = () => {
     load('project', projectApi.get(projectId), setProject)
@@ -831,6 +883,7 @@ export function ProjectDetail({
                         onChange={(event) => setLocalPath(event.target.value)}
                       />
                     </FieldRow>
+                    {spaceRow}
                   </FieldRows>
                 </form>
               )
@@ -867,6 +920,7 @@ export function ProjectDetail({
                             />
                           )}
                     </FieldRow>
+                    {spaceRow}
                   </FieldRows>
                 </form>
               )}
