@@ -605,6 +605,7 @@ project.workspace.localPlaceholder placeholder
 project.workspace.pathLabel label
 project.workspace.spaceLabel label
 project.workspace.newSpace label
+project.workspace.spaceMeta state
 project.workspace.spaceUnreadable failure
 project.workspace.portLabel label
 project.workspace.remotePlaceholder placeholder

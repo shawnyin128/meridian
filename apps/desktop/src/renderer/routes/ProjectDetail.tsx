@@ -76,6 +76,7 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useScreenPoll } from '../hooks/useScreenPoll.js'
 import { useDebounced } from '../hooks/useDebounced.js'
+import { useFormat } from '../lib/format.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -340,6 +341,7 @@ export function ProjectDetail({
   onArrived?: () => void
 }) {
   const m = useMessages()
+  const fmt = useFormat()
   const railFade = useScrollFade('y')
   const [project, setProject] = useState<Project | null>(null)
   const [linkedIdeas, setLinkedIdeas] = useState<ResearchIdea[] | null>(null)
@@ -697,9 +699,13 @@ export function ProjectDetail({
               const found = shownSpaces!.find((candidate) => spaceKey(candidate.space) === option)!
               return found.project?.name ?? spaceFolder(found.space)
             }}
-            note={(option) => (shownSpaces?.find((candidate) => spaceKey(candidate.space) === option)?.issue === undefined
-              ? undefined
-              : m.project.workspace.spaceUnreadable)}
+            note={(option) => {
+              const found = shownSpaces?.find((candidate) => spaceKey(candidate.space) === option)
+              if (found === undefined) return undefined
+              if (found.issue !== undefined) return m.project.workspace.spaceUnreadable
+              const meta = m.project.workspace.spaceMeta(found.updated === undefined ? undefined : fmt.day(found.updated), found.tasks)
+              return meta === '' ? undefined : meta
+            }}
             onPick={setSpaceChoice}
           />
         )}

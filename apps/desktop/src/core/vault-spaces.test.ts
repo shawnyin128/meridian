@@ -197,8 +197,8 @@ describe('several projects in one workspace', () => {
     expect(fresh.workspace?.events).toEqual([])
     expect(readFileSync(join(repo, '.meridian/graph/graph.json'), 'utf8')).toBe(before)
     expect(await readWorkspaceSpaces({ kind: 'local', root: repo })).toEqual([
-      { space: { kind: 'root' }, project: { id: first, name: 'First' } },
-      { space: { kind: 'nested', id: space }, project: { id: first, name: 'First' } },
+      { space: { kind: 'root' }, project: { id: first, name: 'First' }, updated: expect.any(String) as unknown, tasks: 1 },
+      { space: { kind: 'nested', id: space }, project: { id: first, name: 'First' }, updated: expect.any(String) as unknown, tasks: 1 },
     ])
   })
 

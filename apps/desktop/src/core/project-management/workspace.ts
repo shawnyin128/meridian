@@ -1178,12 +1178,32 @@ export function newSpaceId(projectId: string, taken: readonly string[]): string 
   }
 }
 
+/**
+ * When a space was last updated and how many tasks its plan holds, as far as `plan`, its plan's
+ * text, tells: the plan's last write, else `created`, when the space was made; a plan that cannot
+ * be read tells neither.
+ */
+function planMeta(plan: string | undefined, created: string | undefined): Pick<WorkspaceSpace, 'updated' | 'tasks'> {
+  if (plan === undefined) return created === undefined ? {} : { updated: created }
+  try {
+    const value = obj(JSON.parse(plan))
+    const updated = str(value?.['updated_at'])
+    const tasks = value?.['tasks']
+    return {
+      ...(updated === undefined ? {} : { updated }),
+      ...(Array.isArray(tasks) ? { tasks: tasks.length } : {}),
+    }
+  } catch {
+    return {}
+  }
+}
+
 /** The space a manifest found at `space` (the root space when undefined) describes, given its `text`. */
-function spaceOf(space: string | undefined, text: string): WorkspaceSpace {
+function spaceOf(space: string | undefined, text: string, plan: string | undefined, created: string | undefined): WorkspaceSpace {
   const ref = space === undefined ? { kind: 'root' as const } : { kind: 'nested' as const, id: space }
   try {
     const { project } = manifestSchema(spacePaths(space)).parse(JSON.parse(text))
-    return { space: ref, project: { id: project.id, name: project.name } }
+    return { space: ref, project: { id: project.id, name: project.name }, ...planMeta(plan, created) }
   } catch (error) {
     const why = error instanceof z.ZodError ? UNKNOWN_FORMAT : error instanceof Error ? error.message : String(error)
     return { space: ref, issue: why }
@@ -1221,11 +1241,16 @@ function localWorkspaceSpaces(root: string): WorkspaceSpace[] {
       console.error(`[workspace] ${file}: the folder name cannot name a project space and is left out`)
       return []
     }
-    return [spaceOf(space, readFileSync(file, 'utf8'))]
+    const plan = join(canonical, spacePaths(space).plan)
+    return [spaceOf(space, readFileSync(file, 'utf8'), existsSync(plan) ? readFileSync(plan, 'utf8') : undefined,
+      statSync(file).birthtime.toISOString())]
   })
 }
 
-/** Prints, for each space manifest of the remote workspace `root`, its relative path and size, then its bytes. */
+/**
+ * Prints, for each space manifest of the remote workspace `root` and then its plan when it has one,
+ * the file's relative path and size, then its bytes.
+ */
 function listRemoteSpacesCommand(root: string): string {
   return [
     'set -eu',
@@ -1237,9 +1262,14 @@ function listRemoteSpacesCommand(root: string): string {
     '  printf "\\n"',
     '}',
     `if [ -f ${quoteShell(spacePaths(undefined).manifest)} ]; then emit ${quoteShell(spacePaths(undefined).manifest)}; fi`,
+    `if [ -f ${quoteShell(spacePaths(undefined).plan)} ]; then emit ${quoteShell(spacePaths(undefined).plan)}; fi`,
     // Not a glob: a zsh login shell fails a glob that matches nothing.
     `if [ -d ${quoteShell(NESTED_SPACES)} ]; then`,
-    `  find ${quoteShell(NESTED_SPACES)} -mindepth 2 -maxdepth 2 -type f -name workspace.json | LC_ALL=C sort | while IFS= read -r file; do emit "$file"; done`,
+    `  find ${quoteShell(NESTED_SPACES)} -mindepth 2 -maxdepth 2 -type f -name workspace.json | LC_ALL=C sort | while IFS= read -r file; do`,
+    '    emit "$file"',
+    '    plan="${file%/workspace.json}/control/plan.json"',
+    '    if [ -f "$plan" ]; then emit "$plan"; fi',
+    '  done',
     'fi',
   ].join('\n')
 }
@@ -1268,20 +1298,23 @@ function parseRemoteSpaces(payload: Buffer): [string, string][] {
  * root space when `.meridian/workspace.json` exists, then each `.meridian/projects/<id>/` with a
  * manifest, by folder name. Each names the project its manifest names, or, when that manifest cannot
  * be read, the reason; one unreadable space never hides the others. A folder whose name cannot name
- * a space is reported on stderr and left out. Rejects when the folder is missing or, over SSH,
- * cannot be read.
+ * a space is reported on stderr and left out. Each readable space also tells when it was last
+ * updated, its plan's last write or, locally, when its manifest was made, and its plan's task
+ * count, when it can. Rejects when the folder is missing or, over SSH, cannot be read.
  */
 export async function readWorkspaceSpaces(
   binding: ProjectWorkspaceBinding, ssh: SshExecutor = systemSsh,
 ): Promise<WorkspaceSpace[]> {
   if (binding.kind === 'local') return localWorkspaceSpaces(binding.root)
   const remote = projectWorkspaceSsh(binding)
-  return parseRemoteSpaces(await ssh(remote, listRemoteSpacesCommand(remote.path))).flatMap(([name, text]) => {
+  const files = parseRemoteSpaces(await ssh(remote, listRemoteSpacesCommand(remote.path)))
+  const plans = new Map(files.filter(([name]) => name.endsWith('/control/plan.json')))
+  return files.filter(([name]) => !name.endsWith('/control/plan.json')).flatMap(([name, text]) => {
     const space = spaceAt(name)
     if (space === null) {
       console.error(`[workspace] ${remote.host}:${name}: the folder name cannot name a project space and is left out`)
       return []
     }
-    return [spaceOf(space, text)]
+    return [spaceOf(space, text, plans.get(spacePaths(space).plan), undefined)]
   })
 }
