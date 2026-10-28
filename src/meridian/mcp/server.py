@@ -751,6 +751,9 @@ def _call_workspace_changes(server: MeridianMCPServer, arguments: JsonDict) -> J
         expansions: list[JsonDict] = []
         for ref in change.get("refs", []):
             if ref.get("kind") == "project":
+                # Every change names its project; only a project change says the plan changed.
+                if not str(change.get("kind", "")).startswith("project."):
+                    continue
                 named = [("task_id", item) for item in change.get("task_ids", [])]
                 named += [("milestone_id", item) for item in change.get("milestone_ids", [])]
                 candidates = [
