@@ -543,7 +543,7 @@ describe('项目工作区对话框', () => {
     expect(api.binds.map((bind) => bind.space)).toEqual([{ kind: 'new' }])
   })
 
-  it('已连接的项目更换连接到同一个文件夹时默认选它现在绑定的空间，哪怕另一个空间更新得更晚；同一项目的两个空间都用项目名，靠日期和任务数分开；选作为新项目再添加，就按 new 连到同一个文件夹', async () => {
+  it('已连接的项目更换连接到同一个文件夹时默认选它现在绑定的空间，哪怕它建得更晚；同一项目的两个空间都用项目名，靠建立日期和科研节点数分开；选作为新项目再添加，就按 new 连到同一个文件夹', async () => {
     api.project = {
       ...PROJECT,
       workspace: {
@@ -552,8 +552,8 @@ describe('项目工作区对话框', () => {
       },
     }
     api.spaces['/work/shared'] = [
-      { space: { kind: 'root' }, project: { id: 'draft', name: 'draft 效率' }, updated: '2026-10-25T12:00:00.000Z', tasks: 6 },
-      { space: { kind: 'nested', id: 'draft-1a2b3c' }, project: { id: 'draft', name: 'draft 效率' }, updated: '2026-10-20T12:00:00.000Z', tasks: 0 },
+      { space: { kind: 'root' }, project: { id: 'draft', name: 'draft 效率' }, created: '2026-10-25T12:00:00.000Z', nodes: 6 },
+      { space: { kind: 'nested', id: 'draft-1a2b3c' }, project: { id: 'draft', name: 'draft 效率' }, created: '2026-10-27T12:00:00.000Z', nodes: 0 },
     ]
     const host = document.createElement('div')
     document.body.append(host)
@@ -569,7 +569,7 @@ describe('项目工作区对话框', () => {
     const dialog = document.querySelector<HTMLElement>('.workspace-dialog')!
     expect(dialog.querySelector<HTMLInputElement>('#workspaceLocal input')!.value).toBe('/work/shared')
     await settle()
-    expect(await spaceOptions(dialog)).toEqual(['draft 效率10月25日 · 6 条任务', 'draft 效率10月20日 · 0 条任务', '作为新项目'])
+    expect(await spaceOptions(dialog)).toEqual(['draft 效率10月25日 · 6', 'draft 效率10月27日 · 0', '作为新项目'])
     expect([...document.querySelectorAll('[role="menuitemradio"]')].map((item) => item.getAttribute('aria-checked')))
       .toEqual(['false', 'true', 'false'])
     await pickSpace('作为新项目')

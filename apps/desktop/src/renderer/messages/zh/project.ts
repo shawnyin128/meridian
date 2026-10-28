@@ -131,8 +131,6 @@ export const project = {
     pathLabel: '项目路径',
     spaceLabel: '项目空间',
     newSpace: '作为新项目',
-    spaceMeta: (day: string | undefined, tasks: number | undefined) =>
-      [day, tasks === undefined ? undefined : `${tasks} 条任务`].filter((part) => part !== undefined).join(' · '),
     spaceUnreadable: '读不了',
     localPlaceholder: '本机项目目录',
     chooseLocal: '选择项目目录',

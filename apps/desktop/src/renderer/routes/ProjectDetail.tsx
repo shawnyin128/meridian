@@ -76,6 +76,7 @@ import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useScreenPoll } from '../hooks/useScreenPoll.js'
 import { useDebounced } from '../hooks/useDebounced.js'
+import { headingText } from '../components/HeadingCount.js'
 import { useFormat } from '../lib/format.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
@@ -703,8 +704,9 @@ export function ProjectDetail({
               const found = shownSpaces?.find((candidate) => spaceKey(candidate.space) === option)
               if (found === undefined) return undefined
               if (found.issue !== undefined) return m.project.workspace.spaceUnreadable
-              const meta = m.project.workspace.spaceMeta(found.updated === undefined ? undefined : fmt.day(found.updated), found.tasks)
-              return meta === '' ? undefined : meta
+              // When the space was made, then its Lab node count in the count style headings use.
+              if (found.created === undefined) return found.nodes === undefined ? undefined : String(found.nodes)
+              return headingText(fmt.day(found.created), found.nodes)
             }}
             onPick={setSpaceChoice}
           />

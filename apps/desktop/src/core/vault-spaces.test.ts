@@ -1,4 +1,4 @@
-import { cpSync, existsSync, mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
+import { cpSync, existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, realpathSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join, resolve } from 'node:path'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
@@ -197,9 +197,30 @@ describe('several projects in one workspace', () => {
     expect(fresh.workspace?.events).toEqual([])
     expect(readFileSync(join(repo, '.meridian/graph/graph.json'), 'utf8')).toBe(before)
     expect(await readWorkspaceSpaces({ kind: 'local', root: repo })).toEqual([
-      { space: { kind: 'root' }, project: { id: first, name: 'First' }, updated: expect.any(String) as unknown, tasks: 1 },
-      { space: { kind: 'nested', id: space }, project: { id: first, name: 'First' }, updated: expect.any(String) as unknown, tasks: 1 },
+      { space: { kind: 'root' }, project: { id: first, name: 'First' }, created: expect.any(String) as unknown, nodes: 1 },
+      { space: { kind: 'nested', id: space }, project: { id: first, name: 'First' }, created: expect.any(String) as unknown, nodes: 0 },
     ])
+  })
+
+  it('作为新项目 starts the space\'s own records empty and still projects the project\'s plan into it', async () => {
+    const first = await project('First')
+    await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow)
+    agentWrites(repo, '.meridian', 'old')
+    mkdirSync(join(repo, '.meridian/experiments'), { recursive: true })
+    writeFileSync(join(repo, '.meridian/experiments/probe.md'), '# probe\n')
+    writeFileSync(join(repo, '.meridian/state.md'), '---\nactive_thread: old\nactive_nodes: [old.A]\n---\n')
+    const ideasBefore = store.listIdeas().length
+    const fresh = await store.bindProjectWorkspace(first, { kind: 'local', root: repo }, { kind: 'new' }, allow)
+    const folder = join(repo, '.meridian/projects', spaceOf(fresh))
+    expect((readdirSync(folder, { recursive: true }) as string[]).sort())
+      .toEqual(['control', 'control/changes.json', 'control/plan.json', 'workspace.json'])
+    expect(fresh.workspace?.graph).toBeUndefined()
+    expect(fresh.workspace?.events).toEqual([])
+    expect(store.agentTaskRequests(first)).toEqual([])
+    expect(store.listIdeas()).toHaveLength(ideasBefore)
+    expect(store.listIdeaFiles().filter((file) => file.attachment.name === 'old.md')).toHaveLength(1)
+    expect(readJson<{ tasks: { title: string }[] }>(join(folder, 'control/plan.json')).tasks.map((task) => task.title))
+      .toEqual(['First task'])
   })
 
   it('one project holds several spaces of one folder and binds to whichever is chosen', async () => {

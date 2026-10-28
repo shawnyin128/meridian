@@ -78,6 +78,8 @@ function manifestSchema(paths: SpacePaths) {
   return z.object({
     schema_version: z.literal(WORKSPACE_SCHEMA),
     project: z.object({ id: z.string(), name: z.string() }),
+    /** When the App made the space; absent in a manifest written before it was recorded. */
+    created: z.string().optional(),
     surfaces: z.object({
       plan: z.object({ path: z.literal(paths.plan), writer: z.literal('meridian-app') }),
       changes: z.object({ path: z.literal(paths.changes), writer: z.literal('meridian-app') }).optional(),
@@ -184,10 +186,12 @@ function jsonBytes(value: unknown): Buffer {
   return Buffer.from(`${JSON.stringify(value, null, 2)}\n`, 'utf8')
 }
 
-function manifestOf(project: ProjectRecord, paths: SpacePaths): Manifest {
+/** The manifest of `project`'s space at `paths`, made at `created` when that is known. */
+function manifestOf(project: ProjectRecord, paths: SpacePaths, created: string | undefined): Manifest {
   return {
     schema_version: WORKSPACE_SCHEMA,
     project: { id: project.id, name: project.name },
+    ...(created === undefined ? {} : { created }),
     surfaces: {
       plan: { path: paths.plan, writer: 'meridian-app' },
       changes: { path: paths.changes, writer: 'meridian-app' },
@@ -724,13 +728,15 @@ export async function writeProjectWorkspaceState(
 ): Promise<string> {
   const paths = spacePaths(project.workspaceSpace)
   const planned = planOf(project)
-  const manifest = manifestOf(project, paths)
+  // A space keeps the time it was made; a manifest written before that was recorded stays without it.
+  const manifestFor = (prior: string | undefined): Manifest => manifestOf(project, paths, prior === undefined
+    ? new Date().toISOString()
+    : manifestSchema(paths).parse(JSON.parse(prior)).created)
   const remote = sshBindingOf(project)
   if (remote !== undefined) {
     return inTurn(project.id, async () => {
       const files = await readRemoteFiles(remote, paths.read, ssh)
-      const prior = files.get(paths.manifest)
-      if (prior !== undefined) manifestSchema(paths).parse(JSON.parse(prior))
+      const manifest = manifestFor(files.get(paths.manifest))
       const changes = changesOf(
         project,
         parsedObject(files.get(paths.plan)),
@@ -749,7 +755,7 @@ export async function writeProjectWorkspaceState(
   if (project.workspaceRoot === undefined) throw new CallError('refused', '项目尚未连接工作区')
   const root = projectWorkspaceRoot(project.workspaceRoot)
   const manifestFile = join(root, paths.manifest)
-  if (existsSync(manifestFile)) manifestSchema(paths).parse(JSON.parse(readFileSync(manifestFile, 'utf8')))
+  const manifest = manifestFor(existsSync(manifestFile) ? readFileSync(manifestFile, 'utf8') : undefined)
   const planFile = join(root, paths.plan)
   const changesFile = join(root, paths.changes)
   const changes = changesOf(
@@ -1178,32 +1184,33 @@ export function newSpaceId(projectId: string, taken: readonly string[]): string 
   }
 }
 
-/**
- * When a space was last updated and how many tasks its plan holds, as far as `plan`, its plan's
- * text, tells: the plan's last write, else `created`, when the space was made; a plan that cannot
- * be read tells neither.
- */
-function planMeta(plan: string | undefined, created: string | undefined): Pick<WorkspaceSpace, 'updated' | 'tasks'> {
-  if (plan === undefined) return created === undefined ? {} : { updated: created }
+/** How many Lab nodes the graph `graph`, a graph file's text, holds: none without a graph, unknown when it cannot be read. */
+function nodeCount(graph: string | undefined): number | undefined {
+  if (graph === undefined) return 0
   try {
-    const value = obj(JSON.parse(plan))
-    const updated = str(value?.['updated_at'])
-    const tasks = value?.['tasks']
-    return {
-      ...(updated === undefined ? {} : { updated }),
-      ...(Array.isArray(tasks) ? { tasks: tasks.length } : {}),
-    }
+    const nodes = obj(JSON.parse(graph))?.['nodes']
+    return Array.isArray(nodes) ? nodes.length : undefined
   } catch {
-    return {}
+    return undefined
   }
 }
 
-/** The space a manifest found at `space` (the root space when undefined) describes, given its `text`. */
-function spaceOf(space: string | undefined, text: string, plan: string | undefined, created: string | undefined): WorkspaceSpace {
+/**
+ * The space a manifest found at `space` (the root space when undefined) describes, given its
+ * `text`, the text of its graph file if it has one, and `made`, when its manifest file was made if
+ * known, which stands in for a manifest that does not record when the space was made.
+ */
+function spaceOf(space: string | undefined, text: string, graph: string | undefined, made: string | undefined): WorkspaceSpace {
   const ref = space === undefined ? { kind: 'root' as const } : { kind: 'nested' as const, id: space }
   try {
-    const { project } = manifestSchema(spacePaths(space)).parse(JSON.parse(text))
-    return { space: ref, project: { id: project.id, name: project.name }, ...planMeta(plan, created) }
+    const { project, created } = manifestSchema(spacePaths(space)).parse(JSON.parse(text))
+    const nodes = nodeCount(graph)
+    const when = created ?? made
+    return {
+      space: ref, project: { id: project.id, name: project.name },
+      ...(when === undefined ? {} : { created: when }),
+      ...(nodes === undefined ? {} : { nodes }),
+    }
   } catch (error) {
     const why = error instanceof z.ZodError ? UNKNOWN_FORMAT : error instanceof Error ? error.message : String(error)
     return { space: ref, issue: why }
@@ -1241,14 +1248,14 @@ function localWorkspaceSpaces(root: string): WorkspaceSpace[] {
       console.error(`[workspace] ${file}: the folder name cannot name a project space and is left out`)
       return []
     }
-    const plan = join(canonical, spacePaths(space).plan)
-    return [spaceOf(space, readFileSync(file, 'utf8'), existsSync(plan) ? readFileSync(plan, 'utf8') : undefined,
+    const graph = join(canonical, spacePaths(space).graph)
+    return [spaceOf(space, readFileSync(file, 'utf8'), existsSync(graph) ? readFileSync(graph, 'utf8') : undefined,
       statSync(file).birthtime.toISOString())]
   })
 }
 
 /**
- * Prints, for each space manifest of the remote workspace `root` and then its plan when it has one,
+ * Prints, for each space manifest of the remote workspace `root` and then its graph when it has one,
  * the file's relative path and size, then its bytes.
  */
 function listRemoteSpacesCommand(root: string): string {
@@ -1262,13 +1269,13 @@ function listRemoteSpacesCommand(root: string): string {
     '  printf "\\n"',
     '}',
     `if [ -f ${quoteShell(spacePaths(undefined).manifest)} ]; then emit ${quoteShell(spacePaths(undefined).manifest)}; fi`,
-    `if [ -f ${quoteShell(spacePaths(undefined).plan)} ]; then emit ${quoteShell(spacePaths(undefined).plan)}; fi`,
+    `if [ -f ${quoteShell(spacePaths(undefined).graph)} ]; then emit ${quoteShell(spacePaths(undefined).graph)}; fi`,
     // Not a glob: a zsh login shell fails a glob that matches nothing.
     `if [ -d ${quoteShell(NESTED_SPACES)} ]; then`,
     `  find ${quoteShell(NESTED_SPACES)} -mindepth 2 -maxdepth 2 -type f -name workspace.json | LC_ALL=C sort | while IFS= read -r file; do`,
     '    emit "$file"',
-    '    plan="${file%/workspace.json}/control/plan.json"',
-    '    if [ -f "$plan" ]; then emit "$plan"; fi',
+    '    graph="${file%/workspace.json}/graph/graph.json"',
+    '    if [ -f "$graph" ]; then emit "$graph"; fi',
     '  done',
     'fi',
   ].join('\n')
@@ -1298,9 +1305,9 @@ function parseRemoteSpaces(payload: Buffer): [string, string][] {
  * root space when `.meridian/workspace.json` exists, then each `.meridian/projects/<id>/` with a
  * manifest, by folder name. Each names the project its manifest names, or, when that manifest cannot
  * be read, the reason; one unreadable space never hides the others. A folder whose name cannot name
- * a space is reported on stderr and left out. Each readable space also tells when it was last
- * updated, its plan's last write or, locally, when its manifest was made, and its plan's task
- * count, when it can. Rejects when the folder is missing or, over SSH, cannot be read.
+ * a space is reported on stderr and left out. Each readable space also tells when it was made, as
+ * its manifest records or, locally, when its manifest file was made, and how many Lab nodes its
+ * graph holds, when it can. Rejects when the folder is missing or, over SSH, cannot be read.
  */
 export async function readWorkspaceSpaces(
   binding: ProjectWorkspaceBinding, ssh: SshExecutor = systemSsh,
@@ -1308,13 +1315,13 @@ export async function readWorkspaceSpaces(
   if (binding.kind === 'local') return localWorkspaceSpaces(binding.root)
   const remote = projectWorkspaceSsh(binding)
   const files = parseRemoteSpaces(await ssh(remote, listRemoteSpacesCommand(remote.path)))
-  const plans = new Map(files.filter(([name]) => name.endsWith('/control/plan.json')))
-  return files.filter(([name]) => !name.endsWith('/control/plan.json')).flatMap(([name, text]) => {
+  const graphs = new Map(files.filter(([name]) => name.endsWith('/graph/graph.json')))
+  return files.filter(([name]) => !name.endsWith('/graph/graph.json')).flatMap(([name, text]) => {
     const space = spaceAt(name)
     if (space === null) {
       console.error(`[workspace] ${remote.host}:${name}: the folder name cannot name a project space and is left out`)
       return []
     }
-    return [spaceOf(space, text, plans.get(spacePaths(space).plan), undefined)]
+    return [spaceOf(space, text, graphs.get(spacePaths(space).graph), undefined)]
   })
 }

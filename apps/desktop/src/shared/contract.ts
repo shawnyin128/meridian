@@ -307,10 +307,10 @@ export const WorkspaceSpaceRefSchema = z.discriminatedUnion('kind', [
 export const WorkspaceSpaceSchema = z.object({
   space: WorkspaceSpaceRefSchema,
   project: z.object({ id: z.string(), name: z.string() }).strict().optional(),
-  /** When the space was last updated, an ISO timestamp, when known. */
-  updated: z.string().optional(),
-  /** How many tasks the space's plan holds, when known. */
-  tasks: z.number().int().nonnegative().optional(),
+  /** When the space was made, an ISO timestamp, when known. */
+  created: z.string().optional(),
+  /** How many Lab nodes the space's research graph holds, when known. */
+  nodes: z.number().int().nonnegative().optional(),
   issue: z.string().optional(),
 }).strict()
 

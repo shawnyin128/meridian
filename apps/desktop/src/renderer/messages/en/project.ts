@@ -134,8 +134,6 @@ export const project = {
     pathLabel: 'Folder path',
     spaceLabel: 'Project space',
     newSpace: 'As a new project',
-    spaceMeta: (day: string | undefined, tasks: number | undefined) =>
-      [day, tasks === undefined ? undefined : `${tasks} ${tasks === 1 ? 'task' : 'tasks'}`].filter((part) => part !== undefined).join(' · '),
     spaceUnreadable: "Can't be read",
     localPlaceholder: 'Local project folder',
     chooseLocal: 'Choose project folder',

@@ -851,25 +851,31 @@ describe('project spaces of one workspace', () => {
     mkdirSync(join(root, '.meridian/projects/half'), { recursive: true })
     vi.spyOn(console, 'error').mockImplementation(() => {})
     expect(await readWorkspaceSpaces({ kind: 'local', root })).toEqual([
-      { space: { kind: 'root' }, project: { id: 'p1', name: 'Project p1' }, updated: expect.any(String) as unknown, tasks: 1 },
+      { space: { kind: 'root' }, project: { id: 'p1', name: 'Project p1' }, created: expect.any(String) as unknown, nodes: 0 },
       { space: { kind: 'nested', id: 'broken' }, issue: expect.stringContaining('请更新 App') as unknown },
-      { space: { kind: 'nested', id: 'p2' }, project: { id: 'p2', name: 'Project p2' }, updated: expect.any(String) as unknown, tasks: 1 },
-      { space: { kind: 'nested', id: 'p3' }, project: { id: 'p3', name: 'Project p3' }, updated: expect.any(String) as unknown, tasks: 1 },
+      { space: { kind: 'nested', id: 'p2' }, project: { id: 'p2', name: 'Project p2' }, created: expect.any(String) as unknown, nodes: 0 },
+      { space: { kind: 'nested', id: 'p3' }, project: { id: 'p3', name: 'Project p3' }, created: expect.any(String) as unknown, nodes: 0 },
     ])
     expect(await readWorkspaceSpaces({ kind: 'local', root: temporary() })).toEqual([])
   })
 
-  it('tells each space\'s last update from its plan\'s last write and its task count, else when its manifest was made', async () => {
+  it('tells when each space was made, as its manifest records, else when the manifest file was made, and how many Lab nodes its own graph holds', async () => {
     const root = temporary()
+    const before = new Date().toISOString()
     await writeProjectWorkspace(spaced(root, 'p1'))
     await writeProjectWorkspace(spaced(root, 'p2', 'p2'))
-    const plan = JSON.parse(readFileSync(join(root, '.meridian/control/plan.json'), 'utf8')) as Record<string, unknown>
-    writeFileSync(join(root, '.meridian/control/plan.json'), JSON.stringify({ ...plan, updated_at: '2026-10-01T08:00:00.000Z', tasks: [{}, {}, {}] }))
-    rmSync(join(root, '.meridian/projects/p2/control/plan.json'))
+    const recorded = (JSON.parse(readFileSync(join(root, '.meridian/workspace.json'), 'utf8')) as { created: string }).created
+    expect(recorded >= before).toBe(true)
+    await writeProjectWorkspace({ ...spaced(root, 'p1'), focus: 'later' })
+    expect((JSON.parse(readFileSync(join(root, '.meridian/workspace.json'), 'utf8')) as { created: string }).created).toBe(recorded)
+    mkdirSync(join(root, '.meridian/graph'), { recursive: true })
+    writeFileSync(join(root, '.meridian/graph/graph.json'), JSON.stringify({ schema: 'meridian.lab.graph.v1', nodes: [{ id: 'a' }, { id: 'b' }], edges: [] }))
+    const manifest = JSON.parse(readFileSync(join(root, '.meridian/projects/p2/workspace.json'), 'utf8')) as Record<string, unknown>
+    delete manifest['created']
+    writeFileSync(join(root, '.meridian/projects/p2/workspace.json'), JSON.stringify(manifest))
     const [first, second] = await readWorkspaceSpaces({ kind: 'local', root })
-    expect(first).toMatchObject({ updated: '2026-10-01T08:00:00.000Z', tasks: 3 })
-    expect(second!.updated).toBe(statSync(join(root, '.meridian/projects/p2/workspace.json')).birthtime.toISOString())
-    expect(second!.tasks).toBeUndefined()
+    expect(first).toMatchObject({ created: recorded, nodes: 2 })
+    expect(second).toMatchObject({ created: statSync(join(root, '.meridian/projects/p2/workspace.json')).birthtime.toISOString(), nodes: 0 })
   })
 
   it('reads and writes a nested space without touching the root space, and the agent surfaces of each stay apart', async () => {
@@ -939,8 +945,8 @@ describe('project spaces of one workspace', () => {
     await writeProjectWorkspace(spaced(root, 'p1'))
     await writeProjectWorkspace(spaced(root, 'p2', 'p2'))
     expect(await readWorkspaceSpaces({ kind: 'ssh', host: 'gpu-lab', path: root }, local)).toEqual([
-      { space: { kind: 'root' }, project: { id: 'p1', name: 'Project p1' }, updated: expect.any(String) as unknown, tasks: 1 },
-      { space: { kind: 'nested', id: 'p2' }, project: { id: 'p2', name: 'Project p2' }, updated: expect.any(String) as unknown, tasks: 1 },
+      { space: { kind: 'root' }, project: { id: 'p1', name: 'Project p1' }, created: expect.any(String) as unknown, nodes: 0 },
+      { space: { kind: 'nested', id: 'p2' }, project: { id: 'p2', name: 'Project p2' }, created: expect.any(String) as unknown, nodes: 0 },
     ])
   })
 })
