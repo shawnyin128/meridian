@@ -80,7 +80,7 @@ describe('占位文字和命令的省略号', () => {
     'settings.storage.checkingDirectory', 'settings.storage.resetting', 'settings.storage.backupSwitching',
     'settings.storage.backupDeleting', 'settings.model.saving', 'settings.model.connection.testing',
     'settings.extensions.plugin.checking', 'settings.extensions.app.checking', 'settings.extensions.app.downloading',
-    'settings.delivery.saving', 'settings.discovery.refreshing', 'wiki.ingest.discarding', 'wiki.ingest.writing',
+    'settings.delivery.saving', 'settings.discovery.refreshing', 'wiki.ingest.discarding', 'wiki.ingest.writing', 'reader.arriving',
   ]
 
   it('每个占位文字只说出它那一栏的名字：不叫人输入、粘贴或选择，不举例，不写可选，不提问', () => {

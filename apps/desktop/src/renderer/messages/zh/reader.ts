@@ -13,6 +13,7 @@ export const reader = {
   page: {
     at: (n: number) => `第 ${n} 页`,
   },
+  arriving: '原文同步中…',
   notes: {
     ariaLabel: '阅读笔记',
     heading: '阅读笔记',

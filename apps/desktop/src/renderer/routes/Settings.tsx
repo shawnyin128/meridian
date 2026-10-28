@@ -43,6 +43,8 @@ import { PaperText } from '../components/paper/PaperText.js'
 import { Tag } from '../components/Tag.js'
 import { Card } from '../components/Card.js'
 import { FadeText } from '../components/FadeText.js'
+import { StatusDot } from '../components/StatusDot.js'
+import { useSyncDemo } from '../components/sync/demo-sync.js'
 import './shell.css'
 import './Settings.css'
 
@@ -112,6 +114,7 @@ export function Settings() {
     setActionError(pane, errorLabel(m, e))
   }, [setActionError, m])
   const write = useVaultWrite()
+  const syncDemo = useSyncDemo()
 
   // Fetch nothing while closed: this dialog stays mounted, so without this check every vault write
   // would fetch the chat list again.
@@ -249,7 +252,12 @@ export function Settings() {
       <>
         <Card className="storage-card">
           <SectionHeading
-            level="group" actions={location === null ? undefined : <Tag>{m.settings.storage.source[location.source]}</Tag>}
+            level="group" actions={location === null ? undefined : (
+              <>
+                {syncDemo === null ? null : <Tag>{syncDemo.service}</Tag>}
+                <Tag>{m.settings.storage.source[location.source]}</Tag>
+              </>
+            )}
           >{m.settings.storage.libraryTitle}
           </SectionHeading>
           {location === null
@@ -302,6 +310,24 @@ export function Settings() {
             />
           </div>
         </Card>
+        {syncDemo === null ? null : (
+          <>
+            <SectionHeading count={syncDemo.devices.length}>{m.settings.storage.devicesHeading}</SectionHeading>
+            <List>
+              {syncDemo.devices.map((device) => (
+                <Item
+                  key={device.name} lines={2}
+                  title={device.name}
+                  tags={device.self ? <Tag>{m.settings.storage.thisDevice}</Tag> : undefined}
+                  meta={`${device.platform} · ${device.version}`}
+                  trailing={device.seen === null
+                    ? <StatusDot tone="good" label={m.settings.storage.inUse} />
+                    : <DateTimeDisplay at={device.seen} />}
+                />
+              ))}
+            </List>
+          </>
+        )}
         {backups === null || backups.length === 0
           ? null
           : (

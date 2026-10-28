@@ -6,6 +6,9 @@ export const changelog = {
   title: 'Recent changes',
   unarchivedHeading: 'Current',
   archivedHeading: 'Archived',
+  conflictsHeading: 'Conflicts',
+  keepMine: 'Keep this device’s',
+  keepTheirs: (device: string) => `Keep ${device}’s`,
   archiveAll: 'Archive all',
   clearArchived: 'Clear archived',
   confirmClearArchived: (count: number) =>

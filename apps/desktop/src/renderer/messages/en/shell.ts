@@ -23,6 +23,11 @@ export const shell = {
     relaunch: 'Relaunch',
     download: 'Download',
   },
+  sync: {
+    editing: (device: string) => `${device} is editing`,
+    conflicts: (count: number) => `${count === 1 ? '1 conflict' : `${count} conflicts`}`,
+    open: 'View',
+  },
   nav: {
     feed: 'Feed',
     inbox: 'Inbox',

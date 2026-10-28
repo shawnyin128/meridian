@@ -15,6 +15,7 @@ export const reader = {
   page: {
     at: (n: number) => `Page ${n}`,
   },
+  arriving: 'Syncing the PDF…',
   notes: {
     ariaLabel: 'Reading notes',
     heading: 'Reading notes',

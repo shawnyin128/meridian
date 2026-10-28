@@ -26,6 +26,7 @@ import { List } from '../components/List.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconArchive, IconTrash, IconUndo } from '../components/icons.js'
 import { Button } from '../components/Button.js'
+import { resolveDemoConflict, useSyncDemo, type SyncDemoConflict } from '../components/sync/demo-sync.js'
 import './shell.css'
 
 /** The separator between the parts of the grey line; the same string splits `meta` and joins the parts. */
@@ -152,6 +153,39 @@ export function Changelog() {
     void write(changelog.clearArchived())
   }
 
+  const syncDemo = useSyncDemo()
+  const conflicts = syncDemo?.conflicts ?? []
+
+  /** Demo only: a conflict as a change row whose tray holds both versions, each with the button that keeps it. */
+  const conflictRow = (c: SyncDemoConflict) => (
+    <Item className="crow" lines={2} key={c.id}>
+      <CardTray
+        variant="row" defaultOpen
+        summary={(
+          <>
+            <ItemTitle flow className="ct"><span><PaperText text={c.title} /></span></ItemTitle>
+            <ItemMeta flow className="cm">{[c.mine.device, c.theirs.device].join(SEP)}</ItemMeta>
+          </>
+        )}
+      >
+        <GroupedList>
+          {[c.mine, c.theirs].map((side, at) => (
+            <Group
+              key={side.device} title={side.device} meta={fmt.clock(side.at)}
+              actions={(
+                <Button size="compact" onClick={() => resolveDemoConflict(c.id)}>
+                  {at === 0 ? m.changelog.keepMine : m.changelog.keepTheirs(side.device)}
+                </Button>
+              )}
+            >
+              <DiffLines lines={side.lines} />
+            </Group>
+          ))}
+        </GroupedList>
+      </CardTray>
+    </Item>
+  )
+
   const fresh = (entries ?? []).filter((c) => !c.archived)
   const filed = (entries ?? []).filter((c) => c.archived)
   // The screen title and "Archive all" count only the unarchived entries.
@@ -222,6 +256,12 @@ export function Changelog() {
       <PageError error={error} />
 
       <PageBody>
+        {conflicts.length === 0 ? null : (
+          <>
+            <SectionHeading count={conflicts.length}>{m.changelog.conflictsHeading}</SectionHeading>
+            <List variant="embedded" rows="all">{conflicts.map(conflictRow)}</List>
+          </>
+        )}
         <SectionHeading
           actions={(
             <Button

@@ -21,6 +21,11 @@ export const shell = {
     relaunch: '重启',
     download: '下载',
   },
+  sync: {
+    editing: (device: string) => `${device} 正在编辑`,
+    conflicts: (count: number) => `${count} 处冲突`,
+    open: '查看',
+  },
   nav: {
     feed: '动态',
     inbox: '收件',

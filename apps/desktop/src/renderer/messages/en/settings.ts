@@ -97,6 +97,9 @@ export const settings = {
     backupDeleteTitle: (label: string) => `Delete the backup from ${label}?`,
     backupDeleteLoss: 'The backup folder cannot be restored',
     backupDeleting: 'Deleting…',
+    devicesHeading: 'Devices',
+    thisDevice: 'This device',
+    inUse: 'In use',
   },
   api: {
     heading: 'Third-party services',

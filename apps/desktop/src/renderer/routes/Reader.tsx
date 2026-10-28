@@ -27,6 +27,8 @@ import { FormTextarea } from '../components/FormControls.js'
 import { IconButton } from '../components/IconButton.js'
 import { IconAskAi, IconTrash } from '../components/icons.js'
 import { LoadingPlaceholder } from '../components/LoadingPlaceholder.js'
+import { InlineMessage } from '../components/InlineMessage.js'
+import { useSyncDemo } from '../components/sync/demo-sync.js'
 import { Swatches } from '../components/Swatches.js'
 import { Toolbar } from '../components/Toolbar.js'
 import {
@@ -233,6 +235,7 @@ export function Reader() {
   const { jump, returnTo } = useJump()
   const { revision, bump } = useVaultRevision()
   const notice = useNotice()
+  const syncDemo = useSyncDemo()
   const [opened, setOpened] = useState<string | null>(null)
   const [origin, setOrigin] = useState<ScreenKey | null>(null)
   const [paper, setPaper] = useState<PaperRow | null>(null)
@@ -966,6 +969,8 @@ export function Reader() {
   useCrumbTail(tail)
 
   const loading = error === null && opened !== null && (doc === null || reading === null)
+  // Demo only: a paper whose page has synced before its PDF waits for the PDF instead of failing.
+  const arriving = paper !== null && (syncDemo?.arriving.includes(paper.title) ?? false)
   const heldReading = reading ?? (opened === null ? null : emptyReading(opened))
 
   return (
@@ -977,9 +982,20 @@ export function Reader() {
       <PageShell>
         <div className="reader">
           <div className="pdfwrap" ref={scroller} onMouseUp={captureSelection}>
-            <div ref={sheet} className="pdfsheet" />
-            <PageError variant="section" error={error} />
-            {loading ? <LoadingPlaceholder shape="sheet" /> : null}
+            <div ref={sheet} className="pdfsheet" hidden={arriving} />
+            {arriving
+              ? (
+                <>
+                  <InlineMessage tone="info" variant="line">{m.reader.arriving}</InlineMessage>
+                  <LoadingPlaceholder shape="sheet" />
+                </>
+              )
+              : (
+                <>
+                  <PageError variant="section" error={error} />
+                  {loading ? <LoadingPlaceholder shape="sheet" /> : null}
+                </>
+              )}
           </div>
 
           <ActionPopover

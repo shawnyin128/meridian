@@ -963,6 +963,7 @@ export function AppShell({ screens, settings }: {
         } as CSSProperties}
       >
         <Sidebar
+          onOpenStorage={() => openSettingsCategory('storage')}
           screen={screen} onNavigate={navigate} onJump={jumps.open} paperCount={paperCount}
           changeCount={changeCount} projectCount={projectCount} trashCount={trashCount}
           wikiCount={wikiCount} ideaCount={ideaCount}

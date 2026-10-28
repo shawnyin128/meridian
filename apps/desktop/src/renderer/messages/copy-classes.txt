@@ -7,6 +7,9 @@
 # names included), content (text the App sends, stores or copies, not copy on screen).
 changelog.archiveAll action
 changelog.archivedHeading label
+changelog.conflictsHeading label
+changelog.keepMine action
+changelog.keepTheirs action
 changelog.clearArchived action
 changelog.confirmClearArchived label
 changelog.confirmClearArchivedLabel action
@@ -617,6 +620,7 @@ reader.notes.newAria aria
 reader.notes.pageAria aria
 reader.notes.placeholder placeholder
 reader.page.at state
+reader.arriving aria
 reader.rail.label aria
 reader.rail.tabs.highlights label
 reader.rail.tabs.metadata label
@@ -921,6 +925,9 @@ settings.storage.backupDelete action
 settings.storage.backupDeleteLoss consequence
 settings.storage.backupDeleteTitle label
 settings.storage.backupDeleting aria
+settings.storage.devicesHeading label
+settings.storage.thisDevice state
+settings.storage.inUse state
 settings.storage.backupSwitch action
 settings.storage.backupSwitching aria
 settings.storage.backupsHeading label
@@ -997,6 +1004,9 @@ shell.titlebar.palette action
 shell.titlebar.settings action
 shell.update.available state
 shell.update.download action
+shell.sync.editing state
+shell.sync.conflicts state
+shell.sync.open action
 shell.update.ready state
 shell.update.relaunch action
 shell.watchKind.author label

@@ -90,6 +90,9 @@ export const settings = {
     backupDeleteTitle: (label: string) => `删除 ${label} 的备份？`,
     backupDeleteLoss: '备份文件夹不能恢复',
     backupDeleting: '正在删除…',
+    devicesHeading: '设备',
+    thisDevice: '本机',
+    inUse: '正在使用',
   },
   api: {
     heading: '第三方服务',

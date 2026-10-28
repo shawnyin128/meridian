@@ -18,7 +18,10 @@ import { useMessages } from '../messages/useMessages.js'
 import { useAppUpdate } from '../hooks/useAppUpdate.js'
 import { useNeighbourFocus } from '../hooks/useNeighbourFocus.js'
 import { appUpdates } from '../ipc.js'
-import { ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type JumpAnchor, type ScreenKey } from './AppShell.js'
+import {
+  ALL_WATCHES, type DiscoveryProjectCount, type InboxMode, type JumpAnchor, type ScreenKey,
+} from './AppShell.js'
+import { useSyncDemo } from '../components/sync/demo-sync.js'
 import { GripTooltip } from './GripTooltip.js'
 import { SearchBox } from './SearchBox.js'
 import { PaperText } from '../components/paper/PaperText.js'
@@ -117,6 +120,32 @@ function UpdateRow() {
 }
 
 /**
+ * Demo only: the library's sync state while it needs the user, beside the update row: conflicts
+ * first, else another device editing the library now.
+ */
+function SyncRow({ onNavigate, onOpenStorage }: { onNavigate: (next: ScreenKey) => void; onOpenStorage?: (() => void) | undefined }) {
+  const m = useMessages()
+  const demo = useSyncDemo()
+  if (demo === null) return null
+  const conflicts = demo.conflicts.length
+  if (conflicts === 0 && demo.editing === null) return null
+  return (
+    <InlineMessage
+      tone={conflicts > 0 ? 'warning' : 'info'} variant="box" data-desk="sync"
+      lead={<Icon><path d="M20 11a8 8 0 0 0-14.3-4.9L4 8" /><path d="M4 4v4h4" /><path d="M4 13a8 8 0 0 0 14.3 4.9L20 16" /><path d="M20 20v-4h-4" /></Icon>}
+      action={(
+        <Button
+          size="compact"
+          onClick={() => { if (conflicts > 0) onNavigate('changelog'); else onOpenStorage?.() }}
+        >{m.shell.sync.open}</Button>
+      )}
+    >
+      {conflicts > 0 ? m.shell.sync.conflicts(conflicts) : m.shell.sync.editing(demo.editing ?? '')}
+    </InlineMessage>
+  )
+}
+
+/**
  * The sidebar: global search, updates, Inbox, Chats, My library, Research, and Trash.
  * Clicking the Chats heading does not switch screens; every other item opens one. `onJump` goes to
  * the global search, and clicking a result opens that item on its screen.
@@ -137,7 +166,7 @@ function UpdateRow() {
 export function Sidebar({
   screen, onNavigate, onJump, paperCount, changeCount, projectCount, trashCount, wikiCount, ideaCount,
   inboxScope, inboxMode, onOpenInbox, watches, inboxWatches, discoveryCount, discoveryProjects, laterCount,
-  chats, chatId, onOpenChat, onNewChat, onRenameChat, onArchiveChat, onDeleteChat, grip, collapsed, hidden,
+  chats, chatId, onOpenChat, onNewChat, onRenameChat, onArchiveChat, onDeleteChat, grip, collapsed, hidden, onOpenStorage,
 }: {
   screen: ScreenKey
   onNavigate: (next: ScreenKey) => void
@@ -166,6 +195,8 @@ export function Sidebar({
   grip: GripProps
   collapsed: boolean
   hidden: boolean
+  /** Demo only: opens Settings on Storage. */
+  onOpenStorage?: () => void
 }) {
   const m = useMessages()
   // A chat deleted or archived from its focused row hands the focus to the chat beside it.
@@ -193,6 +224,7 @@ export function Sidebar({
       pinned={(
         <>
           <UpdateRow />
+          <SyncRow onNavigate={onNavigate} onOpenStorage={onOpenStorage} />
           {/* The trash can does not belong to any content group and is pinned outside the scroll area just like demo. */}
           <NavRow
             selected={screen === 'trash'} data-desk="trash" onActivate={() => onNavigate('trash')} count={trashCount}
