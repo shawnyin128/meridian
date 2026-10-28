@@ -24,6 +24,8 @@ const api = vi.hoisted(() => ({
   /** The project spaces each folder holds, by path; every other folder holds none. */
   spaces: {} as Record<string, WorkspaceSpace[]>,
   inspected: [] as ProjectWorkspaceBinding[],
+  /** The project the page shows. */
+  project: undefined as unknown as Project,
   listings: [] as Array<{ params: SshFoldersParams; answer: (folders: SshFolders) => void }>,
 }))
 
@@ -35,10 +37,10 @@ vi.mock('../ipc.js', () => ({
   idea: { list: vi.fn(async () => []), files: vi.fn(async () => []) },
   papers: { list: vi.fn(async () => ({ rows: [], total: 0 })) },
   project: {
-    get: vi.fn(async () => PROJECT),
+    get: vi.fn(async () => api.project),
     // Each bind stays in flight until the test finishes it, the way a slow folder or host keeps it.
     bindWorkspace: vi.fn((_id: string, binding: ProjectWorkspaceBinding | null, space?: WorkspaceSpaceChoice) => new Promise<Project>((resolve) => {
-      api.binds.push({ binding, space, finish: () => resolve(PROJECT) })
+      api.binds.push({ binding, space, finish: () => resolve(api.project) })
     })),
     workspaceSpaces: vi.fn(async (binding: ProjectWorkspaceBinding) => {
       api.inspected.push(binding)
@@ -190,7 +192,9 @@ const busyState = (button: HTMLButtonElement) => [
 const spaceRow = (dialog: HTMLElement) => {
   const row = [...dialog.querySelectorAll('.field-row')]
     .find((candidate) => candidate.querySelector('.field-row-label')?.textContent === '项目空间')
-  return row === undefined ? null : [row.querySelector('.field-row-label')!.textContent, row.querySelector('.choice-picker-value')!.textContent]
+  if (row === undefined) return null
+  const picked = row.querySelector('.choice-picker-value')
+  return [row.querySelector('.field-row-label')!.textContent, picked === null ? 'reading' : picked.textContent]
 }
 
 /** Opens the space choice of the open form and returns its options' text. */
@@ -208,6 +212,11 @@ async function pickSpace(name: string): Promise<void> {
   })
 }
 
+/** Lets the typed folder settle and its project spaces be read. */
+async function settle(): Promise<void> {
+  await act(async () => { await new Promise((done) => setTimeout(done, 700)) })
+}
+
 let root: Root | null = null
 
 describe('项目工作区对话框', () => {
@@ -219,6 +228,7 @@ describe('项目工作区对话框', () => {
     api.listings.length = 0
     api.inspected.length = 0
     api.spaces = {}
+    api.project = PROJECT
     document.body.innerHTML = ''
   })
 
@@ -468,7 +478,7 @@ describe('项目工作区对话框', () => {
       .toEqual([[{ kind: 'local', root: '/work/shared' }, { kind: 'nested', id: 'tree' }]])
   })
 
-  it('作为新项目连进已有空间的文件夹时传 new；空文件夹不出选项，一次添加就按 new 连接', async () => {
+  it('作为新项目连进已有空间的文件夹时传 new；空文件夹只列出作为新项目，一次添加就按 new 连接', async () => {
     api.spaces['/work/shared'] = [{ space: { kind: 'root' }, project: { id: 'spec', name: '推测解码加速' } }]
     const dialog = await openWorkspaceDialog()
     const path = dialog.querySelector<HTMLInputElement>('#workspaceLocal input')!
@@ -481,7 +491,7 @@ describe('项目工作区对话框', () => {
     const again = await openWorkspaceDialog()
     act(() => setValue(again.querySelector<HTMLInputElement>('#workspaceLocal input')!, '/work/empty'))
     await act(async () => { submit(again).click() })
-    expect(spaceRow(again)).toBeNull()
+    expect(spaceRow(again)).toEqual(['项目空间', '作为新项目'])
     expect(api.binds.map((bind) => [bind.binding, bind.space]).at(-1)).toEqual([{ kind: 'local', root: '/work/empty' }, { kind: 'new' }])
   })
 
@@ -496,7 +506,7 @@ describe('项目工作区对话框', () => {
     await act(async () => { submit(dialog).click() })
     expect(spaceRow(dialog)).toEqual(['项目空间', 'draft 效率'])
     act(() => setValue(path, '/work/other'))
-    expect(spaceRow(dialog)).toBeNull()
+    expect(spaceRow(dialog)).toEqual(['项目空间', 'reading'])
   })
 
   it('SSH 文件夹的空间选项跟本地目录读起来一样；读不了的空间按文件夹名列出并标出读不了', async () => {
@@ -512,5 +522,63 @@ describe('项目工作区对话框', () => {
     expect(api.inspected.at(-1)).toEqual({ kind: 'ssh', host: 'gpu-lab', path: '/srv/shared' })
     expect(spaceRow(dialog)).toEqual(['项目空间', '作为新项目'])
     expect(await spaceOptions(dialog)).toEqual(['推测解码加速', '.meridian/projects/broken读不了', '作为新项目'])
+  })
+
+  it('填了文件夹停下就读出项目空间：空文件夹只有作为新项目并选中，有空间的文件夹列出每个空间的项目名和作为新项目；没填路径时没有这一行', async () => {
+    api.spaces['/work/shared'] = [{ space: { kind: 'root' }, project: { id: 'spec', name: '推测解码加速' } }]
+    const dialog = await openWorkspaceDialog()
+    expect(spaceRow(dialog)).toBeNull()
+    const path = dialog.querySelector<HTMLInputElement>('#workspaceLocal input')!
+    act(() => setValue(path, '/work/empty'))
+    expect(spaceRow(dialog)).toEqual(['项目空间', 'reading'])
+    await settle()
+    expect(spaceRow(dialog)).toEqual(['项目空间', '作为新项目'])
+    expect(await spaceOptions(dialog)).toEqual(['作为新项目'])
+    await act(async () => { document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })) })
+    act(() => setValue(path, '/work/shared'))
+    await settle()
+    expect(spaceRow(dialog)).toEqual(['项目空间', '作为新项目'])
+    expect(api.inspected).toEqual([{ kind: 'local', root: '/work/empty' }, { kind: 'local', root: '/work/shared' }])
+    await act(async () => { submit(dialog).click() })
+    expect(api.binds.map((bind) => bind.space)).toEqual([{ kind: 'new' }])
+  })
+
+  it('已连接的项目更换连接到同一个文件夹时默认选它现在的空间；选作为新项目再添加，就按 new 连到同一个文件夹', async () => {
+    api.project = {
+      ...PROJECT,
+      workspace: {
+        kind: 'local', root: '/work/shared', state: 'ready', events: [],
+        planPath: '/work/shared/.meridian/projects/draft-1a2b3c/control/plan.json',
+      },
+    }
+    api.spaces['/work/shared'] = [
+      { space: { kind: 'root' }, project: { id: 'draft', name: 'draft 效率' } },
+      { space: { kind: 'nested', id: 'draft-1a2b3c' }, project: { id: 'draft', name: 'draft 效率' } },
+    ]
+    const host = document.createElement('div')
+    document.body.append(host)
+    root = createRoot(host)
+    await act(async () => root!.render(
+      <MessagesProvider>
+        <ProjectDetail
+          projectId="draft" onBack={vi.fn()} onReturn={vi.fn()} tab="task" onTab={vi.fn()} record="tl" onRecord={vi.fn()}
+        />
+      </MessagesProvider>,
+    ))
+    await act(async () => { host.querySelector<HTMLButtonElement>('.workspace-root')!.click() })
+    const dialog = document.querySelector<HTMLElement>('.workspace-dialog')!
+    expect(dialog.querySelector<HTMLInputElement>('#workspaceLocal input')!.value).toBe('/work/shared')
+    await settle()
+    expect(await spaceOptions(dialog)).toEqual(['draft 效率', 'draft 效率', '作为新项目'])
+    expect([...document.querySelectorAll('[role="menuitemradio"]')].map((item) => item.getAttribute('aria-checked')))
+      .toEqual(['false', 'true', 'false'])
+    await pickSpace('作为新项目')
+    await act(async () => { submit(dialog).click() })
+    expect(api.binds.map((bind) => [bind.binding, bind.space])).toEqual([[{ kind: 'local', root: '/work/shared' }, { kind: 'new' }]])
+    await act(async () => { api.binds[0]!.finish() })
+    const read = api.inspected.length
+    await act(async () => { host.querySelector<HTMLButtonElement>('.workspace-root')!.click() })
+    await settle()
+    expect(api.inspected.length).toBe(read + 1)
   })
 })

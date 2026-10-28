@@ -75,6 +75,7 @@ import { useIdeaFiles } from '../hooks/useIdeaFiles.js'
 import { useScreenLoad } from '../hooks/useScreenLoad.js'
 import { useTopLevel } from '../hooks/useTopLevel.js'
 import { useScreenPoll } from '../hooks/useScreenPoll.js'
+import { useDebounced } from '../hooks/useDebounced.js'
 import { useUndo } from '../hooks/useUndo.js'
 import { useVaultWrite } from '../hooks/useVaultWrite.js'
 import { useScrollFade } from '../hooks/useScrollFade.js'
@@ -89,6 +90,9 @@ export type RecordTab = 'tl' | 'concl' | 'graph'
 
 /** The choice of a new project space among a folder's existing ones. */
 const NEW_SPACE = 'new'
+
+/** How long a typed folder stays unchanged before its project spaces are read. */
+const SPACES_SETTLE_MS = 600
 
 /** The choice that picks `space`, a folder's root space or one nested space; the root's when undefined. */
 const spaceKey = (space: WorkspaceSpaceRef | undefined): string =>
@@ -374,7 +378,7 @@ export function ProjectDetail({
   const [pickingSsh, setPickingSsh] = useState(false)
   const [binding, setBinding] = useState<'local' | 'ssh' | null>(null)
   /** The project spaces the folder last inspected holds, by the binding it was inspected for. */
-  const [spaces, setSpaces] = useState<{ key: string; held: WorkspaceSpace[] } | null>(null)
+  const [spaces, setSpaces] = useState<{ key: string; held: WorkspaceSpace[]; failed: boolean } | null>(null)
   const [spaceChoice, setSpaceChoice] = useState<string>(NEW_SPACE)
   const planList = useRef<HTMLDivElement>(null)
   const planDraft = useRef<HTMLElement>(null)
@@ -601,25 +605,46 @@ export function ProjectDetail({
   }
 
   /**
-   * Connects the project to the folder `target` names. A folder whose project spaces have not been
-   * shown yet is inspected first; when it holds any, the choice among them appears and nothing is
-   * bound until the add button is pressed again. A folder that cannot be inspected is bound as one holding
-   * none, and the bind reports why it cannot be used.
+   * The choice a folder's project spaces `held` start on: this project's space it is bound to now,
+   * else this project's first space there, else a fresh start.
+   */
+  const firstChoice = (held: readonly WorkspaceSpace[]): string => {
+    const own = held.filter((found) => found.project?.id === projectId)
+    const plan = project?.workspace?.planPath.replaceAll('\\', '/')
+    const bound = own.find((found) => plan?.endsWith(`/${spaceFolder(found.space)}/control/plan.json`) === true)
+    return spaceKey((bound ?? own[0])?.space)
+  }
+
+  /**
+   * Reads the project spaces of the folder `target` names and keeps them by `target`. A folder that
+   * cannot be read is kept as failed, holding none, so it offers only a new space.
+   */
+  const inspectFolder = async (target: ProjectWorkspaceBinding): Promise<WorkspaceSpace[]> => {
+    const read = await projectApi.workspaceSpaces(target).then(
+      (held) => ({ held, failed: false }), () => ({ held: [], failed: true }),
+    )
+    setSpaces({ key: JSON.stringify(target), ...read })
+    setSpaceChoice(firstChoice(read.held))
+    return read.held
+  }
+
+  /**
+   * Connects the project to the folder `target` names, in the space the space choice picks. A
+   * folder not inspected yet is inspected first; when it holds spaces the choice shows them and
+   * nothing is bound until the add button is pressed again. A folder that cannot be inspected is
+   * bound as one holding none, and the bind reports why it cannot be used.
    */
   const connectWorkspace = async (target: ProjectWorkspaceBinding) => {
     setBinding(target.kind)
-    const key = JSON.stringify(target)
-    const shown = spaces?.key === key ? spaces.held : null
-    const held = shown ?? await projectApi.workspaceSpaces(target).catch(() => [])
+    const shown = spaces?.key === JSON.stringify(target) ? spaces.held : null
+    const held = shown ?? await inspectFolder(target)
     if (shown === null && held.length > 0) {
-      setSpaces({ key, held })
-      setSpaceChoice(spaceKey(held.find((found) => found.project?.id === projectId)?.space))
       setBinding(null)
       return
     }
-    const connected = await writeProject(projectApi.bindWorkspace(projectId, target, held.length === 0
-      ? { kind: 'new' }
-      : spaceChoiceOf(spaceChoice)))
+    const connected = await writeProject(projectApi.bindWorkspace(
+      projectId, target, held.length === 0 ? { kind: 'new' } : spaceChoiceOf(spaceChoice),
+    ))
     setBinding(null)
     if (connected) setWorkspaceOpen(false)
   }
@@ -635,6 +660,8 @@ export function ProjectDetail({
     setSshPort(ssh && workspace.port !== undefined ? String(workspace.port) : '')
     setSshPath(ssh ? workspace.root : '')
     setPickingSsh(false)
+    // The folder may have gained or lost spaces since it was last read.
+    setSpaces(null)
     setWorkspaceOpen(true)
   }
 
@@ -644,24 +671,38 @@ export function ProjectDetail({
 
   const sshBinding: ProjectWorkspaceBinding = { kind: 'ssh', ...sshTarget, path: sshPath.trim() }
   const connectSshWorkspace = () => connectWorkspace(sshBinding)
-  const shownSpaces = spaces !== null && spaces.key === JSON.stringify(
-    workspaceMode === 'local' ? { kind: 'local', root: localPath.trim() } : sshBinding,
-  ) ? spaces.held : []
-  const spaceRow = shownSpaces.length === 0 ? null : (
+  /** The folder the open form names, once a path is filled in (and, over SSH, the host reached). */
+  const folderTarget: ProjectWorkspaceBinding | null = !workspaceOpen ? null
+    : workspaceMode === 'local'
+      ? (localPath.trim() === '' ? null : { kind: 'local', root: localPath.trim() })
+      : (reach.state === 'ready' && sshPath.trim() !== '' ? sshBinding : null)
+  const folderKey = folderTarget === null ? null : JSON.stringify(folderTarget)
+  const [settledFolder] = useDebounced(folderKey, SPACES_SETTLE_MS)
+  useEffect(() => {
+    if (folderTarget === null || settledFolder !== folderKey || spaces?.key === folderKey) return
+    void inspectFolder(folderTarget)
+  }, [settledFolder, folderKey])
+  const inspected = folderKey !== null && spaces?.key === folderKey ? spaces : null
+  const shownSpaces = inspected === null || inspected.failed ? null : inspected.held
+  const spaceRow = folderTarget === null ? null : (
     <FieldRow label={m.project.workspace.spaceLabel}>
-      <ChoicePicker
-        appearance="field" aria-label={m.project.workspace.spaceLabel} value={spaceChoice}
-        options={[...shownSpaces.map((found) => spaceKey(found.space)), NEW_SPACE]}
-        label={(option) => {
-          if (option === NEW_SPACE) return m.project.workspace.newSpace
-          const found = shownSpaces.find((candidate) => spaceKey(candidate.space) === option)
-          return found?.project?.name ?? spaceFolder(found!.space)
-        }}
-        note={(option) => (shownSpaces.find((candidate) => spaceKey(candidate.space) === option)?.issue === undefined
-          ? undefined
-          : m.project.workspace.spaceUnreadable)}
-        onPick={setSpaceChoice}
-      />
+      {shownSpaces === null && inspected?.failed !== true
+        ? <LoadingPlaceholder shape="ring" holds="field" />
+        : (
+          <ChoicePicker
+            appearance="field" aria-label={m.project.workspace.spaceLabel} value={spaceChoice}
+            options={[...(shownSpaces ?? []).map((found) => spaceKey(found.space)), NEW_SPACE]}
+            label={(option) => {
+              if (option === NEW_SPACE) return m.project.workspace.newSpace
+              const found = shownSpaces!.find((candidate) => spaceKey(candidate.space) === option)!
+              return found.project?.name ?? spaceFolder(found.space)
+            }}
+            note={(option) => (shownSpaces?.find((candidate) => spaceKey(candidate.space) === option)?.issue === undefined
+              ? undefined
+              : m.project.workspace.spaceUnreadable)}
+            onPick={setSpaceChoice}
+          />
+        )}
     </FieldRow>
   )
 
