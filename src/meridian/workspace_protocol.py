@@ -97,17 +97,18 @@ class PreparedWorkspaceEvent:
     status: str
 
 
-def inspect_project_workspace(root: Path) -> dict[str, Any]:
+def inspect_project_workspace(root: Path, *, vault: Path | None = None) -> dict[str, Any]:
     """Return a compact, machine-readable view of the workspace surfaces of one project.
 
-    ``root`` names the project's space as :func:`meridian.spaces.resolve_space` reads it. A
-    repository holding several projects is reported ``choose_project`` with each project's ``id``
-    and ``name`` under ``projects``, and no surfaces.
+    ``root`` names the project's space as :func:`meridian.spaces.resolve_space` reads it, with the
+    Meridian vault ``vault`` saying which space a project is bound to. A repository whose space
+    cannot be settled so is reported ``choose_project`` with its spaces under ``projects``, and no
+    surfaces.
     """
 
     repository = _repository_root(root)
     try:
-        space = resolve_space(root)
+        space = resolve_space(root, None, vault)
     except ProjectChoiceError as exc:
         return {
             "schema_version": WORKSPACE_STATUS_SCHEMA_VERSION,

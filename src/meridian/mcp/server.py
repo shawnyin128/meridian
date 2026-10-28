@@ -15,7 +15,7 @@ from meridian.lab import (
     record_lab_result,
 )
 from meridian.mcp import adapter
-from meridian.spaces import resolve_space
+from meridian.spaces import space_root
 from meridian.wiki.workspace import resolve_workspace
 from meridian.workspace_protocol import (
     EVENT_KINDS,
@@ -178,17 +178,19 @@ class MeridianMCPServer:
         workspace = resolve_workspace(wiki_root=self.default_wiki_root) if self.default_wiki_root else resolve_workspace()
         return None if workspace is None else workspace.library_root
 
-    def workspace_root(self, arguments: JsonDict) -> Path:
-        """The root a workspace or Lab tool works at: the space folder of ``project`` when given."""
+    def repository_root(self, arguments: JsonDict) -> Path:
+        """The repository or ``.meridian`` root a workspace or Lab tool is called at."""
         explicit = arguments.get("workspace_root")
         if explicit:
-            root = Path(str(explicit))
-        elif self.default_workspace_root is not None:
-            root = self.default_workspace_root
-        else:
-            root = Path.cwd()
+            return Path(str(explicit))
+        if self.default_workspace_root is not None:
+            return self.default_workspace_root
+        return Path.cwd()
+
+    def workspace_root(self, arguments: JsonDict) -> Path:
+        """The root a workspace or Lab tool works at: the space of ``project``, see meridian.spaces.space_root."""
         project = arguments.get("project")
-        return root if project in (None, "") else resolve_space(root, str(project)).lab_root
+        return space_root(self.repository_root(arguments), None if project in (None, "") else str(project), self.vault_root())
 
 
 PROJECT_PROPERTY: JsonDict = {
@@ -747,7 +749,9 @@ def _call_audit(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
 
 
 def _call_workspace_status(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:
-    return inspect_project_workspace(server.workspace_root(arguments))
+    if arguments.get("project") not in (None, ""):
+        return inspect_project_workspace(server.workspace_root(arguments))
+    return inspect_project_workspace(server.repository_root(arguments), vault=server.vault_root())
 
 
 def _call_workspace_plan(server: MeridianMCPServer, arguments: JsonDict) -> JsonDict:

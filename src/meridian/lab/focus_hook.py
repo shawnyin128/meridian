@@ -7,7 +7,8 @@ from pathlib import Path
 from typing import Any
 
 from meridian.lab.graph import materialize_lab_graph
-from meridian.spaces import bound_spaces, workspace_projects
+from meridian.spaces import ProjectChoiceError, resolve_space, workspace_projects
+from meridian.wiki.workspace import resolve_workspace
 
 MAX_OUTPUT_LINES = 6
 FOCUS_RULE_LINE = (
@@ -48,16 +49,30 @@ def find_lab_or_workspace_root(start: Path) -> Path | None:
 
 
 def _projects(root: Path) -> list[tuple[str, str]]:
-    """Each project of the workspace at `root` once, as `(id, line)`, in the order its spaces list."""
+    """Each project of the workspace at `root` once, as `(id, line)`, in the order its spaces list.
+
+    A project's active node count is its bound space's; a project with several spaces that no
+    configured Meridian vault settles shows its space count instead.
+    """
+
+    configured = resolve_workspace()
+    vault = None if configured is None else configured.library_root
     found = workspace_projects(root)
-    bound = bound_spaces(found)
     shown: dict[str, str] = {}
     for space, project in found:
         if project is None:
             shown[space.folder.as_posix()] = f"- {space.folder.as_posix()}: its manifest cannot be read"
-        elif project["id"] not in shown:
-            active = materialize_lab_graph(bound[project["id"]].lab_root).graph.get("active_nodes", [])
-            shown[project["id"]] = f"- {project['id']}: {project['name']} ({len(active)} node(s) active)"
+            continue
+        if project["id"] in shown:
+            continue
+        try:
+            bound = resolve_space(root, project["id"], vault)
+        except ProjectChoiceError:
+            count = sum(1 for _, held in found if held is not None and held["id"] == project["id"])
+            shown[project["id"]] = f"- {project['id']}: {project['name']} ({count} spaces)"
+            continue
+        active = materialize_lab_graph(bound.lab_root).graph.get("active_nodes", [])
+        shown[project["id"]] = f"- {project['id']}: {project['name']} ({len(active)} node(s) active)"
     return list(shown.items())
 
 

@@ -5,6 +5,7 @@ from __future__ import annotations
 import hashlib
 import io
 import json
+import shutil
 import unittest
 from contextlib import redirect_stderr, redirect_stdout
 from pathlib import Path
@@ -136,38 +137,65 @@ class WorkspaceSpacesTests(unittest.TestCase):
         (space / "control/plan.json").write_text(json.dumps({**plan, "updated_at": updated_at}), encoding="utf-8")
         return space
 
-    def test_a_project_with_several_spaces_resolves_to_the_one_the_app_wrote_last(self) -> None:
-        self._second_space_of_p2("2026-10-27T00:00:00Z")
-        graph = self._call("meridian.lab_graph", {"project": "p2"})
-        self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["fresh.A"])
-        plan = json.loads((self.second / "control/plan.json").read_text(encoding="utf-8"))
-        (self.second / "control/plan.json").write_text(json.dumps({**plan, "updated_at": "2026-10-28T00:00:00Z"}), encoding="utf-8")
-        graph = self._call("meridian.lab_graph", {"project": "p2"})
-        self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["tree.A"])
+    def _vault(self, project: str, binding: str) -> Path:
+        """A Meridian vault whose page for `project` holds the frontmatter lines `binding`."""
+        vault = self.root.parent / f"{self.root.name}-vault"
+        (vault / "wiki/projects").mkdir(parents=True, exist_ok=True)
+        (vault / "wiki/projects" / f"{project}.md").write_text(
+            f"---\ntype: project\nname: Second\n{binding}---\n\n# Second\n", encoding="utf-8"
+        )
+        self.addCleanup(shutil.rmtree, vault, True)
+        return vault
 
-    def test_the_listing_marks_which_space_of_a_project_is_bound(self) -> None:
-        self._second_space_of_p2("2026-10-27T00:00:00Z")
-        payload = self._call("meridian.workspace_plan", {})
+    def _call_with(self, vault: Path | None, name: str, arguments: dict[str, object]) -> dict:
+        server = MeridianMCPServer(
+            default_workspace_root=self.root, default_wiki_root=None if vault is None else vault / "wiki"
+        )
+        response = server.handle_message({
+            "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": name, "arguments": arguments},
+        })
+        return json.loads(response["result"]["content"][0]["text"])
+
+    def test_a_project_with_several_spaces_resolves_to_the_space_the_vault_binds_even_when_another_is_newer(self) -> None:
+        self._second_space_of_p2("2026-10-29T00:00:00Z")
+        vault = self._vault("p2", f'shared_workspace:\n  root: "{self.root}"\n  space: "p2"\n')
+        graph = self._call_with(vault, "meridian.lab_graph", {"project": "p2"})
+        self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["tree.A"])
+        self._vault("p2", f'shared_workspace:\n  root: "{self.root}"\n  space: "p2-0a1b2c"\n')
+        graph = self._call_with(vault, "meridian.lab_graph", {"project": "p2"})
+        self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["fresh.A"])
+
+    def test_without_a_vault_a_project_with_several_spaces_is_refused_with_no_space_marked_bound(self) -> None:
+        self._second_space_of_p2("2026-10-29T00:00:00Z")
+        payload = self._call_with(None, "meridian.lab_graph", {"project": "p2"})
+        self.assertEqual(payload["error_code"], "project_required")
         self.assertEqual(payload["projects"], [
             {"id": "p1", "name": "First", "space": ".meridian"},
-            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2", "bound": False},
-            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2-0a1b2c", "bound": True},
+            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2"},
+            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2-0a1b2c"},
         ])
-        self.assertIn("p2 (Second, .meridian/projects/p2-0a1b2c, bound)", payload["message"])
+        self.assertIn("no Meridian vault says which", payload["message"])
 
-    def test_a_workspace_whose_spaces_all_belong_to_one_project_needs_no_project(self) -> None:
-        with TemporaryDirectory() as tmp:
-            root = Path(tmp)
-            _space(root, ".meridian", "p1", "Only", "kv")
-            fresh = _space(root, ".meridian/projects/p1-0a1b2c", "p1", "Only", "fresh")
-            plan = json.loads((fresh / "control/plan.json").read_text(encoding="utf-8"))
-            (fresh / "control/plan.json").write_text(json.dumps({**plan, "updated_at": "2026-10-27T00:00:00Z"}), encoding="utf-8")
-            server = MeridianMCPServer(default_workspace_root=root)
-            response = server.handle_message({
-                "jsonrpc": "2.0", "id": 1, "method": "tools/call", "params": {"name": "meridian.lab_graph", "arguments": {}},
-            })
-            graph = json.loads(response["result"]["content"][0]["text"])
-            self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["fresh.A"])
+    def test_the_listing_marks_the_space_the_vault_binds(self) -> None:
+        self._second_space_of_p2("2026-10-29T00:00:00Z")
+        vault = self._vault("p2", f'shared_workspace:\n  root: "{self.root}"\n  space: "p2"\n')
+        payload = self._call_with(vault, "meridian.workspace_plan", {})
+        self.assertEqual(payload["projects"], [
+            {"id": "p1", "name": "First", "space": ".meridian"},
+            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2", "bound": True},
+            {"id": "p2", "name": "Second", "space": ".meridian/projects/p2-0a1b2c", "bound": False},
+        ])
+        self.assertIn("p2 (Second, .meridian/projects/p2, bound)", payload["message"])
+
+    def test_a_workspace_whose_spaces_all_belong_to_one_project_follows_the_vault_and_needs_no_project(self) -> None:
+        shutil.rmtree(self.second)
+        fresh = _space(self.root, ".meridian/projects/p1-0a1b2c", "p1", "First", "fresh")
+        plan = json.loads((fresh / "control/plan.json").read_text(encoding="utf-8"))
+        (fresh / "control/plan.json").write_text(json.dumps({**plan, "updated_at": "2026-10-29T00:00:00Z"}), encoding="utf-8")
+        vault = self._vault("p1", f'workspace_root: "{self.root}"\n')
+        graph = self._call_with(vault, "meridian.lab_graph", {})
+        self.assertEqual([node["id"] for node in graph["graph"]["nodes"]], ["kv.A"])
+        self.assertEqual(self._call_with(None, "meridian.lab_graph", {})["error_code"], "project_required")
 
     def test_an_unknown_project_is_refused_with_the_list(self) -> None:
         payload = self._call("meridian.workspace_plan", {"project": "p9"})

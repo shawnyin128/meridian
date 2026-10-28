@@ -15,7 +15,7 @@ from meridian.mcp import adapter
 from meridian.setup.doctor import build_setup_doctor_report, format_setup_doctor
 from meridian.setup.lab import format_lab_setup_result, initialize_lab_readiness, write_lab_setup_json
 from meridian.setup.repair import apply_mcp_repair
-from meridian.spaces import resolve_space
+from meridian.spaces import space_root
 from meridian.wiki.workspace import default_user_config_path, init_workspace, resolve_workspace, workspace_for_cli
 from meridian.workspace_protocol import (
     EVENT_KINDS,
@@ -327,10 +327,14 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(effective_argv)
 
     try:
-        if args.product in {"lab", "workspace", "setup"} and getattr(args, "project", None):
-            # A named project resolves to its space folder, which every workspace and Lab call takes as its root.
-            attribute = "lab_root" if hasattr(args, "lab_root") else "root"
-            setattr(args, attribute, resolve_space(getattr(args, attribute), args.project).lab_root)
+        vault = None
+        if args.product in {"lab", "workspace", "setup"} and hasattr(args, "project"):
+            configured = resolve_workspace()
+            vault = None if configured is None else configured.library_root
+            # A project resolves to its space folder, which every workspace and Lab call takes as its root.
+            if args.project or args.command != "status":
+                attribute = "lab_root" if hasattr(args, "lab_root") else "root"
+                setattr(args, attribute, space_root(getattr(args, attribute), args.project, vault))
         if args.product == "framework-check":
             report = run_framework_check(
                 project_root=args.project_root,
@@ -472,7 +476,7 @@ def main(argv: list[str] | None = None) -> int:
             return 0
 
         if args.product == "workspace" and args.command == "status":
-            result = inspect_project_workspace(args.root)
+            result = inspect_project_workspace(args.root, vault=vault)
             if args.json_out:
                 target = _write_json_payload(args.json_out, result)
                 print(f"Wrote workspace status JSON: {target}")

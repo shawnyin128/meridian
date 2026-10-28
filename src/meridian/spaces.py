@@ -22,8 +22,8 @@ class ProjectChoiceError(ValueError):
     """Raised when a workspace call does not name a project the workspace holds.
 
     ``projects`` lists the workspace's spaces for the agent to choose from, each as ``{"id", "name",
-    "space"}`` with the project's id and name and the space folder; a project with several spaces
-    marks each with ``bound``, true for the one the project is bound to.
+    "space"}`` with the project's id and name and the space folder. When the Meridian vault says
+    which space a project with several is bound to, each of them carries ``bound``.
     """
 
     def __init__(self, message: str, projects: list[dict[str, Any]]) -> None:
@@ -87,39 +87,61 @@ def _named(item: dict[str, Any]) -> str:
     return f"{item['id']} ({item['name']}, {item['space']}{', bound' if item['bound'] else ''})"
 
 
-def _plan_time(space: ProjectSpace) -> str:
-    """When the App last wrote the space's plan, or "" when it cannot be read."""
-    try:
-        value: Any = json.loads((space.lab_root / "control" / "plan.json").read_text(encoding="utf-8"))
-        return value["updated_at"] if isinstance(value["updated_at"], str) else ""
-    except (OSError, ValueError, KeyError, TypeError):
-        return ""
+_PAGE_ID = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
 
 
-def bound_spaces(found: list[tuple[ProjectSpace, dict[str, str] | None]]) -> dict[str, ProjectSpace]:
-    """The space each project of ``found`` is bound to, by project id.
+def vault_binding(vault: Path, project_id: str, repository: Path) -> PurePosixPath | None:
+    """The space folder of ``repository`` that the vault's page for project ``project_id`` binds.
 
-    The App rewrites the plan of the space a project is bound to whenever it binds or edits the
-    project, and never touches its other spaces, so a project's bound space is the one whose plan
-    it wrote last; the first listed wins a tie.
+    The page at ``<vault>/wiki/projects/<id>.md`` binds the root space with ``workspace_root`` or
+    ``workspace_ssh`` and a nested one with ``shared_workspace``; the bound folder is compared with
+    ``repository`` as the machine running this sees it. Returns None when the page is missing,
+    cannot be read, or binds the project elsewhere.
     """
 
-    bound: dict[str, ProjectSpace] = {}
-    for space, project in found:
-        if project is None:
-            continue
-        held = bound.get(project["id"])
-        if held is None or _plan_time(space) > _plan_time(held):
-            bound[project["id"]] = space
-    return bound
+    from meridian.wiki.corpus import FrontmatterError, parse_frontmatter
+
+    if not _PAGE_ID.fullmatch(project_id):
+        return None
+    try:
+        front = parse_frontmatter((vault / "wiki" / "projects" / f"{project_id}.md").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, FrontmatterError):
+        return None
+    ssh = front.get("workspace_ssh")
+    shared = front.get("shared_workspace")
+    if isinstance(front.get("workspace_root"), str):
+        location, folder = front["workspace_root"], ROOT_SPACE
+    elif isinstance(ssh, dict) and isinstance(ssh.get("path"), str):
+        location, folder = ssh["path"], ROOT_SPACE
+    elif isinstance(shared, dict) and isinstance(shared.get("space"), str) and SPACE_ID.fullmatch(shared["space"]):
+        location = shared.get("root") if isinstance(shared.get("root"), str) else shared.get("path")
+        folder = NESTED_SPACES / shared["space"]
+    else:
+        return None
+    if not isinstance(location, str) or Path(location).expanduser().resolve() != repository:
+        return None
+    return folder
 
 
-def _listed(found: list[tuple[ProjectSpace, dict[str, str] | None]]) -> list[dict[str, Any]]:
-    bound = bound_spaces(found)
+def _bound(found: list[tuple[ProjectSpace, dict[str, str] | None]], vault: Path | None) -> dict[str, PurePosixPath]:
+    """The folder each project of ``found`` holding several spaces is bound to, as ``vault`` records it."""
     counts: dict[str, int] = {}
     for _, project in found:
         if project is not None:
             counts[project["id"]] = counts.get(project["id"], 0) + 1
+    if vault is None or not found:
+        return {}
+    repository = found[0][0].repository
+    bound: dict[str, PurePosixPath] = {}
+    for project_id, count in counts.items():
+        folder = vault_binding(vault, project_id, repository) if count > 1 else None
+        if folder is not None and any(space.folder == folder for space, held in found if held and held["id"] == project_id):
+            bound[project_id] = folder
+    return bound
+
+
+def _listed(found: list[tuple[ProjectSpace, dict[str, str] | None]], vault: Path | None) -> list[dict[str, Any]]:
+    bound = _bound(found, vault)
     listed: list[dict[str, Any]] = []
     for space, project in found:
         folder = space.folder.as_posix()
@@ -127,20 +149,22 @@ def _listed(found: list[tuple[ProjectSpace, dict[str, str] | None]]) -> list[dic
             listed.append({"id": "", "name": f"{folder} (unreadable manifest)", "space": folder})
             continue
         entry: dict[str, Any] = {**project, "space": folder}
-        if counts[project["id"]] > 1:
-            entry["bound"] = bound[project["id"]] == space
+        if project["id"] in bound:
+            entry["bound"] = bound[project["id"]] == space.folder
         listed.append(entry)
     return listed
 
 
-def resolve_space(root: Path, project: str | None = None) -> ProjectSpace:
+def resolve_space(root: Path, project: str | None = None, vault: Path | None = None) -> ProjectSpace:
     """The project space a workspace call made at ``root`` for ``project`` works in.
 
     ``root`` is a repository, its ``.meridian`` folder, or a nested space folder, which names its
-    space itself. With ``project``, the id of a project the workspace holds, the call works in the
-    space that project is bound to (see bound_spaces). Without it, a repository with no space works
-    in the root space, one whose spaces all belong to one project in the space it is bound to, and
-    any other raises :class:`ProjectChoiceError` listing the spaces.
+    space itself. With ``project``, the id of a project the workspace holds, the call works in that
+    project's space; of several, in the one the Meridian vault at ``vault`` binds it to. Without
+    ``project``, a repository with no space works in the root space, and one whose spaces all
+    belong to one project works in that project's space the same way. Anything else, a project
+    with several spaces and no vault saying which is bound included, raises
+    :class:`ProjectChoiceError` listing the spaces.
     """
 
     resolved = root.expanduser().resolve()
@@ -151,28 +175,52 @@ def resolve_space(root: Path, project: str | None = None) -> ProjectSpace:
     else:
         repository, named = resolved, None
     found = workspace_projects(repository)
-    bound = bound_spaces(found)
-    if project is not None:
-        wanted = project.strip()
-        owned = [space for space, held in found if held is not None and held["id"] == wanted]
-        if named is None and owned:
-            return bound[wanted]
-        if named is not None and any(space.folder == named for space in owned):
+    if project is None:
+        ids = {held["id"] for _, held in found if held is not None}
+        if named is not None:
             return ProjectSpace(repository, named)
-        raise ProjectChoiceError(
-            f"this workspace holds no project {wanted!r}; pass one of the projects listed",
-            _listed(found),
-        )
-    if named is not None:
+        if not found:
+            return ProjectSpace(repository, ROOT_SPACE)
+        if len(ids) != 1 or any(held is None for _, held in found):
+            raise ProjectChoiceError(
+                "this workspace holds several projects; pass project with the id of the one this work is for",
+                _listed(found, vault),
+            )
+        project = next(iter(ids))
+    wanted = project.strip()
+    owned = [space for space, held in found if held is not None and held["id"] == wanted]
+    if named is not None and any(space.folder == named for space in owned):
         return ProjectSpace(repository, named)
-    if not found:
-        return ProjectSpace(repository, ROOT_SPACE)
-    if len(bound) == 1 and all(held is not None for _, held in found):
-        return next(iter(bound.values()))
+    if named is None and len(owned) == 1:
+        return owned[0]
+    if named is None and owned:
+        folder = vault_binding(vault, wanted, repository) if vault is not None else None
+        chosen = next((space for space in owned if space.folder == folder), None)
+        if chosen is not None:
+            return chosen
+        raise ProjectChoiceError(
+            f"project {wanted!r} has several spaces here and no Meridian vault says which it is bound to; "
+            "ask the user which space this work is for",
+            _listed(found, vault),
+        )
     raise ProjectChoiceError(
-        "this workspace holds several projects; pass project with the id of the one this work is for",
-        _listed(found),
+        f"this workspace holds no project {wanted!r}; pass one of the projects listed",
+        _listed(found, vault),
     )
+
+
+def space_root(root: Path, project: str | None, vault: Path | None) -> Path:
+    """The root a workspace or Lab call takes for ``project``, with ``vault`` as for resolve_space.
+
+    It is ``root`` itself while that settles the space alone (it names a space, or the workspace
+    holds at most one), else the resolved space folder. Raises as :func:`resolve_space` does.
+    """
+
+    resolved = root.expanduser().resolve()
+    names_space = resolved.name == ROOT_SPACE.name or resolved.parent.name == NESTED_SPACES.name
+    if project is None and (names_space or len(workspace_projects(resolved)) <= 1):
+        return root
+    return resolve_space(root, project, vault).lab_root
 
 
 def repository_of(lab_root: Path) -> Path:
