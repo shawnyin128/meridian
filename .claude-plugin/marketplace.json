@@ -8,7 +8,11 @@
     {
       "name": "meridian",
       "description": "Markdown-first Paper Wiki and Lab idea graph.",
-      "source": "./plugins/claude-code/meridian",
+      "source": {
+        "source": "git-subdir",
+        "url": "shawnyin128/meridian",
+        "path": "plugins/claude-code/meridian"
+      },
       "category": "Research"
     }
   ]
