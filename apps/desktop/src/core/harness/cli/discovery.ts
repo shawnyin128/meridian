@@ -6,7 +6,7 @@ import type {
 } from '../../../shared/contract.js'
 import type { CoreLogLevel } from '../../core-log.js'
 import { cliUsageLine } from '../cli-call.js'
-import { type ChildOutcome, cliEnvironment, type CliFailureKind, CliRunError, inTemporaryFolder, runChild } from './child.js'
+import { automatedLaunch, type ChildOutcome, cliEnvironment, type CliFailureKind, CliRunError, inTemporaryFolder, runChild } from './child.js'
 import { chatTurnFlags } from './chat-turn.js'
 import { readiness } from './failure.js'
 import { type CliRunner, runnerFlags } from './runner.js'
@@ -116,12 +116,14 @@ function nodeVersionFolders(home: string): string[] {
 }
 
 /**
- * The absolute path of the `cli` command, or null when it is not installed. Asks the user's login
- * shell first, then looks in ~/.local/bin, the Homebrew folders and the npm global folders. On
- * Windows it looks on PATH, in ~/.local/bin and in npm's %APPDATA%\\npm instead.
+ * The absolute path of the `cli` command, or null when it is not installed or the environment is an
+ * automated launch's. Asks the user's login shell first, then looks in ~/.local/bin, the Homebrew
+ * folders and the npm global folders. On Windows it looks on PATH, in ~/.local/bin and in npm's
+ * %APPDATA%\\npm instead.
  */
 export async function resolveCliBinary(cli: HarnessCli, options: DiscoveryOptions = {}): Promise<string | null> {
   const environment = options.environment ?? process.env
+  if (automatedLaunch(environment)) return null
   const home = options.home ?? homedir()
   if ((options.platform ?? process.platform) === 'win32') {
     const appData = variable(environment, 'APPDATA')

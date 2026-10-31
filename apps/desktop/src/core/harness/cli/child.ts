@@ -68,6 +68,10 @@ export async function inTemporaryFolder<T>(use: (folder: string) => Promise<T>):
   }
 }
 
+/** Whether `environment` is an automated launch's, MERIDIAN_SHOW_WINDOW `0` or `isolated`, which never starts a CLI. */
+export const automatedLaunch = (environment: NodeJS.ProcessEnv) =>
+  environment['MERIDIAN_SHOW_WINDOW'] === '0' || environment['MERIDIAN_SHOW_WINDOW'] === 'isolated'
+
 const billsAnotherAccount = (name: string) => {
   const upper = name.toUpperCase()
   return BILLING_VARIABLES.has(upper) || BILLING_VARIABLE_PREFIXES.some((prefix) => upper.startsWith(prefix))
@@ -126,7 +130,8 @@ function batchInvocation(command: string, args: readonly string[], env: NodeJS.P
  * piece of stdout also going to `onOutput` as it arrives; a Windows batch file, such as an npm shim,
  * runs through cmd.exe with every argument quoted.
  * Resolves with its exit code and output once it has exited. Rejects with a CliRunError:
- * `unavailable` when it cannot start, `timeout` after `timeoutMs`, `cancelled` when `signal` aborts.
+ * `unavailable` when it cannot start or this process is an automated launch, `timeout` after
+ * `timeoutMs`, `cancelled` when `signal` aborts.
  * In the last two cases it ends the child and everything the child started before it rejects.
  */
 export function runChild(command: string, args: readonly string[], options: {
@@ -141,6 +146,10 @@ export function runChild(command: string, args: readonly string[], options: {
   const name = command.split(/[\\/]/).pop() ?? command
   const windows = (options.platform ?? process.platform) === 'win32'
   return new Promise((resolve, reject) => {
+    if (automatedLaunch(process.env)) {
+      reject(new CliRunError('unavailable', `自动化启动不运行 ${name}`))
+      return
+    }
     if (options.signal?.aborted === true) {
       reject(new CliRunError('cancelled', `已停止 ${name}`))
       return
