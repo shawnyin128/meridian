@@ -34,7 +34,9 @@ if (target === 'app') {
 } else {
   writeFileSync(join(root, 'VERSION'), `${version}\n`)
   replaceOnce('pyproject.toml', /^version = "[^"]+"$/m, `version = "${version}"`)
-  replaceOnce('src/meridian/__init__.py', /^__version__ = "[^"]+"$/m, `__version__ = "${version}"`)
+  for (const core of ['src/meridian/__init__.py', 'plugins/claude-code/meridian/lib/meridian/__init__.py']) {
+    replaceOnce(core, /^__version__ = "[^"]+"$/m, `__version__ = "${version}"`)
+  }
   for (const manifest of [
     'plugins/agent/meridian/plugin.json',
     'plugins/claude-code/meridian/.claude-plugin/plugin.json',

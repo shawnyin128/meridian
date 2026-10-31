@@ -72,7 +72,7 @@ The Meridian App shows the user what the agent has been doing and what it
 found. Three calls feed it; none needs the user's confirmation.
 
 **Research record.** Call `meridian.workspace_event_add` (or, without MCP,
-`python -m meridian workspace event-add` with `--kind`, `--text` as the
+`meridian workspace event-add` with `--kind`, `--text` as the
 title, and `--detail`) at these
 boundaries, one event each. Pass a structured `kind`, a one-line `title`
 (the outcome, not a formatted sentence), and an optional `detail` for
@@ -97,7 +97,7 @@ is a Lab node.
 **Tasks.** When you and the user settle on a clear, concrete next step, one
 piece of work with a recognizable end ("rerun the width sweep at B=16", "add
 the per-channel key quantizer and its unit test"), call
-`meridian.workspace_task_add` once (or `python -m meridian workspace task-add`)
+`meridian.workspace_task_add` once (or `meridian workspace task-add`)
 with a stable `task_id`, a one-line `title`, and a `note` saying what done
 means. The App puts it in the project plan at once, marked as added by an
 agent; the user deletes what they do not want, so do not ask first. A general
@@ -112,14 +112,14 @@ contribution: a method, hypothesis or question a project of its own could start
 from. An observation, result or design choice from the current work is not an
 idea; record it on its Lab node or as a research record. For a new idea that is
 not already a linked idea or a Lab node, call `meridian.workspace_idea_add` once
-(or `python -m meridian workspace idea-add`) with a stable `idea_id`, a `title`
+(or `meridian workspace idea-add`) with a stable `idea_id`, a `title`
 of at most 80 characters that names the idea on its own, a `body` that states
 it, and a `context` of at most 60 characters naming the work it came up in,
 without dates, times or agent names; the App records those. Pass `node` when it
 grows out of a Lab node. Do not record implementation details, TODOs, bug
 notes, or restatements of an existing idea. When you write a file in the
 repository for an idea, such as a proposal, call
-`meridian.workspace_idea_file_add` once (or `python -m meridian workspace
+`meridian.workspace_idea_file_add` once (or `meridian workspace
 idea-file-add`) with a stable `file_id`, the idea's `idea_id` (the one you gave
 `meridian.workspace_idea_add`, or an App idea id from
 `meridian.workspace_changes`) and the file's `path` relative to the repository;

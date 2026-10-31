@@ -56,6 +56,7 @@ LAB_SKILL_RELATIVE_PATH = Path("skills/lab/SKILL.md")
 MCP_SERVER_NAME = "meridian-paper-wiki"
 MCP_SERVER_COMMAND = "python"
 MCP_SERVER_ARGS = ["-m", "meridian.mcp", "serve"]
+BUNDLED_MCP_SERVER_ARGS = ["${CLAUDE_PLUGIN_ROOT}/lib/run.py", "meridian.mcp", "serve"]
 
 
 @dataclass(frozen=True)
@@ -327,10 +328,10 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
                 f"Agent Plugins, Codex, and Claude Code copies differ for `{skill_name}`.",
                 "Synchronize product skill copies across plugin packages.",
             )
-    for path, standard in [
-        (root / "plugins/agent/meridian/mcp.json", True),
-        (root / "plugins/codex/meridian/.mcp.json", False),
-        (root / "plugins/claude-code/meridian/.mcp.json", False),
+    for path, standard, expected_args in [
+        (root / "plugins/agent/meridian/mcp.json", True, MCP_SERVER_ARGS),
+        (root / "plugins/codex/meridian/.mcp.json", False, MCP_SERVER_ARGS),
+        (root / "plugins/claude-code/meridian/.mcp.json", False, BUNDLED_MCP_SERVER_ARGS),
     ]:
         if not path.exists():
             _add(findings, category, "degraded", "manual", "missing_mcp_config", f"{_rel(path, root)} is missing.", "Restore MCP config or document why the package no longer ships MCP.")
@@ -374,7 +375,7 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
                     f"{_rel(path, root)} does not declare the Meridian MCP server as stdio.",
                     "Set server `type` to `stdio` before release.",
                 )
-        if server.get("command") != MCP_SERVER_COMMAND or server.get("args") != MCP_SERVER_ARGS:
+        if server.get("command") != MCP_SERVER_COMMAND or server.get("args") != expected_args:
             _add(
                 findings,
                 category,
@@ -382,7 +383,7 @@ def _plugin_bundle_category(root: Path) -> FrameworkCategory:
                 "manual",
                 "mcp_config_entrypoint_drift",
                 f"{_rel(path, root)} starts `{server.get('command')}` with args `{server.get('args')}`.",
-                "Update the plugin MCP entrypoint to `python -m meridian.mcp serve`, reinstall the plugin, and restart the client session.",
+                f"Update the plugin MCP entrypoint to `{MCP_SERVER_COMMAND} {' '.join(expected_args)}`, reinstall the plugin, and restart the client session.",
             )
     for item in lab_skill_path_diagnostics(root):
         state = item["state"]

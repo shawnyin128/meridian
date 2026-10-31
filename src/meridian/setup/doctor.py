@@ -152,8 +152,10 @@ def _add_client_findings(
             )
         return
 
+    # The client substitutes the plugin's install directory for this placeholder when it starts the server.
+    plugin_root = str(install.mcp_config_path.parent)
     command = str(install.configured_server.get("command", ""))
-    args = [str(item) for item in install.configured_server.get("args", [])]
+    args = [str(item).replace("${CLAUDE_PLUGIN_ROOT}", plugin_root) for item in install.configured_server.get("args", [])]
     smoke_argv = _mcp_smoke_argv(command=command, args=args)
     smoke = runner(smoke_argv, 10.0)
     if smoke.returncode != 0:

@@ -3,7 +3,7 @@
     "meridian-paper-wiki": {
       "command": "python",
       "args": [
-        "-m",
+        "${CLAUDE_PLUGIN_ROOT}/lib/run.py",
         "meridian.mcp",
         "serve"
       ]

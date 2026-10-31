@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+# The `meridian` command on the Bash tool's PATH: runs the Meridian core bundled in this plugin.
+set -euo pipefail
+lib="$(cd "$(dirname "${BASH_SOURCE[0]}")/../lib" && pwd)"
+python="$(command -v python || command -v python3)"
+exec "$python" "$lib/run.py" meridian "$@"
