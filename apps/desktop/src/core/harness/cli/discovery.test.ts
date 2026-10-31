@@ -93,6 +93,18 @@ const check = (cli: HarnessCli, options: DiscoveryOptions & { onLog?: (level: Co
   checkCliConnection({ source: 'cli', cli, ...(model === undefined ? {} : { model }) }, { ...options, run })
 
 describe('subscription CLI discovery', () => {
+  it.each(['0', 'isolated'])('in an automated launch (MERIDIAN_SHOW_WINDOW=%s) finds no CLI and starts nothing, not even the login shell', async (mode) => {
+    const { root, home, options, calls } = machine()
+    executable(join(home, '.local', 'bin', 'claude'), STAND_IN)
+    const shellRan = join(root, 'shell-ran')
+    const shell = executable(join(root, 'shell', 'login'), `#!/bin/sh\ntouch '${shellRan}'\n`)
+
+    await expect(discoverCli('claude', { ...options, shell, environment: { ...options.environment, MERIDIAN_SHOW_WINDOW: mode } }))
+      .resolves.toEqual({ cli: 'claude', installed: false })
+    expect(calls()).toEqual([])
+    expect(existsSync(shellRan)).toBe(false)
+  })
+
   it('finds a CLI through the user\'s login shell when the App has no PATH', async () => {
     const { root, options } = machine()
     const claude = executable(join(root, 'elsewhere', 'claude'), STAND_IN)

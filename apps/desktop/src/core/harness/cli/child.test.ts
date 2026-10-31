@@ -1,7 +1,7 @@
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { afterEach, describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { cliEnvironment, runChild, stderrExcerpt } from './child.js'
 
 /** Variables each CLI's documentation or binary names for an API key, token, endpoint, provider or cloud account. */
@@ -143,5 +143,36 @@ describe('a CLI that npm installed on Windows as a .cmd shim', () => {
     await expect(start(['--system-prompt', 'line one\nline two'])).rejects.toMatchObject({ kind: 'unavailable' })
     await expect(start(['--json-schema', 'x'.repeat(9_000)])).rejects.toMatchObject({ kind: 'unavailable' })
     expect(existsSync(record)).toBe(false)
+  })
+})
+
+describe('an automated launch', () => {
+  afterEach(() => { vi.unstubAllEnvs() })
+
+  function standIn() {
+    const folder = mkdtempSync(join(tmpdir(), 'meridian-automated-test-'))
+    folders.push(folder)
+    const cli = join(folder, 'claude')
+    writeFileSync(cli, '#!/bin/sh\necho started > "$STAND_IN_RECORD"\n')
+    chmodSync(cli, 0o755)
+    const record = join(folder, 'record')
+    const start = () => runChild(cli, ['--version'], { cwd: folder, env: { STAND_IN_RECORD: record }, timeoutMs: 10_000 })
+    return { record, start }
+  }
+
+  it.each(['0', 'isolated'])('with MERIDIAN_SHOW_WINDOW=%s starts no CLI and fails as unavailable', async (mode) => {
+    vi.stubEnv('MERIDIAN_SHOW_WINDOW', mode)
+    const { record, start } = standIn()
+
+    await expect(start()).rejects.toMatchObject({ kind: 'unavailable' })
+    expect(existsSync(record)).toBe(false)
+  })
+
+  it('does not hold back a launch that shows its window', async () => {
+    vi.stubEnv('MERIDIAN_SHOW_WINDOW', '1')
+    const { record, start } = standIn()
+
+    await expect(start()).resolves.toMatchObject({ code: 0 })
+    expect(existsSync(record)).toBe(true)
   })
 })
