@@ -209,7 +209,7 @@ class CliTests(unittest.TestCase):
             skill = root / "wiki/SKILL.md"
             self.assertTrue(skill.exists())
             text = skill.read_text(encoding="utf-8")
-            self.assertIn("meridian.mcp context", text)
+            self.assertIn("meridian-mcp context", text)
             self.assertIn("meridian wiki status", text)
             self.assertIn("MERIDIAN_CORE_ROOT", text)
             self.assertIn("do not\nstart with broad `rg`", text)
@@ -234,7 +234,7 @@ class CliTests(unittest.TestCase):
         self.assertIn("Status Check", text)
         self.assertIn("Initialize", text)
         self.assertIn("Migration Check", text)
-        self.assertIn("python -m meridian wiki status", text)
+        self.assertIn("meridian wiki status", text)
         self.assertIn("meridian-wiki.json", text)
         self.assertIn("needs_migration", text)
         self.assertIn("needs_lab_init", text)
@@ -263,8 +263,8 @@ class CliTests(unittest.TestCase):
         lab = (CODEX_PLUGIN_SKILL_ROOT / "lab/SKILL.md").read_text(encoding="utf-8")
         wiki = (CODEX_PLUGIN_SKILL_ROOT / "wiki/SKILL.md").read_text(encoding="utf-8")
 
-        self.assertIn("python -m meridian setup doctor", meridian)
-        self.assertIn("python -m meridian setup repair-mcp", meridian)
+        self.assertIn("meridian setup doctor", meridian)
+        self.assertIn("meridian setup repair-mcp", meridian)
         self.assertIn("skill_visible_but_mcp_unavailable", meridian)
         self.assertIn("no_valid_meridian_runtime", meridian)
         self.assertIn("paper_wiki_grounding", lab)
@@ -281,7 +281,7 @@ class CliTests(unittest.TestCase):
 
         self.assertIn("Entry Boundary", meridian)
         self.assertIn("Framework Check", meridian)
-        self.assertIn("python -m meridian framework-check", meridian)
+        self.assertIn("meridian framework-check", meridian)
         self.assertNotIn("ingest", meridian)
         self.assertIn("If the user asks to retrieve, answer from papers", meridian)
         self.assertIn("Do not continue the normal work", meridian)
@@ -941,6 +941,46 @@ class CliTests(unittest.TestCase):
         self.assertIn("mcp_repair_available", {finding["code"] for finding in report.findings})
         self.assertIn("repair_available", format_setup_doctor(report))
 
+    def test_setup_doctor_smoke_tests_the_bundled_launcher_at_the_plugin_cache_and_offers_no_repair(self) -> None:
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "project"
+            home = Path(tmp) / "home"
+            cache_root = home / ".claude/plugins/cache/meridian/meridian" / __version__
+            for skill in ["meridian", "wiki", "lab"]:
+                skill_path = cache_root / "skills" / skill / "SKILL.md"
+                skill_path.parent.mkdir(parents=True, exist_ok=True)
+                skill_path.write_text(f"# {skill}\n", encoding="utf-8")
+            (cache_root / ".mcp.json").write_text(
+                json.dumps(
+                    {
+                        "mcpServers": {
+                            "meridian-paper-wiki": {
+                                "command": "python",
+                                "args": ["${CLAUDE_PLUGIN_ROOT}/lib/run.py", "meridian.mcp", "serve"],
+                            }
+                        }
+                    }
+                ),
+                encoding="utf-8",
+            )
+            smoked: list[list[str]] = []
+
+            def runner(argv: list[str], timeout: float = 10.0) -> CommandResult:
+                if "-c" in argv:
+                    return CommandResult(0, f"{argv[0]}\n{__version__}\n", "")
+                if any(arg.endswith("/lib/run.py") for arg in argv):
+                    smoked.append(argv)
+                if argv[0] == "python":
+                    return CommandResult(0, "usage: python -m meridian.mcp", "")
+                return CommandResult(1, "", f"unexpected argv: {argv}")
+
+            report = build_setup_doctor_report(project_root=root, home=home, clients=["claude"], runner=runner)
+
+        self.assertEqual(smoked, [["python", f"{cache_root}/lib/run.py", "meridian.mcp", "--help"]])
+        codes = {finding["code"] for finding in report.findings}
+        self.assertNotIn("skill_visible_but_mcp_unavailable", codes)
+        self.assertNotIn("mcp_repair_available", codes)
+
     def test_setup_doctor_reports_runner_calls_timeout_for_mcp_smoke(self) -> None:
         with tempfile.TemporaryDirectory() as tmp:
             root = Path(tmp) / "project"
@@ -1597,7 +1637,7 @@ class CliTests(unittest.TestCase):
         codex_lab = Path("plugins/codex/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
         claude_lab = Path("plugins/claude-code/meridian/skills/lab/SKILL.md").read_text(encoding="utf-8")
         for text in [codex_lab, claude_lab]:
-            self.assertIn("python -m meridian setup init-lab --lab-root <repo>", text)
+            self.assertIn("meridian setup init-lab --lab-root <repo>", text)
             self.assertIn("Do not hand-write", text)
             self.assertIn("deterministic Meridian helper", text)
             self.assertIn("guarded Meridian research-agent contract block", text)
@@ -1913,7 +1953,8 @@ class CliTests(unittest.TestCase):
             mcp_config = json.loads((root / ".mcp.json").read_text(encoding="utf-8"))
             server = mcp_config["mcpServers"]["meridian-paper-wiki"]
             self.assertEqual(server["command"], "python")
-            self.assertEqual(server["args"], ["-m", "meridian.mcp", "serve"])
+            launch = ["-m"] if root == codex_root else ["${CLAUDE_PLUGIN_ROOT}/lib/run.py"]
+            self.assertEqual(server["args"], [*launch, "meridian.mcp", "serve"])
             if root == codex_root:
                 self.assertEqual(server["title"], "Meridian Paper Wiki")
                 self.assertEqual(server["cwd"], ".")

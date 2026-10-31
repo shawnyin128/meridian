@@ -22,7 +22,7 @@ flow take over.
 
 Use Lab only when this `lab/SKILL.md` file was actually loaded by the active
 runtime. If the runtime reports that the Lab skill path is missing or
-unreadable, stop and use `python -m meridian setup doctor` to diagnose plugin
+unreadable, stop and use `meridian setup doctor` to diagnose plugin
 path drift. Do not continue from remembered Lab semantics.
 
 ## Lab-First Routing Gate
@@ -90,8 +90,8 @@ not change the file contract or Lab's ownership rules.
 
 When the Meridian MCP server is available, use `meridian.workspace_status` for
 protocol readiness and `meridian.workspace_plan` to read the plan. Otherwise,
-use `python -m meridian workspace status --root .` and
-`python -m meridian workspace plan --root .`. Do not parse or patch the
+use `meridian workspace status --root .` and
+`meridian workspace plan --root .`. Do not parse or patch the
 protocol files with ad-hoc scripts when either deterministic entry is
 available.
 
@@ -107,7 +107,7 @@ available.
   MCP so the node evidence, graph view, and event projection move together. Use
   `meridian.workspace_event_add` for the other source-backed events described
   in Keeping the App informed, or fall back to
-  `python -m meridian workspace event-add`, rather than editing this generated
+  `meridian workspace event-add`, rather than editing this generated
   projection by hand.
 
 ## Keeping the App informed
@@ -116,7 +116,7 @@ The Meridian App shows the user what the agent has been doing and what it
 found. Three calls feed it; none needs the user's confirmation.
 
 **Research record.** Call `meridian.workspace_event_add` (or, without MCP,
-`python -m meridian workspace event-add` with `--kind`, `--text` as the title, and
+`meridian workspace event-add` with `--kind`, `--text` as the title, and
 `--detail`) at
 these boundaries, one event each. Pass a structured `kind`, a one-line
 `title` (the outcome, not a formatted sentence), and an optional `detail`
@@ -141,7 +141,7 @@ is a Lab node.
 **Tasks.** When you and the user settle on a clear, concrete next step, one
 piece of work with a recognizable end ("rerun the width sweep at B=16", "add
 the per-channel key quantizer and its unit test"), call
-`meridian.workspace_task_add` once (or `python -m meridian workspace task-add`)
+`meridian.workspace_task_add` once (or `meridian workspace task-add`)
 with a stable `task_id`, a one-line `title`, and a `note` saying what done
 means. The App puts it in the project plan at once, marked as added by an
 agent; the user deletes what they do not want, so do not ask first. A general
@@ -156,14 +156,14 @@ contribution: a method, hypothesis or question a project of its own could start
 from. An observation, result or design choice from the current work is not an
 idea; record it on its Lab node or as a research record. For a new idea that is
 not already a linked idea or a Lab node, call `meridian.workspace_idea_add` once
-(or `python -m meridian workspace idea-add`) with a stable `idea_id`, a `title`
+(or `meridian workspace idea-add`) with a stable `idea_id`, a `title`
 of at most 80 characters that names the idea on its own, a `body` that states
 it, and a `context` of at most 60 characters naming the work it came up in,
 without dates, times or agent names; the App records those. Pass `node` when it
 grows out of a Lab node. Do not record implementation details, TODOs, bug
 notes, or restatements of an existing idea. When you write a file in the
 repository for an idea, such as a proposal, call
-`meridian.workspace_idea_file_add` once (or `python -m meridian workspace
+`meridian.workspace_idea_file_add` once (or `meridian workspace
 idea-file-add`) with a stable `file_id`, the idea's `idea_id` (the one you gave
 `meridian.workspace_idea_add`, or an App idea id from
 `meridian.workspace_changes`) and the file's `path` relative to the repository;
@@ -394,7 +394,7 @@ Use the profile this way:
 - Keep task-specific research-code constraints separate from durable user
   preferences.
 - If the profile is missing, continue the Lab task with the static research-code
-  guidance and mention that `python -m meridian setup init-lab` can initialize
+  guidance and mention that `meridian setup init-lab` can initialize
   the profile.
 - Do not store full pasted code examples in the profile; summarize the
   reusable principle, anti-pattern, scope, exception, provenance, confidence,
@@ -475,7 +475,7 @@ At the start of any Lab workflow:
 - On confirmation, run the deterministic Meridian helper:
 
   ```bash
-  python -m meridian setup init-lab --lab-root <repo>
+  meridian setup init-lab --lab-root <repo>
   ```
 
   This creates or refreshes the minimal Lab skeleton:
@@ -859,14 +859,14 @@ Prefer the Paper Wiki MCP tools for grounding: `meridian.context`,
 If the MCP tools are unavailable, run or request setup doctor before continuing:
 
 ```bash
-python -m meridian setup doctor --client all
+meridian setup doctor --client all
 ```
 
 If the doctor reports `repair_available`, stop the Lab workflow and present the
 repair command instead of substituting agent judgment:
 
 ```bash
-python -m meridian setup repair-mcp --client <codex|claude> --apply
+meridian setup repair-mcp --client <codex|claude> --apply
 ```
 
 Ask the user to restart the affected client session after repair. Use external
@@ -878,7 +878,7 @@ When blocked, include this exact readiness block in the Lab response:
 ```text
 paper_wiki_grounding: unavailable
 fallback_grounding: external_primary_sources_only_after_explicit_user_choice
-setup_next_action: python -m meridian setup doctor --client all
+setup_next_action: meridian setup doctor --client all
 ```
 
 If MCP is unavailable but the setup doctor confirms local runtime readiness and

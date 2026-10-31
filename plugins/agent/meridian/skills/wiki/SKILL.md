@@ -54,17 +54,17 @@ Minimum completion:
 
 If MCP tools are unavailable, try local CLI retrieval only when local Python can
 import Meridian, for example `python -c "import meridian"`. Then use the
-resolver below and run `python -m meridian wiki status` to find the active
+resolver below and run `meridian wiki status` to find the active
 wiki root, then read pages with the MCP JSON bridge
-(`python -m meridian.mcp read --page <page>`) once a workspace is configured.
+(`meridian-mcp read --page <page>`) once a workspace is configured.
 
 If MCP tools are unavailable and local Python cannot import Meridian, do not
 answer from web search or broad file search. Return a setup blocker instead:
 
 ```text
 Use Wiki blocked: Meridian MCP tools are unavailable and local Python cannot import meridian.
-Repair: python -m meridian setup doctor --client all
-If repair_available: python -m meridian setup repair-mcp --client <codex|claude> --apply
+Repair: meridian setup doctor --client all
+If repair_available: meridian setup repair-mcp --client <codex|claude> --apply
 Restart the affected client session after repair.
 ```
 
@@ -85,9 +85,9 @@ The user asks whether a finding is supported. Read the aggregation page's findin
 Default Use Wiki primitives:
 
 ```bash
-python -m meridian.mcp context --query "<standalone research intent>"
-python -m meridian.mcp read --page <page id, e.g. topics/speculative-decoding>
-python -m meridian.mcp trace --page <page id>
+meridian-mcp context --query "<standalone research intent>"
+meridian-mcp read --page <page id, e.g. topics/speculative-decoding>
+meridian-mcp trace --page <page id>
 ```
 
 Agent execution resolver:
@@ -98,7 +98,7 @@ Agent execution resolver:
 3. If working inside the Meridian repo, use
    `PYTHONPATH=<repo>/src python3 -m meridian`.
 
-Use `python -m meridian wiki status` to inspect the active wiki root, source root, core
+Use `meridian wiki status` to inspect the active wiki root, source root, core
 path, and MCP availability. If retrieval fails, use its warnings first; do not
 start with broad `rg` over the vault.
 
@@ -133,7 +133,7 @@ Minimum completion:
   Never send any other kind of op; the tool rejects it.
 - Report the returned key and tell the user the finding is queued for
   their review in the App, not yet part of the wiki.
-- Use `meridian.wiki_proposal_status` (or `python -m meridian wiki
+- Use `meridian.wiki_proposal_status` (or `meridian wiki
   proposal-status --key <key>`) if the user asks whether it was applied.
 
 Canonical example:
@@ -145,8 +145,8 @@ A Lab project just confirmed that draft-tree width stops paying off past 6 for s
 CLI equivalent (only when MCP is unavailable):
 
 ```bash
-python -m meridian wiki propose ops.json --title "<one sentence>" --project <id> [--node <id>]
-python -m meridian wiki proposal-status --key <key>
+meridian wiki propose ops.json --title "<one sentence>" --project <id> [--node <id>]
+meridian wiki proposal-status --key <key>
 ```
 
 ### Audit / Signals

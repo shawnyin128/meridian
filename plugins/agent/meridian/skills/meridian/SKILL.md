@@ -47,7 +47,7 @@ Minimum completion:
 - Run or emulate the deterministic check:
 
 ```bash
-python -m meridian framework-check --project-root <meridian-repo>
+meridian framework-check --project-root <meridian-repo>
 ```
 
 - Include `--library-root` or `--wiki-root` when checking a real Paper Wiki
@@ -68,8 +68,8 @@ Use when the user asks whether Meridian is installed, up to date, or ready.
 
 Minimum completion:
 
-- Check the Python core version and path with `python -m meridian --version`
-  and `python -m meridian wiki status`.
+- Check the Python core version and path with `meridian --version`
+  and `meridian wiki status`.
 - Check that the plugin package exposes `meridian`, `wiki`, `lab`, and `meridian-coding` skills.
   When installed plugin files are visible, inspect the Codex or Claude Code
   plugin cache/manifest; otherwise report plugin visibility as unknown, not as a
@@ -78,7 +78,7 @@ Minimum completion:
   attempted path, distinguish missing from unreadable from unknown cache
   visibility, diagnose plugin path drift, and do not tell the agent to continue
   from remembered Lab semantics.
-- Check MCP readiness with `python -m meridian.mcp --help` or a lightweight
+- Check MCP readiness with `meridian-mcp --help` or a lightweight
   capabilities smoke, and report stale behavior as possible core/plugin drift.
 - Check the user research-agent contract files under the active
   `MERIDIAN_CONFIG_HOME` when set, otherwise under `~/.meridian/`:
@@ -122,7 +122,7 @@ Minimum completion:
 - Run the deterministic doctor for both supported clients:
 
 ```bash
-python -m meridian setup doctor --client all
+meridian setup doctor --client all
 ```
 
 - Preserve blocker codes and repair state from the doctor output. Treat
@@ -132,7 +132,7 @@ python -m meridian setup doctor --client all
   approval, run the client-specific repair command:
 
 ```bash
-python -m meridian setup repair-mcp --client <codex|claude> --apply
+meridian setup repair-mcp --client <codex|claude> --apply
 ```
 
 - After repair, tell the user to restart the affected Codex or Claude Code
@@ -150,7 +150,7 @@ state, or when a fresh client starts hand-patching `AGENTS.md`.
 Run the deterministic initializer:
 
 ```bash
-python -m meridian setup init-lab --lab-root <repo>
+meridian setup init-lab --lab-root <repo>
 ```
 
 Minimum completion:
@@ -195,7 +195,7 @@ Minimum completion:
 - Register the library with:
 
 ```bash
-python -m meridian wiki init --library-root <library-root>
+meridian wiki init --library-root <library-root>
 ```
 
 - Confirm that the library contains `meridian-wiki.json` and `sources/`. If

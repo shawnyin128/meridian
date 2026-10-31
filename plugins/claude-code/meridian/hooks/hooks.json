@@ -6,9 +6,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python -m meridian lab focus --hook",
-            "shell": "bash",
-            "timeout": 10
+            "command": "python",
+            "timeout": 10,
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/lib/run.py",
+              "meridian",
+              "lab",
+              "focus",
+              "--hook"
+            ]
           }
         ]
       }
@@ -18,9 +24,15 @@
         "hooks": [
           {
             "type": "command",
-            "command": "python -m meridian lab focus --hook",
-            "shell": "bash",
-            "timeout": 10
+            "command": "python",
+            "timeout": 10,
+            "args": [
+              "${CLAUDE_PLUGIN_ROOT}/lib/run.py",
+              "meridian",
+              "lab",
+              "focus",
+              "--hook"
+            ]
           }
         ]
       }
