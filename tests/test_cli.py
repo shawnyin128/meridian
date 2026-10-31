@@ -1900,7 +1900,11 @@ class CliTests(unittest.TestCase):
         )
         self.assertEqual(claude_marketplace["name"], "meridian")
         self.assertEqual(claude_marketplace["plugins"][0]["name"], "meridian")
-        self.assertEqual(claude_marketplace["plugins"][0]["source"], "./plugins/claude-code/meridian")
+        # A marketplace added by the URL of its marketplace.json has no directory, so a relative source cannot resolve.
+        self.assertEqual(
+            claude_marketplace["plugins"][0]["source"],
+            {"source": "git-subdir", "url": "shawnyin128/meridian", "path": "plugins/claude-code/meridian"},
+        )
         claude_manifest = json.loads((claude_root / ".claude-plugin/plugin.json").read_text(encoding="utf-8"))
         self.assertEqual(claude_manifest["name"], "meridian")
 
